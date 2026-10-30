@@ -20,3 +20,12 @@ Native SwiftUI iPad app: a finger-drumming trainer. Played mainly on an external
 
 ## Layout
 Docs in docs/. Tickets as local files in docs/tickets/.
+
+
+## Agent skills
+
+### Issue tracker
+Issues and specs are tracked as local markdown files in `docs/tickets/`. See `docs/agents/issue-tracker.md`.
+
+### Domain docs
+Single-context layout stored in `docs/`. See `docs/agents/domain.md`.
