@@ -1,0 +1,22 @@
+Pad-O-Fill Acoustic — AVL Black Pearl selection
+
+Audio samples created by Glen MacArthur (AVL Drumkits), 2015/2023.
+Source: https://www.bandshed.net/avldrumkits/
+Archive: https://www.bandshed.net/sounds/AVLDrumkits_SFZ/BLACK_PEARL_2023_repack.zip
+
+License: Creative Commons Attribution-ShareAlike 3.0 Unported.
+https://creativecommons.org/licenses/by-sa/3.0/
+
+Original author's license notice:
+AVL-Drumkits
+Created by: Glen MacArthur 2015
+Formats: SFZ, SF2, h2drumkit
+Website: http://www.bandshed.net/avldrumkits/
+Contact: info@bandshed.net
+CC-BY-SA with the following exception:
+The by-sa condition is imperative if you modify the samples themselves or create new sample libraries with this licensed product. However, produced music and other non-sample-library works can be licensed freely.
+Attribution means keeping all authors information and this readme-file or its content in the release.
+If you want to create a fork, a modified version, of this sample library you have to release and distribute it under a different name.
+
+This selection is distributed as Pad-O-Fill Acoustic under CC BY-SA 3.0.
+The original PCM audio bytes are unchanged. Files were selected and renamed for pad roles; the original names and SHA-256 values appear in ../provenance.json. Wood uses recorded stick click, Shaker uses maracas, Open hat uses the recorded hat swish. Five original velocity layers are retained per role. No endorsement is implied. This license concerns the audio/library, separately from application code.

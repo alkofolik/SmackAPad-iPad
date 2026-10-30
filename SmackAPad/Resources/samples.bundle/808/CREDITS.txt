@@ -1,0 +1,3 @@
+Pad-O-Fill 808 — selection of Michael Fischer / Technopolis TR-808 Sound Sample Set 1.0.0 (1994).
+Source mirror and CC0 license: https://github.com/tidalcycles/sounds-tr808-fischer
+Original PCM bytes unchanged; selected and renamed. Wood uses claves; Ride uses a short 808 cymbal setting, Crash a longer setting. These are drum-machine settings, not acoustic velocity layers. See ../provenance.json for names and hashes. No endorsement is implied.

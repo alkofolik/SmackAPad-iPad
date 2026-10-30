@@ -1,6 +1,6 @@
 # 02 — Data Port from Legacy
 
-Status: ready-for-agent
+Status: done
 
 ## Goal
 
@@ -43,14 +43,14 @@ No playability report is needed. Verified 2026-10-30: in 8-pad mode all 595 less
 
 ## Acceptance criteria
 
-- [ ] All 547 core + 24 intro lessons load from bundled JSON.
-- [ ] Electronic-path and genre-extension lessons load and appear in correct categories.
-- [ ] Invalid or missing JSON produces a clear error, not a crash.
-- [ ] All 371 WAV files are present in the bundle, and every WAV referenced by the 8-kit manifest exists (jazz, world and worldperc reference WAVs from other folders).
-- [ ] The 6 lessons with `hits8` still have it after the copy.
-- [ ] All LICENSE files copied alongside each kit's samples.
-- [ ] `cs.tsv` copied to resources.
-- [ ] Architecture supports loading from multiple sources (bundled + external JSON) for future content packs.
+- [x] All 547 core + 24 intro lessons load from bundled JSON.
+- [x] Electronic-path and genre-extension lessons load and appear in correct categories.
+- [x] Invalid or missing JSON produces a clear error, not a crash.
+- [x] All 371 WAV files are present in the bundle, and every WAV referenced by the 8-kit manifest exists (jazz, world and worldperc reference WAVs from other folders).
+- [x] The 6 lessons with `hits8` still have it after the copy.
+- [x] All LICENSE files copied alongside each kit's samples.
+- [x] `cs.tsv` copied to resources.
+- [x] Architecture supports loading from multiple sources (bundled + external JSON) for future content packs.
 
 ## Agent assignment
 
