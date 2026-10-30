@@ -36,6 +36,25 @@ Implement the 10-click guided calibration procedure that measures per-device tim
 - [ ] Stored per device; survives app restart.
 - [ ] **iPad test**: calibration with USB controller, BLE controller, and on-screen pads.
 
+## Reference implementation (legacy web app)
+
+Algorithm reference: `/Users/kju/AI COWORK/Smack-a-Pad/Smack-a-Pad/2026-10-28-Smack-a-Pad-ipad/app/v21/src/engine/calibration.js` (read-only; do not copy the code, port the idea).
+
+Keep from the legacy version:
+
+- 4 audible count-in clicks, then 10 measured clicks, 1 s apart.
+- Each tap is compared with the click's actual output time (not its scheduled time).
+- Each tap is matched to the nearest click, so a duplicate tap cannot take the next beat.
+- Offset = median of the deltas; outliers are dropped by a MAD-based cut.
+- Calibration is cancelled if the audio clock changes during the run; previous settings stay unchanged.
+- One signed offset per device, stored in `calibrationOffsets`.
+
+Change from the legacy version:
+
+- Legacy acceptance was too strict: spread at most 45 ms, start-to-end drift at most 70 ms, at least 8 usable taps, at most 2 extra taps. Loosen it (starting point: spread about 80 ms, at least 6 usable taps out of 10, no hard drift limit) and tune on a real iPad. Final values are chosen during implementation (DECISIONS §8, open item 3).
+- Drop the legacy per-clock-mode and per-timestamp-source keys. CoreMIDI timestamps are used directly: one device = one offset.
+- The rolling timing center is not part of this ticket (see DECISIONS §9 and ticket 08).
+
 ## Skill
 
 Use the **tdd** skill for this ticket. Calibration offset calculation must be test-driven.
