@@ -1,6 +1,6 @@
 # 05 — Progression (Category Unlock Logic)
 
-Status: ready-for-agent
+Status: done
 
 ## Goal
 
@@ -24,11 +24,11 @@ Implement the category unlock / progression system.
 
 ## Acceptance criteria
 
-- [ ] First category unlocked by default.
-- [ ] Next category unlocks after 5 passed lessons in current category.
-- [ ] Soft unlock works with single tap + confirmation.
-- [ ] In 8-pad mode unlocking works as in 16-pad mode; lessons without a layout never block it.
-- [ ] Intro section always accessible.
+- [x] First category unlocked by default.
+- [x] Next category unlocks after 5 passed lessons in current category.
+- [x] Soft unlock works with single tap + confirmation.
+- [x] In 8-pad mode unlocking works as in 16-pad mode; lessons without a layout never block it.
+- [x] Intro section always accessible.
 
 ## Agent assignment
 
