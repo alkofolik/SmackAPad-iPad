@@ -1,6 +1,6 @@
 # 04 — Persistence (Settings + Progress)
 
-Status: ready-for-agent
+Status: done
 
 ## Goal
 
@@ -30,11 +30,11 @@ Implement persistence for user settings (UserDefaults) and lesson progress (JSON
 
 ## Acceptance criteria
 
-- [ ] Progress JSON saves and loads correctly across app restarts.
-- [ ] Settings persist in UserDefaults.
-- [ ] No data loss on normal app lifecycle (background, terminate, relaunch).
-- [ ] Corrupt or missing progress file → fresh start, no crash.
-- [ ] Clean keyspace (no legacy prefixes).
+- [x] Progress JSON saves and loads correctly across app restarts.
+- [x] Settings persist in UserDefaults.
+- [x] No data loss on normal app lifecycle (background, terminate, relaunch).
+- [x] Corrupt or missing progress file → fresh start, no crash.
+- [x] Clean keyspace (no legacy prefixes).
 
 ## Agent assignment
 
