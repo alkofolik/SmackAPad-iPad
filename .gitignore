@@ -1,9 +1,14 @@
 # Xcode / Swift
 DerivedData/
 build/
+*.build/
 .build/
 xcuserdata/
 *.xcuserstate
+*.xcscmblueprint
+*.xccheckout
+*.moved-aside
 
 # OS
 .DS_Store
+

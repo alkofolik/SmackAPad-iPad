@@ -1,6 +1,6 @@
 # 01 — Project Skeleton
 
-Status: ready-for-agent
+Status: done
 
 ## Goal
 
@@ -31,10 +31,10 @@ Create the Xcode project, folder structure, and minimal app entry point for a na
 
 ## Acceptance criteria
 
-- [ ] Xcode project opens, builds, and runs on iPad simulator (iPadOS 17+).
-- [ ] Folder structure matches the module layout above.
-- [ ] Deployment target is iPadOS 17, iPad-only.
-- [ ] `.gitignore` covers Xcode build artifacts, DerivedData, `.DS_Store`.
+- [x] Xcode project opens, builds, and runs on iPad simulator (iPadOS 17+).
+- [x] Folder structure matches the module layout above.
+- [x] Deployment target is iPadOS 17, iPad-only.
+- [x] `.gitignore` covers Xcode build artifacts, DerivedData, `.DS_Store`.
 
 ## Agent assignment
 
