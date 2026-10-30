@@ -144,6 +144,7 @@ final class PracticeSession {
         do {
             try audio.selectKit(settings.selectedKitId)
             try audio.start()
+            audio.logTiming("practice-start")
             errorMessage = nil
             summary = nil
             lastResult = nil

@@ -77,3 +77,23 @@ Stop after successful build; Jakub tests on iPad.
 - TDD: the median/sign/cap, tolerant acceptance/outlier rejection, and actual-output nearest-click/duplicate/cancellation behaviors each failed before implementation and then passed individually on Mac. Previously passing tests were not rerun.
 - Build: Xcode 27.1, Debug, generic iOS destination, signing disabled — **BUILD SUCCEEDED**. No app was installed or launched on iPad. One Swift 5 warning notes implicit `self` in a nested closure would require explicit capture in Swift 6; the project uses Swift 5 mode. App Intents metadata extraction was skipped because the app has no App Intents dependency.
 - Pending Jakub's iPad validation: USB, BLE, touch, restart persistence, and the >90% normal-human success target. The initial thresholds are not a claim of measured hardware success.
+
+## Follow-up — timing consistency and audio session safety
+
+- Scheduling and observed output now use one `AudioOutputTiming` model based on mixer presentation latency; scoring still uses the intended audible beat, with no separate output-latency correction. The reason and the previous P − S shift are documented in DECISIONS §10. Calibration analysis and acceptance thresholds are unchanged.
+- Temporary DEBUG-only logging prints session output latency + buffer duration, mixer presentation latency, and their difference at calibration start/end and practice start. Disable it in `AudioTimingDiagnostics.enabled`. Hardware values have not been collected here.
+- A shared session-ownership manager prevents a stopped calibration engine or repeated view cleanup from deactivating another engine's active session. Final release may deactivate only after all owners have stopped. Start/restart failures release ownership after stopping their graph.
+- Two new pure tests passed after their initial failing stage: the common time conversion, and overlapping session ownership with repeated cleanup and release/reacquisition. The earlier calibration/scoring tests were not rerun. Native activation/restart and actual audio recovery require an iPad; no hardware success is claimed.
+- Build (2026-10-31): Xcode 27.1, Debug, generic iOS destination, signing disabled — **BUILD SUCCEEDED**. No iPad install/launch or additional tests followed. The existing Swift 5 implicit-self and missing App Intents metadata warnings remain; no new warnings were reported.
+
+### Manual iPad checks (Jakub)
+
+- [ ] Calibrate separately with on-screen pads, a USB controller, and a BLE controller; capture the DEBUG timing lines at start/end and the following practice start for each.
+- [ ] Immediately after each calibration, return to a lesson and verify live pad sound, lesson playback, and metronome; confirm timing feels consistent with calibration.
+- [ ] Restart the app and confirm the same signed offset remains saved for the selected device; verify practice sound/metronome again.
+- [ ] Cancel mid-run, return to practice, and verify sound/metronome with the previous offset unchanged.
+- [ ] Disconnect the controller mid-run, reconnect, and verify previous settings plus practice sound/metronome without restarting the app.
+- [ ] Let a run fail (fewer than six taps), then return to practice and verify sound/metronome and the unchanged offset.
+- [ ] Close the calibration view mid-run, including dismissing the settings sheet, then verify practice sound/metronome. Repeat after a completed run to exercise repeated cleanup.
+- [ ] Background the app during calibration, foreground it, dismiss settings, and verify practice sound/metronome. Repeat background/foreground from practice with no calibration running.
+- [ ] Measure whether normal human calibration succeeds >90% of the time; no automated or hardware success-rate claim is made.

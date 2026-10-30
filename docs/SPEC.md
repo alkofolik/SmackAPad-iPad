@@ -121,7 +121,7 @@ The scoring window is symmetric around the expected note time.
 
 **Calibration offset is the ONE place where input timing is compensated.** Each tap is compared with the click's hardware presentation time, derived from the rendered audio timestamp. The signed offset captures MIDI input delay, human perception, and systematic tapping bias; it does not include output latency. The offset is subtracted from incoming timestamps exactly once before scoring.
 
-**`AVAudioSession.outputLatency` + `ioBufferDuration`**: used exclusively for **scheduling audio playback** (metronome clicks, sample triggering). Neither value is added to the calibration offset or scoring window. Calibration observes rendered click onsets and converts their timestamps to hardware presentation time using the engine's downstream presentation latency, independently of the intended schedule.
+**Audio output timing**: scheduling uses intended audible time minus `mainMixerNode.outputPresentationLatency`; calibration observes rendered click onset plus that same presentation latency, independently of the intended schedule. `AVAudioSession.outputLatency + ioBufferDuration` is diagnostic only; `ioBufferDuration` also supplies a scheduling lead-time safety margin. No output-latency value is added to the calibration offset or scoring window.
 
 **Adaptive timing center** (rolling median, window of 8 samples, gated ±100–110 ms): shifts the scoring window at runtime to follow systematic player drift. Does not widen the windows.
 

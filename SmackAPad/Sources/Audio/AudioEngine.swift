@@ -5,6 +5,17 @@ import Darwin
 /// Preloads bundled kits and serializes control work away from the audio render thread.
 /// Call `prepare()` before playing; pass resolved lesson pad indices in eight-pad mode.
 public final class AudioEngine: @unchecked Sendable {
+    /// AVAudioSession is process-wide even though practice and calibration have separate graphs.
+    private static let sessionOwnership = AudioSessionOwnership(activate: {
+        let session = AVAudioSession.sharedInstance()
+        try session.setCategory(.playback, mode: .default)
+        try session.setPreferredSampleRate(48_000)
+        try session.setPreferredIOBufferDuration(0.005)
+        try session.setActive(true)
+    }, deactivate: {
+        try AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
+    })
+
     /// Canonical padIndex-to-voice mapping; paired hand pads share the same voice.
     /// See DECISIONS §2. Eight-pad controller slots must first resolve to lesson pad indices.
     public static let defaultPadVoices = [
@@ -24,6 +35,7 @@ public final class AudioEngine: @unchecked Sendable {
         case invalidTempo
         case notPrepared
         case notRunning
+        case outputTimingUnavailable
         case insufficientLeadTime
         case voiceLimit
 
@@ -38,6 +50,7 @@ public final class AudioEngine: @unchecked Sendable {
             case .invalidTempo: return "Metronome tempo must be between 1 and 400 BPM, with a positive beat count."
             case .notPrepared: return "Prepare the audio engine before playing."
             case .notRunning: return "The audio engine is stopped."
+            case .outputTimingUnavailable: return "Audio output timing is not ready."
             case .insufficientLeadTime: return "The requested sound time is too close or has already passed."
             case .voiceLimit: return "All audio voices are occupied."
             }
@@ -77,6 +90,7 @@ public final class AudioEngine: @unchecked Sendable {
     private let padVoices: [String]
     private let queue = DispatchQueue(label: "cz.kju.SmackAPad.audio", qos: .userInteractive)
     private let session = AVAudioSession.sharedInstance()
+    private let sessionOwnerID = UUID()
     private let engine = AVAudioEngine()
     private let format = AVAudioFormat(standardFormatWithSampleRate: 48_000, channels: 2)!
     private let clickPlayer = AVAudioPlayerNode()
@@ -93,8 +107,7 @@ public final class AudioEngine: @unchecked Sendable {
     private var interrupted = false
     private var failure: Error?
 
-    // Output delay belongs exclusively to audio scheduling, never to scoring.
-    private var playbackDelay: TimeInterval = 0
+    // Buffer duration is a scheduling safety margin, never the audible-time conversion.
     private var ioDuration: TimeInterval = 0
 
     public struct CalibrationSnapshot: Sendable {
@@ -104,7 +117,7 @@ public final class AudioEngine: @unchecked Sendable {
 
     private struct CalibrationCapture {
         let id: UUID
-        let presentationLatency: Double
+        let timing: AudioOutputTiming
         var outputTimes: [Double] = []
         var clockOrigin: Double?
         var sampleRate: Double?
@@ -152,6 +165,7 @@ public final class AudioEngine: @unchecked Sendable {
         observers.forEach(NotificationCenter.default.removeObserver)
         if calibrationTapInstalled { engine.mainMixerNode.removeTap(onBus: 0) }
         engine.stop()
+        try? Self.sessionOwnership.release(for: sessionOwnerID)
     }
 
     public var availableKits: [SampleKit] { queue.sync { kitModels } }
@@ -159,13 +173,23 @@ public final class AudioEngine: @unchecked Sendable {
     public var lastError: Error? { queue.sync { failure } }
     public var isRunning: Bool { queue.sync { engine.isRunning } }
 
+    /// Temporary diagnostics are controlled in AudioTimingDiagnostics only.
+    public func logTiming(_ event: String) { queue.sync { logTimingOnQueue(event) } }
+
+    private func logTimingOnQueue(_ event: String) {
+        #if DEBUG
+        AudioTimingDiagnostics.record(event, sessionOutputLatency: session.outputLatency,
+            ioBufferDuration: session.ioBufferDuration,
+            presentationLatency: engine.mainMixerNode.outputPresentationLatency)
+        #endif
+    }
+
     /// Do not calibrate against an unstarted clock or an unknown presentation delay.
     public var calibrationClockReady: Bool {
         queue.sync {
             guard engine.isRunning, let time = engine.outputNode.lastRenderTime,
                   time.isHostTimeValid, time.isSampleTimeValid else { return false }
-            let latency = engine.mainMixerNode.outputPresentationLatency
-            return latency.isFinite && latency > 0
+            return AudioOutputTiming(presentationLatency: engine.mainMixerNode.outputPresentationLatency) != nil
         }
     }
 
@@ -202,11 +226,19 @@ public final class AudioEngine: @unchecked Sendable {
     public func start() throws {
         try queue.sync {
             guard prepared else { throw Failure.notPrepared }
-            try activateSession()
-            try engine.start()
-            wantsPlayback = true
-            interrupted = false
-            failure = nil
+            do {
+                try activateSession()
+                if !engine.isRunning { try engine.start() }
+                wantsPlayback = true
+                interrupted = false
+                failure = nil
+            } catch {
+                wantsPlayback = false
+                engine.stop()
+                try? Self.sessionOwnership.release(for: sessionOwnerID)
+                failure = error
+                throw error
+            }
         }
     }
 
@@ -216,7 +248,7 @@ public final class AudioEngine: @unchecked Sendable {
             stopPlayers()
             engine.stop()
             do {
-                try session.setActive(false, options: .notifyOthersOnDeactivation)
+                try Self.sessionOwnership.release(for: sessionOwnerID)
             } catch {
                 failure = error
             }
@@ -244,8 +276,8 @@ public final class AudioEngine: @unchecked Sendable {
         }
     }
 
-    /// Returns the audible time of the first click, also usable as the calibration anchor.
-    /// A ten-click calibration uses BPM 60 and `beatCount: 10`.
+    /// Returns the intended audible time of the first click.
+    /// Calibration independently observes the rendered click instead of using this anchor.
     @discardableResult
     public func startMetronome(
         bpm: Double, firstBeatHostTime: UInt64? = nil, beatCount: Int? = nil
@@ -255,7 +287,8 @@ public final class AudioEngine: @unchecked Sendable {
             guard bpm.isFinite, (1...400).contains(bpm), beatCount.map({ $0 > 0 }) ?? true else {
                 throw Failure.invalidTempo
             }
-            let first = firstBeatHostTime ?? (mach_absolute_time() + ticks(playbackDelay + 0.1))
+            let timing = try outputTimingOnQueue()
+            let first = firstBeatHostTime ?? (mach_absolute_time() + ticks(timing.presentationLatency + 0.1))
             _ = try renderTime(for: first)
             stopMetronomeOnQueue()
             metronome = Metronome(firstAudibleTime: first, secondsPerBeat: 60 / bpm, beatCount: beatCount)
@@ -278,10 +311,10 @@ public final class AudioEngine: @unchecked Sendable {
             guard engine.isRunning, let clickBuffer else { throw Failure.notRunning }
             stopCalibrationOnQueue()
             stopPlayers()
-            let latency = engine.mainMixerNode.outputPresentationLatency
-            guard latency.isFinite, latency > 0 else { throw Failure.notRunning }
+            let timing = try outputTimingOnQueue()
             let id = UUID()
-            calibrationCapture = CalibrationCapture(id: id, presentationLatency: latency)
+            calibrationCapture = CalibrationCapture(id: id, timing: timing)
+            logTimingOnQueue("calibration-start")
             let detector = ClickDetector()
             engine.mainMixerNode.installTap(onBus: 0, bufferSize: 512, format: nil) { [weak self] buffer, time in
                 // Copy values while the tap owns the buffer; never retain audio memory.
@@ -294,7 +327,7 @@ public final class AudioEngine: @unchecked Sendable {
                 }
             }
             calibrationTapInstalled = true
-            let first = mach_absolute_time() + ticks(playbackDelay + 0.6)
+            let first = mach_absolute_time() + ticks(timing.presentationLatency + 0.6)
             for index in 0..<14 {
                 let time = try renderTime(for: first + ticks(Double(index)))
                 clickPlayer.scheduleBuffer(clickBuffer, at: time)
@@ -311,8 +344,8 @@ public final class AudioEngine: @unchecked Sendable {
             }
             let latency = engine.mainMixerNode.outputPresentationLatency
             return CalibrationSnapshot(outputTimes: capture.outputTimes,
-                clockChanged: capture.clockChanged || !engine.isRunning || !latency.isFinite ||
-                    abs(latency - capture.presentationLatency) > 0.002)
+                clockChanged: capture.clockChanged || !engine.isRunning || AudioOutputTiming(presentationLatency: latency) == nil ||
+                    abs(latency - capture.timing.presentationLatency) > 0.002)
         }
     }
 
@@ -337,12 +370,13 @@ public final class AudioEngine: @unchecked Sendable {
         capture.lastSampleTime = sampleTime
         // The tap timestamp is the RENDERED frame's host time. Convert to hardware
         // presentation time using the engine's downstream presentation latency.
-        // AVAudioSession.outputLatency and ioBufferDuration are scheduling-only.
-        capture.outputTimes += onsets.map { $0 + capture.presentationLatency }
+        // Scheduling uses this exact model in reverse; session+buffer is diagnostic only.
+        capture.outputTimes += onsets.map { capture.timing.audibleTime(forRenderTime: $0) }
         if capture.outputTimes.count > 14 { capture.clockChanged = true }
     }
 
     private func stopCalibrationOnQueue() {
+        if calibrationCapture != nil { logTimingOnQueue("calibration-end") }
         calibrationCapture = nil
         if calibrationTapInstalled {
             engine.mainMixerNode.removeTap(onBus: 0)
@@ -389,22 +423,27 @@ public final class AudioEngine: @unchecked Sendable {
     }
 
     private func activateSession() throws {
-        try session.setCategory(.playback, mode: .default)
-        // AVAudioSession has no Web Audio `.interactive` hint. Request its native equivalent.
-        try session.setPreferredSampleRate(format.sampleRate)
-        try session.setPreferredIOBufferDuration(0.005)
-        try session.setActive(true)
+        try Self.sessionOwnership.acquire(for: sessionOwnerID)
         ioDuration = session.ioBufferDuration
-        playbackDelay = session.outputLatency + ioDuration
+    }
+
+    private func outputTimingOnQueue() throws -> AudioOutputTiming {
+        guard let timing = AudioOutputTiming(presentationLatency: engine.mainMixerNode.outputPresentationLatency) else {
+            throw Failure.outputTimingUnavailable
+        }
+        return timing
     }
 
     private func renderTime(for audibleTime: UInt64) throws -> AVAudioTime {
-        let delay = ticks(playbackDelay)
+        let timing = try outputTimingOnQueue()
+        let renderSeconds = timing.renderTime(forAudibleTime: AVAudioTime.seconds(forHostTime: audibleTime))
         let now = mach_absolute_time()
-        guard audibleTime > delay, audibleTime - delay > now + ticks(ioDuration) else {
+        guard renderSeconds > 0 else { throw Failure.insufficientLeadTime }
+        let renderHostTime = ticks(renderSeconds)
+        guard renderHostTime > now + ticks(ioDuration) else {
             throw Failure.insufficientLeadTime
         }
-        return AVAudioTime(hostTime: audibleTime - delay)
+        return AVAudioTime(hostTime: renderHostTime)
     }
 
     private func ticks(_ seconds: TimeInterval) -> UInt64 {
@@ -413,16 +452,20 @@ public final class AudioEngine: @unchecked Sendable {
 
     private func scheduleMetronome() {
         guard var state = metronome, let clickBuffer, engine.isRunning else { return }
+        let timing: AudioOutputTiming
+        do { timing = try outputTimingOnQueue() }
+        catch { failure = error; stopMetronomeOnQueue(); return }
         let now = mach_absolute_time()
-        let earliest = now + ticks(playbackDelay + ioDuration)
-        let horizon = now + ticks(playbackDelay + 0.1)
+        let earliest = now + ticks(timing.presentationLatency + ioDuration)
+        let horizon = now + ticks(timing.presentationLatency + 0.1)
         while state.beatCount.map({ state.nextBeat < $0 }) ?? true {
             let audibleTime = state.firstAudibleTime + ticks(Double(state.nextBeat) * state.secondsPerBeat)
             guard audibleTime <= horizon else { break }
             state.nextBeat += 1
             // Never bunch missed beats after an OS scheduling stall.
             guard audibleTime > earliest else { continue }
-            clickPlayer.scheduleBuffer(clickBuffer, at: AVAudioTime(hostTime: audibleTime - ticks(playbackDelay)))
+            do { clickPlayer.scheduleBuffer(clickBuffer, at: try renderTime(for: audibleTime)) }
+            catch { failure = error; stopMetronomeOnQueue(); return }
             if !clickPlayer.isPlaying { clickPlayer.play() }
         }
         metronome = state
@@ -591,6 +634,8 @@ public final class AudioEngine: @unchecked Sendable {
             try engine.start()
             failure = nil
         } catch {
+            engine.stop()
+            try? Self.sessionOwnership.release(for: sessionOwnerID)
             failure = error
         }
         // A route change invalidates calibration timing; the caller restarts the click sequence.
