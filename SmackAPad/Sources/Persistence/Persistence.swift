@@ -21,6 +21,7 @@ public enum SettingsKey: String, CaseIterable, Sendable {
     case calibrationOffsets = "smackapad.settings.calibrationOffsets"
     case languagePreference = "smackapad.settings.language"
     case customProfiles = "smackapad.settings.customProfiles"
+    case softUnlockedCategories = "smackapad.settings.softUnlockedCategories"
 }
 
 /// Allowed tempo increase steps for BPM auto-progression.
@@ -151,7 +152,7 @@ public final class SettingsManager: @unchecked Sendable {
         // Read custom controller profiles
         if let data = userDefaults.data(forKey: SettingsKey.customProfiles.rawValue),
            let profiles = try? JSONDecoder().decode([ControllerProfile].self, from: data) {
-            self.customProfiles = profiles
+            self.customProfiles = profiles.filter(\.isValid)
         } else {
             self.customProfiles = []
         }
@@ -241,13 +242,7 @@ public final class SettingsManager: @unchecked Sendable {
         if let custom = customProfiles.first(where: { $0.profileName == name }) {
             return custom
         }
-        if ControllerProfile.standard16.profileName == name {
-            return .standard16
-        }
-        if ControllerProfile.standard8.profileName == name {
-            return .standard8
-        }
-        return nil
+        return ControllerProfile.builtInProfiles.first { $0.profileName == name }
     }
 
     /// Returns the active controller profile or falls back to Standard 16-Pad.
@@ -259,6 +254,8 @@ public final class SettingsManager: @unchecked Sendable {
     public func saveProfile(_ profile: ControllerProfile) {
         lock.lock()
         defer { lock.unlock() }
+        guard profile.isValid,
+              !ControllerProfile.builtInProfiles.contains(where: { $0.profileName == profile.profileName }) else { return }
         var updated = customProfiles.filter { $0.profileName != profile.profileName }
         updated.append(profile)
         self.customProfiles = updated
@@ -278,7 +275,7 @@ public final class SettingsManager: @unchecked Sendable {
     public func allProfiles() -> [ControllerProfile] {
         lock.lock()
         defer { lock.unlock() }
-        var result: [ControllerProfile] = [.standard16, .standard8]
+        var result: [ControllerProfile] = ControllerProfile.builtInProfiles
         for custom in customProfiles {
             if !result.contains(where: { $0.profileName == custom.profileName }) {
                 result.append(custom)
@@ -532,6 +529,17 @@ public final class ProgressStore: @unchecked Sendable {
         if autoSave {
             try? save()
         }
+    }
+
+    /// Convenience helper to record a passing result for a lesson.
+    public func recordPass(
+        lessonId: Int,
+        bpm: Int = 100,
+        score: Float = 0.85,
+        mastery: Bool = false,
+        autoSave: Bool = true
+    ) {
+        recordResult(lessonId: lessonId, passed: true, mastery: mastery, bpm: bpm, score: score, autoSave: autoSave)
     }
 
     /// Directly sets or replaces the progress record for a lesson.

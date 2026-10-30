@@ -1,6 +1,6 @@
 # 06 — MIDI Input + Controller Profiles + BLE Fallback
 
-Status: ready-for-agent
+Status: implemented; build blocked; awaiting Xcode and iPad verification
 
 ## Goal
 
@@ -39,3 +39,18 @@ Implement CoreMIDI input, controller profile management (including MIDI learn), 
 ## Done rule
 
 Stop after successful build; Jakub tests on iPad.
+
+## Implementation notes (2026-10-30)
+
+- Added CoreMIDI MIDI 1.0 UMP input with source discovery, connection changes, note-on/off handling (including zero-velocity note-on), and device identifiers.
+- Preserved native mach timestamps. Missing timestamps, timestamps more than 250 ms old, and timestamps more than 50 ms ahead use callback receipt time. Exact limits remain accepted.
+- Added chromatic Akai MPD and NI Maschine presets (notes 36–51), a generic 8-pad preset, validated custom profiles, and UserDefaults persistence through SettingsManager. The existing Standard 16-Pad profile remains available.
+- Added MIDI learn for 8 or 16 unique notes, bound to the first controller/channel. Eight-pad profiles store physical slots 0–7; event output resolves them through the current lesson layout.
+- Added a Czech/English SwiftUI input screen with source/profile selection, profile deletion, MIDI learn, Bluetooth MIDI pairing, a note monitor, and touch pads using the shared pad-event output.
+- Retained the focused timestamp test for Jakub to run in Xcode. No tests were run during completion, as requested.
+
+### Build verification
+
+Command: `xcodebuild -project SmackAPad.xcodeproj -scheme SmackAPad -configuration Debug -destination 'generic/platform=iOS' -derivedDataPath build/MIDIInputDerivedData CODE_SIGNING_ALLOWED=NO build`.
+
+The first build was blocked by the execution sandbox preventing the Swift observation macro process from launching. The build with the required process permissions reached a compile error outside this MIDI ticket in `SmackAPad/Sources/Progression/Progression.swift:271`: `cannot find 'lesson' in scope` (also a missing closure argument diagnostic). Work stopped after the second failed build per AGENTS.md; no successful build is claimed. USB/BLE behavior, MIDI learn, touch response, and the timestamp test remain for Jakub to verify.

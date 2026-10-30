@@ -277,7 +277,7 @@ public struct ControllerProfile: Codable, Equatable, Hashable, Sendable, Identif
 }
 
 extension ControllerProfile {
-    /// Standard chromatic 16-pad layout (Akai MPD / GM drum layout, notes 36..51 bottom-left to top-right).
+    /// Standard chromatic 16-pad layout, notes 36..51 bottom-left to top-right.
     public static let standard16 = ControllerProfile(
         profileName: "Standard 16-Pad",
         noteMap: [
@@ -289,8 +289,26 @@ extension ControllerProfile {
         padCount: 16
     )
 
-    /// Akai MPD218 factory preset mapping.
-    public static let akaiMPD218 = standard16
+    /// Requires a chromatic bank (36..51); controller programs may use different notes.
+    public static let akaiMPD218 = ControllerProfile(
+        profileName: "Akai MPD (36–51)", noteMap: standard16.noteMap, padCount: 16
+    )
+
+    /// Maschine in MIDI mode with a chromatic bank starting at MIDI note 36.
+    public static let maschine = ControllerProfile(
+        profileName: "NI Maschine (36–51)", noteMap: standard16.noteMap, padCount: 16
+    )
+
+    /// Hardware presets plus the generic 8-pad profile. Keep standard16 for saved-setting compatibility.
+    public static let presets: [ControllerProfile] = [.akaiMPD218, .maschine, .standard8]
+    public static let builtInProfiles: [ControllerProfile] = [.standard16] + presets
+
+    public var isValid: Bool {
+        (padCount == 8 || padCount == 16) &&
+        !profileName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty &&
+        noteMap.count == padCount && Set(noteMap.values) == Set(0..<padCount) &&
+        noteMap.keys.allSatisfy { (0...127).contains($0) }
+    }
 
     /// Standard 8-pad layout mapping notes 36..43 to physical slots 0..7.
     public static let standard8 = ControllerProfile(
@@ -755,8 +773,18 @@ public final class LessonStore: @unchecked Sendable {
     }
 
     /// Returns all lessons belonging to the given category identifier.
-    public func lessons(in category: String) -> [Lesson] {
-        lessonsByCategory[category] ?? []
+    /// When `includeFolded` is true (default), electronic-path and extension lessons are folded into "electronic" (SPEC §3.7, DECISIONS §17).
+    public func lessons(in category: String, includeFolded: Bool = true) -> [Lesson] {
+        let direct = lessonsByCategory[category] ?? []
+        guard includeFolded else { return direct }
+        if category == "electronic" {
+            let folded = lessons.filter {
+                $0.cat != "electronic" &&
+                ($0.cat == "hardgroove" || $0.cat == "broken-techno" || $0.cat == "uk-club" || $0.tags.contains("electronic path") || $0.cat == "jersey" || $0.cat == "footwork")
+            }
+            return direct + folded
+        }
+        return direct
     }
 
     /// Convenience access for 8-pad slot mapping for a lesson.
