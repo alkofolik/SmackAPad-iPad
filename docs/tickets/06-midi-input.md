@@ -1,6 +1,6 @@
 # 06 — MIDI Input + Controller Profiles + BLE Fallback
 
-Status: implemented; build blocked; awaiting Xcode and iPad verification
+Status: implemented; build OK (2026-10-30); awaiting iPad verification
 
 ## Goal
 
