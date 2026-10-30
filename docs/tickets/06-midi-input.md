@@ -19,7 +19,7 @@ Implement CoreMIDI input, controller profile management (including MIDI learn), 
 3. **Controller profiles**:
    - Model: `{ profileName, noteMap: [midiNote: padIndex], padCount: 8|16 }`.
    - Ship 2–3 preset profiles (Akai MPD, NI Maschine, TBD).
-   - MIDI learn: user presses each pad, app builds a custom profile.
+   - MIDI learn: user presses each pad, app builds a custom profile. In 8-pad mode the user presses the 8 physical pads in order and the map values are slots 0–7 (SPEC §6), not padIndex.
    - Store profiles in UserDefaults via SettingsManager.
 4. **On-screen pads**: touch input as bonus alternative to MIDI (simple touch targets, same padIndex output).
 

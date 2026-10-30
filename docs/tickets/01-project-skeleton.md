@@ -14,8 +14,8 @@ Create the Xcode project, folder structure, and minimal app entry point for a na
 
 ## Tasks
 
-1. Create an Xcode project named `SmackAPad` with deployment target iPadOS 17, iPad-only.
-2. Set up the folder structure matching the architecture modules:
+1. The Xcode project `SmackAPad` already exists (Jakub created it in Xcode). Do NOT create a new project and never edit `project.pbxproj` by hand. Only verify that the deployment target is iPadOS 17 and the project is iPad-only; if not, tell Jakub which setting to change in Xcode.
+2. Inside the app target's folder created by Xcode (`SmackAPad/`, a synchronized folder: files created on disk appear in Xcode automatically), set up the folder structure matching the architecture modules (paths relative to that folder):
    - `Sources/App/` — app entry point
    - `Sources/MIDI/` — MIDI input (placeholder)
    - `Sources/Audio/` — audio engine (placeholder)
@@ -26,7 +26,7 @@ Create the Xcode project, folder structure, and minimal app entry point for a na
    - `Sources/Progression/` — category unlock logic
    - `Sources/UI/` — screens (library, play, settings, calibration, intro)
    - `Resources/` — bundled assets (samples, JSON data, localisation)
-3. Create a minimal `SmackAPadApp.swift` entry point that launches a placeholder `ContentView`.
+3. Keep the Xcode-generated `SmackAPadApp.swift`; make `ContentView` a minimal placeholder.
 4. Ensure the project builds and runs in the simulator (blank screen is fine).
 
 ## Acceptance criteria

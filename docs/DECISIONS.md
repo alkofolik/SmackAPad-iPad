@@ -10,7 +10,9 @@ v1 is the first full native SwiftUI iPad app, replacing the legacy JS/Capacitor 
 
 ## 2. Pad layouts: 16-pad and 8-pad
 
-The app supports two pad layouts: 4×4 (16 pads) and 2×4 (8 pads). All lessons use padIndex 0–15. Controller profiles map MIDI note numbers to padIndex values. Users can create custom mappings (MIDI learn). Ship 2–3 preset profiles for common controllers (Akai MPD, NI Maschine, etc.).
+The app supports two pad layouts: 4×4 (16 pads) and 2×4 (8 pads). All lessons use padIndex 0–15. Controller profiles map MIDI note numbers to padIndex values (16-pad mode) or to physical slots 0–7 (8-pad mode). Users can create custom mappings (MIDI learn). Ship 2–3 preset profiles for common controllers (Akai MPD, NI Maschine, etc.).
+
+**8-pad mode (revised 2026-10-30 after reading the legacy prototype):** no lesson filtering. As in the legacy app, the 8 physical pads are assigned per lesson to the sounds that lesson needs (`layoutForEight`), and 6 lessons that use 9 pads carry a simplified `hits8` version. All 595 bundled lessons are playable in 8-pad mode. Details: SPEC §6.
 
 ## 3. Play screen: clean, eyes-off design
 
@@ -62,9 +64,9 @@ No Core Data, no SwiftData. Clean keyspace — no legacy prefixes like `padofill
 
 Minimum deployment target: iPadOS 17. This gives access to `@Observable` macro and modern SwiftUI APIs. iPad-only (no iPhone). In 2026, iPadOS 17 is 3 years old — reasonable coverage.
 
-## 13. Sample kits: all 9 bundled
+## 13. Sample kits: all 8 bundled
 
-All 9 legacy sample kits are bundled in the app: acoustic, 808, jazz, world, rock, brush, worldperc, house, virtuosity. No downloading — all included in the app bundle.
+All 8 legacy sample kits are bundled in the app: acoustic, 808, jazz, world, rock, brush, worldperc, house. They are built from 7 WAV folders (acoustic, 808, brush, house, rock, virtuosity, worldperc); jazz, world and worldperc reference WAV files from other folders. The full manifest is `app/v21/data/2026-10-04-sample-kits.json` in the legacy project (371 unique WAVs, all present). No downloading — all included in the app bundle. (Corrected 2026-10-30: earlier text said 9 kits.)
 
 ## 14. Sample licenses: TestFlight first, review before App Store
 

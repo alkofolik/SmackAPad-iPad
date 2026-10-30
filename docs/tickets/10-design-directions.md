@@ -21,7 +21,7 @@ Use the `imagegen-frontend-mobile` skill to produce 3 distinct visual directions
    - Library screen (category browse).
    - Overall colour palette, typography choice, accent colours.
 4. Each direction must avoid everything on the reject list (purple/blue gradients, glassmorphism, grid of identical cards, emoji/default SF Symbols, default system font, centered hero + three cards, same corner radius everywhere, fake 3D).
-5. Output the 3 directions as structured image prompts that Jakub can paste into Gemini or ChatGPT image generation.
+5. Output the 3 directions as structured image prompts that Jakub can paste into Gemini or ChatGPT image generation. Save them to `docs/design/DIRECTIONS.md` (create the folder) and commit.
 
 ## Acceptance criteria
 
@@ -33,7 +33,7 @@ Use the `imagegen-frontend-mobile` skill to produce 3 distinct visual directions
 
 ## Agent assignment
 
-- **Agent**: Codex GPT-6.1 Sol, high (with imagegen-frontend-mobile skill)
+- **Agent**: Claude Opus 4.6 Thinking (Antigravity, account B) with the imagegen-frontend-mobile skill. Run before 2 Nov 2026; after that use Gemini 3.8 Flash High.
 - **Reasoning**: Creative design work requiring the specialised image generation skill.
 
 ## Done rule

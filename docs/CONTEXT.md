@@ -7,6 +7,8 @@
 | **Pad** | One of 16 (or 8) trigger surfaces on a MIDI controller, struck by a finger. |
 | **padIndex** | 0-based index (0–15) identifying a pad's position in the layout. All lessons reference pads by this index. |
 | **Pad layout** | Spatial arrangement of pads: 4×4 (16 pads) or 2×4 (8 pads). |
+| **Eight-pad layout** | In 8-pad mode, the assignment of the 8 physical pads (slots 0–7) to the sounds a given lesson needs. Computed per lesson; see SPEC §6. |
+| **hits8** | Optional simplified version of a lesson's hits for 8-pad mode. Present in 6 lessons that use 9 pads. |
 | **Controller profile** | Mapping table from MIDI note numbers to padIndex values. Each controller model sends different note numbers for the same physical pad position. |
 | **MIDI learn** | Process where the user presses each pad on their controller so the app can build a custom controller profile. |
 | **BLE controller** | Bluetooth Low Energy MIDI controller. Timestamps from BLE are unreliable (batched by CoreBluetooth); the app falls back to receipt time. |
@@ -29,7 +31,7 @@
 
 | Term | Definition |
 |---|---|
-| **Sample kit** | A set of audio samples mapped to pad voices (e.g., acoustic, 808, jazz). 9 kits bundled in v1. |
+| **Sample kit** | A set of audio samples mapped to pad voices (e.g., acoustic, 808, jazz). 8 kits bundled in v1. |
 | **Voice** | A named drum sound within a kit (e.g., kick, snare, hihat), with optional velocity variants (multiple WAV files). |
 
 ## Scoring & Timing

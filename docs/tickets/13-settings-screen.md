@@ -14,7 +14,7 @@ Build the settings screen: kit selection, BPM step, controller profile managemen
 
 ## Tasks
 
-1. **Kit selection**: picker showing all 9 kit names from sample-kits.json. Selection saved to SettingsManager.
+1. **Kit selection**: picker showing all 8 kit names from sample-kits.json. Selection saved to SettingsManager.
 2. **BPM step**: picker with options 1, 2, 5, 10. Saved to SettingsManager.
 3. **Controller profiles**: list of saved profiles (presets + custom). Active profile indicator. Delete custom profiles.
 4. **MIDI learn**: button that opens the MIDI learn flow (from ticket 06).

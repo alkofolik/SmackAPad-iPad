@@ -45,7 +45,8 @@
 | Agent | Tickets |
 |-------|---------|
 | Gemini 3.8 Flash High (Antigravity) | 01, 02, 03, 04, 05, 12, 13, 14, 15 |
-| Codex GPT-6.1 Sol, high | 06, 07, 08, 09, 10, 11, 16 |
+| Codex GPT-6.1 Sol, high | 06, 07, 08, 09, 11, 16 |
+| Claude Opus 4.6 Thinking (Antigravity, account B; before 2 Nov) | 10 |
 
 ## Skills used
 

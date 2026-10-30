@@ -23,7 +23,7 @@ Implement the AVAudioEngine-based audio engine: load sample kits, play voices pe
 
 ## Acceptance criteria
 
-- [ ] All 9 sample kits load and play with <15 ms trigger-to-sound latency.
+- [ ] All 8 sample kits load and play with <15 ms trigger-to-sound latency.
 - [ ] Correct voice selected per padIndex.
 - [ ] Velocity variants triggered appropriately.
 - [ ] Metronome plays at correct tempo.

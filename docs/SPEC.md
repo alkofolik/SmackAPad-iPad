@@ -7,7 +7,7 @@
 ## 1. Goals
 
 - Full-feature native SwiftUI iPad app replacing the JS/Capacitor prototype.
-- Lesson library (547 core + 24 intro + electronic-path + genre-extensions), play screen, scoring, calibration, 9 bundled sample kits.
+- Lesson library (547 core + 24 intro + electronic-path + genre-extensions), play screen, scoring, calibration, 8 bundled sample kits (acoustic, 808, jazz, world, rock, brush, worldperc, house).
 - External MIDI controller is the primary input (CoreMIDI). On-screen pads are a bonus.
 - Czech + English localisation. Czech primary.
 - iPadOS 17+, iPad-only.
@@ -33,7 +33,7 @@
 
 ### 3.2 Audio
 - `AVAudioEngine` with `AVAudioSession` category `.playback`, latency hint `.interactive`.
-- 9 bundled sample kits, each with named voices and optional velocity variants (WAV files).
+- 8 bundled sample kits (jazz, world and worldperc reuse WAV files from other kit folders), each with named voices and optional velocity variants (WAV files).
 - Metronome click for calibration and practice.
 
 ### 3.3 Lesson Data
@@ -101,6 +101,7 @@
 ```
 {profileName: String, noteMap: {midiNote: padIndex}, padCount: 8|16}
 ```
+For `padCount` 8 the map values are physical slots 0–7, not padIndex (see §6). Lessons may carry an optional `hits8` field (same format as `hits`).
 
 ---
 
@@ -155,14 +156,22 @@ After a clean run below `targetBpm`, tempo increases by the user-selected step: 
 
 ## 6. 8-Pad Controller Rule
 
-Lessons use `padIndex` 0–15. An 8-pad controller maps to only 8 of these indices.
+Source: behaviour of the legacy prototype (`app/v21/src/ui/pad-layout.js`, function `layoutForEight`), verified 2026-10-30. This replaces the earlier "filter, not remap" rule.
 
-**Rule: filter, not remap.** When an 8-pad controller profile is active:
-- The lesson library marks each lesson as **playable** or **not playable** based on the user's current profile.
-- A lesson is **playable** if every `padIndex` that appears in its `hits` array is present in the active controller profile's `noteMap`.
-- **Not-playable lessons** are shown greyed-out with a label ("requires 16 pads") but remain visible — not hidden. The user can still open them (they just can't be scored).
-- Progression counts (category unlocks, pass/mastery) only require playable lessons. A user is never blocked from unlocking categories because unplayable lessons exist.
-- If the user switches to a 16-pad profile, all lessons become playable immediately.
+Lessons use `padIndex` 0–15. In **8-pad mode** the controller has 8 physical pads (slots 0–7), and the lesson decides which sound each slot plays.
+
+- **Controller profile in 8-pad mode**: `noteMap` maps a MIDI note to a physical slot 0–7 (not to a padIndex). MIDI learn in 8-pad mode asks the user to press the 8 pads in order.
+- **Lesson data**: a lesson may carry an optional `hits8` array (same format as `hits`). 6 bundled lessons use 9 pads and have a `hits8` simplified version. In 8-pad mode the app plays `hits8` when it exists, otherwise `hits`.
+- **Layout per lesson** (`EightPadLayout`):
+  1. `required` = set of padIndex used in the lesson's hits (hits8 in 8-pad mode).
+  2. If `required` has more than 8 pads, the lesson has no layout (not playable in 8-pad mode).
+  3. Start from the base slots `[9, 10, 2, 3, 12, 13, 11, 7]` (Clap, Rim, Crash, Ride, Kick L, Snare L, Hat R, Open hat).
+  4. Pads in `required` that are not in the base go to a waiting list (in ascending order). Walk the slots in the order `[0, 1, 3, 2, 7, 6, 5, 4]`; if the waiting list is not empty and the pad in that slot is not in `required`, replace it with the next waiting pad.
+  5. If the waiting list is empty at the end, the resulting 8 slots are the layout; otherwise there is no layout.
+- **Result on bundled data**: all 595 lessons have a layout in 8-pad mode (589 directly, 6 via `hits8`). Nothing needs to be hidden or greyed out today.
+- A lesson with no layout (only possible for future content packs) is shown greyed-out with the label "requires 16 pads", stays visible and openable but cannot be scored.
+- Progression counts are the same in both modes; a lesson without a layout is simply excluded from the unlock count.
+- The play screen shows the 8 slots with the sound names of the current lesson's layout.
 
 ---
 
@@ -176,7 +185,7 @@ Lessons use `padIndex` 0–15. An 8-pad controller maps to only 8 of these indic
 - [ ] **iPad test**: USB and BLE controllers both register hits.
 
 ### Audio
-- [ ] All 9 sample kits load and play with <15 ms trigger-to-sound latency.
+- [ ] All 8 sample kits load and play with <15 ms trigger-to-sound latency.
 - [ ] Correct voice selected per padIndex.
 - [ ] Velocity variants triggered appropriately.
 - [ ] Metronome plays at correct tempo.
@@ -211,7 +220,7 @@ Lessons use `padIndex` 0–15. An 8-pad controller maps to only 8 of these indic
 - [ ] First category unlocked by default.
 - [ ] Next category unlocks after 5 passed lessons in current category.
 - [ ] Soft unlock works with single tap + confirmation.
-- [ ] 8-pad users can unlock categories without needing 16-pad lessons.
+- [ ] 8-pad mode: all bundled lessons get a layout (6 via `hits8`); unlocking works the same as in 16-pad mode.
 - [ ] Intro section always accessible.
 
 ### Screens
@@ -231,7 +240,7 @@ These items cannot be verified in the simulator and must be tested on a physical
 3. **Audio output latency** — whether trigger-to-sound is acceptable.
 4. **Calibration** — full 10-click flow with USB, BLE, and on-screen pads.
 5. **Scoring feel** — whether timing windows feel fair during actual play.
-6. **Sample kit audio** — all 9 kits play correctly, no glitches or pops.
+6. **Sample kit audio** — all 8 kits play correctly, no glitches or pops.
 7. **On-screen pads** — touch response and latency.
 
 Everything else (data loading, persistence, progression logic, UI layout) can be verified in simulator or unit tests.
