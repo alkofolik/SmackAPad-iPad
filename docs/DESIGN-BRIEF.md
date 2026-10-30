@@ -14,11 +14,11 @@ A practice instrument for finger drummers. Closer to hardware (pads, LEDs, print
 - So: big type for BPM and the next hit, high contrast, readable in dim studio light, large touch targets for navigation.
 
 ## Play screen
-- Clean, eyes-off. Pattern shown as pad names, not a visual grid. Small optional pad-layout thumbnail.
-- Timing feedback must be readable peripherally (colour + position + size), never tiny text, never flashing.
+- Minimal chrome, pattern first. Pattern is the dominant element of the play screen and always visible: a grid with one row per used pad and one column per sixteenth step, count labels 1 e & a, beat starts emphasised. A hit is a cell carrying the pad abbreviation; the hand is shown by cell colour (white = right, black = left) and the currently playing cell is outlined. User-selectable modes: **static** (the whole pattern visible, a position marker moves) and **scrolling** (the pattern moves past a fixed hit marker). 1 bar = one block across the width; 2-4 bars = blocks stacked or 2x2 with the current bar emphasised; longer patterns and whole tracks = pages of 4 bars or scrolling, with a thin overview strip of the whole track. Everything else (score details, settings, section loop) is hidden but one touch or gesture away. The 4x4 pad-layout grid is hidden by default; a Settings option shows it small and unobtrusive in the lesson.
+- No per-hit feedback. Feedback is one quiet word per bar (clean / ahead / behind / uneven) in the bar header, plus a small summary strip at the end. Never tiny text, never flashing. A hit cell shows the pad abbreviation, the hand by cell colour (white = right, black = left), the playing cell is outlined. See `docs/design/2026-10-30-practice-screen-spec.md`.
 
 ## Look
-- Dark theme by default. One base colour, one accent, two status colours (good / miss). All defined once as tokens in Theme.swift.
+- Exactly three colours: orange, black, white (plus greys derived from them). Dominant element: a strong orange band that carries the pattern and is seen first. Light variant: white background, black text. Dark variant: black background, white text. Layout is designed from scratch, not copied from the legacy tool; only the orange band with the pattern is fixed. There is no per-hit feedback and no status colours; feedback is a one-word verdict per bar. All colours defined once as tokens in Theme.swift.
 - A deliberate type choice (a display face plus a text face). Fonts must be embeddable in an app by licence.
 - Motion only where it carries meaning: hit feedback, count-in, screen changes. Nothing decorative.
 

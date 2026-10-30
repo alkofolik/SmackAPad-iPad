@@ -69,7 +69,7 @@
 
 ### 3.8 Screens
 - **Library**: browse lessons by category/genre. Locked categories shown with lock icon + soft-unlock tap.
-- **Play screen**: clean, eyes-off design. Optional small pad-layout thumbnail (user setting). Pattern display shows pad names, not a visual grid. Current BPM, score feedback, timing feedback.
+- **Play screen**: minimal chrome, pattern first. Pattern is the dominant element of the play screen and always visible: a grid with one row per used pad and one column per sixteenth step, count labels 1 e & a, beat starts emphasised. A hit is a cell carrying the pad abbreviation; the hand is shown by cell colour (white = right, black = left) and the currently playing cell is outlined. User-selectable modes: **static** (the whole pattern visible, a position marker moves) and **scrolling** (the pattern moves past a fixed hit marker). 1 bar = one block across the width; 2-4 bars = blocks stacked or 2x2 with the current bar emphasised; longer patterns and whole tracks = pages of 4 bars or scrolling, with a thin overview strip of the whole track. Everything else (score details, settings, section loop) is hidden but one touch or gesture away. The 4x4 pad-layout grid is hidden by default; a Settings option shows it small and unobtrusive in the lesson. Current BPM and score stay small and peripheral. There is no per-hit feedback: each bar gets a one-word verdict (clean / ahead / behind / uneven) in its header, and a small summary strip appears at the end. Details: `docs/design/2026-10-30-practice-screen-spec.md`.
 - **Calibration**: guided 10-click flow per device.
 - **Settings**: kit selection, BPM step (1/2/5/10), controller profile management, MIDI learn, language.
 - **Intro section**: separate entry point for the 24 intro exercises.
@@ -94,7 +94,7 @@
 
 ### 4.3 Progress JSON
 ```
-{lessonId: {passed: Bool, mastery: Bool, currentBpm: Int, bestScore: Float}}
+{lessonId: {passed: Bool, mastery: Bool, memory: Bool, currentBpm: Int, bestScore: Float}}
 ```
 
 ### 4.4 Controller Profile
@@ -134,6 +134,7 @@ The scoring window is symmetric around the expected note time.
 
 - **Pass**: score ≥ 70% (non-intro), ≥ 80% (intro).
 - **Mastery**: clean run at or above `targetBpm`.
+- **Memory** (third star): score ≥ 80 % at `targetBpm` or above with the pattern hidden (From memory mode). See `docs/design/2026-10-30-practice-screen-spec.md` §8.
 - **Clean run error limits**:
 
 | Total expected hits | Allowed errors |

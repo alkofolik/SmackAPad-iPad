@@ -24,7 +24,7 @@ Paired pads 8/11 (hat), 12/15 (kick), and 13/14 (snare) share their sound and di
 
 ## 3. Play screen: clean, eyes-off design
 
-The play screen prioritises minimal distraction. The player should not need to stare at the screen while playing. The pad layout diagram is optionally shown as a small thumbnail or hidden entirely (user setting). Pattern display shows pad names, not a visual grid.
+The play screen prioritises minimal distraction. The player should not need to stare at the screen while playing. The pad layout diagram is optionally shown as a small thumbnail or hidden entirely (user setting). The pattern itself is always shown as a grid (see SPEC §3.8): the player does look at the screen to know what to play, so everything around the pattern is minimal and hidden behind one touch.
 
 ## 4. CoreMIDI: native timestamps, no JS hacks
 

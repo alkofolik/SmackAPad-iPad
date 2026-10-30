@@ -1,6 +1,6 @@
 # 08 — Scoring Engine
 
-Status: implemented — awaiting new-test and iPad validation
+Status: implemented — 12 new tests passed (2026-10-30); awaiting iPad validation
 
 ## Implementation checkpoint (2026-10-30)
 
@@ -37,7 +37,7 @@ Status: implemented — awaiting new-test and iPad validation
   mutate tempo. Clean runs below target advance by the selected step, capped at targetBpm;
   clean runs at/above target earn mastery and keep their current tempo.
 
-### Next validation by Jakub (only the 12 new tests)
+### Validation by Jakub (only the 12 new tests) — passed 2026-10-30 (12 tests, 0 failures, simulator)
 
 ```sh
 xcodebuild -project SmackAPad.xcodeproj -scheme SmackAPad -configuration Debug \
@@ -74,11 +74,11 @@ Implement the scoring engine with timing windows, pass/mastery logic, adaptive t
 ## Acceptance criteria
 
 - [x] Timing windows match §5.1 exactly for each level (test passed by Jakub).
-- [ ] Calibration offset applied once (not double-counted with outputLatency).
-- [ ] Adaptive timing center shifts window correctly.
-- [ ] Double-hit guard prevents re-matching within 30 ms.
-- [ ] Pass/mastery thresholds match §5.3.
-- [ ] BPM auto-progression fires after clean run below targetBpm.
+- [x] Calibration offset applied once (not double-counted with outputLatency).
+- [x] Adaptive timing center shifts window correctly.
+- [x] Double-hit guard prevents re-matching within 30 ms.
+- [x] Pass/mastery thresholds match §5.3.
+- [x] BPM auto-progression fires after clean run below targetBpm.
 - [ ] **iPad test**: scoring feels fair and matches player perception.
 
 ## Skill
