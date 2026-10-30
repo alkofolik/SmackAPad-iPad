@@ -1,6 +1,20 @@
 # 08 — Scoring Engine
 
-Status: ready-for-agent
+Status: blocked — test execution environment
+
+## Implementation checkpoint (2026-10-30)
+
+- Approved test boundaries: input hit → feedback; completed attempt → result and next BPM.
+- Started the native mach-clock scoring interface and level-window classification.
+- Added the first test for both sides of all five levels' timing boundaries.
+- Confirmed the previously unspecified score formula with Jakub and recorded it in DECISIONS §7.
+- Validation is incomplete. CoreSimulator is unavailable in the sandbox. Direct Mac XCTest
+  compilation first could not locate XCTest; after configuring its framework search path,
+  it failed with `sandbox-exec: sandbox_apply: Operation not permitted` and unavailable
+  Swift XCTest assertions. No scoring test has passed and no iPad build has been verified.
+- Stopped under the two-failure rule. Remaining: calibration, adaptive timing center,
+  double-hit guard, attempt result/pass/mastery, BPM progression, and their TDD slices.
+- The current scoring implementation is work in progress and is not connected to gameplay.
 
 ## Goal
 

@@ -48,6 +48,18 @@ All scoring rules from the legacy prototype are preserved exactly:
 
 The app tolerates human imperfection. It accepts human groove and swing. If you can't hear the difference, the app shouldn't penalise it. Single-millisecond precision is irrelevant. This philosophy applies to calibration, scoring, and all timing logic.
 
+### Scoring percentage and feedback (ticket 08, confirmed 2026-10-30)
+
+The score is `matched hits / (expected hits + extra hits)`, stored as a fraction
+from 0 to 1. For display, multiply by 100. For example, 8 matches out of 10
+expected hits plus 2 extra hits produce `8 / 12`, or approximately 66.7%.
+Every matched hit within the maximum timing window counts equally, without
+accuracy weights. Timing feedback uses `perfect`, `good`, and `off`: `off`
+means outside the good window but still inside the maximum window. Misses
+remain in the expected-hit denominator; unmatched input, including a guarded
+double hit, is extra input. This formula is a new decision, not a recovered
+legacy rule, and applies to subsequent scoring and play-screen tickets.
+
 ## 8. Calibration: keep but soften
 
 The 10-click guided calibration is kept (per-device signed offset, median-based, capped ±200 ms). However, the acceptance thresholds must be significantly loosened — the legacy calibration failed >50% of the time due to overly strict outlier rejection. The calibration must succeed for normal human tapping, not just robotic precision.
