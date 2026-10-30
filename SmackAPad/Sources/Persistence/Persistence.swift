@@ -303,23 +303,38 @@ public final class SettingsManager: @unchecked Sendable {
 // MARK: - Lesson Progress Model
 
 /// Progress record for an individual lesson matching SPEC §4.3:
-/// `{ passed: Bool, mastery: Bool, currentBpm: Int, bestScore: Float }`
+/// `{ passed: Bool, mastery: Bool, memory: Bool, currentBpm: Int, bestScore: Float }`
 public struct LessonProgress: Codable, Equatable, Hashable, Sendable {
     public var passed: Bool
     public var mastery: Bool
+    public var memory: Bool
     public var currentBpm: Int
     public var bestScore: Float
 
     public init(
         passed: Bool = false,
         mastery: Bool = false,
+        memory: Bool = false,
         currentBpm: Int = 0,
         bestScore: Float = 0.0
     ) {
         self.passed = passed
         self.mastery = mastery
+        self.memory = memory
         self.currentBpm = currentBpm
         self.bestScore = bestScore
+    }
+
+    private enum CodingKeys: String, CodingKey { case passed, mastery, memory, currentBpm, bestScore }
+
+    /// Existing progress files predate the memory star.
+    public init(from decoder: Decoder) throws {
+        let values = try decoder.container(keyedBy: CodingKeys.self)
+        passed = try values.decode(Bool.self, forKey: .passed)
+        mastery = try values.decode(Bool.self, forKey: .mastery)
+        memory = try values.decodeIfPresent(Bool.self, forKey: .memory) ?? false
+        currentBpm = try values.decode(Int.self, forKey: .currentBpm)
+        bestScore = try values.decode(Float.self, forKey: .bestScore)
     }
 }
 
@@ -504,6 +519,7 @@ public final class ProgressStore: @unchecked Sendable {
         mastery: Bool,
         bpm: Int,
         score: Float,
+        memory: Bool = false,
         autoSave: Bool = true
     ) {
         lock.lock()
@@ -516,6 +532,7 @@ public final class ProgressStore: @unchecked Sendable {
 
         record.passed = record.passed || passed
         record.mastery = record.mastery || mastery
+        record.memory = record.memory || memory
         if bpm > record.currentBpm {
             record.currentBpm = bpm
         }

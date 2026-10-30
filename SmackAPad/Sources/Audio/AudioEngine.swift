@@ -216,6 +216,17 @@ public final class AudioEngine: @unchecked Sendable {
 
     public func stopMetronome() { queue.sync { stopMetronomeOnQueue() } }
 
+    /// Schedules one audible click. A continuous lesson owns the beat times so a
+    /// tempo change does not cancel clicks already queued for the preceding pass.
+    public func scheduleClick(audibleHostTime: UInt64) throws {
+        try queue.sync {
+            guard engine.isRunning, let clickBuffer else { throw Failure.notRunning }
+            let time = try renderTime(for: audibleHostTime)
+            clickPlayer.scheduleBuffer(clickBuffer, at: time)
+            if !clickPlayer.isPlaying { clickPlayer.play() }
+        }
+    }
+
     private func playOnQueue(padIndex: Int, velocity: Int, audibleHostTime: UInt64?) throws {
         guard prepared else { throw Failure.notPrepared }
         guard padVoices.indices.contains(padIndex) else { throw Failure.invalidPad(padIndex) }

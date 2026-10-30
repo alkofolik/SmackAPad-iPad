@@ -2,7 +2,7 @@ import CoreAudioKit
 import SwiftUI
 
 @MainActor
-struct ContentView: View {
+struct MIDISettingsView: View {
     @Environment(SettingsManager.self) private var settings
     @Environment(MIDIInput.self) private var midi
     @State private var showingLearn = false
@@ -271,7 +271,7 @@ private struct BluetoothMIDIView: UIViewControllerRepresentable {
 }
 
 #Preview {
-    ContentView()
+    MIDISettingsView()
         .environment(SettingsManager.shared)
         .environment(MIDIInput(settings: .shared))
 }
