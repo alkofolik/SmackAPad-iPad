@@ -64,13 +64,25 @@ legacy rule, and applies to subsequent scoring and play-screen tickets.
 
 The 10-click guided calibration is kept (per-device signed offset, median-based, capped ±200 ms). However, the acceptance thresholds must be significantly loosened — the legacy calibration failed >50% of the time due to overly strict outlier rejection. The calibration must succeed for normal human tapping, not just robotic precision.
 
+### Ticket 09 implementation (2026-10-30)
+
+- Four audible count-in clicks, then ten measured clicks, one second apart.
+- Match each tap to the nearest actual output click within ±350 ms. A duplicate cannot claim another click; duplicates do not cause rejection.
+- Require at least 6 usable taps. Robust spread is 1.4826 × MAD, limited to 80 ms. Drop deltas outside max(60 ms, 3 × robust spread) from the median; compute the rounded signed median of the remaining deltas and clamp to ±200 ms. No hard start-to-end drift limit.
+- Store only accepted results in `calibrationOffsets`, keyed by the CoreMIDI device identifier or `touch`. Cancellation, missing output records, disconnection, interruption, and audio clock changes preserve the previous settings.
+- These are initial hardware-validation thresholds. The >90% human success target remains unverified until Jakub tests USB, BLE, and touch on iPad.
+
 ## 9. Adaptive timing center: keep as-is
 
 The rolling-median timing center (window of 8 samples, gated ±100–110 ms) is kept. It shifts the scoring window at runtime to follow systematic player drift without widening the windows. Implemented natively in Swift.
 
 ## 10. Audio engine: AVAudioEngine
 
-Use `AVAudioEngine` with `AVAudioSession` category `.playback` and `.interactive` latency hint. At startup (or after calibration), read `AVAudioSession.outputLatency` + `ioBufferDuration` and factor this into the scoring window. Do not attempt to measure acoustic speaker latency — that is what calibration is for.
+Use `AVAudioEngine` with `AVAudioSession` category `.playback` and a short preferred I/O buffer duration (the native equivalent of the web `.interactive` hint). `AVAudioSession.outputLatency` + `ioBufferDuration` are used exclusively to schedule playback; never add them to scoring or the calibration offset.
+
+`AVAudioSession` does not expose the web `getOutputTimestamp` API. Calibration detects click onsets in a mixer audio tap and uses the buffer's rendered `AVAudioTime` host timestamp, plus the mixer's current `outputPresentationLatency`, to obtain the hardware-reported presentation time. This conversion is inside the audio adapter; tap-minus-output analysis receives no output-latency argument. Callback receipt time and the intended schedule are never timing anchors. This is hardware-reported timing, not microphone measurement of acoustic speaker propagation. See Apple's [audio tap API](https://developer.apple.com/documentation/avfaudio/avaudionode/installtap(onbus:buffersize:format:block:)) and [output presentation latency](https://developer.apple.com/documentation/avfaudio/avaudionode/outputpresentationlatency).
+
+During calibration, route/configuration changes, media service loss, interruptions, sample-rate changes, non-monotonic sample timestamps, presentation-latency changes over 2 ms, or a render-clock mapping shift over 2 ms invalidate the run. Practice is suspended while MIDI settings are open so the calibration owns the audible clicks and input callbacks.
 
 ## 11. Persistence: simple, no database
 
@@ -122,7 +134,7 @@ Visual design, styling, and UI polish are explicitly out of scope for this decis
 
 1. **Category unlock criteria** — How many lessons must be completed to unlock the next category? A fixed count, a percentage, or specific key lessons? (To be decided during implementation.)
 2. **Controller preset profiles** — Which 2–3 controllers get built-in profiles? Need to confirm the most common devices among finger-drumming players.
-3. **Calibration thresholds** — The legacy calibration was too strict. Exact loosened parameters (MAD multiplier, acceptance spread) to be determined during implementation and tested on real hardware.
+3. **Calibration thresholds** — Initial values are recorded in §8 (ticket 09); success-rate validation and any tuning on real hardware remain open.
 4. **Sample license audit** — Each kit's LICENSE.txt must be reviewed before App Store submission. Separate task.
 5. **Content pack format** — Exact format and loading mechanism for future extension packs. v2+ decision.
 6. **cs.tsv completeness** — Whether the legacy Czech translations cover all strings needed for the native app, or if new strings need translating.

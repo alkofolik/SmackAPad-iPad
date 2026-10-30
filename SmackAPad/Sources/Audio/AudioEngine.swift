@@ -97,6 +97,49 @@ public final class AudioEngine: @unchecked Sendable {
     private var playbackDelay: TimeInterval = 0
     private var ioDuration: TimeInterval = 0
 
+    public struct CalibrationSnapshot: Sendable {
+        public let outputTimes: [Double]
+        public let clockChanged: Bool
+    }
+
+    private struct CalibrationCapture {
+        let id: UUID
+        let presentationLatency: Double
+        var outputTimes: [Double] = []
+        var clockOrigin: Double?
+        var sampleRate: Double?
+        var lastSampleTime: AVAudioFramePosition?
+        var clockChanged = false
+    }
+
+    /// Used only by the audio tap callback; never accessed from the control queue.
+    private final class ClickDetector: @unchecked Sendable {
+        private var lastOnset = -Double.infinity
+
+        func onsets(in buffer: AVAudioPCMBuffer, at time: AVAudioTime) -> [Double]? {
+            guard time.isHostTimeValid, time.isSampleTimeValid,
+                  buffer.format.sampleRate > 0, let channel = buffer.floatChannelData?[0] else { return nil }
+            let rate = buffer.format.sampleRate
+            let host = AVAudioTime.seconds(forHostTime: time.hostTime)
+            var result: [Double] = []
+            for frame in 0..<Int(buffer.frameLength) {
+                let seconds = host + Double(frame) / rate
+                // Calibration is the only signal on this engine. The generated click
+                // starts with one zero sample; detect its first nonzero frame and
+                // recover the onset, independent of buffer delivery time.
+                if abs(channel[frame]) > 0.0001, seconds - lastOnset > 0.5 {
+                    let onset = seconds - 1 / rate
+                    result.append(onset)
+                    lastOnset = onset
+                }
+            }
+            return result
+        }
+    }
+
+    private var calibrationCapture: CalibrationCapture?
+    private var calibrationTapInstalled = false
+
     /// Uses the canonical domain mapping by default; the engine never interprets MIDI slots.
     public init(bundle: Bundle = .main, padVoices: [String] = AudioEngine.defaultPadVoices) {
         self.bundle = bundle
@@ -107,6 +150,7 @@ public final class AudioEngine: @unchecked Sendable {
     deinit {
         timer?.cancel()
         observers.forEach(NotificationCenter.default.removeObserver)
+        if calibrationTapInstalled { engine.mainMixerNode.removeTap(onBus: 0) }
         engine.stop()
     }
 
@@ -114,6 +158,16 @@ public final class AudioEngine: @unchecked Sendable {
     public var selectedKitID: String { queue.sync { selectedKit } }
     public var lastError: Error? { queue.sync { failure } }
     public var isRunning: Bool { queue.sync { engine.isRunning } }
+
+    /// Do not calibrate against an unstarted clock or an unknown presentation delay.
+    public var calibrationClockReady: Bool {
+        queue.sync {
+            guard engine.isRunning, let time = engine.outputNode.lastRenderTime,
+                  time.isHostTimeValid, time.isSampleTimeValid else { return false }
+            let latency = engine.mainMixerNode.outputPresentationLatency
+            return latency.isFinite && latency > 0
+        }
+    }
 
     /// Performs file I/O and conversion once. Call outside latency-sensitive input callbacks.
     public func prepare() throws {
@@ -216,6 +270,87 @@ public final class AudioEngine: @unchecked Sendable {
 
     public func stopMetronome() { queue.sync { stopMetronomeOnQueue() } }
 
+    /// Four count-in clicks followed by ten measured clicks, exactly one second apart.
+    /// The returned time is for display/deadline only, NEVER a measurement anchor.
+    @discardableResult
+    public func startCalibrationClicks() throws -> Double {
+        try queue.sync {
+            guard engine.isRunning, let clickBuffer else { throw Failure.notRunning }
+            stopCalibrationOnQueue()
+            stopPlayers()
+            let latency = engine.mainMixerNode.outputPresentationLatency
+            guard latency.isFinite, latency > 0 else { throw Failure.notRunning }
+            let id = UUID()
+            calibrationCapture = CalibrationCapture(id: id, presentationLatency: latency)
+            let detector = ClickDetector()
+            engine.mainMixerNode.installTap(onBus: 0, bufferSize: 512, format: nil) { [weak self] buffer, time in
+                // Copy values while the tap owns the buffer; never retain audio memory.
+                let onsets = detector.onsets(in: buffer, at: time)
+                let rate = buffer.format.sampleRate
+                let sampleTime = time.sampleTime
+                let host = AVAudioTime.seconds(forHostTime: time.hostTime)
+                self?.queue.async { [weak self] in
+                    self?.captureCalibration(id: id, onsets: onsets, host: host, sampleTime: sampleTime, rate: rate)
+                }
+            }
+            calibrationTapInstalled = true
+            let first = mach_absolute_time() + ticks(playbackDelay + 0.6)
+            for index in 0..<14 {
+                let time = try renderTime(for: first + ticks(Double(index)))
+                clickPlayer.scheduleBuffer(clickBuffer, at: time)
+            }
+            clickPlayer.play()
+            return AVAudioTime.seconds(forHostTime: first)
+        }
+    }
+
+    public func calibrationSnapshot() -> CalibrationSnapshot {
+        queue.sync {
+            guard let capture = calibrationCapture else {
+                return CalibrationSnapshot(outputTimes: [], clockChanged: true)
+            }
+            let latency = engine.mainMixerNode.outputPresentationLatency
+            return CalibrationSnapshot(outputTimes: capture.outputTimes,
+                clockChanged: capture.clockChanged || !engine.isRunning || !latency.isFinite ||
+                    abs(latency - capture.presentationLatency) > 0.002)
+        }
+    }
+
+    public func stopCalibrationClicks() { queue.sync { stopCalibrationOnQueue() } }
+
+    private func captureCalibration(id: UUID, onsets: [Double]?, host: Double,
+                                    sampleTime: AVAudioFramePosition, rate: Double) {
+        guard var capture = calibrationCapture, capture.id == id else { return }
+        defer { calibrationCapture = capture }
+        guard let onsets, rate.isFinite, rate > 0, host.isFinite else {
+            capture.clockChanged = true
+            return
+        }
+        let origin = host - Double(sampleTime) / rate
+        if let previous = capture.clockOrigin, abs(origin - previous) > 0.002 {
+            capture.clockChanged = true
+        }
+        if let previous = capture.sampleRate, previous != rate { capture.clockChanged = true }
+        if let previous = capture.lastSampleTime, sampleTime <= previous { capture.clockChanged = true }
+        if capture.clockOrigin == nil { capture.clockOrigin = origin }
+        capture.sampleRate = rate
+        capture.lastSampleTime = sampleTime
+        // The tap timestamp is the RENDERED frame's host time. Convert to hardware
+        // presentation time using the engine's downstream presentation latency.
+        // AVAudioSession.outputLatency and ioBufferDuration are scheduling-only.
+        capture.outputTimes += onsets.map { $0 + capture.presentationLatency }
+        if capture.outputTimes.count > 14 { capture.clockChanged = true }
+    }
+
+    private func stopCalibrationOnQueue() {
+        calibrationCapture = nil
+        if calibrationTapInstalled {
+            engine.mainMixerNode.removeTap(onBus: 0)
+            calibrationTapInstalled = false
+        }
+        clickPlayer.stop()
+    }
+
     /// Schedules one audible click. A continuous lesson owns the beat times so a
     /// tempo change does not cancel clicks already queued for the preceding pass.
     public func scheduleClick(audibleHostTime: UInt64) throws {
@@ -307,6 +442,7 @@ public final class AudioEngine: @unchecked Sendable {
     }
 
     private func stopPlayers() {
+        calibrationCapture?.clockChanged = true
         stopMetronomeOnQueue()
         for index in players.indices {
             players[index].node.stop()
@@ -415,6 +551,12 @@ public final class AudioEngine: @unchecked Sendable {
 
     private func observeSession() {
         let center = NotificationCenter.default
+        observers.append(center.addObserver(forName: .AVAudioEngineConfigurationChange, object: engine, queue: nil) { [weak self] _ in
+            self?.queue.async { [weak self] in self?.calibrationCapture?.clockChanged = true }
+        })
+        observers.append(center.addObserver(forName: AVAudioSession.mediaServicesWereLostNotification, object: session, queue: nil) { [weak self] _ in
+            self?.queue.async { [weak self] in self?.calibrationCapture?.clockChanged = true }
+        })
         observers.append(center.addObserver(forName: AVAudioSession.interruptionNotification, object: session, queue: nil) { [weak self] note in
             let type = (note.userInfo?[AVAudioSessionInterruptionTypeKey] as? NSNumber)?.uintValue
             let options = (note.userInfo?[AVAudioSessionInterruptionOptionKey] as? NSNumber)?.uintValue ?? 0

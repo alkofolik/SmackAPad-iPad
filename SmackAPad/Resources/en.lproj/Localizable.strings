@@ -54,3 +54,29 @@
 "Hi-hat R" = "Hi-hat R";
 "Kick L" = "Kick L";
 "Snare L" = "Snare L";
+
+// Guided timing calibration.
+"Timing calibration" = "Timing calibration";
+"Calibration input" = "Calibration input";
+"On-screen pads" = "On-screen pads";
+"Saved offset" = "Saved offset";
+"Listen to four clicks, then tap with each of the next ten. Follow the sound, not the screen." = "Listen to four clicks, then tap with each of the next ten. Follow the sound, not the screen.";
+"Calibration progress" = "Calibration progress";
+"Recorded taps" = "Recorded taps";
+"Tap with the click" = "Tap with the click";
+"Usable taps" = "Usable taps";
+"Timing spread" = "Timing spread";
+"Outlier taps were ignored." = "Outlier taps were ignored.";
+"Play a lesson to check the result." = "Play a lesson to check the result.";
+"Cancel calibration" = "Cancel calibration";
+"Start calibration" = "Start calibration";
+"Ready. Choose an input and start." = "Ready. Choose an input and start.";
+"Preparing audio…" = "Preparing audio…";
+"Listen first · %lld / 4" = "Listen first · %lld / 4";
+"Tap with the sound · %lld / 10" = "Tap with the sound · %lld / 10";
+"Calibration saved." = "Calibration saved.";
+"Calibration cancelled. Previous settings kept." = "Calibration cancelled. Previous settings kept.";
+"Too few taps. Record at least six of ten clicks. Previous settings kept." = "Too few taps. Record at least six of ten clicks. Previous settings kept.";
+"Taps were too uneven. Follow the sound and try again. Previous settings kept." = "Taps were too uneven. Follow the sound and try again. Previous settings kept.";
+"Audio timing changed or is not ready. Try again. Previous settings kept." = "Audio timing changed or is not ready. Try again. Previous settings kept.";
+"Audio could not start. Try again. Previous settings kept." = "Audio could not start. Try again. Previous settings kept.";

@@ -49,6 +49,12 @@ struct MIDISettingsView: View {
                     Text("Akai and Maschine presets use notes 36–51, starting at the bottom left. Use MIDI learn for other banks or mappings.")
                 }
 
+                Section {
+                    NavigationLink("Timing calibration") {
+                        CalibrationView(settings: settings, midi: midi)
+                    }
+                }
+
                 Section("Input monitor") {
                     LabeledContent("Received MIDI hits", value: midi.noteOnCount.formatted())
                     LabeledContent("Timestamp fallbacks", value: midi.fallbackCount.formatted())

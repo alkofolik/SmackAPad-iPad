@@ -1,6 +1,6 @@
 # 09 — Calibration
 
-Status: ready-for-agent
+Status: ready-for-human
 
 ## Goal
 
@@ -32,8 +32,8 @@ Implement the 10-click guided calibration procedure that measures per-device tim
 ## Acceptance criteria
 
 - [ ] 10-click procedure completes successfully >90% of the time for a normal human.
-- [ ] Produces a signed offset capped ±200 ms.
-- [ ] Stored per device; survives app restart.
+- [x] Produces a signed offset capped ±200 ms.
+- [x] Stored per device through existing UserDefaults persistence; physical restart check remains with Jakub.
 - [ ] **iPad test**: calibration with USB controller, BLE controller, and on-screen pads.
 
 ## Reference implementation (legacy web app)
@@ -67,3 +67,13 @@ Use the **tdd** skill for this ticket. Calibration offset calculation must be te
 ## Done rule
 
 Stop after successful build; Jakub tests on iPad.
+
+## Implementation notes (2026-10-30)
+
+- Guided calibration is available from MIDI settings. Choose a MIDI source or on-screen pads, listen to four count-in clicks, then tap ten measured clicks.
+- Accepted offsets are stored through the existing per-device `SettingsManager` API. Existing practice scoring subtracts that offset once.
+- Thresholds: at least 6 usable taps; robust spread ≤80 ms; outlier cut max(60 ms, 3 × 1.4826 × MAD); nearest-click window ±350 ms; no hard drift/extra-tap limit; signed result rounded and clamped to ±200 ms.
+- Audio output records come from rendered click onsets and engine presentation timing, not planned click times. Audio clock changes and cancellation keep previous offsets.
+- TDD: the median/sign/cap, tolerant acceptance/outlier rejection, and actual-output nearest-click/duplicate/cancellation behaviors each failed before implementation and then passed individually on Mac. Previously passing tests were not rerun.
+- Build: Xcode 27.1, Debug, generic iOS destination, signing disabled — **BUILD SUCCEEDED**. No app was installed or launched on iPad. One Swift 5 warning notes implicit `self` in a nested closure would require explicit capture in Swift 6; the project uses Swift 5 mode. App Intents metadata extraction was skipped because the app has no App Intents dependency.
+- Pending Jakub's iPad validation: USB, BLE, touch, restart persistence, and the >90% normal-human success target. The initial thresholds are not a claim of measured hardware success.

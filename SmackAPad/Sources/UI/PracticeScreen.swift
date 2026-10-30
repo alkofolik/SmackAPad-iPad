@@ -54,7 +54,10 @@ struct PracticeScreen: View {
             if phase == .active { session.resume() } else { session.suspend() }
         }
         .onChange(of: settings.activeProfileName) { _, _ in session.stop() }
-        .sheet(isPresented: $showingMIDI) {
+        .onChange(of: showingMIDI) { _, showing in
+            if showing { session.suspend() }
+        }
+        .sheet(isPresented: $showingMIDI, onDismiss: { session.resume() }) {
             MIDISettingsView()
                 .presentationDragIndicator(.visible)
         }

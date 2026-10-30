@@ -54,3 +54,29 @@
 "Hi-hat R" = "Hi-hat P";
 "Kick L" = "Kopák L";
 "Snare L" = "Virbl L";
+
+// Guided timing calibration.
+"Timing calibration" = "Kalibrace časování";
+"Calibration input" = "Kalibrovaný vstup";
+"On-screen pads" = "Dotykové pady";
+"Saved offset" = "Uložený posun";
+"Listen to four clicks, then tap with each of the next ten. Follow the sound, not the screen." = "Poslechni si čtyři kliknutí a pak udeř s každým z dalších deseti. Řiď se zvukem, ne obrazovkou.";
+"Calibration progress" = "Průběh kalibrace";
+"Recorded taps" = "Zaznamenané úhozy";
+"Tap with the click" = "Udeř s kliknutím";
+"Usable taps" = "Použité úhozy";
+"Timing spread" = "Rozptyl časování";
+"Outlier taps were ignored." = "Odlehlé úhozy byly vynechány.";
+"Play a lesson to check the result." = "Ověř výsledek při hraní lekce.";
+"Cancel calibration" = "Zrušit kalibraci";
+"Start calibration" = "Spustit kalibraci";
+"Ready. Choose an input and start." = "Připraveno. Vyber vstup a spusť kalibraci.";
+"Preparing audio…" = "Připravuji zvuk…";
+"Listen first · %lld / 4" = "Nejdřív poslouchej · %lld / 4";
+"Tap with the sound · %lld / 10" = "Udeř se zvukem · %lld / 10";
+"Calibration saved." = "Kalibrace uložena.";
+"Calibration cancelled. Previous settings kept." = "Kalibrace zrušena. Předchozí nastavení zachováno.";
+"Too few taps. Record at least six of ten clicks. Previous settings kept." = "Málo úhozů. Zahraj alespoň šest z deseti kliknutí. Předchozí nastavení zachováno.";
+"Taps were too uneven. Follow the sound and try again. Previous settings kept." = "Úhozy byly příliš nepravidelné. Řiď se zvukem a zkus to znovu. Předchozí nastavení zachováno.";
+"Audio timing changed or is not ready. Try again. Previous settings kept." = "Časování zvuku se změnilo nebo není připravené. Zkus to znovu. Předchozí nastavení zachováno.";
+"Audio could not start. Try again. Previous settings kept." = "Zvuk se nepodařilo spustit. Zkus to znovu. Předchozí nastavení zachováno.";

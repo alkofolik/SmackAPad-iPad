@@ -53,6 +53,8 @@ public final class MIDIInput {
 
     /// Called for both presses and releases; no calibration or scoring correction is applied here.
     @ObservationIgnored public var onPadEvent: ((PadInputEvent) -> Void)?
+    /// Calibration listens before profile mapping so any controller pad can tap the pulse.
+    @ObservationIgnored public var onNoteEvent: ((MIDINoteEvent) -> Void)?
     @ObservationIgnored private let settings: SettingsManager
     @ObservationIgnored private var client: MIDIClientRef = 0
     @ObservationIgnored private var ports: [MIDIEndpointRef: MIDIPortRef] = [:]
@@ -210,6 +212,7 @@ public final class MIDIInput {
     private func receive(_ event: MIDINoteEvent) {
         guard selectedSourceID == nil || selectedSourceID == event.deviceID else { return }
         lastNote = event
+        onNoteEvent?(event)
         if event.usedReceiptTime { fallbackCount += 1 }
         if event.isNoteOn { noteOnCount += 1 }
         if isLearning {

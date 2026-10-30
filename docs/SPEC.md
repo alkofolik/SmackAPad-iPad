@@ -119,9 +119,9 @@ The scoring window is symmetric around the expected note time.
 
 ### 5.2 Latency Compensation — Single Point of Truth
 
-**Calibration offset is the ONE place where latency is compensated.** The calibration procedure inherently measures the total round-trip offset — the sum of MIDI input delay, audio output latency, speaker latency, and human perception. It produces a single signed offset that is applied to all incoming MIDI timestamps before scoring.
+**Calibration offset is the ONE place where input timing is compensated.** Each tap is compared with the click's hardware presentation time, derived from the rendered audio timestamp. The signed offset captures MIDI input delay, human perception, and systematic tapping bias; it does not include output latency. The offset is subtracted from incoming timestamps exactly once before scoring.
 
-**`AVAudioSession.outputLatency` + `ioBufferDuration`**: used exclusively for **scheduling audio playback** (metronome clicks, sample triggering) so that the sound reaches the speaker at the intended musical moment. It is NOT added to the scoring window. Adding it to scoring would double-count the latency that calibration already captured.
+**`AVAudioSession.outputLatency` + `ioBufferDuration`**: used exclusively for **scheduling audio playback** (metronome clicks, sample triggering). Neither value is added to the calibration offset or scoring window. Calibration observes rendered click onsets and converts their timestamps to hardware presentation time using the engine's downstream presentation latency, independently of the intended schedule.
 
 **Adaptive timing center** (rolling median, window of 8 samples, gated ±100–110 ms): shifts the scoring window at runtime to follow systematic player drift. Does not widen the windows.
 
@@ -251,7 +251,7 @@ Everything else (data loading, persistence, progression logic, UI layout) can be
 ## 9. Open Questions (Remaining)
 
 1. **Controller preset profiles** — Which 2–3 controllers get built-in profiles? Need to confirm the most common devices among finger-drumming players.
-2. **Calibration thresholds** — Exact loosened parameters (MAD multiplier, acceptance spread) to be determined during implementation and tested on real hardware.
+2. **Calibration thresholds** — Ticket 09 selects at least 6 usable taps, robust spread at most 80 ms, and an outlier cut of max(60 ms, 3 × 1.4826 × MAD), with no hard drift or duplicate limit. Real-iPad success rate and tuning remain pending.
 3. **Sample license audit** — Each kit's LICENSE.txt must be reviewed before App Store submission. Separate task, does not block development.
 4. **Content pack format** — Exact format and loading mechanism for future extension packs. v2+ decision.
 5. **cs.tsv completeness** — Whether legacy Czech translations cover all strings needed, or if new strings need translating.
