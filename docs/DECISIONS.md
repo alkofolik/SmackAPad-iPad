@@ -14,6 +14,14 @@ The app supports two pad layouts: 4×4 (16 pads) and 2×4 (8 pads). All lessons 
 
 **8-pad mode (revised 2026-10-30 after reading the legacy prototype):** no lesson filtering. As in the legacy app, the 8 physical pads are assigned per lesson to the sounds that lesson needs (`layoutForEight`), and 6 lessons that use 9 pads carry a simplified `hits8` version. All 595 bundled lessons are playable in 8-pad mode. Details: SPEC §6.
 
+**Canonical pad-to-voice mapping (confirmed by Jakub, 2026-10-30):** the array index is `padIndex` (0–15). Source supplied by Jakub: the original prototype's `app/v21/src/core.js`, `LAYOUT`.
+
+```json
+["tomHi", "tomLo", "crash", "ride", "shaker", "wood", "cowbell", "openHat", "hat", "clap", "rim", "hat", "kick", "snare", "snare", "kick"]
+```
+
+Paired pads 8/11 (hat), 12/15 (kick), and 13/14 (snare) share their sound and differ only by hand. `AudioEngine.defaultPadVoices` implements this mapping. In eight-pad mode, resolve the physical controller slot through the current lesson's layout before sending the resulting `padIndex` to the audio engine.
+
 ## 3. Play screen: clean, eyes-off design
 
 The play screen prioritises minimal distraction. The player should not need to stare at the screen while playing. The pad layout diagram is optionally shown as a small thumbnail or hidden entirely (user setting). Pattern display shows pad names, not a visual grid.
