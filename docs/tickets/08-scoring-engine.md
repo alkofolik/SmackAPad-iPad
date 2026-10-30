@@ -1,20 +1,51 @@
 # 08 — Scoring Engine
 
-Status: blocked — test execution environment
+Status: implemented — awaiting new-test and iPad validation
 
 ## Implementation checkpoint (2026-10-30)
 
 - Approved test boundaries: input hit → feedback; completed attempt → result and next BPM.
-- Started the native mach-clock scoring interface and level-window classification.
-- Added the first test for both sides of all five levels' timing boundaries.
+- Implemented native mach-clock input → feedback and attempt → result/next-BPM interfaces.
 - Confirmed the previously unspecified score formula with Jakub and recorded it in DECISIONS §7.
-- Validation is incomplete. CoreSimulator is unavailable in the sandbox. Direct Mac XCTest
-  compilation first could not locate XCTest; after configuring its framework search path,
-  it failed with `sandbox-exec: sandbox_apply: Operation not permitted` and unavailable
-  Swift XCTest assertions. No scoring test has passed and no iPad build has been verified.
-- Stopped under the two-failure rule. Remaining: calibration, adaptive timing center,
-  double-hit guard, attempt result/pass/mastery, BPM progression, and their TDD slices.
-- The current scoring implementation is work in progress and is not connected to gameplay.
+- Jakub reports all 28 existing tests passed on iPad Air 11-inch (M4), including the
+  five-level timing-window test. These tests were not rerun during the continuation.
+- Added 12 scoring tests covering calibration, adaptive timing, double hits, run results,
+  intro thresholds, mastery boundaries, eight-pad effective hits, and tempo progression.
+- A single new calibration test was run outside the sandbox before implementing the
+  subtraction. It failed as expected (`off` instead of `perfect`, ±125 ms instead of zero).
+  The runner then hung after reporting that result and was terminated. Per Jakub's one-run
+  instruction, no tests were rerun after the implementation. New tests still need validation.
+- Final app-and-tests compilation succeeded with `build-for-testing` on the confirmed
+  simulator destination (`** TEST BUILD SUCCEEDED **`). No tests ran during this build.
+- Gameplay wiring and persistence are outside these approved test boundaries. The caller
+  supplies resolved pad indices, calibrated device offset in milliseconds, selected BpmStep,
+  and a mach-clock musical start. It stops input after the final shifted maximum window,
+  calls `finish()`, then consumes/persists its immutable result and `nextBpm`.
+
+### Implementation details
+
+- Calibration is subtracted once; audio output latency is not part of scoring.
+- Adaptive samples are matched errors after calibration but before adaptive correction.
+  The learning gate is inclusive ±110 ms. The center is the median of up to the last eight
+  accepted samples (mean of the middle two for even counts), updated after grading each hit.
+  Rejected/out-of-gate input never trains the center. Window widths remain unchanged.
+- The double-hit guard uses raw native-clock distance from the last match on that pad,
+  inclusive of 30 ms. Rejections count as extra hits and do not consume another expected note.
+- Errors are missed expected hits plus extra input; `perfect`, `good`, and `off` all match.
+- `finish()` returns a snapshot: misses include all remaining expected notes. An empty
+  pattern cannot pass, be clean, earn mastery, or advance tempo. Repeated snapshots do not
+  mutate tempo. Clean runs below target advance by the selected step, capped at targetBpm;
+  clean runs at/above target earn mastery and keep their current tempo.
+
+### Next validation by Jakub (only the 12 new tests)
+
+```sh
+xcodebuild -project SmackAPad.xcodeproj -scheme SmackAPad -configuration Debug \
+  -destination 'platform=iOS Simulator,id=BCAE2B5C-6C6F-4607-98FE-A62E2A96F473' \
+  -derivedDataPath build/TestDerivedData CODE_SIGNING_ALLOWED=NO \
+  -only-testing:SmackAPadTests/ScoringEngineTests \
+  -skip-testing:SmackAPadTests/ScoringEngineTests/testEveryLevelGradesBothSidesOfItsExactTimingWindows test
+```
 
 ## Goal
 
@@ -42,7 +73,7 @@ Implement the scoring engine with timing windows, pass/mastery logic, adaptive t
 
 ## Acceptance criteria
 
-- [ ] Timing windows match §5.1 exactly for each level.
+- [x] Timing windows match §5.1 exactly for each level (test passed by Jakub).
 - [ ] Calibration offset applied once (not double-counted with outputLatency).
 - [ ] Adaptive timing center shifts window correctly.
 - [ ] Double-hit guard prevents re-matching within 30 ms.
