@@ -1,6 +1,6 @@
 # 03 — Lesson Models & Content-Pack Loader
 
-Status: ready-for-agent
+Status: done
 
 ## Goal
 
@@ -22,12 +22,12 @@ Define Swift data models for lessons, sample kits, and controller profiles. Buil
 
 ## Acceptance criteria
 
-- [ ] All lesson JSON files parse into typed Swift models without error.
-- [ ] `sample-kits.json` parses correctly (all kit definitions including virtual kits like jazz/world that reference shared WAV files).
-- [ ] LessonStore loads from bundled JSON by default.
-- [ ] LessonStore supports registering additional JSON sources (content-pack architecture ready).
-- [ ] `EightPadLayout` returns a layout for all 595 bundled lessons (6 through `hits8`) and nil only for a lesson needing more than 8 pads without `hits8`.
-- [ ] Invalid or missing JSON produces a clear error, not a crash.
+- [x] All lesson JSON files parse into typed Swift models without error.
+- [x] `sample-kits.json` parses correctly (all kit definitions including virtual kits like jazz/world that reference shared WAV files).
+- [x] LessonStore loads from bundled JSON by default.
+- [x] LessonStore supports registering additional JSON sources (content-pack architecture ready).
+- [x] `EightPadLayout` returns a layout for all 595 bundled lessons (6 through `hits8`) and nil only for a lesson needing more than 8 pads without `hits8`.
+- [x] Invalid or missing JSON produces a clear error, not a crash.
 
 ## Agent assignment
 

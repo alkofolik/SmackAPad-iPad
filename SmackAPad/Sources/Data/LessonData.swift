@@ -6,6 +6,7 @@
 //
 
 import Foundation
+import Observation
 
 // MARK: - Models
 
@@ -145,6 +146,20 @@ public struct Lesson: Codable, Equatable, Identifiable, Sendable {
         self.eightNote = eightNote
         self.intro = intro
     }
+
+    /// Returns the effective hits for the given controller pad count mode.
+    /// In 8-pad mode, returns `hits8` if present and non-empty; otherwise `hits`.
+    public func hits(forPadCount padCount: Int) -> [LessonHit] {
+        if padCount == 8, let hits8 = hits8, !hits8.isEmpty {
+            return hits8
+        }
+        return hits
+    }
+
+    /// Set of unique padIndex values used in the lesson pattern for the specified pad count.
+    public func requiredPadIndices(forPadCount padCount: Int = 16) -> Set<Int> {
+        Set(hits(forPadCount: padCount).map(\.padIndex))
+    }
 }
 
 /// A category definition from `lessons-core.json`.
@@ -210,6 +225,143 @@ public struct SampleKitDefinition: Codable, Equatable, Sendable {
     }
 }
 
+/// A complete sample kit model with kit identifier, name, license, and voice definitions.
+public struct SampleKit: Codable, Equatable, Identifiable, Sendable {
+    public let kitId: String
+    public let name: String
+    public let license: String
+    public let voices: [String: [SampleVoiceEntry]]
+
+    public var id: String { kitId }
+
+    public init(kitId: String, name: String, license: String, voices: [String: [SampleVoiceEntry]]) {
+        self.kitId = kitId
+        self.name = name
+        self.license = license
+        self.voices = voices
+    }
+
+    public init(kitId: String, definition: SampleKitDefinition) {
+        self.init(kitId: kitId, name: definition.name, license: definition.license, voices: definition.voices)
+    }
+}
+
+/// A MIDI controller mapping profile.
+/// Maps incoming MIDI note numbers to padIndex (0–15 in 16-pad mode) or physical slot (0–7 in 8-pad mode).
+public struct ControllerProfile: Codable, Equatable, Hashable, Sendable, Identifiable {
+    public var id: String { profileName }
+    public let profileName: String
+    /// Map of MIDI note number to target padIndex (0–15) or physical slot (0–7).
+    public let noteMap: [Int: Int]
+    /// Controller physical pad count: 8 or 16.
+    public let padCount: Int
+
+    public var isEightPad: Bool { padCount == 8 }
+    public var isSixteenPad: Bool { padCount == 16 }
+
+    public init(profileName: String, noteMap: [Int: Int], padCount: Int) {
+        self.profileName = profileName
+        self.noteMap = noteMap
+        self.padCount = padCount
+    }
+
+    /// Returns the target padIndex or slot for a given MIDI note number.
+    public func target(forMidiNote note: Int) -> Int? {
+        noteMap[note]
+    }
+
+    /// Returns the MIDI note mapped to a given target padIndex or slot.
+    public func midiNote(forTarget target: Int) -> Int? {
+        noteMap.first(where: { $0.value == target })?.key
+    }
+}
+
+extension ControllerProfile {
+    /// Standard chromatic 16-pad layout (Akai MPD / GM drum layout, notes 36..51 bottom-left to top-right).
+    public static let standard16 = ControllerProfile(
+        profileName: "Standard 16-Pad",
+        noteMap: [
+            36: 12, 37: 13, 38: 14, 39: 15,
+            40: 8,  41: 9,  42: 10, 43: 11,
+            44: 4,  45: 5,  46: 6,  47: 7,
+            48: 0,  49: 1,  50: 2,  51: 3
+        ],
+        padCount: 16
+    )
+
+    /// Akai MPD218 factory preset mapping.
+    public static let akaiMPD218 = standard16
+
+    /// Standard 8-pad layout mapping notes 36..43 to physical slots 0..7.
+    public static let standard8 = ControllerProfile(
+        profileName: "Standard 8-Pad",
+        noteMap: [
+            36: 0, 37: 1, 38: 2, 39: 3,
+            40: 4, 41: 5, 42: 6, 43: 7
+        ],
+        padCount: 8
+    )
+}
+
+/// 8-pad layout engine as specified in SPEC §6.
+/// Assigns 8 physical controller pads (slots 0–7) to the sounds required by each lesson.
+public enum EightPadLayout {
+    /// Standard base slots:
+    /// [Clap(9), Rim(10), Crash(2), Ride(3), Kick L(12), Snare L(13), Hat R(11), Open hat(7)]
+    public static let baseSlots: [Int] = [9, 10, 2, 3, 12, 13, 11, 7]
+
+    /// The replacement order for walking slots when placing extra required pads:
+    /// [0, 1, 3, 2, 7, 6, 5, 4]
+    public static let fillOrder: [Int] = [0, 1, 3, 2, 7, 6, 5, 4]
+
+    /// Computes the 8 physical slots for a given lesson according to SPEC §6.
+    /// In 8-pad mode, if `lesson.hits8` exists and is non-empty, it is used instead of `lesson.hits`.
+    /// Returns nil if more than 8 distinct pads are required or replacement cannot satisfy requirements.
+    public static func slots(for lesson: Lesson) -> [Int]? {
+        let hits = (lesson.hits8 != nil && !(lesson.hits8?.isEmpty ?? true))
+            ? (lesson.hits8 ?? lesson.hits)
+            : lesson.hits
+        return slots(forHits: hits)
+    }
+
+    /// Computes the 8 physical slots for a given list of hits.
+    public static func slots(forHits hits: [LessonHit]) -> [Int]? {
+        let required = Set(hits.map(\.padIndex))
+        guard required.count <= 8 else {
+            return nil
+        }
+
+        var slots = baseSlots
+        let baseSet = Set(baseSlots)
+        var waitingList = required.subtracting(baseSet).sorted()
+
+        for slotIndex in fillOrder {
+            guard !waitingList.isEmpty else { break }
+            let padInSlot = slots[slotIndex]
+            if !required.contains(padInSlot) {
+                slots[slotIndex] = waitingList.removeFirst()
+            }
+        }
+
+        guard waitingList.isEmpty else {
+            return nil
+        }
+
+        return slots
+    }
+
+    /// Returns the pad index assigned to a physical slot (0–7) in a computed layout.
+    public static func padIndex(forSlot slot: Int, in layout: [Int]) -> Int? {
+        guard layout.indices.contains(slot) else { return nil }
+        return layout[slot]
+    }
+
+    /// Returns the physical slot (0–7) assigned to a pad index in a computed layout.
+    public static func slotIndex(forPad padIndex: Int, in layout: [Int]) -> Int? {
+        layout.firstIndex(of: padIndex)
+    }
+}
+
 // MARK: - Loader Errors
 
 public enum DataLoaderError: Error, LocalizedError, Equatable {
@@ -236,6 +388,13 @@ public enum DataLoaderError: Error, LocalizedError, Equatable {
 public protocol LessonContentSource: Sendable {
     var sourceIdentifier: String { get }
     func loadLessons() throws -> [Lesson]
+    func loadCategories() throws -> [LessonCategory]
+}
+
+extension LessonContentSource {
+    public func loadCategories() throws -> [LessonCategory] {
+        return []
+    }
 }
 
 // MARK: - DataLoader
@@ -339,9 +498,18 @@ public final class DataLoader: Sendable {
     }
 
     /// Loads the sample kit manifest (8 kits) from `sample-kits.json`.
-    public func loadSampleKits(bundle: Bundle = .main) throws -> [String: SampleKitDefinition] {
+    public func loadSampleKits(bundle: Bundle = .main) throws -> [String: SampleKit] {
         let url = try findResourceURL(named: "sample-kits", withExtension: "json", in: bundle)
-        return try loadJSON(from: url)
+        let rawDict: [String: SampleKitDefinition] = try loadJSON(from: url)
+        return rawDict.reduce(into: [String: SampleKit]()) { result, element in
+            result[element.key] = SampleKit(kitId: element.key, definition: element.value)
+        }
+    }
+
+    /// Loads all sample kits as an array sorted by kit identifier.
+    public func loadSampleKitList(bundle: Bundle = .main) throws -> [SampleKit] {
+        let dict = try loadSampleKits(bundle: bundle)
+        return dict.values.sorted { $0.kitId < $1.kitId }
     }
 
     /// Loads Czech localisation strings from `cs.tsv`.
@@ -402,8 +570,8 @@ public final class DataLoader: Sendable {
 /// Content source that loads lessons from a bundle file.
 public struct BundledLessonContentSource: LessonContentSource {
     public let sourceIdentifier: String
-    private let resourceName: String
-    private let bundle: Bundle
+    public let resourceName: String
+    public let bundle: Bundle
 
     public init(sourceIdentifier: String, resourceName: String, bundle: Bundle = .main) {
         self.sourceIdentifier = sourceIdentifier
@@ -418,6 +586,41 @@ public struct BundledLessonContentSource: LessonContentSource {
             return core.lessons
         }
         return try DataLoader.shared.loadJSON(from: url)
+    }
+
+    public func loadCategories() throws -> [LessonCategory] {
+        let url = try DataLoader.shared.findResourceURL(named: resourceName, withExtension: "json", in: bundle)
+        if let core: CoreLessonsPayload = try? DataLoader.shared.loadJSON(from: url) {
+            return core.cats
+        }
+        return []
+    }
+}
+
+extension BundledLessonContentSource {
+    public static func core(bundle: Bundle = .main) -> BundledLessonContentSource {
+        BundledLessonContentSource(sourceIdentifier: "lessons-core", resourceName: "lessons-core", bundle: bundle)
+    }
+
+    public static func intro(bundle: Bundle = .main) -> BundledLessonContentSource {
+        BundledLessonContentSource(sourceIdentifier: "intro", resourceName: "intro", bundle: bundle)
+    }
+
+    public static func electronicPath(bundle: Bundle = .main) -> BundledLessonContentSource {
+        BundledLessonContentSource(sourceIdentifier: "electronic-path", resourceName: "electronic-path", bundle: bundle)
+    }
+
+    public static func genreExtensions(bundle: Bundle = .main) -> BundledLessonContentSource {
+        BundledLessonContentSource(sourceIdentifier: "genre-extensions", resourceName: "genre-extensions", bundle: bundle)
+    }
+
+    public static func allDefaultBundledSources(bundle: Bundle = .main) -> [LessonContentSource] {
+        [
+            core(bundle: bundle),
+            intro(bundle: bundle),
+            electronicPath(bundle: bundle),
+            genreExtensions(bundle: bundle)
+        ]
     }
 }
 
@@ -436,5 +639,133 @@ public struct ExternalJSONContentSource: LessonContentSource {
             return core.lessons
         }
         return try DataLoader.shared.loadJSON(from: fileURL)
+    }
+
+    public func loadCategories() throws -> [LessonCategory] {
+        if let core: CoreLessonsPayload = try? DataLoader.shared.loadJSON(from: fileURL) {
+            return core.cats
+        }
+        return []
+    }
+}
+
+// MARK: - LessonStore
+
+/// Unified store and manager for lessons across multiple sources (bundled resources and content packs).
+@Observable
+public final class LessonStore: @unchecked Sendable {
+    public static let shared = LessonStore()
+
+    public private(set) var sources: [LessonContentSource] = []
+    public private(set) var lessons: [Lesson] = []
+    public private(set) var categories: [LessonCategory] = []
+    public private(set) var lessonsById: [Int: Lesson] = [:]
+    public private(set) var lessonsByCategory: [String: [Lesson]] = [:]
+    public private(set) var lastLoadError: Error?
+
+    private let lock = NSLock()
+
+    /// Initializes the store with specified sources, or defaults to all bundled content.
+    public init(
+        sources: [LessonContentSource]? = nil,
+        autoLoad: Bool = true,
+        bundle: Bundle = .main
+    ) {
+        let initialSources = sources ?? BundledLessonContentSource.allDefaultBundledSources(bundle: bundle)
+        self.sources = initialSources
+        if autoLoad {
+            do {
+                try reload()
+            } catch {
+                self.lastLoadError = error
+            }
+        }
+    }
+
+    /// Registers an additional content source (e.g. future content packs) and merges lessons.
+    public func register(source: LessonContentSource, reloadImmediately: Bool = true) throws {
+        lock.lock()
+        sources.append(source)
+        lock.unlock()
+
+        if reloadImmediately {
+            try reload()
+        }
+    }
+
+    /// Registers multiple additional content sources and merges lessons.
+    public func register(sources newSources: [LessonContentSource], reloadImmediately: Bool = true) throws {
+        lock.lock()
+        sources.append(contentsOf: newSources)
+        lock.unlock()
+
+        if reloadImmediately {
+            try reload()
+        }
+    }
+
+    /// Reloads and merges all lessons and categories from registered sources.
+    public func reload() throws {
+        lock.lock()
+        defer { lock.unlock() }
+
+        var mergedLessons: [Lesson] = []
+        var mergedCategories: [LessonCategory] = []
+        var seenLessonIds = Set<Int>()
+        var seenCategoryIds = Set<String>()
+
+        for source in sources {
+            let loadedLessons = try source.loadLessons()
+            for lesson in loadedLessons {
+                if !seenLessonIds.contains(lesson.id) {
+                    seenLessonIds.insert(lesson.id)
+                    mergedLessons.append(lesson)
+                } else {
+                    // Update/override existing lesson definition with new source
+                    if let index = mergedLessons.firstIndex(where: { $0.id == lesson.id }) {
+                        mergedLessons[index] = lesson
+                    }
+                }
+            }
+
+            let loadedCategories = try source.loadCategories()
+            for category in loadedCategories {
+                if !seenCategoryIds.contains(category.id) {
+                    seenCategoryIds.insert(category.id)
+                    mergedCategories.append(category)
+                }
+            }
+        }
+
+        self.lessons = mergedLessons
+        self.categories = mergedCategories
+        self.lessonsById = Dictionary(mergedLessons.map { ($0.id, $0) }, uniquingKeysWith: { _, new in new })
+
+        var byCat: [String: [Lesson]] = [:]
+        for lesson in mergedLessons {
+            byCat[lesson.cat, default: []].append(lesson)
+        }
+        self.lessonsByCategory = byCat
+        self.lastLoadError = nil
+    }
+
+    /// Looks up a lesson by its numeric ID.
+    public func lesson(for id: Int) -> Lesson? {
+        lessonsById[id]
+    }
+
+    /// Returns all lessons belonging to the given category identifier.
+    public func lessons(in category: String) -> [Lesson] {
+        lessonsByCategory[category] ?? []
+    }
+
+    /// Convenience access for 8-pad slot mapping for a lesson.
+    public func layout(for lesson: Lesson) -> [Int]? {
+        EightPadLayout.slots(for: lesson)
+    }
+
+    /// Returns all lessons that are playable in 8-pad mode.
+    public func lessonsPlayableInEightPadMode() -> [Lesson] {
+        lessons.filter { EightPadLayout.slots(for: $0) != nil }
     }
 }
