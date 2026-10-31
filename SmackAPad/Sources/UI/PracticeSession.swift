@@ -36,6 +36,7 @@ final class PracticeSession {
     @ObservationIgnored private var displayStart: Double = 0
     @ObservationIgnored private var displayDuration: Double = 1
     @ObservationIgnored private var completedPasses = 0
+    @ObservationIgnored private var tempo = PracticeTempo()
     @ObservationIgnored private var earnedPass = false
     @ObservationIgnored private var earnedMastery = false
     @ObservationIgnored private var earnedMemory = false
@@ -148,6 +149,7 @@ final class PracticeSession {
             errorMessage = nil
             summary = nil
             lastResult = nil
+            tempo.reset()
             barVerdicts = [:]
             completedPasses = 0
             earnedPass = false; earnedMastery = false; earnedMemory = false
@@ -226,11 +228,13 @@ final class PracticeSession {
         let time = now
         finishCompleted(at: time)
         let horizon = time + 0.5
-        // The next unqueued boundary adopts the scorer's requested tempo. A pass
-        // already scheduled retains its clock, including late hit windows.
+        // Results arrive after the next pass has been queued. Advance from the
+        // last queued tempo, never from an earlier pass's slower clock.
         if let last = passes.last, last.start + last.duration <= horizon {
+            let nextBpm = tempo.queue(after: last.bpm, targetBpm: lesson.targetBpm,
+                                      listenBpm: listen ? bpm : nil)
             passes.append(makePass(number: last.number + 1, start: last.start + last.duration,
-                                   bpm: listen ? bpm : (lastResult?.nextBpm ?? bpm)))
+                                   bpm: nextBpm))
         }
         if let current = passes.last(where: { $0.start <= time }) {
             if current.number != passNumber {
@@ -271,6 +275,7 @@ final class PracticeSession {
             let result = scorer.finish()
             pass.scorer = nil
             lastResult = result
+            tempo.completed(nextBpm: result.nextBpm)
             completedPasses += 1
             let memory = !isSectionLoop && fromMemory && result.bpm >= lesson.targetBpm && result.score >= 0.8
             earnedPass = earnedPass || (!isSectionLoop && result.passed)

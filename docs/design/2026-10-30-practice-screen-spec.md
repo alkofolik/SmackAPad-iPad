@@ -29,6 +29,8 @@ The practice screen is where almost all time is spent. Everything else (Home, Li
 
 START -> countdown (only here) -> pattern runs continuously. After a clean pass below `targetBpm` the tempo rises by the BPM step (1/2/5/10, Settings) and play continues without stopping or a countdown. STOP ends the run; RESTART starts again from the beginning (new countdown).
 
+Continuous scheduling queues the next pass about 0.5 seconds ahead, before the current pass's final timing window closes. A clean result can therefore affect the pass after the already queued one: a one-pass delay before a rise is expected. Already queued passes keep their tempo and timing windows; there are no pauses between passes.
+
 ## 5. Pattern look
 
 - Orange field `#FF6B00`; black and white only on it. Page: white with black text (light) or black with white text (dark).
@@ -66,6 +68,8 @@ Stars 2 and 3 need the goal tempo, so lowering the tempo can only earn star 1. P
 - Manual change only while stopped. Legacy used coarse -5 / +5 and fine -1 / +1 buttons; the purpose is to jump quickly (60 -> 90) or go back to the start to retrain.
 - The current tempo is saved per lesson (`currentBpm`). The lesson's target is shown next to it (e.g. 80 -> 100 BPM).
 - UI for this is not drawn yet.
+- During Play, each next queued pass uses `min(targetBpm, max(lastQueuedBpm, latestFinishedResult.nextBpm))`; without a new result it keeps the last queued tempo. Each finished result is consumed at most once. An unclean result never lowers the queued tempo or adds a BPM step. The step is calculated by scoring, not added again by scheduling (ticket 11b).
+- START and RESTART clear the previous result and any pending tempo request, respecting the manually selected stopped tempo. Listen retains its current tempo without automatic progression.
 
 ## 10. Sizes and colours
 

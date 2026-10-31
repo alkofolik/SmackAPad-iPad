@@ -153,6 +153,8 @@ A second hit on the same pad within **30 ms** of a previously matched hit counts
 
 After a clean run below `targetBpm`, tempo increases by the user-selected step: **1, 2, 5, or 10 BPM**.
 
+In continuous Play, the next queued pass takes the maximum of the last queued tempo and the latest finished result's `nextBpm`, capped at `targetBpm`. Each result is consumed once; unclean passes do not lower the tempo. Because the next pass is queued before the current pass's final timing window closes, a rise has a one-pass delay. START/RESTART clear stale results and preserve the manually selected starting tempo. Listen does not progress automatically. See the practice-screen specification §§4 and 9 (ticket 11b).
+
 ---
 
 ## 6. 8-Pad Controller Rule
