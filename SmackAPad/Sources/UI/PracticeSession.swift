@@ -206,6 +206,7 @@ final class PracticeSession {
             displayStart = first + 4 * beat
             displayDuration = Double(practiceLesson.bars) * 240 / Double(bpm)
             passes = [makePass(number: 1, start: displayStart, bpm: bpm)]
+            tempo.recordPassStart(bpm: bpm)
             if !listen {
                 var record = progress.progress(for: lesson.id) ?? LessonProgress()
                 record.hasPlayed = true

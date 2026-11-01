@@ -1,6 +1,6 @@
 # 22 — Announce a tempo increase during a run
 
-Status: ready-for-agent (2026-11-01). **Start only after tickets 17 and 18 are finished and committed** (all touch `PracticeSession.swift` and `PracticeScreen.swift`).
+Status: ready-for-ipad-test (2026-11-01). Implemented in `54a2331`; review fix below. Build and tests still to be run in Xcode.
 
 ## Goal
 
@@ -41,3 +41,9 @@ During a run the tempo rises after a clean pass. Today the change is easy to mis
 ## Done rule
 
 Stop after successful build and tests. Commit after the task.
+
+## Implementation and review (2026-11-01)
+
+- Implemented in `54a2331`: `TempoUpEvent`, `PracticeTempo.tempoUpEvent/recordPassStart`, `TempoUpBanner`, en/cs keys, one unit test.
+- Review fix: pass 1 was never recorded (`passNumber` starts at 1, so the pass-change branch did not run for it), so the first tempo rise of a run was not announced. `start()` now calls `tempo.recordPassStart(bpm:)` after creating pass 1.
+- Not yet run: build and `PracticeTempoTests` (no Xcode in the review environment). Suggested extra test: a session-level check that pass 1 -> 2 at a higher BPM raises the event.
