@@ -118,7 +118,11 @@ Sample kit licenses (AVL Acoustic, Fischer 808, Groove MIDI Dataset, etc.) have 
 
 ## 15. Lesson progression: guided but not blocking
 
-Categories are locked by default (except the first). Completing a certain number of lessons in a category unlocks the next one. **Soft unlock**: any locked category can be manually unlocked with a single tap + confirmation. Nobody gets stuck. Experienced players can skip ahead freely.
+Ticket 19 replaces category access with the legacy Path: five levels, split by technique (levels 4–5 omit basic groove), with empty stages omitted. A stage opens after `min(ceil(previous stage lesson count / 2), 10)` passes in its immediate predecessor, or if any lesson in the stage was already played. The first stage and the separate Intro entry point are always accessible. Jersey club and Footwork remain accessible extensions outside the Path.
+
+**Soft unlock**: one tap plus confirmation opens the whole stage. Path, Genres, and Techniques share this access policy. A one-time migration preserves stages containing lessons in previously accessible categories, including saved manual category unlocks and automatic category access; saved progress is retained. New progress records distinguish actual playing from merely saving a tempo. Old records conservatively retain access when they contain saved tempo or results.
+
+Library organisation and multi-select star filters are remembered. “Next lesson from” selects Path, Genre, Technique, or All (easiest first), following legacy candidate order, wraparound, and fallback to Path.
 
 ## 16. Intro: separate, always accessible
 
@@ -144,7 +148,7 @@ Visual design, styling, and UI polish are explicitly out of scope for this decis
 
 ## Open questions
 
-1. **Category unlock criteria** — How many lessons must be completed to unlock the next category? A fixed count, a percentage, or specific key lessons? (To be decided during implementation.)
+1. **Stage unlock criteria** — Resolved by ticket 19; see §15.
 2. **Controller preset profiles** — Which 2–3 controllers get built-in profiles? Need to confirm the most common devices among finger-drumming players.
 3. **Calibration thresholds** — Initial values are recorded in §8 (ticket 09); success-rate validation and any tuning on real hardware remain open.
 4. **Sample license audit** — Each kit's LICENSE.txt must be reviewed before App Store submission. Separate task.

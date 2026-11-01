@@ -1,6 +1,6 @@
 # 19 — Library: Path / Genres / Techniques views, filters and stage unlocking
 
-Status: ready-for-agent (2026-11-01). **Start only after ticket 15 is finished and committed** (15 has uncommitted changes in `LibraryScreen.swift`, `Progression.swift`, `SettingsView.swift`).
+Status: ready-for-human (2026-11-01). Ticket 15 prerequisite verified at commit `b3a2f9c`; working tree was clean before this task.
 
 ## Goal
 
@@ -38,12 +38,12 @@ Three colours only (orange, black, white), light and dark variants, no status co
 
 ## Acceptance criteria
 
-- [ ] Three views switch instantly and the choice is remembered.
-- [ ] Path shows levels and stages as in the legacy app; counts match the legacy app for the same progress.
-- [ ] Search, cross filter and star filters combine; counts and "Clear filters" work.
-- [ ] Stage unlocking follows the rule above; soft unlock still works; old unlocks are migrated.
-- [ ] Unit tests for technique/genre classification, stage ordering and stage unlock rule.
-- [ ] Build succeeds.
+- [x] Three views switch instantly and the choice is remembered.
+- [x] Path shows levels and stages as in the legacy app; counts match the legacy app for the same progress.
+- [x] Search, cross filter and star filters combine; counts and "Clear filters" work.
+- [x] Stage unlocking follows the rule above; soft unlock still works; old unlocks are migrated.
+- [x] Unit tests for technique/genre classification, stage ordering and stage unlock rule.
+- [x] Build succeeds.
 - [ ] **iPad test (Jakub)**: landscape and portrait, light and dark, both languages.
 
 ## Agent assignment
@@ -54,3 +54,13 @@ Three colours only (orange, black, white), light and dark variants, no status co
 ## Done rule
 
 Stop after successful build and tests; Jakub tests on iPad. Commit after the task.
+
+
+## Implementation notes (2026-11-01)
+
+- Legacy reference reading of the three named JavaScript files was explicitly authorised by Jakub for this ticket. Rules were reimplemented in Swift; legacy source was not copied or changed.
+- Added a shared immutable catalogue projection, persisted view/star preferences, stage access and one-time category access migration, both localisation catalogs, and the optional next-source setting with Play next.
+- Intro remains a separate entry point and also retains its original catalogue position in the Path, matching the legacy population (583 Path lessons plus 12 extensions).
+- Added a persisted played flag; legacy progress without that flag conservatively preserves access. New tempo-only changes do not count as playing.
+- Validation: simulator build succeeded. All 9 new LibraryCatalogTests passed: 8 on the initial run; the next-lesson test passed after correcting its expected legacy wraparound order and rerunning only that test. Existing passing tests were not rerun. All three views contain the same 595 unique bundled lesson IDs (583 Path + 12 extensions), with 23 non-empty stages.
+- Manual UI acceptance remains pending on Jakub’s iPad: landscape/portrait, light/dark, English/Czech. No browser scripts or hardware tests were run.

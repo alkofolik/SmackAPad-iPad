@@ -128,6 +128,12 @@ public final class ProgressionManager: @unchecked Sendable {
     /// Pending category for soft-unlock confirmation dialog.
     public var categoryPendingSoftUnlock: String? = nil
 
+    public private(set) var softUnlockedStages: Set<String> = []
+    private static let stagesKey = "smackapad.settings.softUnlockedStages"
+    private static let migrationKey = "smackapad.settings.stageMigrationV1"
+
+    var catalog: LibraryCatalog { lessonStore.libraryCatalog }
+
     // MARK: Dependencies
 
     public let lessonStore: LessonStore
@@ -155,6 +161,7 @@ public final class ProgressionManager: @unchecked Sendable {
         self.categoryOrder = categoryOrder
 
         loadSoftUnlocks()
+        loadAndMigrateStages()
     }
 
     // MARK: - Canonical Category Mapping (Task 7)
@@ -316,6 +323,9 @@ public final class ProgressionManager: @unchecked Sendable {
     /// Display title for a category in English or Czech.
     public func title(for categoryId: String, language: AppLanguage? = nil) -> String {
         let lang = language ?? settingsManager.languagePreference
+        if let stage = catalog.stages.first(where: { $0.id == categoryId }) {
+            return lang.localized("Level %lld · %@", stage.level, lang.localized(stage.technique.title))
+        }
         switch categoryId {
         case "starter":
             return lang.localized("First steps")
@@ -351,6 +361,12 @@ public final class ProgressionManager: @unchecked Sendable {
         lock.lock()
         defer { lock.unlock() }
 
+        if catalog.stages.contains(where: { $0.id == category }) {
+            softUnlockedStages.insert(category)
+            userDefaults.set(Array(softUnlockedStages).sorted(), forKey: Self.stagesKey)
+            categoryPendingSoftUnlock = nil
+            return
+        }
         let canonical = Self.canonicalCategory(forCategory: category)
         softUnlockedCategories.insert(canonical)
         saveSoftUnlocks()
@@ -387,6 +403,11 @@ public final class ProgressionManager: @unchecked Sendable {
     public func requestSoftUnlock(for category: String) {
         lock.lock()
         defer { lock.unlock() }
+        if let stage = catalog.stages.first(where: { $0.id == category }) {
+            guard !isStageOpen(stage) else { return }
+            categoryPendingSoftUnlock = category
+            return
+        }
         let canonical = Self.canonicalCategory(forCategory: category)
         guard !isCategoryUnlocked(canonical) else { return }
         categoryPendingSoftUnlock = canonical
@@ -414,6 +435,8 @@ public final class ProgressionManager: @unchecked Sendable {
         defer { lock.unlock() }
         categoryPendingSoftUnlock = nil
         if clearSoftUnlocks {
+            softUnlockedStages.removeAll()
+            userDefaults.removeObject(forKey: Self.stagesKey)
             softUnlockedCategories.removeAll()
             userDefaults.removeObject(forKey: ProgressionConstant.softUnlockedCategoriesStorageKey)
         }
@@ -427,7 +450,7 @@ public final class ProgressionManager: @unchecked Sendable {
     }
 
     public var softUnlockAlertMessage: String {
-        settingsManager.localized("You can practice any category at any time.")
+        settingsManager.localized("You can practice any stage at any time.")
     }
 
     public var softUnlockConfirmButtonTitle: String {
@@ -436,6 +459,58 @@ public final class ProgressionManager: @unchecked Sendable {
 
     public var softUnlockCancelButtonTitle: String {
         settingsManager.localized("Cancel")
+    }
+
+    // MARK: - Stage progression
+
+    func unlockProgress(for stage: LibraryStage) -> (passed: Int, needed: Int, previous: LibraryStage?) {
+        let stages = catalog.stages
+        guard let index = stages.firstIndex(where: { $0.id == stage.id }), index > 0 else { return (0, 0, nil) }
+        let previous = stages[index - 1]
+        return (previous.lessons.filter { progressStore.isPassed(lessonId: $0.id) }.count,
+                min((previous.lessons.count + 1) / 2, 10), previous)
+    }
+
+    func isStageOpen(_ stage: LibraryStage) -> Bool {
+        guard catalog.stages.contains(where: { $0.id == stage.id }) else { return false }
+        let requirement = unlockProgress(for: stage)
+        return requirement.passed >= requirement.needed || softUnlockedStages.contains(stage.id)
+            || stage.lessons.contains {
+                let record = progressStore.progress(for: $0.id)
+                return record?.hasPlayed == true || record?.passed == true
+            }
+    }
+
+    func isLessonOpen(_ lesson: Lesson) -> Bool {
+        if lesson.cat == "intro" || LibraryCatalog.isExtension(lesson) { return true }
+        guard let stage = catalog.stage(for: lesson) else { return true }
+        return isStageOpen(stage)
+    }
+
+    func nextLesson(after anchor: Lesson?, source: NextLessonSource) -> Lesson? {
+        let eligible: (Lesson) -> Bool = { self.isLessonOpen($0) && !self.progressStore.isPassed(lessonId: $0.id) }
+        if let anchor, eligible(anchor) { return lessonStore.lesson(for: anchor.id) ?? anchor }
+        let candidates = catalog.candidates(after: anchor, source: source)
+        let ordered: [Lesson]
+        if let anchor, let index = candidates.firstIndex(where: { $0.id == anchor.id }) {
+            ordered = Array(candidates.dropFirst(index + 1)) + Array(candidates.prefix(index + 1))
+        } else { ordered = candidates }
+        return ordered.first(where: eligible)
+            ?? ([NextLessonSource.genre, .technique].contains(source) ? nextLesson(after: anchor, source: .path) : nil)
+    }
+
+    private func loadAndMigrateStages() {
+        softUnlockedStages = Set(userDefaults.stringArray(forKey: Self.stagesKey) ?? [])
+        guard !userDefaults.bool(forKey: Self.migrationKey), !lessonStore.lessons.isEmpty else { return }
+        // Preserve every previously accessible category, including automatic unlocks.
+        if !progressStore.records.isEmpty || !softUnlockedCategories.isEmpty {
+            let previouslyOpen = Set(categoryOrder.filter { isCategoryUnlocked($0) })
+            for stage in catalog.stages where stage.lessons.contains(where: {
+                previouslyOpen.contains(Self.canonicalCategory(for: $0))
+            }) { softUnlockedStages.insert(stage.id) }
+        }
+        userDefaults.set(Array(softUnlockedStages).sorted(), forKey: Self.stagesKey)
+        userDefaults.set(true, forKey: Self.migrationKey)
     }
 
     // MARK: - Persistence Helpers

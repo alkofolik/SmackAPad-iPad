@@ -78,6 +78,17 @@ public struct SettingsView: View {
                         .foregroundStyle(Theme.secondary)
                 }
 
+                Section {
+                    Picker(settings.localized("Next lesson from"), selection: $settings.nextLessonSource) {
+                        ForEach(NextLessonSource.allCases) { source in
+                            Text(settings.localized(source.title)).tag(source.id)
+                        }
+                    }
+                    .frame(minHeight: Theme.Size.touch)
+                } header: {
+                    Text(settings.localized("Next lesson from")).font(Theme.text(Theme.Size.dense))
+                }
+
                 // MARK: 3. Controller Profiles & MIDI Learn Trigger
                 Section {
                     ForEach(settings.allProfiles()) { profile in

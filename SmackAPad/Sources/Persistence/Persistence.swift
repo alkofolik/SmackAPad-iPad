@@ -135,6 +135,19 @@ public final class SettingsManager: @unchecked Sendable {
         }
     }
 
+    public var libraryView: String {
+        didSet { userDefaults.set(libraryView, forKey: "smackapad.library.view") }
+    }
+    public var libraryStarFilters: [String] {
+        didSet { userDefaults.set(libraryStarFilters, forKey: "smackapad.library.stars") }
+    }
+    public var nextLessonSource: String {
+        didSet { userDefaults.set(nextLessonSource, forKey: "smackapad.library.nextSource") }
+    }
+    public var lastLessonID: Int {
+        didSet { userDefaults.set(lastLessonID, forKey: "smackapad.library.lastLesson") }
+    }
+
     // MARK: Computed Helpers
 
     public var bundle: Bundle {
@@ -163,6 +176,10 @@ public final class SettingsManager: @unchecked Sendable {
 
     public init(userDefaults: UserDefaults = .standard) {
         self.userDefaults = userDefaults
+        libraryView = LibraryViewMode(rawValue: userDefaults.string(forKey: "smackapad.library.view") ?? "")?.rawValue ?? "path"
+        libraryStarFilters = userDefaults.stringArray(forKey: "smackapad.library.stars") ?? LibraryStarFilter.allCases.map(\.rawValue)
+        nextLessonSource = NextLessonSource(rawValue: userDefaults.string(forKey: "smackapad.library.nextSource") ?? "")?.rawValue ?? "path"
+        lastLessonID = userDefaults.integer(forKey: "smackapad.library.lastLesson")
 
         // Read kit ID
         let initialKitId = userDefaults.string(forKey: SettingsKey.selectedKitId.rawValue) ?? Self.defaultKitId
@@ -347,6 +364,7 @@ public final class SettingsManager: @unchecked Sendable {
 /// Progress record for an individual lesson matching SPEC §4.3:
 /// `{ passed: Bool, mastery: Bool, memory: Bool, currentBpm: Int, bestScore: Float }`
 public struct LessonProgress: Codable, Equatable, Hashable, Sendable {
+    public var hasPlayed: Bool
     public var passed: Bool
     public var mastery: Bool
     public var memory: Bool
@@ -357,9 +375,11 @@ public struct LessonProgress: Codable, Equatable, Hashable, Sendable {
         passed: Bool = false,
         mastery: Bool = false,
         memory: Bool = false,
+        hasPlayed: Bool = false,
         currentBpm: Int = 0,
         bestScore: Float = 0.0
     ) {
+        self.hasPlayed = hasPlayed || passed || mastery || memory
         self.passed = passed
         self.mastery = mastery
         self.memory = memory
@@ -367,7 +387,7 @@ public struct LessonProgress: Codable, Equatable, Hashable, Sendable {
         self.bestScore = bestScore
     }
 
-    private enum CodingKeys: String, CodingKey { case passed, mastery, memory, currentBpm, bestScore }
+    private enum CodingKeys: String, CodingKey { case hasPlayed, passed, mastery, memory, currentBpm, bestScore }
 
     /// Existing progress files predate the memory star.
     public init(from decoder: Decoder) throws {
@@ -377,6 +397,8 @@ public struct LessonProgress: Codable, Equatable, Hashable, Sendable {
         memory = try values.decodeIfPresent(Bool.self, forKey: .memory) ?? false
         currentBpm = try values.decode(Int.self, forKey: .currentBpm)
         bestScore = try values.decode(Float.self, forKey: .bestScore)
+        // Old records did not distinguish a saved tempo from an interrupted attempt.
+        hasPlayed = try values.decodeIfPresent(Bool.self, forKey: .hasPlayed) ?? (passed || mastery || memory || currentBpm > 0 || bestScore > 0)
     }
 }
 
@@ -572,6 +594,7 @@ public final class ProgressStore: @unchecked Sendable {
             bestScore: score
         )
 
+        record.hasPlayed = true
         record.passed = record.passed || passed
         record.mastery = record.mastery || mastery
         record.memory = record.memory || memory

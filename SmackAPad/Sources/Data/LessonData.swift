@@ -680,6 +680,7 @@ public final class LessonStore: @unchecked Sendable {
     public private(set) var lessonsById: [Int: Lesson] = [:]
     public private(set) var lessonsByCategory: [String: [Lesson]] = [:]
     public private(set) var lastLoadError: Error?
+    private(set) var libraryCatalog = LibraryCatalog(lessons: [])
 
     private let lock = NSLock()
 
@@ -756,6 +757,7 @@ public final class LessonStore: @unchecked Sendable {
         }
 
         self.lessons = mergedLessons
+        self.libraryCatalog = LibraryCatalog(lessons: mergedLessons)
         self.categories = mergedCategories
         self.lessonsById = Dictionary(mergedLessons.map { ($0.id, $0) }, uniquingKeysWith: { _, new in new })
 
