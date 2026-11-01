@@ -113,36 +113,58 @@ struct LibraryGroup: Identifiable {
 /// Catalogue order is immutable and independent of saved progress and filters.
 struct LibraryCatalog {
     let lessons: [Lesson]
+    let introLessons: [Lesson]
     let stages: [LibraryStage]
     let path: [Lesson]
     private let ranks: [Int: Int]
 
     init(lessons: [Lesson]) {
-        self.lessons = lessons
+        let projected = lessons.map(Self.project)
+        self.lessons = projected
+        var intro = projected.filter { $0.cat == "intro" && $0.id != 6 }
+            .sorted { ($0.intro?.number ?? $0.id) < ($1.intro?.number ?? $1.id) }
+        if let moved = projected.first(where: { $0.id == 6 && $0.cat == "intro" }) {
+            let position = intro.lastIndex { $0.intro?.stage == moved.intro?.stage }.map { $0 + 1 } ?? intro.count
+            intro.insert(moved, at: position)
+        }
+        introLessons = intro
         stages = (1...5).flatMap { level in
             LessonTechnique.allCases.compactMap { technique -> LibraryStage? in
                 guard level < 4 || technique != .groove else { return nil }
-                let members = lessons.filter {
-                    !Self.isExtension($0) && $0.level == level && LessonTechnique.classify($0) == technique
+                let members = projected.filter {
+                    ($0.id != 6 || $0.cat != "intro") && !Self.isExtension($0) && $0.level == level && LessonTechnique.classify($0) == technique
                 }
                 return members.isEmpty ? nil : LibraryStage(level: level, technique: technique, lessons: Self.orderStage(members))
             }
         }
         path = stages.flatMap(\.lessons)
-        var order = Dictionary(uniqueKeysWithValues: lessons.enumerated().map { ($1.id, $0) })
+        var order = Dictionary(uniqueKeysWithValues: projected.enumerated().map { ($1.id, $0) })
         for (index, lesson) in path.enumerated() { order[lesson.id] = index }
         ranks = order
     }
 
+    /// Move the retained core lesson into Intro without changing bundled data or progress IDs.
+    private static func project(_ lesson: Lesson) -> Lesson {
+        guard lesson.id == 6, lesson.cat == "starter" else { return lesson }
+        return Lesson(id: lesson.id, cat: "intro", title: lesson.title, genre: lesson.genre,
+                      tags: lesson.tags, text: lesson.text, division: lesson.division, bars: lesson.bars,
+                      startBpm: lesson.startBpm, targetBpm: lesson.targetBpm, level: lesson.level,
+                      score: lesson.score, src: lesson.src, hits: lesson.hits, hits8: lesson.hits8,
+                      eightNote: lesson.eightNote,
+                      intro: IntroMetadata(number: 21, stage: "Control and detail",
+                                           goal: "Keep offbeat open hats steady over the kick.",
+                                           watch: "Keep the kick pulse steady even when the hats feel stronger."))
+    }
+
     static func isExtension(_ lesson: Lesson) -> Bool { ["jersey", "footwork"].contains(lesson.cat) }
 
-    /// Starter lessons lead; genre queues retain their first-appearance and internal order.
+    /// Intro lessons lead; genre queues retain their first-appearance and internal order.
     static func orderStage(_ lessons: [Lesson]) -> [Lesson] {
         var first: [Lesson] = []
         var genres: [LessonGenre] = []
         var queues: [LessonGenre: [Lesson]] = [:]
         for lesson in lessons {
-            if ["intro", "starter"].contains(lesson.cat) { first.append(lesson); continue }
+            if lesson.cat == "intro" { first.append(lesson); continue }
             let genre = LessonGenre.classify(lesson)
             if queues[genre] == nil { genres.append(genre) }
             queues[genre, default: []].append(lesson)
@@ -202,7 +224,7 @@ struct LibraryCatalog {
             }
             return path
         }
-        return lessons.filter {
+        return lessons.filter { $0.id != 6 || $0.cat != "intro" }.filter {
             source == .all || (source == .genre ? LessonGenre.classify($0) == LessonGenre.classify(anchor) : LessonTechnique.classify($0) == LessonTechnique.classify(anchor))
         }.sorted { lhs, rhs in
             if source == .all, lhs.level != rhs.level { return lhs.level < rhs.level }

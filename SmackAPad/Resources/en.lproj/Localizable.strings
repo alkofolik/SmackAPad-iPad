@@ -207,8 +207,8 @@
 "Hand coordination and alternation · lessons 5–8" = "Hand coordination and alternation · lessons 5–8";
 "Eighth-note hi-hat patterns & stability · lessons 9–12" = "Eighth-note hi-hat patterns & stability · lessons 9–12";
 "Syncopations, offbeats & clap · lessons 13–16" = "Syncopations, offbeats & clap · lessons 13–16";
-"Dynamics, open hi-hat & rests · lessons 17–20" = "Dynamics, open hi-hat & rests · lessons 17–20";
-"Snare and tom fills with clean return · lessons 21–24" = "Snare and tom fills with clean return · lessons 21–24";
+"Dynamics, open hi-hat & rests · lessons 17–21" = "Dynamics, open hi-hat & rests · lessons 17–21";
+"Snare and tom fills with clean return · lessons 22–25" = "Snare and tom fills with clean return · lessons 22–25";
 "Other Intro Exercises" = "Other Intro Exercises";
 "Intro Exercises" = "Intro Exercises";
 "INTRO SECTION RULES" = "INTRO SECTION RULES";
@@ -222,7 +222,6 @@
 "yes" = "yes";
 "no" = "no";
 "Not played" = "Not played";
-"First steps" = "First steps";
 "Eighth-note grooves" = "Eighth-note grooves";
 "Sixteenth-note grooves" = "Sixteenth-note grooves";
 "Electronic styles" = "Electronic styles";
@@ -231,7 +230,6 @@
 "World rhythms" = "World rhythms";
 "Fills" = "Fills";
 "Intro exercises" = "Intro exercises";
-"Unlock \"%@\"?" = "Unlock \"%@\"?";
 "You can practice any category at any time." = "You can practice any category at any time.";
 "High tom" = "High tom";
 "Low tom" = "Low tom";
@@ -266,7 +264,6 @@
 "Technique" = "Technique";
 "All (easiest first)" = "All (easiest first)";
 "Level %lld · %@" = "Level %lld · %@";
-"You can practice any stage at any time." = "You can practice any stage at any time.";
 "Organise by" = "Organise by";
 "Extensions · outside the Path" = "Extensions · outside the Path";
 "Jersey club and Footwork" = "Jersey club and Footwork";
@@ -307,3 +304,12 @@
 "Expanded" = "Expanded";
 
 "Collapsed" = "Collapsed";
+
+/* Ticket 25B: inline stage access and the retained Intro exercise. */
+"Really unlock %@?" = "Really unlock %@?";
+"Really lock %@ again?" = "Really lock %@ again?";
+"Yes, unlock" = "Yes, unlock";
+"Yes, lock again" = "Yes, lock again";
+"Lock again" = "Lock again";
+"Manually unlocked · no stars yet" = "Manually unlocked · no stars yet";
+"Keep offbeat open hats steady over the kick." = "Keep offbeat open hats steady over the kick.";

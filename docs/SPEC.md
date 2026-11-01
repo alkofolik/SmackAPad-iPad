@@ -41,7 +41,7 @@
 - Schema per lesson: `{id, cat, title, genre, tags, text, division, bars, startBpm, targetBpm, level, score, src, hits}`.
 - `hits`: array of `[step, padIndex, hand, velocity]`. `step` is 0-based sixteenth index. `padIndex` is 0–15.
 - `division` is always 16. `bars` is 1, 2, or 3.
-- Ticket 20 keeps starter lesson 6 and moves saved progress from retired IDs 1–5 and 7–9 to their specified Intro lessons on load: flags are OR-ed, best score takes the maximum, and existing target tempo is retained. Consuming the old records makes the migration idempotent.
+- Ticket 20 retains lesson 6 and moves saved progress from retired IDs 1–5 and 7–9 to their specified Intro lessons on load: flags are OR-ed, best score takes the maximum, and existing target tempo is retained. Consuming the old records makes the migration idempotent.
 - Architecture supports loading from multiple sources (bundled + external JSON) for future content packs.
 
 ### 3.4 Scoring
@@ -63,16 +63,16 @@
 ### 3.7 Progression
 - Path stages are grouped by level and technique; the first non-empty stage is always open (ticket 19).
 - **Unlock rule**: `min(ceil(previous stage lesson count / 2), maximumStageCompletions)` lessons with `passed && mastery` (two stars) open the next stage; `maximumStageCompletions = 10`. Memory is optional. In 8-pad mode, lessons without a layout do not count. Previously open stages stay open, and any stage with an already played lesson is open (ticket 21).
-- **Soft unlock**: user can tap any locked stage, confirm, and unlock it immediately. Nobody gets stuck.
-- Intro (24 exercises): separate section, always accessible, no unlock needed.
+- **Soft unlock**: only the stage banner offers Unlock → Really? → Yes/Cancel; a purely manual unlock can be undone with the same inline confirmation while the stage has no stars and no played, earned or migration-snapshot access (ticket 25B).
+- Intro (25 projected exercises): separate section, always accessible; ticket 25B moves core lesson 6 here, after the Control and detail exercises, with its saved ID/progress intact, excludes it from every Library list, and removes the First steps category; bundled core remains 539 and intro.json remains 24.
 - Electronic-path lessons are folded into the main category/genre system.
 
 ### 3.8 Screens
-- **Library**: browse lessons by category/genre. Locked categories shown with lock icon + soft-unlock tap.
+- **Library**: browse lessons by category/genre. Locked stages show readable lesson rows and one banner with inline unlock confirmation.
 - **Play screen**: minimal chrome, pattern first. Pattern is the dominant element of the play screen and always visible: a grid with one row per used pad and one column per sixteenth step, count labels 1 e & a, beat starts emphasised. A hit is a cell carrying the pad abbreviation; the hand is shown by cell colour (white = right, black = left) and the currently playing cell is outlined. User-selectable modes: **static** (the whole pattern visible, a position marker moves) and **scrolling** (the pattern moves past a fixed hit marker). 1 bar = one block across the width; 2-4 bars = blocks stacked or 2x2 with the current bar emphasised; longer patterns and whole tracks = pages of 4 bars or scrolling, with a thin overview strip of the whole track. Everything else (score details, settings, section loop) is hidden but one touch or gesture away. The 4x4 pad-layout grid is hidden by default; a Settings option shows it small and unobtrusive in the lesson. Current BPM and score stay small and peripheral. There is no per-hit feedback: each bar gets a one-word verdict (clean / ahead / behind / uneven) in its header, and a small summary strip appears at the end. Details: `docs/design/2026-10-30-practice-screen-spec.md`.
 - **Calibration**: guided 10-click flow per device.
 - **Settings**: kit selection, BPM step (1/2/5/10), controller profile management, MIDI learn, language.
-- **Intro section**: separate entry point for the 24 intro exercises.
+- **Intro section**: separate entry point for the 25 projected intro exercises.
 
 ---
 
@@ -223,7 +223,7 @@ Lessons use `padIndex` 0–15. In **8-pad mode** the controller has 8 physical p
 - [ ] First Path stage unlocked by default.
 - [ ] Stage unlocking counts only lessons with both pass and goal-tempo stars; memory is optional. Threshold: half the preceding stage rounded up, capped at 10.
 - [ ] Previously open stages stay open across the two-star migration and app restarts.
-- [ ] Soft unlock works with single tap + confirmation.
+- [ ] Stage-banner Unlock and Lock again require inline confirmation; only purely manual, unplayed, starless stages can be re-locked.
 - [ ] 8-pad mode: all bundled lessons get a layout (6 via `hits8`); unlocking works the same as in 16-pad mode.
 - [ ] Intro section always accessible.
 

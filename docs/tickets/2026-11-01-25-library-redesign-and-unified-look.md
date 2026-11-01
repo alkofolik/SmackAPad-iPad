@@ -1,6 +1,6 @@
 # 25 — Library redesign, unified look across screens, Intro rows, unlock flow
 
-Status: part-A-ready-for-human; part B pending in a separate conversation (2026-11-01). Ticket 24 prerequisite verified at commit `252a6b2`. Ticket 26 is independent.
+Status: parts A and B ready for human iPad verification (2026-11-01). Part B: 14 targeted tests and final simulator build passed. Part A committed as `f8ebd27`. Ticket 24 prerequisite verified at commit `252a6b2`. Ticket 26 is independent.
 
 ## Goal
 
@@ -58,11 +58,11 @@ Lesson 6 appears once, in Intro only, and counts add up; no `starter` group exis
 
 - [ ] At least 9 library rows visible in landscape on an iPad (11-inch) without scrolling; no wrapped meta line.
 - [ ] Locked stage: lessons readable, one-line banner, no pop-up anywhere.
-- [ ] Unlock needs "Really?"; "Lock again" appears only where allowed.
+- [x] Unlock needs "Really?"; "Lock again" appears only where allowed.
 - [ ] Intro rows look like all other rows and show three stars with the requirements popover.
-- [ ] No "First steps" anywhere; lesson 6 in Intro with its progress intact.
+- [x] No "First steps" anywhere in the UI; lesson 6 in Intro with its progress intact.
 - [ ] Library, Intro, Settings, MIDI learn, Calibration share fonts, spacing and components; only the five type roles are used.
-- [ ] Build succeeds, new/updated tests pass.
+- [x] Build succeeds, new/updated tests pass.
 - [ ] **iPad test (Jakub)**: landscape and portrait, light and dark, English and Czech, a locked stage, unlock + lock again.
 
 ## Agent assignment
@@ -86,3 +86,13 @@ Stop after successful build and tests; Jakub tests on iPad. Commit after the tas
 - Settings, controller profiles, MIDI learn, and Calibration use shared section headers, form margins, row heights, tint, and adaptive surfaces. Calibration strings now follow the selected app language using existing translation keys. No lesson data or progression rules changed.
 - Validation: Debug build for generic iOS Simulator succeeded with code signing disabled (`xcodebuild -project SmackAPad.xcodeproj -scheme SmackAPad -configuration Debug -destination 'generic/platform=iOS Simulator' -derivedDataPath build/Ticket25A CODE_SIGNING_ALLOWED=NO build`). The first sandboxed attempt could not launch Xcode macro plugins; the same build succeeded with the required access. No new model tests were needed for part A, and previously passing tests were not rerun, following AGENTS.md. No browser/skill scripts or iPad checks were run.
 - Pending Jakub: actual row visibility on 11-inch iPad, portrait/landscape, both appearances/languages, star popovers, and locked-banner feedback. Part B still owns lesson 6 placement, First steps removal, inline unlock confirmation/re-lock state and its tests, and the progression documentation updates. No BPM/difficulty placement decision was made in part A.
+
+
+## Part B implementation (2026-11-01)
+
+- `LibraryCatalog` projects retained core lesson 6 as Intro, at the end of Control and detail, after lesson 10020 and before First fills. Its level is 1 but its 65 → 100 BPM range exceeds the preceding hat exercises (mostly 50 → 80), so it closes that group. IDs, pattern, tempo, saved progress and bundled JSON are unchanged. Presentation row numbers and section subtitles reflect 25 exercises. Core remains 539; Library views contain 586 lessons (574 Path + 12 extensions), with lesson 6 shown only in Intro. The existing 24 Intro lessons retain their prior Library projections.
+- Lesson lookups and category queries use the projection, so reopening lesson 6 also uses Intro presentation and the existing Intro rules. Removed the retired category from visible categories, progression order, titles and both localisation catalogs. Historical category access is evaluated using its original order only during the existing migration; saved unlock records remain intact.
+- Removed the SwiftUI soft-unlock alert. The stage banner uses a pure confirmation state for Unlock and Lock again, with Yes/Cancel actions. Navigating away cancels the pending action. Confirmation rechecks eligibility. Re-lock removes only the manual stage record and leaves progress and other access records untouched.
+- Natural access is checked even while a stage is manually open, so earned or played access becomes permanent. First-stage, played, starred and migration-snapshot stages never offer re-lock. Existing stored stage-access snapshots remain authoritative.
+- Updated SPEC, DECISIONS §15/§16 and ticket 21's never-re-lock exception. No timing/scoring implementation or progression threshold changed.
+- Validation: all 14 selected changed/new tests passed on iPad Air 11-inch (M4), iOS 27.0: 4 LibraryCatalogTests, 1 IntroProgressMigrationTests, 6 ProgressionTests and 3 new StageCompletionTests. Previously passing, unchanged tests were not rerun. Final Debug build succeeded for generic iOS Simulator (arm64 and x86_64) with code signing disabled, using derived data `build/Ticket25B`. Jakub checks both languages/appearances, portrait/landscape, lesson 6, and inline unlock/cancel/re-lock on iPad.

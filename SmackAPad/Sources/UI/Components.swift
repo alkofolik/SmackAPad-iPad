@@ -98,6 +98,8 @@ struct InfoBanner: View {
     var symbol = "info.circle"
     var actionTitle: String? = nil
     var action: (() -> Void)? = nil
+    var secondaryActionTitle: String? = nil
+    var secondaryAction: (() -> Void)? = nil
 
     var body: some View {
         HStack(spacing: Theme.Space.small) {
@@ -108,6 +110,10 @@ struct InfoBanner: View {
             }
             if let actionTitle, let action {
                 Button(actionTitle, action: action).font(Theme.control)
+                    .frame(minHeight: Theme.Size.touch).fixedSize()
+            }
+            if let secondaryActionTitle, let secondaryAction {
+                Button(secondaryActionTitle, action: secondaryAction).font(Theme.control)
                     .frame(minHeight: Theme.Size.touch).fixedSize()
             }
         }

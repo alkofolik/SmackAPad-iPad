@@ -42,8 +42,8 @@ final class ProgressionTests: XCTestCase {
         let lessonStore: LessonStore
         if useSyntheticStarter {
             // The historical category migration rule needs five starter fixtures.
-            // Production content now intentionally keeps only starter lesson 6.
-            let template = LessonStore.shared.lessons(in: "starter")[0]
+            // The bundled source retains lesson 6; the catalogue projects it into Intro.
+            let template = LessonStore.shared.lessons.first { $0.cat == "starter" }!
             let starters = (0..<5).map { index in
                 Lesson(id: 90000 + index, cat: "starter", title: "Starter fixture \(index)", genre: template.genre,
                        tags: template.tags, text: "", division: template.division, bars: template.bars,
@@ -67,7 +67,8 @@ final class ProgressionTests: XCTestCase {
             progressStore: progressStore,
             settingsManager: settingsManager,
             userDefaults: testUserDefaults,
-            lessonsToUnlock: lessonsToUnlock
+            lessonsToUnlock: lessonsToUnlock,
+            categoryOrder: useSyntheticStarter ? ["starter"] + CategoryOrder.categories : CategoryOrder.categories
         )
 
         return (progression, progressStore, lessonStore)
@@ -83,7 +84,6 @@ final class ProgressionTests: XCTestCase {
 
     func testCategoryOrderMatchesSpec() {
         let expectedCategories = [
-            "starter",
             "eighth",
             "sixteenth",
             "electronic",
@@ -95,13 +95,14 @@ final class ProgressionTests: XCTestCase {
         XCTAssertEqual(CategoryOrder.categories, expectedCategories)
         XCTAssertEqual(ProgressionConstant.defaultCategoryOrder, expectedCategories)
 
-        XCTAssertEqual(CategoryOrder.initialUnlockedCategory, "starter")
-        XCTAssertEqual(CategoryOrder.nextCategory(after: "starter"), "eighth")
+        XCTAssertEqual(CategoryOrder.initialUnlockedCategory, "eighth")
+        XCTAssertFalse(CategoryOrder.contains("starter"))
+        XCTAssertEqual(CategoryOrder.nextCategory(after: "eighth"), "sixteenth")
         XCTAssertEqual(CategoryOrder.nextCategory(after: "world"), "fills")
         XCTAssertNil(CategoryOrder.nextCategory(after: "fills"))
 
-        XCTAssertEqual(CategoryOrder.previousCategory(before: "eighth"), "starter")
-        XCTAssertNil(CategoryOrder.previousCategory(before: "starter"))
+        XCTAssertEqual(CategoryOrder.previousCategory(before: "sixteenth"), "eighth")
+        XCTAssertNil(CategoryOrder.previousCategory(before: "eighth"))
     }
 
     // MARK: - Task 2: First Category Unlocked by Default
@@ -109,9 +110,10 @@ final class ProgressionTests: XCTestCase {
     func testFirstCategoryUnlockedByDefault() {
         let (progression, _, _) = makeIsolatedEnvironment()
 
-        XCTAssertTrue(progression.isCategoryUnlocked("starter"), "Starter must be unlocked initially")
+        XCTAssertTrue(progression.isCategoryUnlocked("eighth"))
+        XCTAssertTrue(progression.isIntroAccessible)
 
-        let lockedCategories = ["eighth", "sixteenth", "electronic", "ghost", "swing", "world", "fills"]
+        let lockedCategories = ["sixteenth", "electronic", "ghost", "swing", "world", "fills"]
         for cat in lockedCategories {
             XCTAssertFalse(progression.isCategoryUnlocked(cat), "\(cat) must be locked initially")
         }
@@ -225,8 +227,10 @@ final class ProgressionTests: XCTestCase {
             )
         }
 
-        // Production uses two-star Path stages, independent of the small starter category.
-        XCTAssertEqual(lessonStore.lessons(in: "starter").map(\.id), [6])
+        // Production uses two-star Path stages; the retired category has no visible lessons.
+        XCTAssertTrue(lessonStore.lessons(in: "starter").isEmpty)
+        XCTAssertTrue(progression8.catalog.introLessons.contains { $0.id == 6 })
+        XCTAssertFalse(progression8.catalog.path.contains { $0.id == 6 })
         let stages = progression8.catalog.stages
         let requirement = progression8.unlockProgress(for: stages[1])
         for lesson in stages[0].lessons.prefix(requirement.needed) {
@@ -292,7 +296,8 @@ final class ProgressionTests: XCTestCase {
             progressStore: progressStore,
             settingsManager: settingsManager,
             userDefaults: testUserDefaults,
-            lessonsToUnlock: 5
+            lessonsToUnlock: 5,
+            categoryOrder: ["starter"] + CategoryOrder.categories
         )
 
         // Pass 4 playable lessons + the 1 unplayable lesson
@@ -334,13 +339,13 @@ final class ProgressionTests: XCTestCase {
         XCTAssertTrue(introStatus.isIntro)
         XCTAssertEqual(introStatus.categoryId, "intro")
 
-        // 24 intro exercises exist
+        // 25 projected Intro exercises exist; the bundled file still contains 24.
         let introLessons = lessonStore.lessons(in: "intro")
-        XCTAssertEqual(introLessons.count, 24)
+        XCTAssertEqual(introLessons.count, 25)
 
-        // Passing or not passing intro exercises does not alter starter/eighth progression
+        // Intro progress does not alter the always-open first category.
         progressStore.recordPass(lessonId: introLessons[0].id)
-        XCTAssertFalse(progression.isCategoryUnlocked("eighth"))
+        XCTAssertTrue(progression.isCategoryUnlocked("eighth"))
     }
 
     // MARK: - Task 7: Electronic Path Folded into Electronic Category
@@ -383,14 +388,13 @@ final class ProgressionTests: XCTestCase {
     func testCategoryProgressionStatusAndTitles() {
         let (progression, _, _) = makeIsolatedEnvironment()
 
-        let starterStatus = progression.status(for: "starter")
-        XCTAssertTrue(starterStatus.isFirstCategory)
-        XCTAssertTrue(starterStatus.isUnlocked)
+        let firstStatus = progression.status(for: "eighth")
+        XCTAssertTrue(firstStatus.isFirstCategory)
+        XCTAssertTrue(firstStatus.isUnlocked)
         // Default language is English (DECISIONS §19)
-        XCTAssertEqual(starterStatus.title, "First steps")
+        XCTAssertEqual(firstStatus.title, "Eighth-note grooves")
 
         // Test English titles
-        XCTAssertEqual(progression.title(for: "starter", language: .english), "First steps")
         XCTAssertEqual(progression.title(for: "eighth", language: .english), "Eighth-note grooves")
         XCTAssertEqual(progression.title(for: "sixteenth", language: .english), "Sixteenth-note grooves")
         XCTAssertEqual(progression.title(for: "electronic", language: .english), "Electronic styles")

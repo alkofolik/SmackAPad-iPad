@@ -18,7 +18,7 @@ final class IntroProgressMigrationTests: XCTestCase {
         var original = Dictionary(uniqueKeysWithValues: expectedMap.keys.map { id in
             (id, LessonProgress(passed: true, mastery: true, memory: true, currentBpm: 60 + id, bestScore: 0.9))
         })
-        original[6] = LessonProgress(hasPlayed: true, currentBpm: 72, bestScore: 0.4)
+        original[6] = LessonProgress(passed: true, mastery: true, memory: true, currentBpm: 100, bestScore: 0.94)
         let url = try progressFile(original)
         let store = ProgressStore(fileURL: url)
         for (removed, intro) in expectedMap {
@@ -26,6 +26,9 @@ final class IntroProgressMigrationTests: XCTestCase {
             XCTAssertEqual(store.progress(for: intro), original[removed])
         }
         XCTAssertEqual(store.progress(for: 6), original[6])
+        let introLesson = try XCTUnwrap(LessonStore.shared.libraryCatalog.introLessons.first { $0.id == 6 })
+        XCTAssertEqual(introLesson.cat, "intro")
+        XCTAssertTrue(store.progress(for: introLesson.id)?.memory == true)
         XCTAssertEqual(store.records.count, 9)
         XCTAssertNil(store.lastLoadError)
         XCTAssertNil(store.lastSaveError)

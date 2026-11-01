@@ -50,9 +50,9 @@ final class LibraryCatalogTests: XCTestCase {
         }
     }
 
-    func testStageOrderKeepsStarterFirstAndRoundRobinsFirstSeenGenres() {
+    func testStageOrderKeepsIntroFirstAndRoundRobinsFirstSeenGenres() {
         let input = [lesson(1, genre: "Jazz"), lesson(2, genre: "Rock"), lesson(3, genre: "Funk"),
-                     lesson(4, genre: "Jazz"), lesson(5, cat: "starter"), lesson(6, genre: "Punk"),
+                     lesson(4, genre: "Jazz"), lesson(5, cat: "intro"), lesson(6, genre: "Punk"),
                      lesson(7, cat: "intro"), lesson(8, genre: "Jazz")]
         XCTAssertEqual(LibraryCatalog.orderStage(input).map(\.id), [5, 7, 1, 2, 3, 4, 6, 8])
         XCTAssertEqual(input.map(\.id), Array(1...8))
@@ -74,12 +74,29 @@ final class LibraryCatalogTests: XCTestCase {
     func testBundledCatalogueHasSameLessonPopulationInAllViews() {
         let catalog = LessonStore.shared.libraryCatalog
         XCTAssertEqual(catalog.lessons.count, 587)
-        XCTAssertEqual(catalog.path.count, 575)
+        XCTAssertEqual(catalog.path.count, 574)
+        XCTAssertEqual(catalog.introLessons.count, 25)
+        XCTAssertEqual(catalog.lessons.filter { $0.id < 10000 }.count, 539)
+        XCTAssertFalse(catalog.lessons.contains { $0.cat == "starter" })
+        XCTAssertFalse(LessonStore.shared.categories.contains { $0.id == "starter" })
+        XCTAssertFalse(CategoryOrder.categories.contains("starter"))
+        XCTAssertTrue(LessonStore.shared.lessons(in: "starter").isEmpty)
+        XCTAssertEqual(LessonStore.shared.lesson(for: 6)?.cat, "intro")
+        XCTAssertEqual(catalog.introLessons.filter { $0.id == 6 }.count, 1)
+        XCTAssertEqual(catalog.introLessons.firstIndex { $0.id == 6 }, 20)
+        XCTAssertEqual(catalog.introLessons[19].id, 10020)
+        XCTAssertEqual(catalog.introLessons[21].id, 10021)
+        XCTAssertNil(catalog.stage(for: LessonStore.shared.lesson(for: 6)!))
+        for source in NextLessonSource.allCases {
+            XCTAssertFalse(catalog.candidates(after: catalog.path.first, source: source).contains { $0.id == 6 })
+        }
         XCTAssertEqual(catalog.stages.count, 23)
         for mode in LibraryViewMode.allCases {
             let ids = catalog.groups(in: mode).flatMap(\.lessons).map(\.id)
-            XCTAssertEqual(ids.count, 587)
-            XCTAssertEqual(Set(ids), Set(catalog.lessons.map(\.id)))
+            XCTAssertEqual(ids.count, 586)
+            XCTAssertFalse(ids.contains(6))
+            XCTAssertEqual(Set(ids), Set(catalog.lessons.filter { $0.id != 6 }.map(\.id)))
+            XCTAssertEqual(Set(ids).union(catalog.introLessons.map(\.id)), Set(catalog.lessons.map(\.id)))
         }
     }
 
@@ -110,11 +127,11 @@ final class LibraryCatalogTests: XCTestCase {
         progress.setProgress(LessonProgress(hasPlayed: true), for: 2, autoSave: false)
         XCTAssertTrue(manager.isLessonOpen(input[2]))
         XCTAssertFalse(manager.isLessonOpen(input[3]))
-        manager.requestSoftUnlock(for: "L1-ghost")
-        manager.cancelSoftUnlock()
+        manager.requestStageAccessChange(for: "L1-ghost", action: .unlock)
+        manager.cancelStageAccessChange()
         XCTAssertFalse(manager.isLessonOpen(input[3]))
-        manager.requestSoftUnlock(for: "L1-ghost")
-        manager.confirmSoftUnlock()
+        manager.requestStageAccessChange(for: "L1-ghost", action: .unlock)
+        manager.confirmStageAccessChange()
         XCTAssertTrue(manager.isLessonOpen(input[3]))
         let restored = ProgressionManager(lessonStore: manager.lessonStore, progressStore: progress,
                                           settingsManager: settings, userDefaults: manager.userDefaults)
@@ -128,6 +145,7 @@ final class LibraryCatalogTests: XCTestCase {
         let (manager, progress, settings) = try environment(input, oldUnlocks: ["swing"],
             oldProgress: Dictionary(uniqueKeysWithValues: starters.map { ($0.id, LessonProgress(passed: true)) }))
         XCTAssertTrue(manager.softUnlockedStages.contains("L2-groove"))
+        XCTAssertFalse(manager.canRelockStage(manager.catalog.stages.first { $0.id == "L2-groove" }!))
         XCTAssertTrue(manager.softUnlockedStages.contains("L4-swing"))
         XCTAssertFalse(manager.isLessonOpen(input[6]))
         manager.resetProgression()

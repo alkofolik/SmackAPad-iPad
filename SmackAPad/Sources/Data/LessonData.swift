@@ -163,7 +163,7 @@ public struct Lesson: Codable, Equatable, Identifiable, Sendable {
 }
 
 /// A category definition from `lessons-core.json`.
-/// Serialized as `["starter", "First steps"]`.
+/// Serialized as a category identifier and display title.
 public struct LessonCategory: Codable, Equatable, Hashable, Identifiable, Sendable {
     public let id: String
     public let title: String
@@ -675,6 +675,7 @@ public final class LessonStore: @unchecked Sendable {
     public static let shared = LessonStore()
 
     public private(set) var sources: [LessonContentSource] = []
+    /// Original source lessons remain available for historical category-access migration.
     public private(set) var lessons: [Lesson] = []
     public private(set) var categories: [LessonCategory] = []
     public private(set) var lessonsById: [Int: Lesson] = [:]
@@ -758,11 +759,11 @@ public final class LessonStore: @unchecked Sendable {
 
         self.lessons = mergedLessons
         self.libraryCatalog = LibraryCatalog(lessons: mergedLessons)
-        self.categories = mergedCategories
-        self.lessonsById = Dictionary(mergedLessons.map { ($0.id, $0) }, uniquingKeysWith: { _, new in new })
+        self.categories = mergedCategories.filter { $0.id != "starter" }
+        self.lessonsById = Dictionary(libraryCatalog.lessons.map { ($0.id, $0) }, uniquingKeysWith: { _, new in new })
 
         var byCat: [String: [Lesson]] = [:]
-        for lesson in mergedLessons {
+        for lesson in libraryCatalog.lessons {
             byCat[lesson.cat, default: []].append(lesson)
         }
         self.lessonsByCategory = byCat

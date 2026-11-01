@@ -13,7 +13,7 @@ Today a lesson counts toward unlocking as soon as it is **passed** (star 1 only)
 - One single place defines this (for example `ProgressStore.isCompleted(lessonId:)`). Stage unlocking from ticket 19 uses it everywhere it used `isPassed` for the unlock count.
 - The stage-opening threshold stays `min(ceil(lessons/2), 10)` for now; keep it as one named constant so it is easy to change after testing.
 - Unchanged: soft unlock (single tap + confirmation), the rule "a stage with an already played lesson is open", the always-open Intro, the 8-pad exclusion of lessons without a layout.
-- **Never re-lock**: anything already unlocked stays unlocked, even if the new rule would not unlock it now.
+- **Never re-lock**: earned, played and migration-snapshot access stays open; ticket 25B allows undoing a purely manual unlock while the stage has no stars, with inline confirmation.
 
 ## Texts in the Library
 

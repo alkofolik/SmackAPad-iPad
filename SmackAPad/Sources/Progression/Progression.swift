@@ -7,7 +7,6 @@
 
 import Foundation
 import Observation
-import SwiftUI
 
 // MARK: - Constants & Category Order
 
@@ -36,7 +35,6 @@ public enum ProgressionConstant {
 /// Canonical category order for progression (SPEC §3.7).
 public enum CategoryOrder {
     public static let categories: [String] = [
-        "starter",
         "eighth",
         "sixteenth",
         "electronic",
@@ -47,7 +45,7 @@ public enum CategoryOrder {
     ]
 
     /// The very first category, unlocked by default.
-    public static let initialUnlockedCategory: String = "starter"
+    public static let initialUnlockedCategory: String = "eighth"
 
     /// Returns the next category in progression order, or nil if already at the last category.
     public static func nextCategory(after category: String) -> String? {
@@ -132,8 +130,10 @@ public final class ProgressionManager: @unchecked Sendable {
     /// Categories manually unlocked by the user via soft unlock.
     public private(set) var softUnlockedCategories: Set<String> = []
 
-    /// Pending category for soft-unlock confirmation dialog.
+    /// Pending category for the compatibility category API; no modal presentation.
     public var categoryPendingSoftUnlock: String? = nil
+
+    private(set) var stageAccessConfirmation: StageAccessConfirmation?
 
     public private(set) var softUnlockedStages: Set<String> = []
     private static let stagesKey = "smackapad.settings.softUnlockedStages"
@@ -231,7 +231,7 @@ public final class ProgressionManager: @unchecked Sendable {
 
         let canonical = Self.canonicalCategory(forCategory: category)
 
-        // First category (starter) is always unlocked by default (Task 2)
+        // The first remaining category is accessible by default.
         if canonical == (categoryOrder.first ?? CategoryOrder.initialUnlockedCategory) {
             return true
         }
@@ -262,12 +262,12 @@ public final class ProgressionManager: @unchecked Sendable {
         let canonical = Self.canonicalCategory(forCategory: category)
         if canonical == "electronic" {
             // Direct electronic lessons + folded electronic path & extensions
-            return lessonStore.lessons.filter { Self.canonicalCategory(for: $0) == "electronic" }
+            return catalog.lessons.filter { Self.canonicalCategory(for: $0) == "electronic" }
         }
         if isIntro(category: category) {
-            return lessonStore.lessons.filter { $0.cat == ProgressionConstant.introCategoryId }
+            return catalog.introLessons
         }
-        return lessonStore.lessons.filter { $0.cat == category }
+        return catalog.lessons.filter { $0.cat == category }
     }
 
     /// Counts passed lessons in a category that are eligible under the specified pad mode.
@@ -339,8 +339,6 @@ public final class ProgressionManager: @unchecked Sendable {
             return lang.localized("Level %lld · %@", stage.level, lang.localized(stage.technique.title))
         }
         switch categoryId {
-        case "starter":
-            return lang.localized("First steps")
         case "eighth":
             return lang.localized("Eighth-note grooves")
         case "sixteenth":
@@ -411,7 +409,7 @@ public final class ProgressionManager: @unchecked Sendable {
         isSoftUnlocked(category)
     }
 
-    /// Requests a soft-unlock confirmation alert for the tapped category.
+    /// Requests confirmation for the compatibility category API.
     public func requestSoftUnlock(for category: String) {
         lock.lock()
         defer { lock.unlock() }
@@ -434,7 +432,7 @@ public final class ProgressionManager: @unchecked Sendable {
         categoryPendingSoftUnlock = nil
     }
 
-    /// Cancels the pending soft-unlock dialog.
+    /// Cancels a pending category confirmation.
     public func cancelSoftUnlock() {
         lock.lock()
         defer { lock.unlock() }
@@ -446,6 +444,7 @@ public final class ProgressionManager: @unchecked Sendable {
         lock.lock()
         defer { lock.unlock() }
         categoryPendingSoftUnlock = nil
+        stageAccessConfirmation = nil
         if clearSoftUnlocks {
             rememberedOpenStages.removeAll()
             userDefaults.removeObject(forKey: Self.openStagesKey)
@@ -456,23 +455,43 @@ public final class ProgressionManager: @unchecked Sendable {
         }
     }
 
-    // MARK: - Alert Strings
+    // MARK: - Inline stage confirmation
 
-    public var softUnlockAlertTitle: String {
-        let catTitle = categoryPendingSoftUnlock.map { title(for: $0) } ?? ""
-        return settingsManager.localized("Unlock \"%@\"?", catTitle)
+    func requestStageAccessChange(for stageID: String, action: StageAccessAction) {
+        lock.lock()
+        defer { lock.unlock() }
+        stageAccessConfirmation = nil
+        guard let stage = catalog.stages.first(where: { $0.id == stageID }) else { return }
+        guard action == .unlock ? !isStageOpen(stage) : canRelockStage(stage) else { return }
+        stageAccessConfirmation = StageAccessConfirmation(stageID: stageID, action: action)
     }
 
-    public var softUnlockAlertMessage: String {
-        settingsManager.localized("You can practice any stage at any time.")
+    func cancelStageAccessChange() { stageAccessConfirmation = nil }
+
+    /// Confirmation rechecks access because progress can change while the banner is visible.
+    func confirmStageAccessChange() {
+        lock.lock()
+        defer { lock.unlock() }
+        guard let pending = stageAccessConfirmation else { return }
+        stageAccessConfirmation = nil
+        guard let stage = catalog.stages.first(where: { $0.id == pending.stageID }) else { return }
+        switch pending.action {
+        case .unlock:
+            guard !isStageOpen(stage) else { return }
+            softUnlock(category: stage.id)
+        case .relock:
+            guard canRelockStage(stage) else { return }
+            softUnlockedStages.remove(stage.id)
+            userDefaults.set(Array(softUnlockedStages).sorted(), forKey: Self.stagesKey)
+        }
     }
 
-    public var softUnlockConfirmButtonTitle: String {
-        settingsManager.localized("Unlock")
-    }
-
-    public var softUnlockCancelButtonTitle: String {
-        settingsManager.localized("Cancel")
+    func canRelockStage(_ stage: LibraryStage) -> Bool {
+        lock.lock()
+        defer { lock.unlock() }
+        guard catalog.stages.contains(where: { $0.id == stage.id }),
+              softUnlockedStages.contains(stage.id), !isStageNaturallyOpen(stage) else { return false }
+        return !stage.lessons.contains { LibraryStarFilter.stars(progressStore.progress(for: $0.id)) > 0 }
     }
 
     // MARK: - Stage progression
@@ -492,7 +511,13 @@ public final class ProgressionManager: @unchecked Sendable {
         lock.lock()
         defer { lock.unlock() }
         guard catalog.stages.contains(where: { $0.id == stage.id }) else { return false }
-        if rememberedOpenStages.contains(stage.id) || softUnlockedStages.contains(stage.id) { return true }
+        // Evaluate natural access even when manually open, so later earned access is retained.
+        let naturallyOpen = isStageNaturallyOpen(stage)
+        return naturallyOpen || softUnlockedStages.contains(stage.id)
+    }
+
+    private func isStageNaturallyOpen(_ stage: LibraryStage) -> Bool {
+        if rememberedOpenStages.contains(stage.id) { return true }
         let requirement = unlockProgress(for: stage)
         let open = requirement.completed >= requirement.needed || wasStagePlayed(stage)
         if open { rememberOpenStages([stage.id]) }
@@ -550,9 +575,22 @@ public final class ProgressionManager: @unchecked Sendable {
     private func loadAndMigrateStages() {
         softUnlockedStages = Set(userDefaults.stringArray(forKey: Self.stagesKey) ?? [])
         guard !userDefaults.bool(forKey: Self.migrationKey), !lessonStore.lessons.isEmpty else { return }
-        // Preserve every previously accessible category, including automatic unlocks.
+        // Evaluate the historical chain, including the retired category, only for migration.
+        // The current category order must not grant access that old users never had.
         if !progressStore.records.isEmpty || !softUnlockedCategories.isEmpty {
-            let previouslyOpen = Set(categoryOrder.filter { isCategoryUnlocked($0) })
+            let legacyOrder = ["starter", "eighth", "sixteenth", "electronic", "ghost", "swing", "world", "fills"]
+            var previouslyOpen: Set<String> = []
+            for (index, category) in legacyOrder.enumerated() {
+                let previous = index > 0 ? legacyOrder[index - 1] : nil
+                let passed = lessonStore.lessons.filter {
+                    Self.canonicalCategory(for: $0) == previous && progressStore.isPassed(lessonId: $0.id)
+                        && (!settingsManager.activeProfile().isEightPad || EightPadLayout.slots(for: $0) != nil)
+                }.count
+                if index == 0 || softUnlockedCategories.contains(category)
+                    || (previous.map { previouslyOpen.contains($0) } == true && passed >= lessonsToUnlock) {
+                    previouslyOpen.insert(category)
+                }
+            }
             for stage in catalog.stages where stage.lessons.contains(where: {
                 previouslyOpen.contains(Self.canonicalCategory(for: $0))
             }) { softUnlockedStages.insert(stage.id) }
@@ -581,49 +619,11 @@ public final class ProgressionManager: @unchecked Sendable {
     }
 }
 
-// MARK: - SwiftUI Soft Unlock Alert Modifier
-
-/// SwiftUI view modifier to present the soft-unlock confirmation alert.
-public struct SoftUnlockAlertModifier: ViewModifier {
-    @Bindable var progression: ProgressionManager
-    var onUnlock: ((String) -> Void)?
-
-    public init(progression: ProgressionManager, onUnlock: ((String) -> Void)? = nil) {
-        self.progression = progression
-        self.onUnlock = onUnlock
-    }
-
-    public func body(content: Content) -> some View {
-        content
-            .alert(
-                progression.softUnlockAlertTitle,
-                isPresented: Binding(
-                    get: { progression.categoryPendingSoftUnlock != nil },
-                    set: { isPresented in
-                        if !isPresented {
-                            progression.cancelSoftUnlock()
-                        }
-                    }
-                )
-            ) {
-                Button(progression.softUnlockCancelButtonTitle, role: .cancel) {
-                    progression.cancelSoftUnlock()
-                }
-                Button(progression.softUnlockConfirmButtonTitle) {
-                    if let pending = progression.categoryPendingSoftUnlock {
-                        progression.confirmSoftUnlock()
-                        onUnlock?(pending)
-                    }
-                }
-            } message: {
-                Text(progression.softUnlockAlertMessage)
-            }
-    }
+enum StageAccessAction: Equatable {
+    case unlock, relock
 }
 
-public extension View {
-    /// Attaches the soft-unlock confirmation alert driven by `ProgressionManager`.
-    func softUnlockAlert(progression: ProgressionManager, onUnlock: ((String) -> Void)? = nil) -> some View {
-        modifier(SoftUnlockAlertModifier(progression: progression, onUnlock: onUnlock))
-    }
+struct StageAccessConfirmation: Equatable {
+    let stageID: String
+    let action: StageAccessAction
 }

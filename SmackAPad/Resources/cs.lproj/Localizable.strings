@@ -207,8 +207,8 @@
 "Hand coordination and alternation · lessons 5–8" = "Souhra a střídání levé a pravé ruky · lekce 5–8";
 "Eighth-note hi-hat patterns & stability · lessons 9–12" = "Osminový hi-hat doprovod a stabilita · lekce 9–12";
 "Syncopations, offbeats & clap · lessons 13–16" = "Synkopy, offbeaty a clap · lekce 13–16";
-"Dynamics, open hi-hat & rests · lessons 17–20" = "Dynamika, otevřený hi-hat a pauzy · lekce 17–20";
-"Snare and tom fills with clean return · lessons 21–24" = "Přechody na snare a tomy s návratem · lekce 21–24";
+"Dynamics, open hi-hat & rests · lessons 17–21" = "Dynamika, otevřený hi-hat a pauzy · lekce 17–21";
+"Snare and tom fills with clean return · lessons 22–25" = "Přechody na snare a tomy s návratem · lekce 22–25";
 "Other Intro Exercises" = "Další úvodní cvičení";
 "Intro Exercises" = "Úvodní cvičení";
 "INTRO SECTION RULES" = "PRAVIDLA ÚVODNÍ SEKCE";
@@ -222,7 +222,6 @@
 "yes" = "ano";
 "no" = "ne";
 "Not played" = "Nezahráno";
-"First steps" = "První kroky";
 "Eighth-note grooves" = "Osminové groovy";
 "Sixteenth-note grooves" = "Šestnáctinové groovy";
 "Electronic styles" = "Elektronické styly";
@@ -231,7 +230,6 @@
 "World rhythms" = "Světové rytmy";
 "Fills" = "Přechody";
 "Intro exercises" = "Úvodní cvičení";
-"Unlock \"%@\"?" = "Odemknout „%@“?";
 "You can practice any category at any time." = "Můžeš trénovat jakoukoli kategorii kdykoliv.";
 "High tom" = "Vysoký tom";
 "Low tom" = "Hluboký tom";
@@ -266,7 +264,6 @@
 "Technique" = "Technika";
 "All (easiest first)" = "Vše (od nejlehčích)";
 "Level %lld · %@" = "Úroveň %lld · %@";
-"You can practice any stage at any time." = "Kterýkoli stupeň můžeš trénovat kdykoli.";
 "Organise by" = "Uspořádat podle";
 "Extensions · outside the Path" = "Rozšíření · mimo Cestu";
 "Jersey club and Footwork" = "Jersey club a footwork";
@@ -307,3 +304,12 @@
 "Expanded" = "Rozbaleno";
 
 "Collapsed" = "Sbaleno";
+
+/* Ticket 25B: inline stage access and the retained Intro exercise. */
+"Really unlock %@?" = "Opravdu odemknout %@?";
+"Really lock %@ again?" = "Opravdu znovu zamknout %@?";
+"Yes, unlock" = "Ano, odemknout";
+"Yes, lock again" = "Ano, zamknout";
+"Lock again" = "Znovu zamknout";
+"Manually unlocked · no stars yet" = "Ručně odemčeno · zatím bez hvězd";
+"Keep offbeat open hats steady over the kick." = "Drž otevřenou hi-hatku pravidelně na „a“ mezi údery kopáku.";

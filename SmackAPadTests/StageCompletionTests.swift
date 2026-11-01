@@ -120,4 +120,79 @@ final class StageCompletionTests: XCTestCase {
         XCTAssertTrue(manager.isStageOpen(stage))
         XCTAssertEqual(manager.unlockProgress(for: stage).completed, 0)
     }
+
+    func testInlineUnlockAndRelockRequireConfirmationAndPersistWithoutChangingProgress() {
+        let manager = environment()
+        let stage = manager.catalog.stages[1]
+        let records = manager.progressStore.records
+        manager.confirmStageAccessChange()
+        XCTAssertFalse(manager.isStageOpen(stage))
+        manager.requestStageAccessChange(for: stage.id, action: .unlock)
+        XCTAssertEqual(manager.stageAccessConfirmation, StageAccessConfirmation(stageID: stage.id, action: .unlock))
+        XCTAssertFalse(manager.isStageOpen(stage))
+        manager.cancelStageAccessChange()
+        manager.confirmStageAccessChange()
+        XCTAssertFalse(manager.isStageOpen(stage))
+        manager.requestStageAccessChange(for: stage.id, action: .unlock)
+        manager.confirmStageAccessChange()
+        let restarted = restored(manager)
+        XCTAssertTrue(restarted.isStageOpen(stage))
+        XCTAssertTrue(restarted.canRelockStage(stage))
+        restarted.requestStageAccessChange(for: stage.id, action: .relock)
+        XCTAssertTrue(restarted.isStageOpen(stage))
+        restarted.cancelStageAccessChange()
+        restarted.confirmStageAccessChange()
+        XCTAssertTrue(restarted.isStageOpen(stage))
+        restarted.requestStageAccessChange(for: stage.id, action: .relock)
+        restarted.confirmStageAccessChange()
+        XCTAssertFalse(restored(restarted).isStageOpen(stage))
+        XCTAssertFalse(restarted.softUnlockedStages.contains(stage.id))
+        XCTAssertEqual(restarted.progressStore.records, records)
+        restarted.requestStageAccessChange(for: "intro", action: .relock)
+        XCTAssertNil(restarted.stageAccessConfirmation)
+        restarted.requestStageAccessChange(for: "unknown", action: .unlock)
+        XCTAssertNil(restarted.stageAccessConfirmation)
+    }
+
+    func testRelockRejectsEveryStarAndPlayedAccessAndRechecksBeforeConfirmation() {
+        for record in [LessonProgress(passed: true), LessonProgress(mastery: true),
+                       LessonProgress(memory: true), LessonProgress(hasPlayed: true)] {
+            let manager = environment()
+            let stage = manager.catalog.stages[1]
+            manager.softUnlock(category: stage.id)
+            manager.requestStageAccessChange(for: stage.id, action: .relock)
+            manager.progressStore.setProgress(record, for: 11, autoSave: false)
+            XCTAssertFalse(manager.canRelockStage(stage))
+            manager.confirmStageAccessChange()
+            XCTAssertTrue(manager.softUnlockedStages.contains(stage.id))
+            XCTAssertTrue(restored(manager).isStageOpen(stage))
+            manager.requestStageAccessChange(for: stage.id, action: .relock)
+            XCTAssertNil(manager.stageAccessConfirmation)
+        }
+    }
+
+    func testNaturalAndMigrationSnapshotAccessCannotBeRelocked() {
+        let manager = environment()
+        let stage = manager.catalog.stages[1]
+        let first = manager.catalog.stages[0]
+        manager.softUnlock(category: first.id)
+        XCTAssertFalse(manager.canRelockStage(first))
+        manager.softUnlock(category: stage.id)
+        manager.requestStageAccessChange(for: stage.id, action: .relock)
+        for id in 1...5 { manager.progressStore.recordPass(lessonId: id, mastery: true, autoSave: false) }
+        manager.confirmStageAccessChange()
+        XCTAssertTrue(manager.softUnlockedStages.contains(stage.id))
+        XCTAssertFalse(manager.canRelockStage(stage))
+        for id in 1...5 { manager.progressStore.setProgress(LessonProgress(), for: id, autoSave: false) }
+        XCTAssertFalse(restored(manager).canRelockStage(stage))
+
+        let migrated = environment(oldProgress: Dictionary(uniqueKeysWithValues:
+            (1...5).map { ($0, LessonProgress(passed: true)) }))
+        let oldStage = migrated.catalog.stages[1]
+        migrated.softUnlock(category: oldStage.id)
+        XCTAssertFalse(migrated.canRelockStage(oldStage))
+        migrated.requestStageAccessChange(for: oldStage.id, action: .relock)
+        XCTAssertNil(migrated.stageAccessConfirmation)
+    }
+
 }

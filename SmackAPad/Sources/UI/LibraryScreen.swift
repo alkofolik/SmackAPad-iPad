@@ -47,19 +47,18 @@ struct LibraryScreen: View {
         .navigationSplitViewStyle(.balanced)
         .font(Theme.control)
         .background(Theme.background).foregroundStyle(Theme.ink).tint(Theme.orange)
-        .softUnlockAlert(progression: progression) { stage in
-            settings.libraryView = LibraryViewMode.path.id
-            selections[LibraryViewMode.path.id] = stage
-            showingIntro = false
-        }
         .sheet(isPresented: $showingSettings) { SettingsView() }
         .fullScreenCover(item: $selectedLesson) { lesson in
             PracticeScreen(lesson: lesson, settings: settings, progress: progress, midi: midi)
         }
-        .onChange(of: settings.libraryView) { _, _ in query = ""; cross = ""; showingIntro = false }
+        .onChange(of: settings.libraryView) { _, _ in
+            query = ""; cross = ""; showingIntro = false; progression.cancelStageAccessChange()
+        }
+        .onChange(of: group?.id) { _, _ in progression.cancelStageAccessChange() }
+        .onChange(of: showingIntro) { _, _ in progression.cancelStageAccessChange() }
     }
 
-    private var introLessons: [Lesson] { lessonStore.lessons.filter { $0.cat == "intro" } }
+    private var introLessons: [Lesson] { catalog.introLessons }
 
     private var sidebar: some View {
         List {
@@ -189,8 +188,8 @@ struct LibraryScreen: View {
                     .frame(minHeight: Theme.Size.touch)
                     .foregroundStyle(Theme.black).background(Theme.orange).disabled(next == nil)
             }
-            if let stage = group.stage, !progression.isStageOpen(stage) {
-                lockedBanner(stage).id("stage-lock")
+            if let stage = group.stage, !progression.isStageOpen(stage) || progression.canRelockStage(stage) {
+                stageBanner(stage).id("stage-lock")
             }
             filters(matching: matching, shown: filtered.count, total: group.lessons.count)
             List {
@@ -278,14 +277,27 @@ struct LibraryScreen: View {
         return settings.localized(title ?? "All")
     }
 
-    private func lockedBanner(_ stage: LibraryStage) -> some View {
+    private func stageBanner(_ stage: LibraryStage) -> some View {
         let requirement = progression.unlockProgress(for: stage)
         let message = settings.localized("Earn 2 stars in %lld lessons in %@ to open this", requirement.needed,
                                         requirement.previous.map { progression.title(for: $0.id) } ?? "")
-        return InfoBanner(text: "\(message) · \(requirement.completed)/\(requirement.needed)", symbol: "lock",
-                          actionTitle: settings.localized("Unlock")) {
-            progression.requestSoftUnlock(for: stage.id)
-        }
+        let confirmation = progression.stageAccessConfirmation
+        let pending = confirmation?.stageID == stage.id
+        let relock = progression.canRelockStage(stage)
+        let text = pending
+            ? settings.localized(confirmation?.action == .relock ? "Really lock %@ again?" : "Really unlock %@?",
+                                 progression.title(for: stage.id))
+            : relock ? settings.localized("Manually unlocked · no stars yet")
+            : "\(message) · \(requirement.completed)/\(requirement.needed)"
+        return InfoBanner(text: text, symbol: relock ? "lock.open" : "lock",
+                          actionTitle: settings.localized(pending
+                              ? (confirmation?.action == .relock ? "Yes, lock again" : "Yes, unlock")
+                              : (relock ? "Lock again" : "Unlock")),
+                          action: {
+            if pending { progression.confirmStageAccessChange() }
+            else { progression.requestStageAccessChange(for: stage.id, action: relock ? .relock : .unlock) }
+        }, secondaryActionTitle: pending ? settings.localized("Cancel") : nil,
+                          secondaryAction: { progression.cancelStageAccessChange() })
         .sensoryFeedback(.selection, trigger: bannerPulse)
         .keyframeAnimator(initialValue: 0.0, trigger: bannerPulse) { content, opacity in
             content.overlay(Rectangle().stroke(Theme.orange.opacity(opacity), lineWidth: Theme.Size.border))

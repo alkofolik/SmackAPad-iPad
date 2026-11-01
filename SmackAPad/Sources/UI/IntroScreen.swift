@@ -33,9 +33,9 @@ enum IntroStage: String, CaseIterable, Identifiable {
         case .grooveVariations:
             return language.localized("Syncopations, offbeats & clap · lessons 13–16")
         case .controlAndDetail:
-            return language.localized("Dynamics, open hi-hat & rests · lessons 17–20")
+            return language.localized("Dynamics, open hi-hat & rests · lessons 17–21")
         case .firstFills:
-            return language.localized("Snare and tom fills with clean return · lessons 21–24")
+            return language.localized("Snare and tom fills with clean return · lessons 22–25")
         }
     }
 }
@@ -56,8 +56,7 @@ public struct IntroScreen: View {
     }
 
     private var introLessons: [Lesson] {
-        store.lessons.filter { $0.cat == "intro" }
-            .sorted { ($0.intro?.number ?? $0.id) < ($1.intro?.number ?? $1.id) }
+        store.libraryCatalog.introLessons
     }
 
     private var passedCount: Int {
@@ -109,7 +108,7 @@ public struct IntroScreen: View {
 
     private func exerciseRow(_ lesson: Lesson) -> some View {
         LibraryLessonRow(lesson: lesson, settings: settings, progress: progress,
-                         number: lesson.intro?.number ?? lesson.id,
+                         number: (introLessons.firstIndex { $0.id == lesson.id } ?? 0) + 1,
                          introGoal: (lesson.intro?.goal).map { settings.localized($0) }) {
             onSelect(lesson)
         }

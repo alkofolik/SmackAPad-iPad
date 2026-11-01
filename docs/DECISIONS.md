@@ -120,7 +120,7 @@ Sample kit licenses (AVL Acoustic, Fischer 808, Groove MIDI Dataset, etc.) have 
 
 Ticket 19 replaces category access with the legacy Path: five levels, split by technique (levels 4–5 omit basic groove), with empty stages omitted. A stage opens after `min(ceil(previous stage lesson count / 2), 10)` two-star completions (`passed && mastery`; memory optional, ticket 21) in its immediate predecessor, or if any lesson in the stage was already played. The first stage and the separate Intro entry point are always accessible. Jersey club and Footwork remain accessible extensions outside the Path.
 
-**Soft unlock**: one tap plus confirmation opens the whole stage. Path, Genres, and Techniques share this access policy. A one-time migration preserves stages containing lessons in previously accessible categories, including saved manual category unlocks and automatic category access; saved progress is retained. New progress records distinguish actual playing from merely saving a tempo. Old records conservatively retain access when they contain saved tempo or results.
+**Soft unlock**: the stage banner is the only unlock surface, with inline Yes/Cancel confirmation; purely manual unlocks may be undone while the stage has no stars and no played, earned or migration-snapshot access (ticket 25B). Path, Genres, and Techniques share this access policy. A one-time migration preserves stages containing lessons in previously accessible categories, including saved manual category unlocks and automatic category access; saved progress is retained. New progress records distinguish actual playing from merely saving a tempo. Old records conservatively retain access when they contain saved tempo or results.
 
 Ticket 21 preserves all previously open stages through a one-time migration and persists future stage openings; lessons without an 8-pad layout are excluded from completion counts in 8-pad mode.
 
@@ -128,7 +128,7 @@ Library organisation and multi-select star filters are remembered. “Next lesso
 
 ## 16. Intro: separate, always accessible
 
-The 24 intro exercises are a separate section, always accessible (no unlock needed). Recommended as a starting point for beginners but never forced. Stricter pass threshold (80%) and 0 errors for mastery.
+The 25 projected Intro exercises are a separate section, always accessible (no unlock needed); ticket 25B moves core lesson 6 to the end of Control and detail (65 → 100 BPM), excludes it from Library/Path, and removes First steps without changing bundled data or saved IDs. Recommended as a starting point for beginners but never forced. Stricter pass threshold (80%) and 0 errors for mastery.
 
 ## 17. Electronic path: integrated, not separate
 
