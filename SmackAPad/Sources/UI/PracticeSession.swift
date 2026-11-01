@@ -2,6 +2,11 @@ import AVFoundation
 import Darwin
 import Observation
 
+struct StarEvent: Identifiable {
+    let id = UUID()
+    let award: StarAward
+}
+
 /// Owns one continuous practice run, with native host times shared by sound and scoring.
 /// The view only reads position; display refreshes never determine audible note times.
 @MainActor
@@ -15,6 +20,7 @@ final class PracticeSession {
     private(set) var passNumber = 1
     private(set) var lastResult: ScoringResult?
     private(set) var summary: RunSummary?
+    private(set) var starEvent: StarEvent?
     private(set) var errorMessage: String?
     private(set) var barVerdicts: [Int: BarVerdict] = [:]
     @ObservationIgnored private var judgmentsByPass: [Int: [LessonHit: HitJudgment]] = [:]
@@ -50,6 +56,7 @@ final class PracticeSession {
     @ObservationIgnored private var earnedPass = false
     @ObservationIgnored private var earnedMastery = false
     @ObservationIgnored private var earnedMemory = false
+    @ObservationIgnored private var stopAfterStar = false
     @ObservationIgnored private var prepared = false
     @ObservationIgnored private var active = false
 
@@ -159,6 +166,8 @@ final class PracticeSession {
             errorMessage = nil
             summary = nil
             lastResult = nil
+            starEvent = nil
+            stopAfterStar = false
             tempo.reset()
             barVerdicts = [:]
             judgmentsByPass = [:]
@@ -187,7 +196,10 @@ final class PracticeSession {
     func stop() {
         guard running else { return }
         // Credit complete passes only; stopping halfway cannot earn a star.
-        finishCompleted(at: now)
+        // An automatic stop already credited the winning pass. Discard everything
+        // queued after it, even if the app was delayed long enough to finish it.
+        if !stopAfterStar { finishCompleted(at: now) }
+        stopAfterStar = false
         running = false
         countdown = nil
         task?.cancel(); task = nil
@@ -239,6 +251,10 @@ final class PracticeSession {
     private func tick() {
         let time = now
         finishCompleted(at: time)
+        if stopAfterStar {
+            stop()
+            return
+        }
         let horizon = time + 0.5
         // Results arrive after the next pass has been queued. Advance from the
         // last queued tempo, never from an earlier pass's slower clock.
@@ -296,12 +312,17 @@ final class PracticeSession {
             earnedMastery = earnedMastery || (!isSectionLoop && result.mastery)
             earnedMemory = earnedMemory || memory
             if !isSectionLoop {
+                let award = StarAward(previous: progress.progress(for: lesson.id),
+                                      passed: result.passed, mastery: result.mastery, memory: memory)
                 progress.recordResult(lessonId: lesson.id, passed: result.passed, mastery: result.mastery,
                                       bpm: result.bpm, score: Float(result.score), memory: memory, autoSave: false)
+                if award.fresh.contains(true) { starEvent = StarEvent(award: award) }
+                stopAfterStar = award.shouldStop
             }
             // currentBpm is a preference, including manually lowered tempos.
             saveTempo()
             if let error = progress.lastSaveError { errorMessage = error.localizedDescription }
+            if stopAfterStar { return }
         }
     }
 
