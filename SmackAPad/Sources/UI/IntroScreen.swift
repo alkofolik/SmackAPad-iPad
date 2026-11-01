@@ -46,10 +46,14 @@ enum IntroStage: String, CaseIterable, Identifiable {
 public struct IntroScreen: View {
     @Environment(SettingsManager.self) private var settings
     @Environment(ProgressStore.self) private var progress
-    @Environment(MIDIInput.self) private var midi
     @State private var store = LessonStore.shared
 
-    public init() {}
+    /// Called when the user taps an exercise. The host presents the practice screen.
+    let onSelect: (Lesson) -> Void
+
+    public init(onSelect: @escaping (Lesson) -> Void) {
+        self.onSelect = onSelect
+    }
 
     private var czech: Bool { settings.languagePreference == .czech }
 
@@ -80,8 +84,8 @@ public struct IntroScreen: View {
                 if !stageLessons.isEmpty {
                     Section {
                         ForEach(stageLessons) { lesson in
-                            NavigationLink {
-                                PracticeScreen(lesson: lesson, settings: settings, progress: progress, midi: midi)
+                            Button {
+                                onSelect(lesson)
                             } label: {
                                 IntroExerciseRow(
                                     lesson: lesson,
@@ -112,8 +116,8 @@ public struct IntroScreen: View {
             if !remaining.isEmpty {
                 Section(czech ? "Další úvodní cvičení" : "Other Intro Exercises") {
                     ForEach(remaining) { lesson in
-                        NavigationLink {
-                            PracticeScreen(lesson: lesson, settings: settings, progress: progress, midi: midi)
+                        Button {
+                            onSelect(lesson)
                         } label: {
                             IntroExerciseRow(
                                 lesson: lesson,

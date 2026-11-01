@@ -25,7 +25,7 @@ struct LibraryScreen: View {
                 .navigationTitle(czech ? "Knihovna" : "Library")
                 .navigationSplitViewColumnWidth(min: 280, ideal: 320, max: 380)
         } detail: {
-            detailView
+            detailContent
                 .toolbar {
                     ToolbarItem(placement: .topBarTrailing) {
                         Button(czech ? "Nastavení" : "Settings") { showingMIDI = true }
@@ -172,6 +172,15 @@ struct LibraryScreen: View {
     }
 
     // MARK: - Detail
+
+    @ViewBuilder
+    private var detailContent: some View {
+        if selectedCategoryId == ProgressionConstant.introCategoryId {
+            IntroScreen { selectedLesson = $0 }
+        } else {
+            detailView
+        }
+    }
 
     private var detailView: some View {
         let isUnlocked = progression.isCategoryUnlocked(selectedCategoryId)

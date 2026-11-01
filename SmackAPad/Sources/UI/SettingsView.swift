@@ -19,6 +19,7 @@ public struct SettingsView: View {
     @State private var profileToDelete: ControllerProfile?
     @State private var showingDeleteAlert = false
     @State private var kits: [SampleKit] = []
+    @AppStorage("smackapad.practice.showPads") private var showPads = true
 
     private var czech: Bool { settings.languagePreference == .czech }
     private func label(_ cs: String, _ en: String) -> String { czech ? cs : en }
@@ -65,6 +66,20 @@ public struct SettingsView: View {
                 } footer: {
                     Text(label("Po každém čistém průchodu se tempo automaticky zvýší o zvolený počet BPM až do cílového tempa.",
                                "Tempo automatically increases by this step after each clean pass until target tempo."))
+                        .font(Theme.text(Theme.Size.dense))
+                        .foregroundStyle(Theme.secondary)
+                }
+
+                // MARK: 2b. Pad layout on the practice screen
+                Section {
+                    Toggle(label("Malá mapa padů", "Small pad layout"), isOn: $showPads)
+                } header: {
+                    Text(label("OBRAZOVKA CVIČENÍ", "PRACTICE SCREEN"))
+                        .font(Theme.text(Theme.Size.dense))
+                        .foregroundStyle(Theme.orange)
+                } footer: {
+                    Text(label("Zobrazí v lekci malé rozložení padů, na kterém se rozsvěcují stisknuté pady.",
+                               "Shows a small pad layout in the lesson that lights up the pads you hit."))
                         .font(Theme.text(Theme.Size.dense))
                         .foregroundStyle(Theme.secondary)
                 }
