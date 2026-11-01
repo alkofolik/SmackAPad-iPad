@@ -32,6 +32,7 @@ public struct SettingsView: View {
                 // MARK: 1. Kit Selection
                 Section {
                     Picker(settings.localized("Sound kit"), selection: $settings.selectedKitId) {
+                        Text(settings.localized("Automatic")).tag("auto")
                         ForEach(kits) { kit in
                             Text(kit.name).tag(kit.kitId)
                         }

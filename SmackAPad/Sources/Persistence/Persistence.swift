@@ -16,6 +16,7 @@ import UIKit
 /// Clean, namespaced keys for UserDefaults storage (no legacy prefixes).
 public enum SettingsKey: String, CaseIterable, Sendable {
     case selectedKitId = "smackapad.settings.selectedKitId"
+    case lessonKitOverrides = "smackapad.settings.lessonKitOverrides"
     case bpmStep = "smackapad.settings.bpmStep"
     case activeProfileName = "smackapad.settings.activeProfileName"
     case calibrationOffsets = "smackapad.settings.calibrationOffsets"
@@ -92,7 +93,7 @@ public final class SettingsManager: @unchecked Sendable {
 
     // MARK: Defaults
 
-    public static let defaultKitId = "acoustic"
+    public static let defaultKitId = "auto"
     public static let defaultBpmStep: Int = BpmStep.defaultStep.rawValue
     public static let defaultProfileName = "Standard 16-Pad"
     public static let defaultLanguage: AppLanguage = .english
@@ -102,6 +103,12 @@ public final class SettingsManager: @unchecked Sendable {
     public var selectedKitId: String {
         didSet {
             persistKitId()
+        }
+    }
+
+    public var lessonKitOverrides: [Int: String] {
+        didSet {
+            persistLessonKitOverrides()
         }
     }
 
@@ -211,6 +218,20 @@ public final class SettingsManager: @unchecked Sendable {
         let initialKitId = userDefaults.string(forKey: SettingsKey.selectedKitId.rawValue) ?? Self.defaultKitId
         self.selectedKitId = initialKitId
 
+        // Read lesson kit overrides
+        if let data = userDefaults.data(forKey: SettingsKey.lessonKitOverrides.rawValue),
+           let overrides = try? JSONDecoder().decode([Int: String].self, from: data) {
+            self.lessonKitOverrides = overrides
+        } else if let rawDict = userDefaults.dictionary(forKey: SettingsKey.lessonKitOverrides.rawValue) as? [String: String] {
+            var converted: [Int: String] = [:]
+            for (k, v) in rawDict {
+                if let id = Int(k) { converted[id] = v }
+            }
+            self.lessonKitOverrides = converted
+        } else {
+            self.lessonKitOverrides = [:]
+        }
+
         // Read BPM step (1, 2, 5, or 10)
         let rawStep = userDefaults.integer(forKey: SettingsKey.bpmStep.rawValue)
         self.bpmStep = (rawStep > 0 && BpmStep(rawValue: rawStep) != nil) ? rawStep : Self.defaultBpmStep
@@ -249,6 +270,14 @@ public final class SettingsManager: @unchecked Sendable {
         lock.lock()
         defer { lock.unlock() }
         userDefaults.set(selectedKitId, forKey: SettingsKey.selectedKitId.rawValue)
+    }
+
+    private func persistLessonKitOverrides() {
+        lock.lock()
+        defer { lock.unlock() }
+        if let data = try? JSONEncoder().encode(lessonKitOverrides) {
+            userDefaults.set(data, forKey: SettingsKey.lessonKitOverrides.rawValue)
+        }
     }
 
     private func persistBpmStep() {
@@ -369,6 +398,29 @@ public final class SettingsManager: @unchecked Sendable {
         return result
     }
 
+    // MARK: - Lesson Kit Override Management
+
+    /// Returns any sound kit override set for the given lesson ID, or nil if none.
+    public func kitOverride(for lessonId: Int) -> String? {
+        lock.lock()
+        defer { lock.unlock() }
+        return lessonKitOverrides[lessonId]
+    }
+
+    /// Sets or clears a sound kit override for a lesson.
+    /// Setting "auto", empty, or nil removes the override.
+    public func setKitOverride(_ kitId: String?, for lessonId: Int) {
+        lock.lock()
+        defer { lock.unlock() }
+        var updated = lessonKitOverrides
+        if let kitId = kitId, kitId != "auto" && !kitId.isEmpty {
+            updated[lessonId] = kitId
+        } else {
+            updated.removeValue(forKey: lessonId)
+        }
+        self.lessonKitOverrides = updated
+    }
+
     /// Resets all settings to factory defaults.
     public func resetToDefaults() {
         lock.lock()
@@ -377,6 +429,7 @@ public final class SettingsManager: @unchecked Sendable {
             userDefaults.removeObject(forKey: key.rawValue)
         }
         self.selectedKitId = Self.defaultKitId
+        self.lessonKitOverrides = [:]
         self.bpmStep = Self.defaultBpmStep
         self.activeProfileName = Self.defaultProfileName
         self.calibrationOffsets = [:]

@@ -123,6 +123,21 @@ final class PracticeSession {
 
     var hits: [LessonHit] { lesson.hits(forPadCount: midi.activeProfile.padCount) }
     var kits: [SampleKit] { audio.availableKits }
+    var availableKitsDict: [String: SampleKit] {
+        Dictionary(uniqueKeysWithValues: kits.map { ($0.kitId, $0) })
+    }
+    var resolvedKitId: String {
+        SoundKitResolver.resolveKitId(for: lesson, settings: settings, kits: availableKitsDict)
+    }
+    var automaticKitPickerLabel: String {
+        let resolved = SoundKitResolver.resolve(for: lesson, settings: settings, kits: availableKitsDict)
+        return settings.localized("Automatic · %@", resolved.kitShortName)
+    }
+
+    func applyResolvedKit() {
+        guard ready, !running else { return }
+        try? audio.selectKit(resolvedKitId)
+    }
     var isSectionLoop: Bool { loopStartBar != 0 || loopEndBar != lesson.bars - 1 }
     var practiceLesson: Lesson {
         guard isSectionLoop else { return lesson }
@@ -167,7 +182,7 @@ final class PracticeSession {
             try await Task.detached(priority: .userInitiated) { try engine.prepare() }.value
             guard !Task.isCancelled, active else { audio.stop(); return }
             prepared = true
-            try audio.selectKit(settings.selectedKitId)
+            try audio.selectKit(resolvedKitId)
             try audio.start()
             ready = true
         } catch { errorMessage = error.localizedDescription }
@@ -182,7 +197,7 @@ final class PracticeSession {
     func start() {
         guard ready, !running, available else { return }
         do {
-            try audio.selectKit(settings.selectedKitId)
+            try audio.selectKit(resolvedKitId)
             try audio.start()
             audio.logTiming("practice-start")
             errorMessage = nil

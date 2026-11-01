@@ -380,7 +380,14 @@ private struct PracticeTools: View {
                 Picker(settings.localized("Tempo step after a clean pass"), selection: $settings.bpmStep) {
                     ForEach(BpmStep.allCases) { step in Text("+\(step.rawValue) BPM").tag(step.rawValue) }
                 }.disabled(session.running)
-                Picker(settings.localized("Sound kit"), selection: $settings.selectedKitId) {
+                Picker(settings.localized("Sound kit"), selection: Binding(
+                    get: { settings.kitOverride(for: session.lesson.id) ?? "auto" },
+                    set: { newValue in
+                        settings.setKitOverride(newValue == "auto" ? nil : newValue, for: session.lesson.id)
+                        session.applyResolvedKit()
+                    }
+                )) {
+                    Text(session.automaticKitPickerLabel).tag("auto")
                     ForEach(session.kits) { kit in Text(kit.name).tag(kit.kitId) }
                 }.disabled(session.running)
             }

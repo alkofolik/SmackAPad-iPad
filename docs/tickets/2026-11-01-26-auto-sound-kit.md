@@ -1,6 +1,6 @@
 # 26 — Sound kit "Automatic" (default) and per-lesson choice
 
-Status: ready-for-agent (2026-11-01). Independent of 24 and 25; can run in parallel with them (touches Settings, Persistence, Audio selection only).
+Status: ready-for-test (2026-11-01). Independent of 24 and 25; can run in parallel with them (touches Settings, Persistence, Audio selection only).
 
 ## Goal
 
@@ -44,11 +44,11 @@ Resolution order (override beats global beats auto); each genre in the table map
 
 ## Acceptance criteria
 
-- [ ] Settings shows Automatic first and it is selected on a fresh install.
-- [ ] A rock lesson and a house lesson play with different kits without any user action.
-- [ ] A per-lesson override survives restart and can be cleared.
-- [ ] A user who had chosen a kit before keeps it.
-- [ ] Build succeeds, new tests pass.
+- [x] Settings shows Automatic first and it is selected on a fresh install.
+- [x] A rock lesson and a house lesson play with different kits without any user action.
+- [x] A per-lesson override survives restart and can be cleared.
+- [x] A user who had chosen a kit before keeps it.
+- [x] Build succeeds, new tests pass.
 - [ ] **iPad test (Jakub)**: listen to 5 lessons of different genres on Automatic.
 
 ## Agent assignment

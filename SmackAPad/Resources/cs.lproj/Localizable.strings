@@ -293,3 +293,6 @@
 "Next: %@" = "Další: %@";
 "For the 3rd star, turn on From memory" = "Pro 3. hvězdu zapni Z paměti";
 "Lesson stars" = "Hvězdy lekce";
+
+"Automatic" = "Automaticky";
+"Automatic · %@" = "Automaticky · %@";

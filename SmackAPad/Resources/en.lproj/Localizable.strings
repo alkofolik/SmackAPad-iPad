@@ -293,3 +293,6 @@
 "Next: %@" = "Next: %@";
 "For the 3rd star, turn on From memory" = "For the 3rd star, turn on From memory";
 "Lesson stars" = "Lesson stars";
+
+"Automatic" = "Automatic";
+"Automatic · %@" = "Automatic · %@";
