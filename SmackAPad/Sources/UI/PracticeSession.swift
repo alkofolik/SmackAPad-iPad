@@ -138,6 +138,7 @@ final class PracticeSession {
                       src: lesson.src, hits: slice(lesson.hits), hits8: lesson.hits8.map(slice),
                       eightNote: lesson.eightNote, intro: lesson.intro)
     }
+    var savedProgress: LessonProgress? { progress.progress(for: lesson.id) }
     var patternHits: [LessonHit] { practiceLesson.hits(forPadCount: midi.activeProfile.padCount) }
     var starRunProgress: (count: Int, required: Int, name: String)? {
         guard running, !listen, !isSectionLoop else { return nil }

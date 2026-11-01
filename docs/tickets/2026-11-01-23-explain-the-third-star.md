@@ -1,6 +1,6 @@
 # 23 — Make it clear how to earn the third star
 
-Status: ready-for-agent (2026-11-01). **Start only after tickets 18, 21 and 22 are finished and committed** (touches the practice screen and the Library row).
+Status: ready-for-ipad-test (2026-11-01). Implementation, unit tests, and simulator build complete.
 
 ## Goal
 
@@ -35,9 +35,9 @@ Three colours only (orange, black, white); state by icon and shape. Touch target
 
 ## Acceptance criteria
 
-- [ ] A student who has 2 stars sees how to get the third one on the result screen and in the Library.
-- [ ] The hint on the practice screen appears once and does not interrupt playing.
-- [ ] Build succeeds, tests pass.
+- [x] A student who has 2 stars sees how to get the third one on the result screen and in the Library.
+- [x] The hint on the practice screen appears once and does not interrupt playing.
+- [x] Build succeeds, tests pass.
 - [ ] **iPad check (Jakub)**: the wording is understandable without explanation.
 
 ## Agent assignment
@@ -48,3 +48,14 @@ Three colours only (orange, black, white); state by icon and shape. Touch target
 ## Done rule
 
 Stop after successful build and tests. Commit after the task.
+
+## Implementation and validation (2026-11-01)
+
+- Added shared helper `StarRequirement` (`SmackAPad/Sources/UI/StarRequirement.swift`) returning the next missing star index, requirement descriptions per star, and the formatted next-star guidance with single or consecutive required runs (`requiredRuns`).
+- Integrated into:
+  1. Result screen / summary strip (`SummaryStrip` in `PracticeComponents.swift` & `PracticeScreen.swift`): line under stars shows the next missing star requirement (or nothing when 3 stars are earned).
+  2. Practice screen (`PracticeScreen.swift`): non-modal quiet callout pointing to From memory control when star 2 is earned and star 3 is missing; recorded per lesson in `SettingsManager` to appear at most once per lesson and never block play.
+  3. Library row (`LibraryLessonRow` in `LibraryScreen.swift`): tapping the stars opens a popover showing the three star lines with their status (earned marked by shape/icon) and min 44 pt touch target.
+- Added localization strings in `en.lproj` and `cs.lproj`.
+- Added unit tests in `SmackAPadTests/StarRequirementTests.swift` covering 0, 1, 2, and 3 stars with single and multiple required runs in both English and Czech. All 4 tests passed on the iOS Simulator (`iPad Air 11-inch (M4)`).
+- Final build succeeded for iOS Simulator without errors.

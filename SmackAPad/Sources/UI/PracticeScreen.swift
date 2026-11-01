@@ -15,6 +15,7 @@ struct PracticeScreen: View {
     @State private var showingTempo = false
     @State private var showingDetails = false
     @State private var showingMIDI = false
+    @State private var showingMemoryHint = false
 
     init(lesson: Lesson, settings: SettingsManager, progress: ProgressStore, midi: MIDIInput) {
         _session = State(initialValue: PracticeSession(lesson: lesson, settings: settings, progress: progress, midi: midi))
@@ -56,12 +57,24 @@ struct PracticeScreen: View {
             .foregroundStyle(Theme.ink)
         }
         .toolbar(.hidden, for: .navigationBar)
-        .task { await session.prepare() }
-        .onDisappear { session.close() }
+        .task {
+            await session.prepare()
+            checkMemoryHint()
+        }
+        .onDisappear {
+            dismissMemoryHint()
+            session.close()
+        }
         .onChange(of: scenePhase) { _, phase in
             if phase == .active { session.resume() } else { session.suspend() }
         }
         .onChange(of: settings.activeProfileName) { _, _ in session.stop() }
+        .onChange(of: session.running) { _, running in
+            if running { dismissMemoryHint() } else { checkMemoryHint() }
+        }
+        .onChange(of: session.fromMemory) { _, memory in
+            if memory { dismissMemoryHint() }
+        }
         .onChange(of: showingMIDI) { _, showing in
             if showing { session.suspend() }
         }
@@ -116,9 +129,18 @@ struct PracticeScreen: View {
             .buttonStyle(InstrumentButtonStyle(selected: !scrolling))
             .accessibilityLabel(settings.localized("Static view, bar count"))
             icon(.scrolling, settings.localized("Scrolling view"), selected: scrolling) { scrolling = true }
-            icon(.eye, settings.localized("From memory"), selected: session.fromMemory) { session.fromMemory.toggle() }
+            icon(.eye, settings.localized("From memory"), selected: session.fromMemory) {
+                dismissMemoryHint()
+                session.fromMemory.toggle()
+            }
                 .disabled(session.running)
                 .accessibilityValue(session.fromMemory ? settings.localized("On") : settings.localized("Off"))
+                .overlay(alignment: .bottom) {
+                    if showingMemoryHint {
+                        memoryHintCallout
+                            .alignmentGuide(.bottom) { d in d[.top] - 6 }
+                    }
+                }
             icon(.legend, settings.localized("Legend")) { showingLegend.toggle() }
                 .popover(isPresented: $showingLegend, arrowEdge: .top) { legend }
             icon(.tools, settings.localized("More tools")) { showingTools.toggle() }
@@ -227,7 +249,9 @@ struct PracticeScreen: View {
 
     private var transport: some View {
         TransportControls(running: session.running, enabled: session.ready && session.available,
-                          start: session.start, stop: session.stop, restart: session.restart)
+                          start: { dismissMemoryHint(); session.start() },
+                          stop: session.stop,
+                          restart: { dismissMemoryHint(); session.restart() })
     }
 
     @ViewBuilder
@@ -236,7 +260,13 @@ struct PracticeScreen: View {
             PadLayoutGrid(pads: pads, used: Set(session.patternHits.map(\.padIndex)), flashes: session.padFlashes)
         }
         if let summary = session.summary {
-            SummaryStrip(summary: summary) { showingDetails = true }
+            let nextStar = StarRequirement.nextMissingStarText(
+                progress: session.savedProgress,
+                lesson: session.lesson,
+                padCount: midi.activeProfile.padCount,
+                settings: settings
+            )
+            SummaryStrip(summary: summary, nextStarText: nextStar) { showingDetails = true }
                 .popover(isPresented: $showingDetails) {
                     VStack(alignment: .leading, spacing: Theme.Space.regular) {
                         Text(settings.localized("Practice summary")).font(Theme.display())
@@ -256,6 +286,51 @@ struct PracticeScreen: View {
             Text(settings.localized("From memory · notes hide after START"))
                 .font(Theme.text(Theme.Size.small))
         }
+    }
+
+    private func checkMemoryHint() {
+        guard !session.running,
+              !session.fromMemory,
+              session.savedProgress?.mastery == true,
+              session.savedProgress?.memory != true,
+              !settings.hasShownMemoryHint(for: session.lesson.id) else {
+            showingMemoryHint = false
+            return
+        }
+        showingMemoryHint = true
+    }
+
+    private func dismissMemoryHint() {
+        if showingMemoryHint {
+            showingMemoryHint = false
+            settings.markMemoryHintShown(for: session.lesson.id)
+        }
+    }
+
+    private var memoryHintCallout: some View {
+        Button(action: dismissMemoryHint) {
+            VStack(spacing: 2) {
+                Image(systemName: "triangle.fill")
+                    .font(.system(size: 8))
+                    .foregroundStyle(Theme.ink)
+                HStack(spacing: Theme.Space.small) {
+                    PracticeGlyph(kind: .eye).frame(width: 16, height: 16)
+                    Text(settings.localized("For the 3rd star, turn on From memory"))
+                        .font(Theme.text(Theme.Size.small))
+                        .foregroundStyle(Theme.ink)
+                    Image(systemName: "xmark")
+                        .font(.system(size: 11, weight: .bold))
+                        .foregroundStyle(Theme.secondary)
+                }
+                .padding(.horizontal, Theme.Space.small)
+                .frame(minHeight: Theme.Size.touch)
+                .background(Theme.background)
+                .overlay(Rectangle().stroke(Theme.ink, lineWidth: 1))
+            }
+            .fixedSize()
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(settings.localized("For the 3rd star, turn on From memory"))
     }
 
     private var legend: some View {

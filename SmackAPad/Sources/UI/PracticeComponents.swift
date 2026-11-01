@@ -141,6 +141,7 @@ struct RunSummary: Identifiable {
 struct SummaryStrip: View {
     @Environment(SettingsManager.self) private var settings
     let summary: RunSummary
+    var nextStarText: String? = nil
     let detail: () -> Void
 
     var body: some View {
@@ -155,6 +156,11 @@ struct SummaryStrip: View {
                 Button(settings.localized("Details"), action: detail)
                     .font(Theme.text())
                     .frame(minHeight: Theme.Size.touch)
+            }
+            if let nextStarText {
+                Text(nextStarText)
+                    .font(Theme.text(Theme.Size.small))
+                    .foregroundStyle(Theme.ink)
             }
             Text(settings.localized("Last completed pass"))
                 .font(Theme.text(Theme.Size.small)).foregroundStyle(Theme.secondary)

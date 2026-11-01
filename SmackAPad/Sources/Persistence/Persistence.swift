@@ -148,6 +148,32 @@ public final class SettingsManager: @unchecked Sendable {
         didSet { userDefaults.set(lastLessonID, forKey: "smackapad.library.lastLesson") }
     }
 
+    // MARK: - Memory Star Hint
+
+    public func hasShownMemoryHint(for lessonId: Int) -> Bool {
+        lock.lock()
+        defer { lock.unlock() }
+        let set = memoryHintShownIds()
+        return set.contains(lessonId)
+    }
+
+    public func markMemoryHintShown(for lessonId: Int) {
+        lock.lock()
+        defer { lock.unlock() }
+        var set = memoryHintShownIds()
+        set.insert(lessonId)
+        if let data = try? JSONEncoder().encode(Array(set)) {
+            userDefaults.set(data, forKey: "smackapad.memoryHintShownLessonIds")
+        }
+    }
+
+    private func memoryHintShownIds() -> Set<Int> {
+        guard let data = userDefaults.data(forKey: "smackapad.memoryHintShownLessonIds"),
+              let ids = try? JSONDecoder().decode([Int].self, from: data) else { return [] }
+        return Set(ids)
+    }
+
+
     // MARK: Computed Helpers
 
     public var bundle: Bundle {

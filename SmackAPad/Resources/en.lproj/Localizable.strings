@@ -279,3 +279,17 @@
 "Up next" = "Up next";
 
 "%lld/%lld with 2 stars" = "%lld/%lld with 2 stars";
+
+"Pass the lesson" = "Pass the lesson";
+"Pass the lesson, %lld times in a row" = "Pass the lesson, %lld times in a row";
+"Reach %lld BPM cleanly" = "Reach %lld BPM cleanly";
+"Reach %lld BPM cleanly, %lld times in a row" = "Reach %lld BPM cleanly, %lld times in a row";
+"Reach the goal tempo cleanly" = "Reach the goal tempo cleanly";
+"Reach the goal tempo cleanly, %lld times in a row" = "Reach the goal tempo cleanly, %lld times in a row";
+"Play it from memory at %lld BPM, 80 %% or better" = "Play it from memory at %lld BPM, 80 %% or better";
+"Play it from memory at %lld BPM, 80 %% or better, %lld times in a row" = "Play it from memory at %lld BPM, 80 %% or better, %lld times in a row";
+"Play it from memory at goal tempo, 80 % or better" = "Play it from memory at goal tempo, 80 % or better";
+"Play it from memory at goal tempo, 80 %% or better, %lld times in a row" = "Play it from memory at goal tempo, 80 %% or better, %lld times in a row";
+"Next: %@" = "Next: %@";
+"For the 3rd star, turn on From memory" = "For the 3rd star, turn on From memory";
+"Lesson stars" = "Lesson stars";

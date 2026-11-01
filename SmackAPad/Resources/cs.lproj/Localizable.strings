@@ -279,3 +279,17 @@
 "Up next" = "Na řadě";
 
 "%lld/%lld with 2 stars" = "%lld/%lld se 2 hvězdami";
+
+"Pass the lesson" = "Splň lekci";
+"Pass the lesson, %lld times in a row" = "Splň lekci, %lldkrát za sebou";
+"Reach %lld BPM cleanly" = "Dosáhni čistě %lld BPM";
+"Reach %lld BPM cleanly, %lld times in a row" = "Dosáhni čistě %lld BPM, %lldkrát za sebou";
+"Reach the goal tempo cleanly" = "Dosáhni čistě cílového tempa";
+"Reach the goal tempo cleanly, %lld times in a row" = "Dosáhni čistě cílového tempa, %lldkrát za sebou";
+"Play it from memory at %lld BPM, 80 %% or better" = "Zahraj zpaměti v %lld BPM na 80 %% a lépe";
+"Play it from memory at %lld BPM, 80 %% or better, %lld times in a row" = "Zahraj zpaměti v %lld BPM na 80 %% a lépe, %lldkrát za sebou";
+"Play it from memory at goal tempo, 80 % or better" = "Zahraj zpaměti v cílovém tempu na 80 % a lépe";
+"Play it from memory at goal tempo, 80 %% or better, %lld times in a row" = "Zahraj zpaměti v cílovém tempu na 80 %% a lépe, %lldkrát za sebou";
+"Next: %@" = "Další: %@";
+"For the 3rd star, turn on From memory" = "Pro 3. hvězdu zapni Z paměti";
+"Lesson stars" = "Hvězdy lekce";

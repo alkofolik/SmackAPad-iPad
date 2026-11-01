@@ -266,6 +266,8 @@ struct LibraryLessonRow: View {
     var isNext = false
     let onSelect: () -> Void
 
+    @State private var showingStarPopover = false
+
     private var record: LessonProgress? { progress.progress(for: lesson.id) }
     private var stars: Int { LibraryStarFilter.stars(record) }
     private var symbol: String {
@@ -283,36 +285,87 @@ struct LibraryLessonRow: View {
     }
 
     var body: some View {
-        Button(action: onSelect) {
-            HStack(alignment: .top, spacing: Theme.Space.small) {
-                Image(systemName: symbol).frame(width: 24).accessibilityLabel(settings.localized(stateTitle))
-                if number > 0 { Text(number.formatted()).font(Theme.text(Theme.Size.small)).frame(minWidth: 24) }
-                VStack(alignment: .leading, spacing: Theme.Space.small) {
-                    Text(settings.localized(lesson.title)).font(Theme.display(Theme.Size.body))
-                        .multilineTextAlignment(.leading).fixedSize(horizontal: false, vertical: true)
-                    Text(settings.localized(showTechnique ? LessonTechnique.classify(lesson).title : lesson.genre))
-                        .font(Theme.text(Theme.Size.small))
-                    ViewThatFits(in: .horizontal) {
-                        HStack(spacing: Theme.Space.small) { difficulty; tempo }
-                        VStack(alignment: .leading, spacing: Theme.Space.small) { difficulty; tempo }
+        HStack(alignment: .top, spacing: Theme.Space.small) {
+            Button(action: onSelect) {
+                HStack(alignment: .top, spacing: Theme.Space.small) {
+                    Image(systemName: symbol).frame(width: 24).accessibilityLabel(settings.localized(stateTitle))
+                    if number > 0 { Text(number.formatted()).font(Theme.text(Theme.Size.small)).frame(minWidth: 24) }
+                    VStack(alignment: .leading, spacing: Theme.Space.small) {
+                        Text(settings.localized(lesson.title)).font(Theme.display(Theme.Size.body))
+                            .multilineTextAlignment(.leading).fixedSize(horizontal: false, vertical: true)
+                        Text(settings.localized(showTechnique ? LessonTechnique.classify(lesson).title : lesson.genre))
+                            .font(Theme.text(Theme.Size.small))
+                        ViewThatFits(in: .horizontal) {
+                            HStack(spacing: Theme.Space.small) { difficulty; tempo }
+                            VStack(alignment: .leading, spacing: Theme.Space.small) { difficulty; tempo }
+                        }
+                        if settings.activeProfile().isEightPad && EightPadLayout.slots(for: lesson) == nil {
+                            Text(settings.localized("REQUIRES 16 PADS")).font(Theme.text(Theme.Size.dense))
+                        }
                     }
-                    if settings.activeProfile().isEightPad && EightPadLayout.slots(for: lesson) == nil {
-                        Text(settings.localized("REQUIRES 16 PADS")).font(Theme.text(Theme.Size.dense))
-                    }
+                    Spacer(minLength: 0)
                 }
-                Spacer(minLength: 0)
-                HStack(spacing: 2) {
-                    ForEach(Array([record?.passed ?? false, record?.mastery ?? false, record?.memory ?? false].enumerated()), id: \.offset) { index, earned in
-                        Image(systemName: earned ? "star.fill" : "star")
-                            .font(.system(size: 14)).foregroundStyle(earned ? Theme.orange : Theme.ink)
-                            .accessibilityLabel(settings.localized(["Passed", "Goal tempo", "From memory"][index]))
-                            .accessibilityValue(settings.localized(earned ? "On" : "Off"))
-                    }
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+
+            starsButton
+        }
+        .foregroundStyle(Theme.ink).padding(.vertical, Theme.Space.small)
+        .frame(minHeight: Theme.Size.touch)
+    }
+
+    private var starsButton: some View {
+        Button {
+            showingStarPopover.toggle()
+        } label: {
+            HStack(spacing: 2) {
+                ForEach(Array([record?.passed ?? false, record?.mastery ?? false, record?.memory ?? false].enumerated()), id: \.offset) { index, earned in
+                    Image(systemName: earned ? "star.fill" : "star")
+                        .font(.system(size: 14)).foregroundStyle(earned ? Theme.orange : Theme.ink)
+                        .accessibilityLabel(settings.localized(["Passed", "Goal tempo", "From memory"][index]))
+                        .accessibilityValue(settings.localized(earned ? "On" : "Off"))
                 }
             }
-            .foregroundStyle(Theme.ink).padding(.vertical, Theme.Space.small)
-            .frame(minHeight: Theme.Size.touch).contentShape(Rectangle())
-        }.buttonStyle(.plain)
+            .padding(.horizontal, Theme.Space.small)
+            .frame(minWidth: Theme.Size.touch, minHeight: Theme.Size.touch)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(settings.localized("Lesson stars"))
+        .popover(isPresented: $showingStarPopover, arrowEdge: .trailing) {
+            starPopover
+        }
+    }
+
+    private var starPopover: some View {
+        VStack(alignment: .leading, spacing: Theme.Space.regular) {
+            Text(settings.localized("Lesson stars")).font(Theme.display(Theme.Size.body))
+            ForEach(0..<3, id: \.self) { index in
+                let earned = [record?.passed ?? false, record?.mastery ?? false, record?.memory ?? false][index]
+                let text = StarRequirement.requirementText(
+                    for: index,
+                    lesson: lesson,
+                    padCount: settings.activeProfile().padCount,
+                    settings: settings
+                )
+                HStack(spacing: Theme.Space.small) {
+                    Image(systemName: earned ? "star.fill" : "star")
+                        .font(.system(size: 16))
+                        .foregroundStyle(earned ? Theme.orange : Theme.ink)
+                        .frame(width: 20, height: 20)
+                    Text(text)
+                        .font(Theme.text(Theme.Size.small))
+                        .foregroundStyle(Theme.ink)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                .accessibilityElement(children: .combine)
+            }
+        }
+        .padding(Theme.Space.page)
+        .frame(maxWidth: 380)
+        .background(Theme.background)
+        .foregroundStyle(Theme.ink)
     }
 
     private var difficulty: some View {
