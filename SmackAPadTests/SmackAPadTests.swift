@@ -15,16 +15,16 @@ final class SmackAPadDataPortTests: XCTestCase {
     func testBundledCoreAndIntroLessonsLoad() throws {
         let loader = DataLoader.shared
 
-        // 547 core lessons
+        // 539 core lessons after removing Intro duplicates
         let corePayload = try loader.loadCoreLessons()
-        XCTAssertEqual(corePayload.lessons.count, 547, "Expected 547 core lessons")
+        XCTAssertEqual(corePayload.lessons.count, 539, "Expected 539 core lessons")
         XCTAssertEqual(corePayload.cats.count, 8, "Expected 8 core categories")
 
         let expectedCategoryIds = ["starter", "eighth", "sixteenth", "electronic", "ghost", "swing", "world", "fills"]
         XCTAssertEqual(corePayload.cats.map(\.id), expectedCategoryIds)
 
         // Verify first and last lesson IDs
-        XCTAssertEqual(corePayload.lessons.first?.id, 1)
+        XCTAssertEqual(corePayload.lessons.first?.id, 6)
         XCTAssertEqual(corePayload.lessons.last?.id, 547)
 
         // 24 intro lessons
@@ -215,11 +215,11 @@ final class SmackAPadLessonModelsTests: XCTestCase {
 
     func testLessonStoreLoadsBundledLessonsByDefault() {
         let store = LessonStore()
-        XCTAssertEqual(store.lessons.count, 595, "Expected 595 bundled lessons (547 core + 24 intro + 12 electronic + 12 extensions)")
+        XCTAssertEqual(store.lessons.count, 587, "Expected 587 bundled lessons (539 core + 24 intro + 12 electronic + 12 extensions)")
         XCTAssertEqual(store.categories.count, 8, "Expected 8 core categories")
 
         // Fast lookup by ID
-        XCTAssertNotNil(store.lesson(for: 1))
+        XCTAssertNotNil(store.lesson(for: 6))
         XCTAssertNotNil(store.lesson(for: 547))
         XCTAssertNotNil(store.lesson(for: 10001)) // intro
         XCTAssertNotNil(store.lesson(for: 13001)) // electronic-path
@@ -227,7 +227,7 @@ final class SmackAPadLessonModelsTests: XCTestCase {
 
         // Category query
         let starterLessons = store.lessons(in: "starter")
-        XCTAssertFalse(starterLessons.isEmpty)
+        XCTAssertEqual(starterLessons.map(\.id), [6])
         XCTAssertTrue(starterLessons.allSatisfy { $0.cat == "starter" })
     }
 
@@ -298,11 +298,11 @@ final class SmackAPadLessonModelsTests: XCTestCase {
         XCTAssertEqual(store.lesson(for: 99901)?.level, 2)
     }
 
-    // MARK: 3. EightPadLayout on all 595 bundled lessons
+    // MARK: 3. EightPadLayout on all 587 bundled lessons
 
-    func testEightPadLayoutReturnsLayoutForAll595BundledLessons() {
+    func testEightPadLayoutReturnsLayoutForAllBundledLessons() {
         let store = LessonStore()
-        XCTAssertEqual(store.lessons.count, 595)
+        XCTAssertEqual(store.lessons.count, 587)
 
         for lesson in store.lessons {
             guard let layout = EightPadLayout.slots(for: lesson) else {

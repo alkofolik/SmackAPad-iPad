@@ -409,6 +409,12 @@ public struct LessonProgress: Codable, Equatable, Hashable, Sendable {
 public final class ProgressStore: @unchecked Sendable {
     public static let shared = ProgressStore()
 
+    /// Ticket 20: retired First steps IDs and their retained Intro equivalents.
+    public static let duplicateIntroLessonMap: [Int: Int] = [
+        1: 10001, 2: 10015, 3: 10008, 4: 10010,
+        5: 10011, 7: 10016, 8: 10013, 9: 10014
+    ]
+
     public private(set) var records: [Int: LessonProgress] = [:]
     public private(set) var lastSaveError: Error?
     public private(set) var lastLoadError: Error?
@@ -486,12 +492,36 @@ public final class ProgressStore: @unchecked Sendable {
             }
             self.records = converted
             self.lastLoadError = nil
+            if migrateDuplicateIntroProgress() {
+                // Atomic saving leaves the original file intact on failure. Keep merged
+                // progress in memory for the next normal save; do not treat it as a decode error.
+                try? save()
+            }
         } catch {
             // Graceful handling of corrupt or malformed file: start fresh without crashing.
             print("SmackAPad.ProgressStore: Warning - failed to decode progress from \(fileURL.path): \(error). Starting fresh.")
             self.records = [:]
             self.lastLoadError = error
         }
+    }
+
+    /// Consuming retired records makes the migration idempotent without a separate marker.
+    private func migrateDuplicateIntroProgress() -> Bool {
+        var changed = false
+        for (retiredID, introID) in Self.duplicateIntroLessonMap {
+            guard let source = records[retiredID] else { continue }
+            var target = records[introID] ?? LessonProgress()
+            target.passed = target.passed || source.passed
+            target.mastery = target.mastery || source.mastery
+            target.memory = target.memory || source.memory
+            target.hasPlayed = target.hasPlayed || source.hasPlayed
+            target.bestScore = max(target.bestScore, source.bestScore)
+            if target.currentBpm <= 0 { target.currentBpm = source.currentBpm }
+            records[introID] = target
+            records.removeValue(forKey: retiredID)
+            changed = true
+        }
+        return changed
     }
 
     /// Atomically saves progress records to `progress.json`.

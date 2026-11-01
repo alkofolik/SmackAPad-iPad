@@ -34,11 +34,25 @@ final class ProgressionTests: XCTestCase {
 
     private func makeIsolatedEnvironment(
         lessonsToUnlock: Int = ProgressionConstant.kLessonsToUnlock,
-        padCount: Int = 16
+        padCount: Int = 16,
+        useSyntheticStarter: Bool = false
     ) -> (ProgressionManager, ProgressStore, LessonStore) {
         let progressFileURL = tempDirectory.appendingPathComponent("progress.json")
         let progressStore = ProgressStore(fileURL: progressFileURL, autoLoad: false)
-        let lessonStore = LessonStore.shared
+        let lessonStore: LessonStore
+        if useSyntheticStarter {
+            // The historical category migration rule needs five starter fixtures.
+            // Production content now intentionally keeps only starter lesson 6.
+            let template = LessonStore.shared.lessons(in: "starter")[0]
+            let starters = (0..<5).map { index in
+                Lesson(id: 90000 + index, cat: "starter", title: "Starter fixture \(index)", genre: template.genre,
+                       tags: template.tags, text: "", division: template.division, bars: template.bars,
+                       startBpm: template.startBpm, targetBpm: template.targetBpm, level: template.level,
+                       src: "Test", hits: template.hits)
+            }
+            lessonStore = LessonStore(sources: [FixtureSource(lessons:
+                starters + LessonStore.shared.lessons.filter { $0.cat != "starter" })])
+        } else { lessonStore = LessonStore.shared }
         let settingsManager = SettingsManager(userDefaults: testUserDefaults)
 
         // Set pad count profile
@@ -57,6 +71,12 @@ final class ProgressionTests: XCTestCase {
         )
 
         return (progression, progressStore, lessonStore)
+    }
+
+    private struct FixtureSource: LessonContentSource {
+        let sourceIdentifier = "category-migration-fixture"
+        let lessons: [Lesson]
+        func loadLessons() throws -> [Lesson] { lessons }
     }
 
     // MARK: - Task 1: Category Order
@@ -100,7 +120,7 @@ final class ProgressionTests: XCTestCase {
     // MARK: - Task 3: Unlock Rule (5 Passed Lessons)
 
     func testProgressionUnlocksAfterFivePassedLessons() {
-        let (progression, progressStore, lessonStore) = makeIsolatedEnvironment(lessonsToUnlock: 5)
+        let (progression, progressStore, lessonStore) = makeIsolatedEnvironment(lessonsToUnlock: 5, useSyntheticStarter: true)
 
         let starterLessons = lessonStore.lessons(in: "starter")
         XCTAssertGreaterThanOrEqual(starterLessons.count, 5, "Starter must have at least 5 lessons")
@@ -131,7 +151,7 @@ final class ProgressionTests: XCTestCase {
         XCTAssertEqual(ProgressionConstant.kLessonsToUnlock, 5)
 
         // Test custom threshold (e.g. 3)
-        let (progression, progressStore, lessonStore) = makeIsolatedEnvironment(lessonsToUnlock: 3)
+        let (progression, progressStore, lessonStore) = makeIsolatedEnvironment(lessonsToUnlock: 3, useSyntheticStarter: true)
         let starterLessons = lessonStore.lessons(in: "starter")
 
         for i in 0..<2 {
@@ -197,7 +217,7 @@ final class ProgressionTests: XCTestCase {
     func testAllBundledLessonsHaveEightPadLayoutAndUnlockInEightPadMode() {
         let (progression8, progressStore, lessonStore) = makeIsolatedEnvironment(padCount: 8)
 
-        // All 595 bundled lessons must have an 8-pad layout (SPEC §6)
+        // All 587 bundled lessons must have an 8-pad layout (SPEC §6)
         for lesson in lessonStore.lessons {
             XCTAssertNotNil(
                 EightPadLayout.slots(for: lesson),
@@ -205,14 +225,15 @@ final class ProgressionTests: XCTestCase {
             )
         }
 
-        // Progression works identically in 8-pad mode for bundled lessons
-        let starterLessons = lessonStore.lessons(in: "starter")
-        for i in 0..<5 {
-            progressStore.recordPass(lessonId: starterLessons[i].id)
+        // Production uses two-star Path stages, independent of the small starter category.
+        XCTAssertEqual(lessonStore.lessons(in: "starter").map(\.id), [6])
+        let stages = progression8.catalog.stages
+        let requirement = progression8.unlockProgress(for: stages[1])
+        for lesson in stages[0].lessons.prefix(requirement.needed) {
+            progressStore.recordPass(lessonId: lesson.id, mastery: true)
         }
-
-        XCTAssertEqual(progression8.passedLessonCount(in: "starter", padCount: 8), 5)
-        XCTAssertTrue(progression8.isCategoryUnlocked("eighth", padCount: 8))
+        XCTAssertEqual(progression8.unlockProgress(for: stages[1]).completed, requirement.needed)
+        XCTAssertTrue(progression8.isStageOpen(stages[1]))
     }
 
     func testLessonWithoutEightPadLayoutExcludedFromEightPadUnlockCount() throws {

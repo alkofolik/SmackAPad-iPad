@@ -52,7 +52,7 @@ Only First steps #6 "Open hat on the and" has no twin.
 - B. Keep both but mark First steps as "repeat in groove form" and change the hands or patterns so they are really different.
 - C. Keep both, only fix #1 (the exact copy).
 
-**Decision (Jakub, 2026-11-01): A.** Remove the duplicated lessons from First steps, keep Intro. Details of the removal (which IDs, progress migration, what stays in First steps) are still to be confirmed before any data is deleted.
+**Decision (Jakub, 2026-11-01): A.** Remove the duplicated lessons from First steps, keep Intro. The exact retired IDs and Intro progress targets are confirmed in ticket 20; lesson 6 remains in First steps.
 
 Reason:  the 24 Intro lessons are stricter and always available, and the Path would otherwise start with things the student has just done.
 

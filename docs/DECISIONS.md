@@ -12,7 +12,7 @@ v1 is the first full native SwiftUI iPad app, replacing the legacy JS/Capacitor 
 
 The app supports two pad layouts: 4×4 (16 pads) and 2×4 (8 pads). All lessons use padIndex 0–15. Controller profiles map MIDI note numbers to padIndex values (16-pad mode) or to physical slots 0–7 (8-pad mode). Users can create custom mappings (MIDI learn). Ship 2–3 preset profiles for common controllers (Akai MPD, NI Maschine, etc.).
 
-**8-pad mode (revised 2026-10-30 after reading the legacy prototype):** no lesson filtering. As in the legacy app, the 8 physical pads are assigned per lesson to the sounds that lesson needs (`layoutForEight`), and 6 lessons that use 9 pads carry a simplified `hits8` version. All 595 bundled lessons are playable in 8-pad mode. Details: SPEC §6.
+**8-pad mode (revised 2026-10-30 after reading the legacy prototype):** no lesson filtering. As in the legacy app, the 8 physical pads are assigned per lesson to the sounds that lesson needs (`layoutForEight`), and 6 lessons that use 9 pads carry a simplified `hits8` version. All 587 bundled lessons are playable in 8-pad mode. Details: SPEC §6.
 
 **Canonical pad-to-voice mapping (confirmed by Jakub, 2026-10-30):** the array index is `padIndex` (0–15). Source supplied by Jakub: the original prototype's `app/v21/src/core.js`, `LAYOUT`.
 
@@ -32,7 +32,7 @@ Use native CoreMIDI with mach timestamps directly. No JS bridge, no clock-sync w
 
 ## 5. Lesson data: keep legacy schema unchanged
 
-The lesson JSON schema (`id, cat, title, genre, tags, text, division, bars, startBpm, targetBpm, level, score, src, hits[]` where hits = `[step, padIndex, hand, velocity]`) is carried over exactly. All JSON data files (lessons-core.json with 547 lessons, intro.json, electronic-path.json, genre-extensions.json, sample-kits.json) are copied from legacy as-is. No field renaming, no schema conversion.
+The lesson JSON schema (`id, cat, title, genre, tags, text, division, bars, startBpm, targetBpm, level, score, src, hits[]` where hits = `[step, padIndex, hand, velocity]`) is carried over exactly. JSON files retain the legacy schema without field renaming or conversion. Ticket 20 removes eight Intro duplicates from lessons-core.json (539 remaining; starter lesson 6 is retained); the other data files remain unchanged. On load, retired progress merges into the specified Intro targets without lowering stars or best score, and keeps an existing target tempo. The consumed old records make the migration idempotent.
 
 ## 6. Scoring: carry over 1:1 with one addition
 

@@ -1,6 +1,6 @@
 # 20 — Remove First steps lessons that duplicate the Intro
 
-Status: ready-for-agent (2026-11-01). **Start only after tickets 19 and 21 are finished and committed.** Without stage unlocking, a nearly empty "First steps" category would block the old unlock rule.
+Status: ready-for-human (2026-11-01). Prerequisites verified: ticket 19 at `342f9d3`, ticket 21 at `8116fc1`. Stage unlocking is unchanged.
 
 ## Goal
 
@@ -45,9 +45,9 @@ Note for the reader: the twins have the same notes but may differ in hand or vel
 
 ## Acceptance criteria
 
-- [ ] `lessons-core.json` has 539 lessons; First steps contains only lesson 6.
-- [ ] A user who had stars on lesson 3 now has the same stars on Intro 10008.
-- [ ] Build succeeds, tests pass.
+- [x] `lessons-core.json` has 539 lessons; First steps contains only lesson 6.
+- [x] A user who had stars on lesson 3 now has the same stars on Intro 10008.
+- [x] Build succeeds, tests pass.
 - [ ] **iPad check (Jakub)**: First steps looks intentional (one lesson or hidden by ticket 19), Intro shows migrated stars.
 
 ## Agent assignment
@@ -58,3 +58,13 @@ Note for the reader: the twins have the same notes but may differ in hand or vel
 ## Done rule
 
 Stop after successful build and tests. Commit after the task.
+
+
+## Implementation notes (2026-11-01)
+
+- Removed only IDs 1–5 and 7–9 from the core JSON. The retained lesson objects, IDs, category metadata, and schema are unchanged; starter contains only ID 6. Current totals: 539 core, 587 bundled, 575 Path lessons plus 12 extensions.
+- Added the named `ProgressStore.duplicateIntroLessonMap`. On load, retired records merge into their specified Intro targets: earned flags (including played state) are OR-ed, best score takes the maximum, and a positive existing target tempo is retained. Old records are consumed; the merged file is saved atomically. A save failure retains merged progress in memory and leaves the original file intact for retry.
+- All six `hits8` lessons remain (IDs 480, 502, 520, 524, 532, 541). Updated current SPEC/DECISIONS counts, data-loader documentation, and affected data/library tests. Historical ticket validation totals remain historical.
+- Historical category-rule tests now use synthetic starter fixtures instead of assuming production starter has five lessons. The bundled eight-pad progression fixture uses the current two-star stage rule. No production unlock rules were changed.
+- Validation: simulator build and all 5 new `IntroProgressMigrationTests` passed. Previously passing tests were not rerun. Content removal was checked against the original parsed JSON to confirm that only the eight specified entries changed.
+- Remaining: Jakub checks the one-lesson First steps presentation and migrated Intro stars on iPad.

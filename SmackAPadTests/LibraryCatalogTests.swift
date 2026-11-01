@@ -73,12 +73,12 @@ final class LibraryCatalogTests: XCTestCase {
 
     func testBundledCatalogueHasSameLessonPopulationInAllViews() {
         let catalog = LessonStore.shared.libraryCatalog
-        XCTAssertEqual(catalog.lessons.count, 595)
-        XCTAssertEqual(catalog.path.count, 583)
+        XCTAssertEqual(catalog.lessons.count, 587)
+        XCTAssertEqual(catalog.path.count, 575)
         XCTAssertEqual(catalog.stages.count, 23)
         for mode in LibraryViewMode.allCases {
             let ids = catalog.groups(in: mode).flatMap(\.lessons).map(\.id)
-            XCTAssertEqual(ids.count, 595)
+            XCTAssertEqual(ids.count, 587)
             XCTAssertEqual(Set(ids), Set(catalog.lessons.map(\.id)))
         }
     }

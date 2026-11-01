@@ -7,7 +7,7 @@
 ## 1. Goals
 
 - Full-feature native SwiftUI iPad app replacing the JS/Capacitor prototype.
-- Lesson library (547 core + 24 intro + electronic-path + genre-extensions), play screen, scoring, calibration, 8 bundled sample kits (acoustic, 808, jazz, world, rock, brush, worldperc, house).
+- Lesson library (539 core + 24 intro + electronic-path + genre-extensions), play screen, scoring, calibration, 8 bundled sample kits (acoustic, 808, jazz, world, rock, brush, worldperc, house).
 - External MIDI controller is the primary input (CoreMIDI). On-screen pads are a bonus.
 - Czech + English localisation. Czech primary.
 - iPadOS 17+, iPad-only.
@@ -37,10 +37,11 @@
 - Metronome click for calibration and practice.
 
 ### 3.3 Lesson Data
-- JSON files copied from legacy unchanged: `lessons-core.json` (547), `intro.json` (24), `electronic-path.json`, `genre-extensions.json`, `sample-kits.json`.
+- Lesson schema stays unchanged; ticket 20 removes eight duplicate starter entries from the original legacy data: `lessons-core.json` (539), `intro.json` (24), `electronic-path.json`, `genre-extensions.json`, `sample-kits.json`.
 - Schema per lesson: `{id, cat, title, genre, tags, text, division, bars, startBpm, targetBpm, level, score, src, hits}`.
 - `hits`: array of `[step, padIndex, hand, velocity]`. `step` is 0-based sixteenth index. `padIndex` is 0–15.
 - `division` is always 16. `bars` is 1, 2, or 3.
+- Ticket 20 keeps starter lesson 6 and moves saved progress from retired IDs 1–5 and 7–9 to their specified Intro lessons on load: flags are OR-ed, best score takes the maximum, and existing target tempo is retained. Consuming the old records makes the migration idempotent.
 - Architecture supports loading from multiple sources (bundled + external JSON) for future content packs.
 
 ### 3.4 Scoring
@@ -170,7 +171,7 @@ Lessons use `padIndex` 0–15. In **8-pad mode** the controller has 8 physical p
   3. Start from the base slots `[9, 10, 2, 3, 12, 13, 11, 7]` (Clap, Rim, Crash, Ride, Kick L, Snare L, Hat R, Open hat).
   4. Pads in `required` that are not in the base go to a waiting list (in ascending order). Walk the slots in the order `[0, 1, 3, 2, 7, 6, 5, 4]`; if the waiting list is not empty and the pad in that slot is not in `required`, replace it with the next waiting pad.
   5. If the waiting list is empty at the end, the resulting 8 slots are the layout; otherwise there is no layout.
-- **Result on bundled data**: all 595 lessons have a layout in 8-pad mode (589 directly, 6 via `hits8`). Nothing needs to be hidden or greyed out today.
+- **Result on bundled data**: all 587 lessons have a layout in 8-pad mode (581 directly, 6 via `hits8`). Nothing needs to be hidden or greyed out today.
 - A lesson with no layout (only possible for future content packs) is shown greyed-out with the label "requires 16 pads", stays visible and openable but cannot be scored.
 - Progression counts are the same in both modes; a lesson without a layout is simply excluded from the unlock count.
 - The play screen shows the 8 slots with the sound names of the current lesson's layout.
@@ -194,7 +195,7 @@ Lessons use `padIndex` 0–15. In **8-pad mode** the controller has 8 physical p
 - [ ] **iPad test**: audio output latency is acceptable; no audible glitches.
 
 ### Lesson Data
-- [ ] All 547 core + 24 intro lessons load from bundled JSON.
+- [ ] All 539 core + 24 intro lessons load from bundled JSON.
 - [ ] Electronic-path and genre-extension lessons load and appear in correct categories.
 - [ ] Invalid or missing JSON produces a clear error, not a crash.
 

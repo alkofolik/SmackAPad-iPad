@@ -491,7 +491,7 @@ public final class DataLoader: Sendable {
 
     // MARK: Bundled Resources
 
-    /// Loads the core 547 lessons and categories from `lessons-core.json`.
+    /// Loads the core 539 lessons and categories from `lessons-core.json`.
     public func loadCoreLessons(bundle: Bundle = .main) throws -> CoreLessonsPayload {
         let url = try findResourceURL(named: "lessons-core", withExtension: "json", in: bundle)
         return try loadJSON(from: url)
