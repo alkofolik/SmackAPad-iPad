@@ -11,31 +11,31 @@ enum IntroStage: String, CaseIterable, Identifiable {
 
     var id: String { rawValue }
 
-    func title(czech: Bool) -> String {
+    func title(language: AppLanguage = SettingsManager.shared.languagePreference) -> String {
         switch self {
-        case .pulse: return czech ? "1. PULS" : "1. PULSE"
-        case .twoHands: return czech ? "2. OBĚ RUCE" : "2. TWO HANDS"
-        case .eighthNotes: return czech ? "3. OSMINOVÉ NOTY" : "3. EIGHTH NOTES"
-        case .grooveVariations: return czech ? "4. VARIACE GROOVŮ" : "4. GROOVE VARIATIONS"
-        case .controlAndDetail: return czech ? "5. KONTROLA A DETAIL" : "5. CONTROL AND DETAIL"
-        case .firstFills: return czech ? "6. PRVNÍ PŘECHODY" : "6. FIRST FILLS"
+        case .pulse: return language.localized("1. PULSE")
+        case .twoHands: return language.localized("2. TWO HANDS")
+        case .eighthNotes: return language.localized("3. EIGHTH NOTES")
+        case .grooveVariations: return language.localized("4. GROOVE VARIATIONS")
+        case .controlAndDetail: return language.localized("5. CONTROL AND DETAIL")
+        case .firstFills: return language.localized("6. FIRST FILLS")
         }
     }
 
-    func subtitle(czech: Bool) -> String {
+    func subtitle(language: AppLanguage = SettingsManager.shared.languagePreference) -> String {
         switch self {
         case .pulse:
-            return czech ? "Stabilní čtvrťový tep jedné i obou rukou · lekce 1–4" : "Steady quarter-note pulse with one and both hands · lessons 1–4"
+            return language.localized("Steady quarter-note pulse with one and both hands · lessons 1–4")
         case .twoHands:
-            return czech ? "Souhra a střídání levé a pravé ruky · lekce 5–8" : "Hand coordination and alternation · lessons 5–8"
+            return language.localized("Hand coordination and alternation · lessons 5–8")
         case .eighthNotes:
-            return czech ? "Osminový hi-hat doprovod a stabilita · lekce 9–12" : "Eighth-note hi-hat patterns & stability · lessons 9–12"
+            return language.localized("Eighth-note hi-hat patterns & stability · lessons 9–12")
         case .grooveVariations:
-            return czech ? "Synkopy, offbeaty a clap · lekce 13–16" : "Syncopations, offbeats & clap · lessons 13–16"
+            return language.localized("Syncopations, offbeats & clap · lessons 13–16")
         case .controlAndDetail:
-            return czech ? "Dynamika, otevřený hi-hat a pauzy · lekce 17–20" : "Dynamics, open hi-hat & rests · lessons 17–20"
+            return language.localized("Dynamics, open hi-hat & rests · lessons 17–20")
         case .firstFills:
-            return czech ? "Přechody na snare a tomy s návratem · lekce 21–24" : "Snare and tom fills with clean return · lessons 21–24"
+            return language.localized("Snare and tom fills with clean return · lessons 21–24")
         }
     }
 }
@@ -55,8 +55,6 @@ public struct IntroScreen: View {
         self.onSelect = onSelect
     }
 
-    private var czech: Bool { settings.languagePreference == .czech }
-
     private var introLessons: [Lesson] {
         store.lessons.filter { $0.cat == "intro" }
             .sorted { ($0.intro?.number ?? $0.id) < ($1.intro?.number ?? $1.id) }
@@ -73,7 +71,7 @@ public struct IntroScreen: View {
     public var body: some View {
         List {
             Section {
-                IntroRulesCard(czech: czech, passedCount: passedCount, masteredCount: masteredCount, totalCount: introLessons.count)
+                IntroRulesCard(passedCount: passedCount, masteredCount: masteredCount, totalCount: introLessons.count)
             }
             .listRowInsets(EdgeInsets(top: Theme.Space.small, leading: Theme.Space.regular, bottom: Theme.Space.small, trailing: Theme.Space.regular))
             .listRowBackground(Color.clear)
@@ -89,18 +87,17 @@ public struct IntroScreen: View {
                             } label: {
                                 IntroExerciseRow(
                                     lesson: lesson,
-                                    progressRecord: progress.progress(for: lesson.id),
-                                    czech: czech
+                                    progressRecord: progress.progress(for: lesson.id)
                                 )
                             }
                             .listRowBackground(Theme.background)
                         }
                     } header: {
                         VStack(alignment: .leading, spacing: Theme.Space.tight) {
-                            Text(stage.title(czech: czech))
+                            Text(stage.title(language: settings.languagePreference))
                                 .font(Theme.display(Theme.Size.small))
                                 .foregroundStyle(Theme.ink)
-                            Text(stage.subtitle(czech: czech))
+                            Text(stage.subtitle(language: settings.languagePreference))
                                 .font(Theme.text(Theme.Size.dense))
                                 .foregroundStyle(Theme.secondary)
                         }
@@ -114,15 +111,14 @@ public struct IntroScreen: View {
                 !IntroStage.allCases.contains { $0.rawValue == lesson.intro?.stage }
             }
             if !remaining.isEmpty {
-                Section(czech ? "Další úvodní cvičení" : "Other Intro Exercises") {
+                Section(settings.localized("Other Intro Exercises")) {
                     ForEach(remaining) { lesson in
                         Button {
                             onSelect(lesson)
                         } label: {
                             IntroExerciseRow(
                                 lesson: lesson,
-                                progressRecord: progress.progress(for: lesson.id),
-                                czech: czech
+                                progressRecord: progress.progress(for: lesson.id)
                             )
                         }
                         .listRowBackground(Theme.background)
@@ -133,14 +129,14 @@ public struct IntroScreen: View {
         .scrollContentBackground(.hidden)
         .background(Theme.background)
         .foregroundStyle(Theme.ink)
-        .navigationTitle(czech ? "Úvodní cvičení" : "Intro Exercises")
+        .navigationTitle(settings.localized("Intro Exercises"))
         .navigationBarTitleDisplayMode(.inline)
     }
 }
 
 /// Communicates stricter rules for intro exercises: pass ≥80%, mastery 0 errors, always unlocked.
 struct IntroRulesCard: View {
-    let czech: Bool
+    @Environment(SettingsManager.self) private var settings
     let passedCount: Int
     let masteredCount: Int
     let totalCount: Int
@@ -149,13 +145,13 @@ struct IntroRulesCard: View {
         VStack(alignment: .leading, spacing: Theme.Space.regular) {
             VStack(alignment: .leading, spacing: Theme.Space.tight) {
                 HStack(spacing: Theme.Space.small) {
-                    Text(czech ? "PRAVIDLA ÚVODNÍ SEKCE" : "INTRO SECTION RULES")
+                    Text(settings.localized("INTRO SECTION RULES"))
                         .font(Theme.display(Theme.Size.body))
                         .foregroundStyle(Theme.ink)
 
                     Spacer()
 
-                    Text(czech ? "PŘÍSNĚJŠÍ LIMITY" : "STRICTER RULES")
+                    Text(settings.localized("STRICTER RULES"))
                         .font(Theme.text(Theme.Size.dense))
                         .padding(.horizontal, Theme.Space.small)
                         .padding(.vertical, Theme.Space.tight)
@@ -163,7 +159,7 @@ struct IntroRulesCard: View {
                         .foregroundStyle(Theme.black)
                 }
 
-                Text(czech ? "Úvodní cvičení slouží k osvojení základních motorických návyků a stabilního timingu. Jsou vždy odemčená bez nutnosti postupu, ale platí pro ně přísnější limity hodnocení než pro běžné lekce:" : "Intro exercises build foundational motor habits and steady timing. They are always accessible without unlock requirements, but enforce stricter scoring limits than standard lessons:")
+                Text(settings.localized("Intro exercises build foundational motor habits and steady timing. They are always accessible without unlock requirements, but enforce stricter scoring limits than standard lessons:"))
                     .font(Theme.text(Theme.Size.small))
                     .foregroundStyle(Theme.secondary)
             }
@@ -172,35 +168,35 @@ struct IntroRulesCard: View {
                 HStack(spacing: Theme.Space.regular) {
                     ruleItem(
                         value: "≥ 80 %",
-                        title: czech ? "Splnění (Pass)" : "Passing",
-                        detail: czech ? "Běžné lekce vyžadují 70 %" : "Standard lessons require 70%"
+                        title: settings.localized("Passing"),
+                        detail: settings.localized("Standard lessons require 70%")
                     )
                     ruleItem(
-                        value: czech ? "0 chyb" : "0 errors",
-                        title: czech ? "Mistrovství" : "Mastery",
-                        detail: czech ? "V cílovém tempu (běžně až 2)" : "At target tempo (normally up to 2)"
+                        value: settings.localized("0 errors"),
+                        title: settings.localized("Mastery"),
+                        detail: settings.localized("At target tempo (normally up to 2)")
                     )
                     ruleItem(
                         value: "\(passedCount) / \(totalCount)",
-                        title: czech ? "Splněno" : "Passed",
-                        detail: czech ? "\(masteredCount) s plným mistrovstvím" : "\(masteredCount) with full mastery"
+                        title: settings.localized("Passed"),
+                        detail: settings.localized("%lld with full mastery", masteredCount)
                     )
                 }
                 VStack(spacing: Theme.Space.small) {
                     ruleItem(
                         value: "≥ 80 %",
-                        title: czech ? "Splnění (Pass)" : "Passing",
-                        detail: czech ? "Běžné lekce vyžadují 70 %" : "Standard lessons require 70%"
+                        title: settings.localized("Passing"),
+                        detail: settings.localized("Standard lessons require 70%")
                     )
                     ruleItem(
-                        value: czech ? "0 chyb" : "0 errors",
-                        title: czech ? "Mistrovství" : "Mastery",
-                        detail: czech ? "V cílovém tempu (běžně až 2)" : "At target tempo (normally up to 2)"
+                        value: settings.localized("0 errors"),
+                        title: settings.localized("Mastery"),
+                        detail: settings.localized("At target tempo (normally up to 2)")
                     )
                     ruleItem(
                         value: "\(passedCount) / \(totalCount)",
-                        title: czech ? "Splněno" : "Passed",
-                        detail: czech ? "\(masteredCount) s plným mistrovstvím" : "\(masteredCount) with full mastery"
+                        title: settings.localized("Passed"),
+                        detail: settings.localized("%lld with full mastery", masteredCount)
                     )
                 }
             }
@@ -231,9 +227,9 @@ struct IntroRulesCard: View {
 
 /// A single row for an intro exercise showing exercise number, title, goal, tempos, and pass/mastery stars.
 struct IntroExerciseRow: View {
+    @Environment(SettingsManager.self) private var settings
     let lesson: Lesson
     let progressRecord: LessonProgress?
-    let czech: Bool
 
     private var number: Int {
         lesson.intro?.number ?? (lesson.id >= 10000 ? lesson.id - 10000 : lesson.id)
@@ -268,7 +264,7 @@ struct IntroExerciseRow: View {
                 HStack(spacing: Theme.Space.small) {
                     Text("\(lesson.startBpm) → \(lesson.targetBpm) BPM")
                     Text("·")
-                    Text("\(lesson.bars) \(lesson.bars == 1 ? (czech ? "takt" : "bar") : (czech ? "takty" : "bars"))")
+                    Text(settings.localized(lesson.bars == 1 ? "%lld bar" : "%lld bars", lesson.bars))
                     if !lesson.genre.isEmpty {
                         Text("·")
                         Text(lesson.genre)
@@ -288,16 +284,16 @@ struct IntroExerciseRow: View {
                         .fill(passed ? Theme.ink : Theme.background)
                         .overlay(StarShape().stroke(Theme.ink, lineWidth: Theme.Size.border))
                         .frame(width: 20, height: 20)
-                        .accessibilityLabel(czech ? "Splněno" : "Passed")
-                        .accessibilityValue(passed ? (czech ? "ano" : "ne") : (czech ? "yes" : "no"))
+                        .accessibilityLabel(settings.localized("Passed"))
+                        .accessibilityValue(settings.localized(passed ? "yes" : "no"))
 
                     // Star 2: Mastery (0 errors at target BPM)
                     StarShape()
                         .fill(mastery ? Theme.ink : Theme.background)
                         .overlay(StarShape().stroke(Theme.ink, lineWidth: Theme.Size.border))
                         .frame(width: 20, height: 20)
-                        .accessibilityLabel(czech ? "Mistrovství" : "Mastery")
-                        .accessibilityValue(mastery ? (czech ? "ano" : "ne") : (czech ? "yes" : "no"))
+                        .accessibilityLabel(settings.localized("Mastery"))
+                        .accessibilityValue(settings.localized(mastery ? "yes" : "no"))
                 }
 
                 if let record = progressRecord, record.passed || record.bestScore > 0 {
@@ -307,7 +303,7 @@ struct IntroExerciseRow: View {
                         .monospacedDigit()
                         .foregroundStyle(Theme.ink)
                 } else {
-                    Text(czech ? "Nezahráno" : "Not played")
+                    Text(settings.localized("Not played"))
                         .font(Theme.text(Theme.Size.dense))
                         .foregroundStyle(Theme.secondary)
                 }

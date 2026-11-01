@@ -13,6 +13,7 @@ struct SmackAPadApp: App {
     var body: some Scene {
         WindowGroup {
             ContentView()
+                .id(settings.languagePreference)
                 .preferredColorScheme(appearance == "light" ? .light : .dark)
                 .tint(Theme.ink)
                 .environment(settings)

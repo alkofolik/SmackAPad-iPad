@@ -17,18 +17,16 @@ struct LibraryScreen: View {
     @State private var showingMIDI: Bool = false
     @State private var columnVisibility: NavigationSplitViewVisibility = .all
 
-    private var czech: Bool { settings.languagePreference == .czech }
-
     var body: some View {
         NavigationSplitView(columnVisibility: $columnVisibility) {
             sidebarView
-                .navigationTitle(czech ? "Knihovna" : "Library")
+                .navigationTitle(settings.localized("Library"))
                 .navigationSplitViewColumnWidth(min: 280, ideal: 320, max: 380)
         } detail: {
             detailContent
                 .toolbar {
                     ToolbarItem(placement: .topBarTrailing) {
-                        Button(czech ? "Nastavení" : "Settings") { showingMIDI = true }
+                        Button(settings.localized("Settings")) { showingMIDI = true }
                             .font(Theme.text())
                             .frame(minHeight: Theme.Size.touch)
                     }
@@ -57,7 +55,7 @@ struct LibraryScreen: View {
             Section {
                 introCategoryRow
             } header: {
-                Text(czech ? "Úvodní cvičení" : "Intro")
+                Text(settings.localized("Intro"))
                     .font(Theme.display(Theme.Size.small))
                     .foregroundStyle(Theme.secondary)
             }
@@ -68,7 +66,7 @@ struct LibraryScreen: View {
                     categoryRow(for: categoryId)
                 }
             } header: {
-                Text(czech ? "Kategorie postupu" : "Progression categories")
+                Text(settings.localized("Progression categories"))
                     .font(Theme.display(Theme.Size.small))
                     .foregroundStyle(Theme.secondary)
             }
@@ -92,7 +90,7 @@ struct LibraryScreen: View {
                     Text(progression.title(for: ProgressionConstant.introCategoryId))
                         .font(Theme.display(Theme.Size.body))
                         .foregroundStyle(isSelected ? Theme.orange : Theme.ink)
-                    Text(czech ? "24 cvičení · vždy přístupné" : "24 exercises · always open")
+                    Text(settings.localized("24 exercises · always open"))
                         .font(Theme.text(Theme.Size.dense))
                         .foregroundStyle(Theme.secondary)
                 }
@@ -131,16 +129,16 @@ struct LibraryScreen: View {
 
                     if isUnlocked {
                         if status.isSoftUnlocked {
-                            Text("\(status.passedCount)/\(status.totalCount) · \(czech ? "odemčeno ručně" : "soft unlocked")")
+                            Text(settings.localized("%lld/%lld · soft unlocked", status.passedCount, status.totalCount))
                                 .font(Theme.text(Theme.Size.dense))
                                 .foregroundStyle(Theme.secondary)
                         } else {
-                            Text("\(status.passedCount)/\(status.totalCount) \(czech ? "splněno" : "passed")")
+                            Text(settings.localized("%lld/%lld passed", status.passedCount, status.totalCount))
                                 .font(Theme.text(Theme.Size.dense))
                                 .foregroundStyle(Theme.secondary)
                         }
                     } else {
-                        Text(czech ? "Zamčeno (potřeba 5 lekcí)" : "Locked (5 to unlock)")
+                        Text(settings.localized("Locked (5 to unlock)"))
                             .font(Theme.text(Theme.Size.dense))
                             .foregroundStyle(Theme.secondary)
                     }
@@ -195,7 +193,7 @@ struct LibraryScreen: View {
                         .font(Theme.text(Theme.Size.small))
                         .foregroundStyle(.red)
                     Spacer()
-                    Button(czech ? "Načíst znovu" : "Reload") { try? lessonStore.reload() }
+                    Button(settings.localized("Reload")) { try? lessonStore.reload() }
                         .font(Theme.text())
                 }
                 .padding(Theme.Space.small)
@@ -216,7 +214,7 @@ struct LibraryScreen: View {
 
                     let passed = progression.passedLessonCount(in: selectedCategoryId)
                     let total = progression.totalLessonCount(in: selectedCategoryId)
-                    Text("\(passed) / \(total) \(czech ? "SPLNĚNO" : "PASSED")")
+                    Text(settings.localized("%lld / %lld PASSED", passed, total))
                         .font(Theme.text(Theme.Size.small))
                         .foregroundStyle(Theme.secondary)
                 }
@@ -237,11 +235,11 @@ struct LibraryScreen: View {
             List {
                 if filteredLessons.isEmpty {
                     VStack(alignment: .center, spacing: Theme.Space.regular) {
-                        Text(czech ? "Žádné odpovídající lekce" : "No matching lessons")
+                        Text(settings.localized("No matching lessons"))
                             .font(Theme.display(Theme.Size.emphasis))
                             .foregroundStyle(Theme.secondary)
                         if !searchQuery.isEmpty || selectedGenre != nil {
-                            Button(czech ? "Zrušit filtry" : "Clear filters") {
+                            Button(settings.localized("Clear filters")) {
                                 searchQuery = ""
                                 selectedGenre = nil
                             }
@@ -257,8 +255,7 @@ struct LibraryScreen: View {
                         LibraryLessonRow(
                             lesson: lesson,
                             settings: settings,
-                            progress: progress,
-                            czech: czech
+                            progress: progress
                         ) {
                             if isUnlocked {
                                 selectedLesson = lesson
@@ -276,7 +273,7 @@ struct LibraryScreen: View {
             .searchable(
                 text: $searchQuery,
                 placement: .navigationBarDrawer(displayMode: .automatic),
-                prompt: czech ? "Hledat v lekcích..." : "Search lessons..."
+                prompt: Text(settings.localized("Search lessons..."))
             )
         }
         .background(Theme.background)
@@ -289,17 +286,17 @@ struct LibraryScreen: View {
                 .foregroundStyle(Theme.orange)
 
             VStack(alignment: .leading, spacing: 2) {
-                Text(czech ? "Kategorie je uzamčená" : "Category is locked")
+                Text(settings.localized("Category is locked"))
                     .font(Theme.display(Theme.Size.body))
                     .foregroundStyle(Theme.ink)
-                Text(czech ? "Klepni pro okamžité odemčení a trénink." : "Tap to unlock immediately and practice.")
+                Text(settings.localized("Tap to unlock immediately and practice."))
                     .font(Theme.text(Theme.Size.dense))
                     .foregroundStyle(Theme.secondary)
             }
 
             Spacer()
 
-            Button(czech ? "Odemknout" : "Unlock") {
+            Button(settings.localized("Unlock")) {
                 progression.requestSoftUnlock(for: categoryId)
             }
             .font(Theme.display(Theme.Size.small))
@@ -318,7 +315,7 @@ struct LibraryScreen: View {
         ScrollView(.horizontal, showsIndicators: false) {
             HStack(spacing: Theme.Space.small) {
                 genreChip(
-                    title: czech ? "Vše" : "All",
+                    title: settings.localized("All"),
                     isSelected: selectedGenre == nil
                 ) {
                     selectedGenre = nil
@@ -381,7 +378,6 @@ struct LibraryLessonRow: View {
     let lesson: Lesson
     let settings: SettingsManager
     let progress: ProgressStore
-    let czech: Bool
     let onSelect: () -> Void
 
     private var progressRecord: LessonProgress? {
@@ -424,7 +420,7 @@ struct LibraryLessonRow: View {
                             .foregroundStyle(showRequires16Pads ? Theme.secondary : Theme.ink)
 
                         if showRequires16Pads {
-                            Text(czech ? "VYŽADUJE 16 PADŮ" : "REQUIRES 16 PADS")
+                            Text(settings.localized("REQUIRES 16 PADS"))
                                 .font(Theme.text(Theme.Size.dense))
                                 .foregroundStyle(Theme.orange)
                                 .padding(.horizontal, Theme.Space.tight)
@@ -443,7 +439,7 @@ struct LibraryLessonRow: View {
                                 .foregroundStyle(Theme.secondary)
                         }
 
-                        Text(czech ? "Úroveň \(lesson.level)" : "Level \(lesson.level)")
+                        Text(settings.localized("Level %lld", lesson.level))
                             .font(Theme.text(Theme.Size.small))
                             .foregroundStyle(Theme.secondary)
 
@@ -462,14 +458,14 @@ struct LibraryLessonRow: View {
                 // Right column: Pass / Mastery status badge & stars (Task 2)
                 HStack(spacing: Theme.Space.regular) {
                     if isMastered {
-                        Text(czech ? "MISTR" : "MASTERY")
+                        Text(settings.localized("MASTERY"))
                             .font(Theme.display(Theme.Size.dense))
                             .foregroundStyle(Theme.background)
                             .padding(.horizontal, Theme.Space.small)
                             .padding(.vertical, 4)
                             .background(Theme.orange)
                     } else if isPassed {
-                        Text(czech ? "SPLNĚNO" : "PASSED")
+                        Text(settings.localized("PASSED"))
                             .font(Theme.display(Theme.Size.dense))
                             .foregroundStyle(Theme.background)
                             .padding(.horizontal, Theme.Space.small)
@@ -478,9 +474,9 @@ struct LibraryLessonRow: View {
                     }
 
                     HStack(spacing: Theme.Space.tight) {
-                        starView(earned: isPassed, label: czech ? "Splněno" : "Passed")
-                        starView(earned: isMastered, label: czech ? "Mistr" : "Mastery")
-                        starView(earned: isMemory, label: czech ? "Z paměti" : "Memory")
+                        starView(earned: isPassed, label: settings.localized("Passed"))
+                        starView(earned: isMastered, label: settings.localized("Mastery"))
+                        starView(earned: isMemory, label: settings.localized("Memory"))
                     }
                 }
             }
@@ -498,6 +494,6 @@ struct LibraryLessonRow: View {
             .overlay(StarShape().stroke(Theme.ink, lineWidth: Theme.Size.border))
             .frame(width: 18, height: 18)
             .accessibilityLabel(label)
-            .accessibilityValue(earned ? (czech ? "splněno" : "earned") : (czech ? "nesplněno" : "not earned"))
+            .accessibilityValue(settings.localized(earned ? "earned" : "not earned"))
     }
 }

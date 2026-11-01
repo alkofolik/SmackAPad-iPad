@@ -53,6 +53,31 @@ public enum AppLanguage: String, CaseIterable, Identifiable, Codable, Sendable {
         case .czech: return "Čeština"
         }
     }
+
+    /// Bundle containing localized strings for this language.
+    public var bundle: Bundle {
+        if let path = Bundle.main.path(forResource: rawValue, ofType: "lproj"),
+           let bundle = Bundle(path: path) {
+            return bundle
+        }
+        return .main
+    }
+
+    /// Localize a key using this language bundle.
+    public func localized(_ key: String) -> String {
+        bundle.localizedString(forKey: key, value: nil, table: nil)
+    }
+
+    /// Localize a format key using this language bundle and locale.
+    public func localized(_ key: String, _ arguments: CVarArg...) -> String {
+        let format = localized(key)
+        return String(format: format, locale: Locale(identifier: rawValue), arguments: arguments)
+    }
+
+    /// Localize a String.LocalizationValue using this language bundle.
+    public func localized(_ value: String.LocalizationValue) -> String {
+        String(localized: value, bundle: bundle)
+    }
 }
 
 // MARK: - SettingsManager
@@ -111,6 +136,23 @@ public final class SettingsManager: @unchecked Sendable {
     }
 
     // MARK: Computed Helpers
+
+    public var bundle: Bundle {
+        languagePreference.bundle
+    }
+
+    public func localized(_ key: String) -> String {
+        languagePreference.localized(key)
+    }
+
+    public func localized(_ key: String, _ arguments: CVarArg...) -> String {
+        let format = languagePreference.localized(key)
+        return String(format: format, locale: Locale(identifier: languagePreference.rawValue), arguments: arguments)
+    }
+
+    public func localized(_ value: String.LocalizationValue) -> String {
+        languagePreference.localized(value)
+    }
 
     public var bpmStepEnum: BpmStep {
         get { BpmStep.from(raw: bpmStep) }

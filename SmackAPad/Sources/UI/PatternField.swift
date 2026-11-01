@@ -1,6 +1,7 @@
 import SwiftUI
 
 struct PatternField: View {
+    @Environment(SettingsManager.self) private var settings
     let lesson: Lesson
     let hits: [LessonHit]
     let position: Double
@@ -9,7 +10,6 @@ struct PatternField: View {
     let scrolling: Bool
     let visibleBars: Int
     let verdicts: [Int: BarVerdict]
-    let czech: Bool
     let judgments: [LessonHit: HitJudgment]
     let scoring: Bool
     let missGraceSteps: Double
@@ -24,7 +24,7 @@ struct PatternField: View {
         GeometryReader { geometry in
             if scrolling {
                 ScrollingPattern(lesson: lesson, hits: hits, rows: rows, position: position,
-                                 running: running, hidden: hidden, verdicts: verdicts, czech: czech,
+                                 running: running, hidden: hidden, verdicts: verdicts,
                                  judgments: judgments, scoring: scoring, missGraceSteps: missGraceSteps)
             } else {
                 let count = min(visibleBars, min(lesson.bars, 4))
@@ -39,7 +39,7 @@ struct PatternField: View {
                     ForEach(bars, id: \.self) { bar in
                         PatternBar(bar: bar, hits: hits.filter { $0.step / 16 == bar }, rows: rows,
                                    position: position - Double(bar * 16), active: running && bar == currentBar,
-                                   hidden: hidden, verdict: verdicts[bar], czech: czech,
+                                   hidden: hidden, verdict: verdicts[bar],
                                    judgments: judgments, scoring: scoring, missGraceSteps: missGraceSteps)
                             .frame(height: height)
                     }
@@ -62,13 +62,14 @@ struct PatternField: View {
         .background(Theme.orange)
         .clipped()
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel(czech ? "Rytmický pattern" : "Rhythm pattern")
-        .accessibilityValue(countdown.map { String($0) } ?? (hidden ? (czech ? "Z paměti, noty skryté" : "From memory, notes hidden") :
-            "\(lesson.bars) \(czech ? "taktů" : "bars"), \(rows.map { PadVoice.name($0) }.joined(separator: ", "))"))
+        .accessibilityLabel(settings.localized("Rhythm pattern"))
+        .accessibilityValue(countdown.map { String($0) } ?? (hidden ? settings.localized("From memory, notes hidden") :
+            settings.localized("%lld bars, %@", lesson.bars, rows.map { PadVoice.name($0, settings: settings) }.joined(separator: ", "))))
     }
 }
 
 private struct PatternBar: View {
+    @Environment(SettingsManager.self) private var settings
     let bar: Int
     let hits: [LessonHit]
     let rows: [Int]
@@ -76,7 +77,6 @@ private struct PatternBar: View {
     let active: Bool
     let hidden: Bool
     let verdict: BarVerdict?
-    let czech: Bool
     let judgments: [LessonHit: HitJudgment]
     let scoring: Bool
     let missGraceSteps: Double
@@ -85,7 +85,7 @@ private struct PatternBar: View {
         HStack(spacing: Theme.Space.regular) {
             Rectangle().fill(active ? Theme.black : Theme.orange).frame(width: Theme.Size.bracket)
             VStack(alignment: .leading, spacing: Theme.Space.small) {
-                BarHeader(bar: bar, verdict: verdict, czech: czech)
+                BarHeader(bar: bar, verdict: verdict)
                 Canvas { context, size in
                     let cellWidth = size.width / 16
                     let countHeight: CGFloat = 32
@@ -127,6 +127,7 @@ private struct PatternBar: View {
 }
 
 private struct ScrollingPattern: View {
+    @Environment(SettingsManager.self) private var settings
     let lesson: Lesson
     let hits: [LessonHit]
     let rows: [Int]
@@ -134,7 +135,6 @@ private struct ScrollingPattern: View {
     let running: Bool
     let hidden: Bool
     let verdicts: [Int: BarVerdict]
-    let czech: Bool
     let judgments: [LessonHit: HitJudgment]
     let scoring: Bool
     let missGraceSteps: Double
@@ -166,8 +166,8 @@ private struct ScrollingPattern: View {
                              at: CGPoint(x: x, y: countY))
                 if step.isMultiple(of: 16) {
                     let next = globalStep >= total
-                    let word = next ? (czech ? "další průchod" : "next pass") : verdicts[bar]?.label(czech: czech)
-                    let header = "\(czech ? "TAKT" : "BAR") \(bar + 1)\(word.map { "  \($0)" } ?? "")"
+                    let word = next ? settings.localized("next pass") : verdicts[bar]?.label(settings: settings)
+                    let header = "\(settings.localized("BAR %lld", bar + 1))\(word.map { "  \($0)" } ?? "")"
                     context.draw(Text(header).font(Theme.canvasText(Theme.Size.body)).foregroundColor(Theme.black),
                                  at: CGPoint(x: max(0, x), y: 16), anchor: .topLeading)
                     if bar == Int(position) / 16 && globalStep >= 0 && globalStep < total {

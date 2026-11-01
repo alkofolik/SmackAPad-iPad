@@ -318,23 +318,23 @@ public final class ProgressionManager: @unchecked Sendable {
         let lang = language ?? settingsManager.languagePreference
         switch categoryId {
         case "starter":
-            return lang == .czech ? "První kroky" : "First steps"
+            return lang.localized("First steps")
         case "eighth":
-            return lang == .czech ? "Osminové groovy" : "Eighth-note grooves"
+            return lang.localized("Eighth-note grooves")
         case "sixteenth":
-            return lang == .czech ? "Šestnáctinové groovy" : "Sixteenth-note grooves"
+            return lang.localized("Sixteenth-note grooves")
         case "electronic":
-            return lang == .czech ? "Elektronické styly" : "Electronic styles"
+            return lang.localized("Electronic styles")
         case "ghost":
-            return lang == .czech ? "Ghost noty a dynamika" : "Ghost notes & dynamics"
+            return lang.localized("Ghost notes & dynamics")
         case "swing":
-            return lang == .czech ? "Swing a shuffle" : "Swing & shuffle"
+            return lang.localized("Swing & shuffle")
         case "world":
-            return lang == .czech ? "Světové rytmy" : "World rhythms"
+            return lang.localized("World rhythms")
         case "fills":
-            return lang == .czech ? "Přechody" : "Fills"
+            return lang.localized("Fills")
         case ProgressionConstant.introCategoryId:
-            return lang == .czech ? "Úvodní cvičení" : "Intro exercises"
+            return lang.localized("Intro exercises")
         default:
             // Fall back to category title from LessonStore if present
             if let cat = lessonStore.categories.first(where: { $0.id == categoryId }) {
@@ -423,25 +423,19 @@ public final class ProgressionManager: @unchecked Sendable {
 
     public var softUnlockAlertTitle: String {
         let catTitle = categoryPendingSoftUnlock.map { title(for: $0) } ?? ""
-        if settingsManager.languagePreference == .czech {
-            return "Odemknout kategorii \(catTitle)?"
-        }
-        return "Unlock \(catTitle)?"
+        return settingsManager.localized("Unlock \"%@\"?", catTitle)
     }
 
     public var softUnlockAlertMessage: String {
-        if settingsManager.languagePreference == .czech {
-            return "Můžeš trénovat jakoukoli kategorii kdykoliv."
-        }
-        return "You can practice any category at any time."
+        settingsManager.localized("You can practice any category at any time.")
     }
 
     public var softUnlockConfirmButtonTitle: String {
-        settingsManager.languagePreference == .czech ? "Odemknout" : "Unlock"
+        settingsManager.localized("Unlock")
     }
 
     public var softUnlockCancelButtonTitle: String {
-        settingsManager.languagePreference == .czech ? "Zrušit" : "Cancel"
+        settingsManager.localized("Cancel")
     }
 
     // MARK: - Persistence Helpers

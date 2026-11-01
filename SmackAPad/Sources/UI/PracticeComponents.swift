@@ -48,25 +48,25 @@ struct PatternBlock: View {
 enum BarVerdict: String {
     case clean, ahead, behind, uneven
 
-    func label(czech: Bool) -> String {
-        switch self {
-        case .clean: return czech ? "čistý" : "clean"
-        case .ahead: return czech ? "předbíháš" : "ahead"
-        case .behind: return czech ? "zaostáváš" : "behind"
-        case .uneven: return czech ? "nestejnoměrné" : "uneven"
-        }
+    func label(settings: SettingsManager? = nil) -> String {
+        let mgr = settings ?? SettingsManager.shared
+        return mgr.localized(rawValue)
+    }
+
+    func label(language: AppLanguage) -> String {
+        language.localized(rawValue)
     }
 }
 
 struct BarHeader: View {
+    @Environment(SettingsManager.self) private var settings
     let bar: Int
     let verdict: BarVerdict?
-    let czech: Bool
 
     var body: some View {
         HStack(spacing: Theme.Space.regular) {
-            Text("\(czech ? "TAKT" : "BAR") \(bar + 1)").font(Theme.display(Theme.Size.body))
-            if let verdict { Text(verdict.label(czech: czech)).font(Theme.text()) }
+            Text(settings.localized("BAR %lld", bar + 1)).font(Theme.display(Theme.Size.body))
+            if let verdict { Text(verdict.label(settings: settings)).font(Theme.text()) }
             Spacer(minLength: 0)
         }
         .foregroundStyle(Theme.black)
@@ -139,8 +139,8 @@ struct RunSummary: Identifiable {
 }
 
 struct SummaryStrip: View {
+    @Environment(SettingsManager.self) private var settings
     let summary: RunSummary
-    let czech: Bool
     let detail: () -> Void
 
     var body: some View {
@@ -148,15 +148,15 @@ struct SummaryStrip: View {
             HStack(spacing: Theme.Space.regular) {
                 Text("\(Int((summary.score * 100).rounded())) %").font(Theme.display(Theme.Size.emphasis))
                 HStack(spacing: Theme.Space.small) {
-                    star(summary.passed, czech ? "Splněno" : "Passed")
-                    star(summary.mastery, czech ? "Cílové tempo" : "Goal tempo")
-                    star(summary.memory, czech ? "Z paměti" : "From memory")
+                    star(summary.passed, settings.localized("Passed"))
+                    star(summary.mastery, settings.localized("Goal tempo"))
+                    star(summary.memory, settings.localized("From memory"))
                 }
-                Button(czech ? "Detail" : "Details", action: detail)
+                Button(settings.localized("Details"), action: detail)
                     .font(Theme.text())
                     .frame(minHeight: Theme.Size.touch)
             }
-            Text(czech ? "Poslední dokončený průchod" : "Last completed pass")
+            Text(settings.localized("Last completed pass"))
                 .font(Theme.text(Theme.Size.small)).foregroundStyle(Theme.secondary)
         }
     }
@@ -167,7 +167,7 @@ struct SummaryStrip: View {
             .overlay(StarShape().stroke(Theme.ink, lineWidth: Theme.Size.border))
             .frame(width: 23, height: 23)
             .accessibilityLabel(label)
-            .accessibilityValue(earned ? (czech ? "získáno" : "earned") : (czech ? "nezískáno" : "not earned"))
+            .accessibilityValue(settings.localized(earned ? "earned" : "not earned"))
     }
 }
 
@@ -240,7 +240,11 @@ struct PadVoice {
     static let names = ["High tom", "Low tom", "Crash", "Ride", "Shaker", "Wood", "Cowbell", "Open hi-hat", "Hi-hat", "Clap", "Rim", "Hi-hat", "Kick", "Snare", "Snare", "Kick"]
     static let rowOrder = [8, 11, 7, 2, 3, 4, 5, 6, 9, 10, 13, 14, 0, 1, 12, 15]
     static func abbreviation(_ pad: Int) -> String { abbreviations.indices.contains(pad) ? abbreviations[pad] : "?" }
-    static func name(_ pad: Int) -> String { names.indices.contains(pad) ? names[pad] : "Pad \(pad + 1)" }
+    static func name(_ pad: Int, settings: SettingsManager? = nil) -> String {
+        guard names.indices.contains(pad) else { return "Pad \(pad + 1)" }
+        let raw = names[pad]
+        return settings?.localized(raw) ?? raw
+    }
 }
 
 /// A small layout diagram, not a second performance surface. Full-size touch

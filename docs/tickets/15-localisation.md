@@ -1,6 +1,6 @@
 # 15 — Localisation (English primary, Czech optional)
 
-Status: ready-for-agent (updated 2026-11-01)
+Status: ready-for-review (updated 2026-11-01)
 
 ## Goal
 
@@ -30,10 +30,10 @@ Move all user-facing text into the localisation catalogs. **English is the prima
 
 ## Acceptance criteria
 
-- [ ] No hardcoded user-facing text remains in code.
-- [ ] English and Czech have the same key set.
-- [ ] A fresh install starts in English; Czech can be selected in Settings and applies immediately.
-- [ ] Build succeeds.
+- [x] No hardcoded user-facing text remains in code.
+- [x] English and Czech have the same key set.
+- [x] A fresh install starts in English; Czech can be selected in Settings and applies immediately.
+- [x] Build succeeds.
 - [ ] **iPad test (Jakub)**: both languages display correctly, no truncation or layout issues, switching at runtime works.
 
 ## Agent assignment

@@ -16,27 +16,24 @@ struct MIDILearnView: View {
     @State private var padCount = 16
     @State private var profileName = ""
 
-    private var czech: Bool { settings.languagePreference == .czech }
-    private func label(_ cs: String, _ en: String) -> String { czech ? cs : en }
-
     private var trimmedName: String { profileName.trimmingCharacters(in: .whitespacesAndNewlines) }
     private var nameExists: Bool { settings.profile(named: trimmedName) != nil }
 
     var body: some View {
         NavigationStack {
             Form {
-                Section(label("Nový profil kontroléru", "New controller profile")) {
-                    TextField(label("Název profilu", "Profile name"), text: $profileName)
+                Section(settings.localized("New controller profile")) {
+                    TextField(settings.localized("Profile name"), text: $profileName)
                         .font(Theme.text())
-                    Picker(label("Počet padů", "Pad count"), selection: $padCount) {
-                        Text(label("8 padů", "8 pads")).tag(8)
-                        Text(label("16 padů", "16 pads")).tag(16)
+                    Picker(settings.localized("Pad count"), selection: $padCount) {
+                        Text(settings.localized("8 pads")).tag(8)
+                        Text(settings.localized("16 pads")).tag(16)
                     }
                     .pickerStyle(.segmented)
                     .disabled(midi.isLearning)
 
                     if nameExists {
-                        Text(label("Profil s tímto názvem už existuje.", "This profile name is already in use."))
+                        Text(settings.localized("This profile name is already in use."))
                             .font(Theme.text(Theme.Size.small))
                             .foregroundStyle(Theme.markWrong)
                     }
@@ -44,24 +41,22 @@ struct MIDILearnView: View {
 
                 Section {
                     if midi.isLearning {
-                        LabeledContent(label("Naučené pady", "Learned pads"), value: "\(midi.learnedNotes.count) / \(padCount)")
+                        LabeledContent(settings.localized("Learned pads"), value: "\(midi.learnedNotes.count) / \(padCount)")
                             .font(Theme.text())
 
                         if midi.learningComplete {
-                            Text(label("Všechny pady jsou naučené. Ulož profil a můžeš ho používat.",
-                                       "All pads learned. Save the profile to use it."))
+                            Text(settings.localized("All pads learned. Save the profile to use it."))
                                 .font(Theme.text(Theme.Size.small))
                                 .foregroundStyle(Theme.markCorrect)
                         } else {
-                            Text(label("Stiskni zvýrazněný pad na svém kontroléru.",
-                                       "Press the highlighted pad on your controller."))
+                            Text(settings.localized("Press the highlighted pad on your controller."))
                                 .font(Theme.text(Theme.Size.small))
                         }
 
                         LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: Theme.Space.small), count: 4), spacing: Theme.Space.small) {
                             ForEach(0..<padCount, id: \.self) { slot in
                                 VStack(spacing: Theme.Space.tight) {
-                                    Text(label("Pad \(slot + 1)", "Pad \(slot + 1)"))
+                                    Text(settings.localized("Pad %lld", slot + 1))
                                         .font(Theme.display(Theme.Size.small))
                                     if midi.learnedNotes.indices.contains(slot) {
                                         Text(midi.learnedNotes[slot].formatted())
@@ -84,19 +79,18 @@ struct MIDILearnView: View {
                         }
 
                         if midi.learningNotice == "duplicateNote" {
-                            Text(label("Tato nota už je přiřazená. Stiskni jiný pad.",
-                                       "That note is already assigned. Press a different pad."))
+                            Text(settings.localized("That note is already assigned. Press a different pad."))
                                 .font(Theme.text(Theme.Size.small))
                                 .foregroundStyle(Theme.markWrong)
                         }
 
-                        Button(label("Začít znovu", "Start again")) {
+                        Button(settings.localized("Start again")) {
                             midi.startLearning(padCount: padCount)
                         }
                         .font(Theme.text())
                         .frame(minHeight: Theme.Size.touch)
                     } else {
-                        Button(label("Spustit učení MIDI", "Start MIDI learn")) {
+                        Button(settings.localized("Start MIDI learn")) {
                             midi.startLearning(padCount: padCount)
                         }
                         .font(Theme.text())
@@ -104,19 +98,17 @@ struct MIDILearnView: View {
                         .disabled(midi.sources.isEmpty)
 
                         if midi.sources.isEmpty {
-                            Text(label("Před spuštěním připoj MIDI kontrolér.",
-                                       "Connect a MIDI controller before starting."))
+                            Text(settings.localized("Connect a MIDI controller before starting."))
                                 .font(Theme.text(Theme.Size.small))
                                 .foregroundStyle(Theme.secondary)
                         }
                     }
                 } header: {
-                    Text(label("UČENÍ MIDI", "MIDI LEARN"))
+                    Text(settings.localized("MIDI LEARN"))
                         .font(Theme.text(Theme.Size.dense))
                         .foregroundStyle(Theme.orange)
                 } footer: {
-                    Text(label("Stiskni každý fyzický pad jednou, zleva doprava, od horní řady. Používej stále stejný kontrolér a MIDI kanál. V režimu 8 padů se učí pozice 1–8; zvuky určuje lekce.",
-                               "Press each physical pad once, left to right, starting with the top row. Use the same controller and MIDI channel throughout. In 8-pad mode, positions are slots 1–8; sounds follow the lesson."))
+                    Text(settings.localized("Press each physical pad once, left to right, starting with the top row. Use the same controller and MIDI channel throughout. In 8-pad mode, positions are slots 1–8; sounds follow the lesson."))
                         .font(Theme.text(Theme.Size.dense))
                         .foregroundStyle(Theme.secondary)
                 }
@@ -125,16 +117,16 @@ struct MIDILearnView: View {
             .background(Theme.background)
             .foregroundStyle(Theme.ink)
             .tint(Theme.orange)
-            .navigationTitle(label("Učení MIDI", "MIDI learn"))
+            .navigationTitle(settings.localized("MIDI learn"))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button(label("Zrušit", "Cancel")) { dismiss() }
+                    Button(settings.localized("Cancel")) { dismiss() }
                         .font(Theme.text())
                         .frame(minHeight: Theme.Size.touch)
                 }
                 ToolbarItem(placement: .confirmationAction) {
-                    Button(label("Uložit", "Save")) {
+                    Button(settings.localized("Save")) {
                         if midi.saveLearnedProfile(name: profileName) { dismiss() }
                     }
                     .font(Theme.text())
@@ -229,7 +221,7 @@ enum BluetoothMIDIPresenter {
             central.tableView = UITableView(frame: .zero, style: .grouped)
             central.viewDidLoad()
         }
-        central.title = String(localized: "Bluetooth MIDI")
+        central.title = SettingsManager.shared.localized("Bluetooth MIDI")
         let navigation = UINavigationController(rootViewController: central)
         navigation.modalPresentationStyle = .formSheet
         central.navigationItem.rightBarButtonItem = UIBarButtonItem(
