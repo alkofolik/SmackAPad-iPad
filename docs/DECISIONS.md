@@ -118,9 +118,11 @@ Sample kit licenses (AVL Acoustic, Fischer 808, Groove MIDI Dataset, etc.) have 
 
 ## 15. Lesson progression: guided but not blocking
 
-Ticket 19 replaces category access with the legacy Path: five levels, split by technique (levels 4–5 omit basic groove), with empty stages omitted. A stage opens after `min(ceil(previous stage lesson count / 2), 10)` passes in its immediate predecessor, or if any lesson in the stage was already played. The first stage and the separate Intro entry point are always accessible. Jersey club and Footwork remain accessible extensions outside the Path.
+Ticket 19 replaces category access with the legacy Path: five levels, split by technique (levels 4–5 omit basic groove), with empty stages omitted. A stage opens after `min(ceil(previous stage lesson count / 2), 10)` two-star completions (`passed && mastery`; memory optional, ticket 21) in its immediate predecessor, or if any lesson in the stage was already played. The first stage and the separate Intro entry point are always accessible. Jersey club and Footwork remain accessible extensions outside the Path.
 
 **Soft unlock**: one tap plus confirmation opens the whole stage. Path, Genres, and Techniques share this access policy. A one-time migration preserves stages containing lessons in previously accessible categories, including saved manual category unlocks and automatic category access; saved progress is retained. New progress records distinguish actual playing from merely saving a tempo. Old records conservatively retain access when they contain saved tempo or results.
+
+Ticket 21 preserves all previously open stages through a one-time migration and persists future stage openings; lessons without an 8-pad layout are excluded from completion counts in 8-pad mode.
 
 Library organisation and multi-select star filters are remembered. “Next lesson from” selects Path, Genre, Technique, or All (easiest first), following legacy candidate order, wraparound, and fallback to Path.
 

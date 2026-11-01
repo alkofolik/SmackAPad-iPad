@@ -60,10 +60,9 @@
 - No Core Data / SwiftData. Clean keyspace.
 
 ### 3.7 Progression
-- Categories: starter, eighth, sixteenth, electronic, ghost, swing, world, fills.
-- First category (starter) is unlocked by default.
-- **Unlock rule**: passing **5 lessons** in the current category unlocks the next category. This is a configurable constant (`kLessonsToUnlock = 5`).
-- **Soft unlock**: user can tap any locked category, confirm, and unlock it immediately. Nobody gets stuck.
+- Path stages are grouped by level and technique; the first non-empty stage is always open (ticket 19).
+- **Unlock rule**: `min(ceil(previous stage lesson count / 2), maximumStageCompletions)` lessons with `passed && mastery` (two stars) open the next stage; `maximumStageCompletions = 10`. Memory is optional. In 8-pad mode, lessons without a layout do not count. Previously open stages stay open, and any stage with an already played lesson is open (ticket 21).
+- **Soft unlock**: user can tap any locked stage, confirm, and unlock it immediately. Nobody gets stuck.
 - Intro (24 exercises): separate section, always accessible, no unlock needed.
 - Electronic-path lessons are folded into the main category/genre system.
 
@@ -220,8 +219,9 @@ Lessons use `padIndex` 0–15. In **8-pad mode** the controller has 8 physical p
 - [ ] No data loss on normal app lifecycle (background, terminate, relaunch).
 
 ### Progression
-- [ ] First category unlocked by default.
-- [ ] Next category unlocks after 5 passed lessons in current category.
+- [ ] First Path stage unlocked by default.
+- [ ] Stage unlocking counts only lessons with both pass and goal-tempo stars; memory is optional. Threshold: half the preceding stage rounded up, capped at 10.
+- [ ] Previously open stages stay open across the two-star migration and app restarts.
 - [ ] Soft unlock works with single tap + confirmation.
 - [ ] 8-pad mode: all bundled lessons get a layout (6 via `hits8`); unlocking works the same as in 16-pad mode.
 - [ ] Intro section always accessible.

@@ -538,6 +538,14 @@ public final class ProgressStore: @unchecked Sendable {
         return records[lessonId]?.passed ?? false
     }
 
+    /// Two-star completion for stage access; the optional memory star does not affect it.
+    public func isCompleted(lessonId: Int) -> Bool {
+        lock.lock()
+        defer { lock.unlock() }
+        guard let record = records[lessonId] else { return false }
+        return record.passed && record.mastery
+    }
+
     /// Returns whether the specified lesson has been mastered.
     public func isMastered(lessonId: Int) -> Bool {
         lock.lock()

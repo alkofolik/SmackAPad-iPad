@@ -236,10 +236,10 @@ struct LibraryScreen: View {
     private func lockedBanner(_ stage: LibraryStage) -> some View {
         let requirement = progression.unlockProgress(for: stage)
         return VStack(alignment: .leading, spacing: Theme.Space.small) {
-            Label(settings.localized("Pass %lld lessons in %@", requirement.needed,
+            Label(settings.localized("Earn 2 stars in %lld lessons in %@ to open this", requirement.needed,
                                      requirement.previous.map { progression.title(for: $0.id) } ?? ""), systemImage: "lock")
                 .font(Theme.text(Theme.Size.small))
-            Text(settings.localized("%lld/%lld passed", requirement.passed, requirement.needed)).font(Theme.text(Theme.Size.small))
+            Text(settings.localized("%lld/%lld with 2 stars", requirement.completed, requirement.needed)).font(Theme.text(Theme.Size.small))
             Button(settings.localized("Unlock")) { progression.requestSoftUnlock(for: stage.id) }
                 .buttonStyle(InstrumentButtonStyle())
         }

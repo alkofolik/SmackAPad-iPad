@@ -93,14 +93,14 @@ final class LibraryCatalogTests: XCTestCase {
             XCTAssertTrue(manager.isStageOpen(stages[0]))
             XCTAssertEqual(manager.unlockProgress(for: stages[1]).needed, needed)
             XCTAssertFalse(manager.isStageOpen(stages[1]))
-            for item in first.prefix(needed - 1) { progress.recordPass(lessonId: item.id, autoSave: false) }
+            for item in first.prefix(needed - 1) { progress.recordPass(lessonId: item.id, mastery: true, autoSave: false) }
             XCTAssertFalse(manager.isStageOpen(stages[1]))
-            progress.recordPass(lessonId: first[needed - 1].id, autoSave: false)
+            progress.recordPass(lessonId: first[needed - 1].id, mastery: true, autoSave: false)
             XCTAssertTrue(manager.isStageOpen(stages[1]))
         }
         let (manager, progress, _) = try environment([lesson(1), lesson(2, tags: ["16ths"]), lesson(3, tags: ["ghost notes"])])
         XCTAssertFalse(manager.isStageOpen(manager.catalog.stages[1]))
-        progress.recordPass(lessonId: 2, autoSave: false)
+        progress.recordPass(lessonId: 2, mastery: true, autoSave: false)
         XCTAssertTrue(manager.isStageOpen(manager.catalog.stages[2]))
     }
 

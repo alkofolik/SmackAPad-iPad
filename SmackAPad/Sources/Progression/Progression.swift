@@ -16,6 +16,13 @@ public enum ProgressionConstant {
     /// Number of passed lessons in the current category required to unlock the next category.
     public static let kLessonsToUnlock: Int = 5
 
+    /// Stage access requires half the preceding stage, rounded up, capped here.
+    public static let maximumStageCompletions = 10
+
+    public static func requiredStageCompletions(lessonCount: Int) -> Int {
+        min((lessonCount + 1) / 2, maximumStageCompletions)
+    }
+
     /// Key used to store manually (soft) unlocked category IDs in UserDefaults.
     public static let softUnlockedCategoriesStorageKey = "smackapad.settings.softUnlockedCategories"
 
@@ -131,6 +138,10 @@ public final class ProgressionManager: @unchecked Sendable {
     public private(set) var softUnlockedStages: Set<String> = []
     private static let stagesKey = "smackapad.settings.softUnlockedStages"
     private static let migrationKey = "smackapad.settings.stageMigrationV1"
+    private static let openStagesKey = "smackapad.settings.openStages"
+    private static let completionMigrationKey = "smackapad.settings.twoStarStageMigrationV1"
+    // Remembering access does not change the answer being rendered by SwiftUI.
+    @ObservationIgnored private var rememberedOpenStages: Set<String> = []
 
     var catalog: LibraryCatalog { lessonStore.libraryCatalog }
 
@@ -162,6 +173,7 @@ public final class ProgressionManager: @unchecked Sendable {
 
         loadSoftUnlocks()
         loadAndMigrateStages()
+        preserveExistingStageAccess()
     }
 
     // MARK: - Canonical Category Mapping (Task 7)
@@ -435,6 +447,8 @@ public final class ProgressionManager: @unchecked Sendable {
         defer { lock.unlock() }
         categoryPendingSoftUnlock = nil
         if clearSoftUnlocks {
+            rememberedOpenStages.removeAll()
+            userDefaults.removeObject(forKey: Self.openStagesKey)
             softUnlockedStages.removeAll()
             userDefaults.removeObject(forKey: Self.stagesKey)
             softUnlockedCategories.removeAll()
@@ -463,22 +477,56 @@ public final class ProgressionManager: @unchecked Sendable {
 
     // MARK: - Stage progression
 
-    func unlockProgress(for stage: LibraryStage) -> (passed: Int, needed: Int, previous: LibraryStage?) {
+    func unlockProgress(for stage: LibraryStage) -> (completed: Int, needed: Int, previous: LibraryStage?) {
         let stages = catalog.stages
         guard let index = stages.firstIndex(where: { $0.id == stage.id }), index > 0 else { return (0, 0, nil) }
         let previous = stages[index - 1]
-        return (previous.lessons.filter { progressStore.isPassed(lessonId: $0.id) }.count,
-                min((previous.lessons.count + 1) / 2, 10), previous)
+        let eightPads = settingsManager.activeProfile().isEightPad
+        let completed = previous.lessons.filter {
+            progressStore.isCompleted(lessonId: $0.id) && (!eightPads || EightPadLayout.slots(for: $0) != nil)
+        }.count
+        return (completed, ProgressionConstant.requiredStageCompletions(lessonCount: previous.lessons.count), previous)
     }
 
     func isStageOpen(_ stage: LibraryStage) -> Bool {
+        lock.lock()
+        defer { lock.unlock() }
         guard catalog.stages.contains(where: { $0.id == stage.id }) else { return false }
+        if rememberedOpenStages.contains(stage.id) || softUnlockedStages.contains(stage.id) { return true }
         let requirement = unlockProgress(for: stage)
-        return requirement.passed >= requirement.needed || softUnlockedStages.contains(stage.id)
-            || stage.lessons.contains {
-                let record = progressStore.progress(for: $0.id)
-                return record?.hasPlayed == true || record?.passed == true
-            }
+        let open = requirement.completed >= requirement.needed || wasStagePlayed(stage)
+        if open { rememberOpenStages([stage.id]) }
+        return open
+    }
+
+    private func wasStagePlayed(_ stage: LibraryStage) -> Bool {
+        stage.lessons.contains {
+            let record = progressStore.progress(for: $0.id)
+            return record?.hasPlayed == true || record?.passed == true
+        }
+    }
+
+    private func rememberOpenStages(_ ids: Set<String>) {
+        let additions = ids.subtracting(rememberedOpenStages)
+        guard !additions.isEmpty else { return }
+        rememberedOpenStages.formUnion(additions)
+        userDefaults.set(Array(rememberedOpenStages).sorted(), forKey: Self.openStagesKey)
+    }
+
+    /// Snapshot ticket 19's one-star access once before applying the stricter rule.
+    private func preserveExistingStageAccess() {
+        rememberedOpenStages = Set(userDefaults.stringArray(forKey: Self.openStagesKey) ?? [])
+        guard !userDefaults.bool(forKey: Self.completionMigrationKey), !catalog.stages.isEmpty else { return }
+        var previouslyOpen = softUnlockedStages
+        for (index, stage) in catalog.stages.enumerated() {
+            let previous = index > 0 ? catalog.stages[index - 1] : nil
+            let passed = previous?.lessons.filter { progressStore.isPassed(lessonId: $0.id) }.count ?? 0
+            let needed = ProgressionConstant.requiredStageCompletions(lessonCount: previous?.lessons.count ?? 0)
+            // The old stage rule counted all lessons, including those without an 8-pad layout.
+            if passed >= needed || wasStagePlayed(stage) { previouslyOpen.insert(stage.id) }
+        }
+        rememberOpenStages(previouslyOpen)
+        userDefaults.set(true, forKey: Self.completionMigrationKey)
     }
 
     func isLessonOpen(_ lesson: Lesson) -> Bool {
