@@ -1,6 +1,6 @@
 # Motion proposals — display and transition animations (draft for Jakub's approval)
 
-Status: proposal, 2026-11-01. Nothing implemented. If approved it becomes ticket 27 and runs **after** tickets 24-26 (it depends on the shared components from 25).
+Status: approved by Jakub 2026-11-01; specified as `docs/tickets/2026-11-01-27-motion.md`.
 
 ## Principles
 

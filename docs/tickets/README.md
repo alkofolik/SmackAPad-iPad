@@ -64,4 +64,4 @@
 | 24 | Practice screen: third star, tempo banner, colour tail, progress | Codex GPT-6.1 Sol, xhigh | 1st |
 | 25 | Library redesign, unified look, Intro rows, First steps removed, unlock flow | Codex GPT-6.1 Sol, high (two conversations A and B) | 2nd (after 24) |
 | 26 | Sound kit "Automatic" and per-lesson choice | Gemini 3.8 Flash, high (done 2026-11-01) | done |
-| 27 (proposal) | Motion: `docs/design/2026-11-01-motion-proposals.md` | Codex GPT-6.1 Sol, medium | after 24-26, needs Jakub's approval |
+| 27 | Motion: `2026-11-01-27-motion.md` (spec: `docs/design/2026-11-01-motion-proposals.md`) | Codex GPT-6.1 Sol, medium | after 24-26 (approved) |
