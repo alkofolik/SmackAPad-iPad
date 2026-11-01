@@ -40,6 +40,13 @@ struct PracticeScreen: View {
                                  missGraceSteps: session.missGraceSteps, countdown: session.countdown)
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .overlay(alignment: session.starEvent?.award.shouldStop == true ? .center : .topTrailing) {
+                    if let event = session.starEvent {
+                        StarBurst(event: event, announcement: starAnnouncement(for: event))
+                            .id(event.id)
+                            .padding(Theme.Space.regular)
+                    }
+                }
                 footer(compact: compact)
                 if let error = session.errorMessage {
                     Text(error).font(Theme.text(Theme.Size.small)).foregroundStyle(Theme.secondary)
@@ -64,6 +71,13 @@ struct PracticeScreen: View {
             MIDISettingsView()
                 .presentationDragIndicator(.visible)
         }
+    }
+
+    private func starAnnouncement(for event: StarEvent) -> String {
+        let names = [label("Splněno", "Passed"), label("Cílové tempo", "Goal tempo"), label("Z paměti", "From memory")]
+        return names.indices.filter { event.award.fresh[$0] }.map {
+            label("Získána hvězda: \(names[$0])", "Star earned: \(names[$0])")
+        }.joined(separator: ". ")
     }
 
     private func header(compact: Bool) -> some View {
