@@ -48,7 +48,7 @@ struct PracticeScreen: View {
                 }
                 footer(compact: compact)
                 if let error = session.errorMessage {
-                    Text(error).font(Theme.text(Theme.Size.small)).foregroundStyle(Theme.secondary)
+                    Text(error).font(Theme.meta).foregroundStyle(Theme.secondary)
                         .frame(maxWidth: .infinity, alignment: .leading)
                 }
             }
@@ -96,9 +96,9 @@ struct PracticeScreen: View {
             HStack(spacing: Theme.Space.regular) {
                 icon(.back, settings.localized("Back to lessons")) { session.stop(); dismiss() }
                 VStack(alignment: .leading, spacing: Theme.Space.tight) {
-                    Text(session.lesson.title).font(Theme.display()).lineLimit(2)
+                    Text(session.lesson.title).font(Theme.screenTitle).lineLimit(2)
                     Text("\(session.lesson.cat.uppercased()) · \(settings.localized("LEVEL")) \(session.lesson.level)")
-                        .font(Theme.text(Theme.Size.small)).foregroundStyle(Theme.secondary).lineLimit(1)
+                        .font(Theme.meta).foregroundStyle(Theme.secondary).lineLimit(1)
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
                 if !compact { tools }
@@ -164,7 +164,7 @@ struct PracticeScreen: View {
         VStack(alignment: .leading, spacing: Theme.Space.small) {
             HStack(spacing: Theme.Space.regular) {
                 Button { showingTempo.toggle() } label: {
-                    Text("\(session.bpm) → \(session.lesson.targetBpm) BPM").font(Theme.text())
+                    Text("\(session.bpm) → \(session.lesson.targetBpm) BPM").font(Theme.control)
                 }
                 .buttonStyle(InstrumentButtonStyle())
                 .opacity(session.running ? 0.45 : 1)
@@ -187,7 +187,7 @@ struct PracticeScreen: View {
                     .frame(width: 240, height: Theme.Size.touch)
                 }
                 Text(session.listen ? "— %" : session.lastResult.map { "\(Int(($0.score * 100).rounded())) %" } ?? "— %")
-                    .font(Theme.text()).fixedSize()
+                    .font(Theme.control).fixedSize()
                     .accessibilityLabel(settings.localized("Score"))
                 Spacer(minLength: 0)
                 if !compact { handLegend }
@@ -199,7 +199,7 @@ struct PracticeScreen: View {
                     VStack(alignment: .leading, spacing: Theme.Space.tight) {
                         Text(settings.localized("Bar %lld / %lld", min(session.practiceLesson.bars, Int(position) / 16 + 1),
                                                 session.practiceLesson.bars))
-                            .font(Theme.text(Theme.Size.small))
+                            .font(Theme.meta)
                         ProgressView(value: position / Double(total))
                             .tint(Theme.ink)
                             .accessibilityLabel(settings.localized("Position in the current pass"))
@@ -213,7 +213,7 @@ struct PracticeScreen: View {
                 }
                 if let progress = session.starRunProgress {
                     Text(settings.localized("%lld / %lld", progress.count, progress.required))
-                        .font(Theme.text(Theme.Size.small)).foregroundStyle(Theme.secondary)
+                        .font(Theme.meta).foregroundStyle(Theme.secondary)
                         .accessibilityLabel(settings.localized("Consecutive passes for %@", settings.localized(progress.name)))
                         .accessibilityValue(settings.localized("%lld / %lld", progress.count, progress.required))
                 }
@@ -237,13 +237,13 @@ struct PracticeScreen: View {
                 Text(settings.localized("right"))
             }
         }
-        .font(Theme.text())
+        .font(Theme.control)
     }
 
     private var tempoControls: some View {
         VStack(alignment: .leading, spacing: Theme.Space.regular) {
-            Text(settings.localized("Tempo")).font(Theme.display())
-            Text("\(session.bpm) → \(session.lesson.targetBpm) BPM").font(Theme.text())
+            Text(settings.localized("Tempo")).font(Theme.screenTitle)
+            Text("\(session.bpm) → \(session.lesson.targetBpm) BPM").font(Theme.control)
             HStack(spacing: Theme.Space.small) {
                 ForEach([-5, -1, 1, 5], id: \.self) { step in
                     Button(step > 0 ? "+\(step)" : "\(step)") { session.setTempo(session.bpm + step) }
@@ -295,22 +295,22 @@ struct PracticeScreen: View {
             SummaryStrip(summary: summary, nextStarText: nextStar, dismiss: session.dismissSummary) { showingDetails = true }
                 .popover(isPresented: $showingDetails) {
                     VStack(alignment: .leading, spacing: Theme.Space.regular) {
-                        Text(settings.localized("Practice summary")).font(Theme.display())
+                        Text(settings.localized("Practice summary")).font(Theme.screenTitle)
                         Text("\(summary.bpm) BPM · \(settings.localized("%lld completed passes", summary.passes))")
                         Text(settings.localized("Stars: passed / goal tempo / from memory"))
                         Text(settings.localized("Score is from the last completed pass. Stars are earned across this run."))
                     }
-                    .font(Theme.text()).padding(Theme.Space.page).frame(maxWidth: 440)
+                    .font(Theme.control).padding(Theme.Space.page).frame(maxWidth: 440)
                     .foregroundStyle(Theme.ink).background(Theme.background)
                 }
         } else if !session.available {
             Text(settings.localized("This lesson requires 16 pads."))
-                .font(Theme.text())
+                .font(Theme.control)
         } else if !session.ready {
-            Text(settings.localized("Preparing sound…")).font(Theme.text())
+            Text(settings.localized("Preparing sound…")).font(Theme.control)
         } else if session.fromMemory && !session.running && !session.listen {
             Text(settings.localized("From memory · notes hide after START"))
-                .font(Theme.text(Theme.Size.small))
+                .font(Theme.meta)
         }
     }
 
@@ -342,7 +342,7 @@ struct PracticeScreen: View {
                 HStack(spacing: Theme.Space.small) {
                     PracticeGlyph(kind: .eye).frame(width: 16, height: 16)
                     Text(settings.localized("For the 3rd star, turn on From memory"))
-                        .font(Theme.text(Theme.Size.small))
+                        .font(Theme.meta)
                         .foregroundStyle(Theme.ink)
                     Image(systemName: "xmark")
                         .font(.system(size: 11, weight: .bold))
@@ -363,7 +363,7 @@ struct PracticeScreen: View {
         ScrollView {
             VStack(alignment: .leading, spacing: Theme.Space.regular) {
                 HStack {
-                    Text(settings.localized("Pad legend")).font(Theme.display(Theme.Size.emphasis))
+                    Text(settings.localized("Pad legend")).font(Theme.sectionTitle)
                     Spacer()
                     Button(settings.localized("Close")) { showingLegend = false }.frame(minHeight: Theme.Size.touch)
                 }
@@ -375,7 +375,7 @@ struct PracticeScreen: View {
                         PatternBlock(abbreviation: PadVoice.abbreviation(pad), hand: hand)
                             .overlay(Rectangle().stroke(Theme.ink, lineWidth: 1))
                         Text("\(PadVoice.name(pad, settings: settings)) · \(settings.localized(hand == "R" ? "right" : "left"))")
-                            .font(Theme.text())
+                            .font(Theme.control)
                     }
                 }
                 handLegend
@@ -434,7 +434,7 @@ private struct PracticeTools: View {
             }
             Button(settings.localized("MIDI and controller"), action: openMIDI).disabled(session.running)
         }
-        .font(Theme.text()).tint(Theme.ink)
+        .font(Theme.control).tint(Theme.ink)
         .frame(width: 480, height: 640)
         .scrollContentBackground(.hidden).background(Theme.background).foregroundStyle(Theme.ink)
     }

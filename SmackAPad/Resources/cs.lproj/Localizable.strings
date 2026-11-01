@@ -100,7 +100,7 @@
 "Library" = "Knihovna";
 "Intro" = "Úvodní cvičení";
 "Progression categories" = "Kategorie postupu";
-"24 exercises · always open" = "24 cvičení · vždy přístupné";
+"%lld exercises · always open" = "%lld cvičení · vždy přístupné";
 "%lld/%lld · soft unlocked" = "%lld/%lld · odemčeno ručně";
 "%lld/%lld passed" = "%lld/%lld splněno";
 "Locked (5 to unlock)" = "Zamčeno (potřeba 5 lekcí)";
@@ -303,3 +303,7 @@
 "Bar %lld / %lld" = "Takt %lld / %lld";
 "Position in the current pass" = "Pozice v aktuálním průchodu";
 "Bar %lld / %lld, %lld percent" = "Takt %lld / %lld, %lld procent";
+
+"Expanded" = "Rozbaleno";
+
+"Collapsed" = "Sbaleno";

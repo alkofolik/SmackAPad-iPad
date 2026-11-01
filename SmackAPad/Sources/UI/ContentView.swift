@@ -22,114 +22,115 @@ struct MIDILearnView: View {
     var body: some View {
         NavigationStack {
             Form {
-                Section(settings.localized("New controller profile")) {
-                    TextField(settings.localized("Profile name"), text: $profileName)
-                        .font(Theme.text())
-                    Picker(settings.localized("Pad count"), selection: $padCount) {
-                        Text(settings.localized("8 pads")).tag(8)
-                        Text(settings.localized("16 pads")).tag(16)
-                    }
-                    .pickerStyle(.segmented)
-                    .disabled(midi.isLearning)
-
-                    if nameExists {
-                        Text(settings.localized("This profile name is already in use."))
-                            .font(Theme.text(Theme.Size.small))
-                            .foregroundStyle(Theme.markWrong)
-                    }
-                }
-
-                Section {
-                    if midi.isLearning {
-                        LabeledContent(settings.localized("Learned pads"), value: "\(midi.learnedNotes.count) / \(padCount)")
-                            .font(Theme.text())
-
-                        if midi.learningComplete {
-                            Text(settings.localized("All pads learned. Save the profile to use it."))
-                                .font(Theme.text(Theme.Size.small))
-                                .foregroundStyle(Theme.markCorrect)
-                        } else {
-                            Text(settings.localized("Press the highlighted pad on your controller."))
-                                .font(Theme.text(Theme.Size.small))
+                Group {
+                    Section {
+                        TextField(settings.localized("Profile name"), text: $profileName)
+                            .font(Theme.control)
+                        Picker(settings.localized("Pad count"), selection: $padCount) {
+                            Text(settings.localized("8 pads")).tag(8)
+                            Text(settings.localized("16 pads")).tag(16)
                         }
+                        .pickerStyle(.segmented)
+                        .disabled(midi.isLearning)
 
-                        LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: Theme.Space.small), count: 4), spacing: Theme.Space.small) {
-                            ForEach(0..<padCount, id: \.self) { slot in
-                                VStack(spacing: Theme.Space.tight) {
-                                    Text(settings.localized("Pad %lld", slot + 1))
-                                        .font(Theme.display(Theme.Size.small))
-                                    if midi.learnedNotes.indices.contains(slot) {
-                                        Text(midi.learnedNotes[slot].formatted())
-                                            .font(Theme.text(Theme.Size.small))
-                                            .monospacedDigit()
-                                    } else {
-                                        Text("—")
-                                            .font(Theme.text(Theme.Size.small))
-                                    }
-                                }
-                                .frame(maxWidth: .infinity, minHeight: 64)
-                                .background(slot == midi.learnedNotes.count ? Theme.orange.opacity(0.3) : Theme.surface,
-                                            in: RoundedRectangle(cornerRadius: Theme.Size.blockRadius))
-                                .overlay(
-                                    RoundedRectangle(cornerRadius: Theme.Size.blockRadius)
-                                        .stroke(slot == midi.learnedNotes.count ? Theme.orange : Color.clear, lineWidth: Theme.Size.border)
-                                )
-                                .accessibilityAddTraits(slot == midi.learnedNotes.count ? .isSelected : [])
-                            }
-                        }
-
-                        if midi.learningNotice == "duplicateNote" {
-                            Text(settings.localized("That note is already assigned. Press a different pad."))
-                                .font(Theme.text(Theme.Size.small))
+                        if nameExists {
+                            Text(settings.localized("This profile name is already in use."))
+                                .font(Theme.meta)
                                 .foregroundStyle(Theme.markWrong)
                         }
+                    } header: { SectionHeader(title: settings.localized("New controller profile")) }
 
-                        Button(settings.localized("Start again")) {
-                            midi.startLearning(padCount: padCount)
-                        }
-                        .font(Theme.text())
-                        .frame(minHeight: Theme.Size.touch)
-                    } else {
-                        Button(settings.localized("Start MIDI learn")) {
-                            midi.startLearning(padCount: padCount)
-                        }
-                        .font(Theme.text())
-                        .frame(minHeight: Theme.Size.touch)
-                        .disabled(midi.sources.isEmpty)
+                    Section {
+                        if midi.isLearning {
+                            LabeledContent(settings.localized("Learned pads"), value: "\(midi.learnedNotes.count) / \(padCount)")
+                                .font(Theme.control)
 
-                        if midi.sources.isEmpty {
-                            Text(settings.localized("Connect a MIDI controller before starting."))
-                                .font(Theme.text(Theme.Size.small))
-                                .foregroundStyle(Theme.secondary)
+                            if midi.learningComplete {
+                                Text(settings.localized("All pads learned. Save the profile to use it."))
+                                    .font(Theme.meta)
+                                    .foregroundStyle(Theme.markCorrect)
+                            } else {
+                                Text(settings.localized("Press the highlighted pad on your controller."))
+                                    .font(Theme.meta)
+                            }
+
+                            LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: Theme.Space.small), count: 4), spacing: Theme.Space.small) {
+                                ForEach(0..<padCount, id: \.self) { slot in
+                                    VStack(spacing: Theme.Space.small) {
+                                        Text(settings.localized("Pad %lld", slot + 1))
+                                            .font(Theme.control)
+                                        if midi.learnedNotes.indices.contains(slot) {
+                                            Text(midi.learnedNotes[slot].formatted())
+                                                .font(Theme.meta)
+                                                .monospacedDigit()
+                                        } else {
+                                            Text("—")
+                                                .font(Theme.meta)
+                                        }
+                                    }
+                                    .frame(maxWidth: .infinity, minHeight: 64)
+                                    .background(slot == midi.learnedNotes.count ? Theme.orange.opacity(0.3) : Theme.surface,
+                                                in: RoundedRectangle(cornerRadius: Theme.Size.blockRadius))
+                                    .overlay(
+                                        RoundedRectangle(cornerRadius: Theme.Size.blockRadius)
+                                            .stroke(slot == midi.learnedNotes.count ? Theme.orange : Color.clear, lineWidth: Theme.Size.border)
+                                    )
+                                    .accessibilityAddTraits(slot == midi.learnedNotes.count ? .isSelected : [])
+                                }
+                            }
+
+                            if midi.learningNotice == "duplicateNote" {
+                                Text(settings.localized("That note is already assigned. Press a different pad."))
+                                    .font(Theme.meta)
+                                    .foregroundStyle(Theme.markWrong)
+                            }
+
+                            Button(settings.localized("Start again")) {
+                                midi.startLearning(padCount: padCount)
+                            }
+                            .font(Theme.control)
+                            .frame(minHeight: Theme.Size.touch)
+                        } else {
+                            Button(settings.localized("Start MIDI learn")) {
+                                midi.startLearning(padCount: padCount)
+                            }
+                            .font(Theme.control)
+                            .frame(minHeight: Theme.Size.touch)
+                            .disabled(midi.sources.isEmpty)
+
+                            if midi.sources.isEmpty {
+                                Text(settings.localized("Connect a MIDI controller before starting."))
+                                    .font(Theme.meta)
+                                    .foregroundStyle(Theme.secondary)
+                            }
                         }
+                    } header: {
+                        SectionHeader(title: settings.localized("MIDI LEARN"))
+                    } footer: {
+                        Text(settings.localized("Press each physical pad once, left to right, starting with the top row. Use the same controller and MIDI channel throughout. In 8-pad mode, positions are slots 1–8; sounds follow the lesson."))
+                            .font(Theme.meta)
+                            .foregroundStyle(Theme.secondary)
                     }
-                } header: {
-                    Text(settings.localized("MIDI LEARN"))
-                        .font(Theme.text(Theme.Size.dense))
-                        .foregroundStyle(Theme.orange)
-                } footer: {
-                    Text(settings.localized("Press each physical pad once, left to right, starting with the top row. Use the same controller and MIDI channel throughout. In 8-pad mode, positions are slots 1–8; sounds follow the lesson."))
-                        .font(Theme.text(Theme.Size.dense))
-                        .foregroundStyle(Theme.secondary)
                 }
+                .listRowBackground(Theme.surface)
+                .listRowInsets(EdgeInsets(top: Theme.Space.small, leading: Theme.Space.regular,
+                                         bottom: Theme.Space.small, trailing: Theme.Space.regular))
             }
-            .scrollContentBackground(.hidden)
-            .background(Theme.background)
-            .foregroundStyle(Theme.ink)
-            .tint(Theme.orange)
+            .appFormStyle()
             .navigationTitle(settings.localized("MIDI learn"))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
+                ToolbarItem(placement: .principal) { ScreenHeader(title: settings.localized("MIDI learn")) }
                 ToolbarItem(placement: .cancellationAction) {
                     Button(settings.localized("Cancel")) { dismiss() }
-                        .font(Theme.text())
+                        .font(Theme.control)
                         .frame(minHeight: Theme.Size.touch)
                 }
                 ToolbarItem(placement: .confirmationAction) {
                     Button(settings.localized("Save")) {
                         if midi.saveLearnedProfile(name: profileName) { dismiss() }
                     }
-                    .font(Theme.text())
+                    .font(Theme.control)
                     .frame(minHeight: Theme.Size.touch)
                     .disabled(!midi.learningComplete || trimmedName.isEmpty || nameExists)
                 }
@@ -147,12 +148,12 @@ struct TouchPad: View {
     @State private var isTouching = false
 
     var body: some View {
-        VStack(spacing: Theme.Space.tight) {
+        VStack(spacing: Theme.Space.small) {
             Text("Pad \(number)")
-                .font(Theme.text(Theme.Size.dense))
+                .font(Theme.meta)
                 .foregroundStyle(Theme.secondary)
             Text(sound)
-                .font(Theme.display(Theme.Size.small))
+                .font(Theme.rowTitle)
                 .foregroundStyle(isActive ? Theme.orange : Theme.ink)
         }
         .frame(maxWidth: .infinity, minHeight: 72)

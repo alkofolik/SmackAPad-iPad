@@ -81,7 +81,7 @@ struct InstrumentButtonStyle: ButtonStyle {
 
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
-            .font(Theme.display(main ? Theme.Size.emphasis : Theme.Size.body))
+            .font(Theme.control)
             .foregroundStyle(filled || selected ? Theme.background : Theme.ink)
             .padding(.horizontal, Theme.Space.regular)
             .frame(minHeight: main ? Theme.Size.control : Theme.Size.touch)
@@ -153,33 +153,33 @@ struct SummaryStrip: View {
                     Text(settings.localized(star == 3
                         ? "Run finished: star 3 earned, from memory"
                         : "Run finished: star 2 earned, goal tempo"))
-                        .font(Theme.text(Theme.Size.small))
+                        .font(Theme.meta)
                         .fixedSize(horizontal: false, vertical: true)
                     if let dismiss {
                         Button(settings.localized("Close"), action: dismiss)
-                            .font(Theme.text(Theme.Size.small))
+                            .font(Theme.meta)
                             .frame(minWidth: Theme.Size.touch, minHeight: Theme.Size.touch)
                     }
                 }
             }
             HStack(spacing: Theme.Space.regular) {
-                Text("\(Int((summary.score * 100).rounded())) %").font(Theme.display(Theme.Size.emphasis))
+                Text("\(Int((summary.score * 100).rounded())) %").font(Theme.control)
                 HStack(spacing: Theme.Space.small) {
                     star(summary.passed, settings.localized("Passed"))
                     star(summary.mastery, settings.localized("Goal tempo"))
                     star(summary.memory, settings.localized("From memory"))
                 }
                 Button(settings.localized("Details"), action: detail)
-                    .font(Theme.text())
+                    .font(Theme.control)
                     .frame(minHeight: Theme.Size.touch)
             }
             if let nextStarText {
                 Text(nextStarText)
-                    .font(Theme.text(Theme.Size.small))
+                    .font(Theme.meta)
                     .foregroundStyle(Theme.ink)
             }
             Text(settings.localized("Last completed pass"))
-                .font(Theme.text(Theme.Size.small)).foregroundStyle(Theme.secondary)
+                .font(Theme.meta).foregroundStyle(Theme.secondary)
         }
     }
 

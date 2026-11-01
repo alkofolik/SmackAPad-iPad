@@ -100,7 +100,7 @@
 "Library" = "Library";
 "Intro" = "Intro";
 "Progression categories" = "Progression categories";
-"24 exercises · always open" = "24 exercises · always open";
+"%lld exercises · always open" = "%lld exercises · always open";
 "%lld/%lld · soft unlocked" = "%lld/%lld · soft unlocked";
 "%lld/%lld passed" = "%lld/%lld passed";
 "Locked (5 to unlock)" = "Locked (5 to unlock)";
@@ -303,3 +303,7 @@
 "Bar %lld / %lld" = "Bar %lld / %lld";
 "Position in the current pass" = "Position in the current pass";
 "Bar %lld / %lld, %lld percent" = "Bar %lld / %lld, %lld percent";
+
+"Expanded" = "Expanded";
+
+"Collapsed" = "Collapsed";

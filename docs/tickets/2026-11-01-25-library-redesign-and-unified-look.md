@@ -1,6 +1,6 @@
 # 25 — Library redesign, unified look across screens, Intro rows, unlock flow
 
-Status: ready-for-agent (2026-11-01). Start **after ticket 24 is committed** (both touch `PracticeScreen.swift`). Ticket 26 is independent.
+Status: part-A-ready-for-human; part B pending in a separate conversation (2026-11-01). Ticket 24 prerequisite verified at commit `252a6b2`. Ticket 26 is independent.
 
 ## Goal
 
@@ -75,3 +75,14 @@ Lesson 6 appears once, in Intro only, and counts add up; no `starter` group exis
 ## Done rule
 
 Stop after successful build and tests; Jakub tests on iPad. Commit after the task (a separate commit for section 1 is welcome). Final report max 5 lines.
+
+
+## Part A implementation (2026-11-01)
+
+- Added five named typography roles in `Theme.swift` (28/22/18/13/16 pt) and shared `ScreenHeader`, `SectionHeader`, `ListRow`, `FilterChip`, `InfoBanner`, `StarsView`, `ProgressLine`, and form styling in `Components.swift`. Applied the roles to Library, Intro, Settings, MIDI learn, Calibration, and practice chrome. Practice changes are typography only; the shared button style now uses the control role.
+- Library lesson rows have a 60 pt minimum height with a single metadata line; the compact header contains progress and Play next. Search, cross-filter menu, horizontally scrolling star chips, count, and Clear filters share one row. The clear action uses its icon when space is limited. Sidebar level disclosures and stage rows use the same 48 pt minimum and inline passed/total counts; sidebar width is unchanged.
+- Locked-stage requirements occupy a fixed 48 pt banner above the scrolling list. Long requirements scroll horizontally. Selecting a locked group reveals its lessons; tapping a locked lesson reveals/pulses the pinned banner without opening a lesson or requesting an alert. The banner's manual Unlock action still uses the existing confirmation alert until part B replaces that flow.
+- Intro uses the same lesson row and three-star requirements popover, with its goal as metadata. The sidebar exercise count is computed from the catalogue. Source inspection verified that `PracticeSession` computes and persists memory stars for Intro and that `StarStreak` applies the Intro minimum; scoring and persistence were not changed.
+- Settings, controller profiles, MIDI learn, and Calibration use shared section headers, form margins, row heights, tint, and adaptive surfaces. Calibration strings now follow the selected app language using existing translation keys. No lesson data or progression rules changed.
+- Validation: Debug build for generic iOS Simulator succeeded with code signing disabled (`xcodebuild -project SmackAPad.xcodeproj -scheme SmackAPad -configuration Debug -destination 'generic/platform=iOS Simulator' -derivedDataPath build/Ticket25A CODE_SIGNING_ALLOWED=NO build`). The first sandboxed attempt could not launch Xcode macro plugins; the same build succeeded with the required access. No new model tests were needed for part A, and previously passing tests were not rerun, following AGENTS.md. No browser/skill scripts or iPad checks were run.
+- Pending Jakub: actual row visibility on 11-inch iPad, portrait/landscape, both appearances/languages, star popovers, and locked-banner feedback. Part B still owns lesson 6 placement, First steps removal, inline unlock confirmation/re-lock state and its tests, and the progression documentation updates. No BPM/difficulty placement decision was made in part A.

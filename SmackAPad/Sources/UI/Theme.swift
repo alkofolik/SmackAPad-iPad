@@ -16,6 +16,13 @@ enum Theme {
     static let secondary = adaptive(light: UIColor(white: 0.35, alpha: 1), dark: UIColor(white: 0.7, alpha: 1))
     static let surface = adaptive(light: UIColor(white: 0.94, alpha: 1), dark: UIColor(white: 0.09, alpha: 1))
 
+    // Five roles for screen chrome. Pattern notation keeps its fixed canvas sizes.
+    static let screenTitle = display(28)
+    static let sectionTitle = display(22)
+    static let rowTitle = display(18)
+    static let meta = text(13)
+    static let control = text(16)
+
     enum Space {
         static let tight: CGFloat = 4
         static let small: CGFloat = 8
