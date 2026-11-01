@@ -29,10 +29,11 @@ struct PracticeScreen: View {
                 TimelineView(.animation(minimumInterval: 1.0 / 60, paused: !session.running)) { _ in
                     PatternField(lesson: session.practiceLesson, hits: session.patternHits,
                                  position: session.position, running: session.running && session.countdown == nil,
-                                 hidden: session.fromMemory && session.running,
+                                 hidden: session.fromMemory && session.running && !session.listen,
                                  scrolling: scrolling, visibleBars: [1, 2, 4].contains(visibleBars) ? visibleBars : 4,
                                  verdicts: session.barVerdicts,
                                  judgments: session.hitJudgments,
+                                 playedHits: session.playedHits, pass: session.passNumber,
                                  scoring: session.running && !session.listen && session.countdown == nil,
                                  missGraceSteps: session.missGraceSteps, countdown: session.countdown)
                 }
@@ -234,7 +235,7 @@ struct PracticeScreen: View {
                 .font(Theme.text())
         } else if !session.ready {
             Text(settings.localized("Preparing sound…")).font(Theme.text())
-        } else if session.fromMemory && !session.running {
+        } else if session.fromMemory && !session.running && !session.listen {
             Text(settings.localized("From memory · notes hide after START"))
                 .font(Theme.text(Theme.Size.small))
         }

@@ -1,5 +1,18 @@
 import SwiftUI
 
+/// A strike's fractional position belongs to the pass in which it was played.
+struct PlayedHit {
+    let padIndex: Int
+    let step: Double
+    let pass: Int
+    let mark: HitMark?
+
+    func isVisible(in currentPass: Int, before position: Double, steps: Range<Int>) -> Bool {
+        pass == currentPass && step >= Double(steps.lowerBound)
+            && step < Double(steps.upperBound) && step < position
+    }
+}
+
 struct PatternField: View {
     @Environment(SettingsManager.self) private var settings
     let lesson: Lesson
@@ -11,6 +24,8 @@ struct PatternField: View {
     let visibleBars: Int
     let verdicts: [Int: BarVerdict]
     let judgments: [LessonHit: HitJudgment]
+    let playedHits: [PlayedHit]
+    let pass: Int
     let scoring: Bool
     let missGraceSteps: Double
     let countdown: Int?
@@ -20,12 +35,19 @@ struct PatternField: View {
         return PadVoice.rowOrder.filter { used.contains($0) }
     }
 
+    private func visiblePlayedHits(steps: Range<Int>) -> [PlayedHit] {
+        guard hidden, running else { return [] }
+        return playedHits.filter { $0.isVisible(in: pass, before: position, steps: steps) }
+    }
+
     var body: some View {
         GeometryReader { geometry in
             if scrolling {
                 ScrollingPattern(lesson: lesson, hits: hits, rows: rows, position: position,
                                  running: running, hidden: hidden, verdicts: verdicts,
-                                 judgments: judgments, scoring: scoring, missGraceSteps: missGraceSteps)
+                                 judgments: judgments,
+                                 playedHits: visiblePlayedHits(steps: 0..<(lesson.bars * 16)),
+                                 scoring: scoring, missGraceSteps: missGraceSteps)
             } else {
                 let count = min(visibleBars, min(lesson.bars, 4))
                 let currentBar = min(lesson.bars - 1, max(0, Int(position) / 16))
@@ -40,7 +62,9 @@ struct PatternField: View {
                         PatternBar(bar: bar, hits: hits.filter { $0.step / 16 == bar }, rows: rows,
                                    position: position - Double(bar * 16), active: running && bar == currentBar,
                                    hidden: hidden, verdict: verdicts[bar],
-                                   judgments: judgments, scoring: scoring, missGraceSteps: missGraceSteps)
+                                   judgments: judgments,
+                                   playedHits: visiblePlayedHits(steps: (bar * 16)..<((bar + 1) * 16)),
+                                   scoring: scoring, missGraceSteps: missGraceSteps)
                             .frame(height: height)
                     }
                 }
@@ -78,6 +102,7 @@ private struct PatternBar: View {
     let hidden: Bool
     let verdict: BarVerdict?
     let judgments: [LessonHit: HitJudgment]
+    let playedHits: [PlayedHit]
     let scoring: Bool
     let missGraceSteps: Double
 
@@ -114,6 +139,19 @@ private struct PatternBar: View {
                                 drawHit(hit, in: rect, active: active && Int(position) == step, mark: mark,
                                         fontSize: dense ? Theme.Size.dense : Theme.Size.body, context: &context)
                             }
+                        } else {
+                            var playedContext = context
+                            let behindMarker = min(size.width, max(0, (CGFloat(position) + 0.5) * cellWidth))
+                            playedContext.clip(to: Path(CGRect(x: 0, y: 0, width: behindMarker, height: size.height)))
+                            for hit in playedHits where hit.padIndex == pad {
+                                let step = hit.step - Double(bar * 16)
+                                let rect = CGRect(x: (CGFloat(step) + 0.08) * cellWidth,
+                                                  y: y - min(rowHeight - 4, 44) / 2,
+                                                  width: cellWidth * 0.84, height: max(8, min(rowHeight - 4, 44)))
+                                drawPlayedHit(hit, hand: hits.first(where: { $0.padIndex == pad })?.hand ?? "L",
+                                              in: rect, fontSize: dense ? Theme.Size.dense : Theme.Size.body,
+                                              context: &playedContext)
+                            }
                         }
                     }
                     if active {
@@ -136,6 +174,7 @@ private struct ScrollingPattern: View {
     let hidden: Bool
     let verdicts: [Int: BarVerdict]
     let judgments: [LessonHit: HitJudgment]
+    let playedHits: [PlayedHit]
     let scoring: Bool
     let missGraceSteps: Double
 
@@ -197,6 +236,20 @@ private struct ScrollingPattern: View {
                     }
                 }
             }
+            if hidden {
+                var playedContext = context
+                playedContext.clip(to: Path(CGRect(x: 0, y: rowTop, width: markerX, height: max(1, rowBottom - rowTop))))
+                for hit in playedHits {
+                    guard let row = rows.firstIndex(of: hit.padIndex) else { continue }
+                    let x = markerX + CGFloat(hit.step - position) * cellWidth
+                    guard x + cellWidth * 0.42 >= 0 else { continue }
+                    let y = rowTop + (CGFloat(row) + 0.5) * rowHeight
+                    let rect = CGRect(x: x - cellWidth * 0.42, y: y - min(rowHeight - 6, 64) / 2,
+                                      width: cellWidth * 0.84, height: max(8, min(rowHeight - 6, 64)))
+                    drawPlayedHit(hit, hand: hits.first(where: { $0.padIndex == hit.padIndex })?.hand ?? "L",
+                                  in: rect, fontSize: Theme.Size.body, context: &playedContext)
+                }
+            }
             drawMarker(x: markerX, top: countY - 20, bottom: rowBottom, context: &context)
             let overview = CGRect(x: 0, y: size.height - 22, width: size.width, height: 16)
             context.stroke(Path(overview), with: .color(Theme.black), lineWidth: Theme.Size.border)
@@ -208,6 +261,12 @@ private struct ScrollingPattern: View {
                        bottom: overview.maxY + 3, context: &context)
         }
     }
+}
+
+private func drawPlayedHit(_ hit: PlayedHit, hand: String, in rect: CGRect, fontSize: CGFloat,
+                           context: inout GraphicsContext) {
+    let note = LessonHit(step: Int(hit.step), padIndex: hit.padIndex, hand: hand, velocity: 0)
+    drawHit(note, in: rect, active: false, mark: hit.mark, fontSize: fontSize, context: &context)
 }
 
 private func hitMark(_ hit: LessonHit, judgments: [LessonHit: HitJudgment], scoring: Bool,

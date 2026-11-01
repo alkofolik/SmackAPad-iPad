@@ -1,6 +1,6 @@
 # 17 — Practice screen: hide pattern only in Play, show played hits in from-memory
 
-Status: ready-for-agent (2026-11-01). **Start only after ticket 15 is finished and committed** (15 has uncommitted changes in `PracticeScreen.swift`, `PatternField.swift`, `PracticeComponents.swift`). Run before ticket 18 (both touch `PracticeSession.swift`).
+Status: ready-for-review (2026-11-01). Implementation complete; build validation blocked by concurrent library changes. iPad validation pending. Ticket 15 was committed (`b3a2f9c`) before this work started. Run before ticket 18 (both touch `PracticeSession.swift`).
 
 ## Goal
 
@@ -44,3 +44,12 @@ Status: ready-for-agent (2026-11-01). **Start only after ticket 15 is finished a
 ## Done rule
 
 Stop after successful build; Jakub tests on iPad. Commit after the task.
+
+## Implementation and validation (2026-11-01)
+
+- Pattern hiding and the stopped memory hint now apply only to Play + From memory. Listen stays visible. Listen passes already have no scorer, so they cannot award a memory star; star rules are unchanged.
+- The session records pad, fractional strike position, pass number and the existing feedback colour. START/RESTART/STOP clear the history. Strike position uses the actual pass clock even when scoring matches a note in a neighbouring pass.
+- Both views use `PlayedHit.isVisible` to admit only strikes before the current position in the current pass and visible bar range. Rows remain lesson-defined. Scrolling blocks are clipped behind the marker, and static pages cannot show strikes from another page or pass. Count-in strikes have negative positions and are never drawn.
+- Added `PlayedHitTests.testVisibilityUsesTheCurrentPassPositionAndVisibleBars` for fractional positions, strict marker boundaries, pass changes, static paging and count-in exclusion. No existing tests were rerun. No scoring or tempo rules changed, and no new user-facing strings were added.
+- `git diff --check` passed. The new test could not execute because compilation failed before testing. First attempt: a concurrently created `LibraryCatalog.swift` referenced missing `LessonProgress.hasPlayed`. Second attempt: excluding that file via a build parameter failed because concurrent edits to `Persistence.swift` and `Progression.swift` now depended on its types. No unrelated source files were changed or excluded in the project configuration. Stopped after two failed builds as required by AGENTS.md.
+- Build and the single new test must be run again after the library work settles. Acceptance checkboxes remain pending runtime validation; Jakub still checks 1/2/4 bars, both views and both appearances on iPad.

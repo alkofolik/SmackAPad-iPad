@@ -26,6 +26,7 @@ final class PracticeSession {
     @ObservationIgnored private var judgmentsByPass: [Int: [LessonHit: HitJudgment]] = [:]
     private(set) var judgmentVersion = 0
     private(set) var padFlashes: [Int: PadFlash] = [:]
+    private(set) var playedHits: [PlayedHit] = []
     /// How the notes of the pass on screen were played, keyed by the note itself.
     var hitJudgments: [LessonHit: HitJudgment] {
         _ = judgmentVersion
@@ -171,6 +172,7 @@ final class PracticeSession {
             tempo.reset()
             barVerdicts = [:]
             judgmentsByPass = [:]
+            playedHits = []
             judgmentVersion += 1
             completedPasses = 0
             earnedPass = false; earnedMastery = false; earnedMemory = false
@@ -181,6 +183,13 @@ final class PracticeSession {
             displayStart = first + 4 * beat
             displayDuration = Double(practiceLesson.bars) * 240 / Double(bpm)
             passes = [makePass(number: 1, start: displayStart, bpm: bpm)]
+            if !listen {
+                var record = progress.progress(for: lesson.id) ?? LessonProgress()
+                record.hasPlayed = true
+                record.currentBpm = bpm
+                progress.setProgress(record, for: lesson.id)
+                settings.lastLessonID = lesson.id
+            }
             running = true
             countdown = 4
             task = Task { [weak self] in
@@ -201,6 +210,7 @@ final class PracticeSession {
         if !stopAfterStar { finishCompleted(at: now) }
         stopAfterStar = false
         running = false
+        playedHits = []
         countdown = nil
         task?.cancel(); task = nil
         passes = []; countInEvents = []
@@ -330,10 +340,15 @@ final class PracticeSession {
         guard event.isNoteOn, ready else { return }
         audio.play(padIndex: event.padIndex, velocity: event.velocity)
         padFlashes[event.padIndex] = PadFlash(mark: nil, date: Date())
-        guard running, !listen else { return }
+        guard running else { return }
         let sourceTime = AVAudioTime.seconds(forHostTime: event.timestamp)
         let adjusted = max(0, sourceTime - settings.calibrationOffset(for: event.deviceID) / 1_000)
+        guard !listen else {
+            recordPlayedHit(padIndex: event.padIndex, at: adjusted, mark: nil)
+            return
+        }
         let timestamp = AVAudioTime.hostTime(forSeconds: adjusted)
+        var mark: HitMark?
         // Probe value copies so early notes at the next boundary and late notes
         // at the previous boundary go to one scorer, never to both.
         var best: (Pass, ScoringEngine, Double, HitFeedback)?
@@ -347,16 +362,24 @@ final class PracticeSession {
         }
         if let best {
             best.0.scorer = best.1
-            record(best.3, pass: best.0.number, padIndex: event.padIndex)
+            mark = record(best.3, pass: best.0.number, padIndex: event.padIndex)
         } else if let pass = passes.first(where: { $0.start <= adjusted && adjusted < $0.start + $0.duration }) {
             if let feedback = pass.scorer?.receive(padIndex: event.padIndex, at: timestamp) {
-                record(feedback, pass: pass.number, padIndex: event.padIndex)
+                mark = record(feedback, pass: pass.number, padIndex: event.padIndex)
             }
         }
+        recordPlayedHit(padIndex: event.padIndex, at: adjusted, mark: mark)
+    }
+
+    private func recordPlayedHit(padIndex: Int, at time: Double, mark: HitMark?) {
+        guard let pass = passes.last(where: { $0.start <= time }) ?? passes.first else { return }
+        // Use the actual strike position, even if scoring matched a neighbouring pass.
+        let step = (time - pass.start) * Double(pass.bpm) / 15
+        playedHits.append(PlayedHit(padIndex: padIndex, step: step, pass: pass.number, mark: mark))
     }
 
     /// Colour feedback only. Scoring itself is unchanged.
-    private func record(_ feedback: HitFeedback, pass: Int, padIndex: Int) {
+    private func record(_ feedback: HitFeedback, pass: Int, padIndex: Int) -> HitMark {
         let mark: HitMark
         switch feedback.judgment {
         case .perfect, .good: mark = .correct
@@ -369,6 +392,7 @@ final class PracticeSession {
             judgmentsByPass[pass, default: [:]][hits[index]] = feedback.judgment
             judgmentVersion += 1
         }
+        return mark
     }
 
     private func saveTempo() {
