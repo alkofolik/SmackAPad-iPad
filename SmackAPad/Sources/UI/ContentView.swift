@@ -6,7 +6,6 @@ struct MIDISettingsView: View {
     @Environment(SettingsManager.self) private var settings
     @Environment(MIDIInput.self) private var midi
     @State private var showingLearn = false
-    @State private var showingBluetooth = false
 
     var body: some View {
         @Bindable var settings = settings
@@ -24,7 +23,7 @@ struct MIDISettingsView: View {
                         Text("Connect a USB controller or pair a Bluetooth MIDI controller.")
                             .foregroundStyle(.secondary)
                     }
-                    Button("Connect Bluetooth MIDI") { showingBluetooth = true }
+                    Button("Connect Bluetooth MIDI") { BluetoothMIDIPresenter.present() }
                     if let error = midi.errorMessage {
                         Text(error).foregroundStyle(.red)
                         Button("Reconnect MIDI") { midi.stop(); midi.start() }
@@ -112,17 +111,6 @@ struct MIDISettingsView: View {
             .navigationTitle("Smack-a-Pad · MIDI")
             .sheet(isPresented: $showingLearn) {
                 MIDILearnView().environment(settings).environment(midi)
-            }
-            .sheet(isPresented: $showingBluetooth) {
-                NavigationStack {
-                    BluetoothMIDIView()
-                        .navigationTitle("Bluetooth MIDI")
-                        .toolbar {
-                            ToolbarItem(placement: .confirmationAction) {
-                                Button("Done") { showingBluetooth = false }
-                            }
-                        }
-                }
             }
         }
     }
@@ -268,12 +256,33 @@ private enum PadNames {
     }
 }
 
-private struct BluetoothMIDIView: UIViewControllerRepresentable {
-    func makeUIViewController(context: Context) -> CABTMIDICentralViewController {
-        CABTMIDICentralViewController()
+/// Apple's pairing screen (CABTMIDICentralViewController) is a UIKit table controller.
+/// It is presented from UIKit on the topmost controller, with the iOS 27 crash workaround below.
+@MainActor
+enum BluetoothMIDIPresenter {
+    static func present() {
+        guard let scene = UIApplication.shared.connectedScenes.compactMap({ $0 as? UIWindowScene })
+                .first(where: { $0.activationState == .foregroundActive }),
+              let window = scene.windows.first(where: \.isKeyWindow) ?? scene.windows.first,
+              var top = window.rootViewController else { return }
+        while let next = top.presentedViewController, !next.isBeingDismissed { top = next }
+        let central = CABTMIDICentralViewController()
+        // iOS 27 bug (Apple forums thread 850584, FB25301268): the controller's own
+        // loadView builds its table with a NaN height and crashes. Supplying the table
+        // first skips that code; viewDidLoad then starts Bluetooth discovery as usual.
+        // Undocumented workaround from Apple DTS; remove once the minimum OS has the fix.
+        if #available(iOS 27, *) {
+            central.tableView = UITableView(frame: .zero, style: .grouped)
+            central.viewDidLoad()
+        }
+        central.title = String(localized: "Bluetooth MIDI")
+        let navigation = UINavigationController(rootViewController: central)
+        navigation.modalPresentationStyle = .formSheet
+        central.navigationItem.rightBarButtonItem = UIBarButtonItem(
+            systemItem: .done,
+            primaryAction: UIAction { [weak navigation] _ in navigation?.dismiss(animated: true) })
+        top.present(navigation, animated: true)
     }
-
-    func updateUIViewController(_ controller: CABTMIDICentralViewController, context: Context) {}
 }
 
 #Preview {
