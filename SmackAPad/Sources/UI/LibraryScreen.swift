@@ -14,6 +14,13 @@ struct LibraryScreen: View {
     @State private var cross = ""
     @State private var query = ""
     @State private var selectedLesson: Lesson?
+    @Namespace private var lessonNamespace
+    @State private var starsBefore: [Bool] = []
+    @State private var practicedID: Int?
+    @State private var consumedStarLessons: Set<Int> = []
+    @State private var returnedStars: [Int: Set<Int>] = [:]
+    @Environment(\.accessibilityReduceMotion) private var reduced
+    private var motion: Theme.Motion.Policy { .init(reduced: reduced) }
     @State private var showingSettings = false
     @State private var bannerPulse = 0
     @State private var columnVisibility: NavigationSplitViewVisibility = .all
@@ -33,10 +40,11 @@ struct LibraryScreen: View {
                 .navigationSplitViewColumnWidth(min: 280, ideal: 320, max: 380)
         } detail: {
             Group {
-                if showingIntro { IntroScreen { selectedLesson = $0 } }
-                else if let group { detail(group) }
+                if showingIntro { IntroScreen { selectedLesson = $0 }.id("intro").transition(motion.transition) }
+                else if let group { detail(group).id(mode.id + group.id).transition(motion.transition) }
                 else { Text(settings.localized("No matching lessons")) }
             }
+            .motion(Theme.Motion.standard, value: showingIntro ? "intro" : mode.id + (group?.id ?? ""))
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
                     Button(settings.localized("Settings")) { showingSettings = true }
@@ -48,14 +56,36 @@ struct LibraryScreen: View {
         .font(Theme.control)
         .background(Theme.background).foregroundStyle(Theme.ink).tint(Theme.orange)
         .sheet(isPresented: $showingSettings) { SettingsView() }
-        .fullScreenCover(item: $selectedLesson) { lesson in
+        .environment(\.lessonNamespace, lessonNamespace)
+        .environment(\.returnedStars, returnedStars)
+        .environment(\.consumeReturnedStars, { id in
+            guard !consumedStarLessons.contains(id), let fresh = returnedStars[id], !fresh.isEmpty else { return [] }
+            consumedStarLessons.insert(id)
+            return fresh
+        })
+        .lessonPresentation(lesson: $selectedLesson, namespace: lessonNamespace) { lesson in
             PracticeScreen(lesson: lesson, settings: settings, progress: progress, midi: midi)
+        }
+        .onChange(of: selectedLesson?.id) { _, id in
+            if let id {
+                practicedID = id
+                starsBefore = starSet(id)
+                returnedStars = [:]
+                consumedStarLessons = []
+            } else if let practicedID {
+                returnedStars = [practicedID: Theme.Motion.newStars(before: starsBefore, after: starSet(practicedID))]
+            }
         }
         .onChange(of: settings.libraryView) { _, _ in
             query = ""; cross = ""; showingIntro = false; progression.cancelStageAccessChange()
         }
         .onChange(of: group?.id) { _, _ in progression.cancelStageAccessChange() }
         .onChange(of: showingIntro) { _, _ in progression.cancelStageAccessChange() }
+    }
+
+    private func starSet(_ id: Int) -> [Bool] {
+        let record = progress.progress(for: id)
+        return [record?.passed ?? false, record?.mastery ?? false, record?.memory ?? false]
     }
 
     private var introLessons: [Lesson] { catalog.introLessons }
@@ -87,7 +117,8 @@ struct LibraryScreen: View {
                             else { expandedLevels.insert(level) }
                         } label: {
                             HStack(spacing: Theme.Space.small) {
-                                Image(systemName: expandedLevels.contains(level) ? "chevron.down" : "chevron.right")
+                                Image(systemName: "chevron.right")
+                                    .rotationEffect(motion.angle(expandedLevels.contains(level) ? 90 : 0))
                                     .font(Theme.meta).frame(width: 16)
                                 sidebarLabel(settings.localized("Level %lld", level),
                                              lessons: catalog.path.filter { $0.level == level })
@@ -112,6 +143,7 @@ struct LibraryScreen: View {
                 } header: { SectionHeader(title: settings.localized("Extensions · outside the Path")) }
             }
         }
+        .motion(Theme.Motion.standard, value: expandedLevels)
         .font(Theme.control)
         .environment(\.defaultMinListRowHeight, Theme.Size.touch)
         .listRowInsets(EdgeInsets(top: 0, leading: Theme.Space.regular, bottom: 0, trailing: Theme.Space.regular))
@@ -130,7 +162,7 @@ struct LibraryScreen: View {
             query = ""; cross = ""
         } label: {
             HStack(spacing: Theme.Space.small) {
-                if locked { Image(systemName: "lock").font(Theme.meta) }
+                AnimatedLock(locked: locked).font(Theme.meta)
                 sidebarLabel(settings.localized(item.title), lessons: item.lessons)
             }
             .foregroundStyle(selected ? Theme.orange : Theme.ink)
@@ -189,7 +221,7 @@ struct LibraryScreen: View {
                     .foregroundStyle(Theme.black).background(Theme.orange).disabled(next == nil)
             }
             if let stage = group.stage, !progression.isStageOpen(stage) || progression.canRelockStage(stage) {
-                stageBanner(stage).id("stage-lock")
+                stageBanner(stage).id("stage-lock").transition(motion.transition)
             }
             filters(matching: matching, shown: filtered.count, total: group.lessons.count)
             List {
@@ -215,6 +247,7 @@ struct LibraryScreen: View {
         }
         .padding(.horizontal, Theme.Space.page).padding(.top, Theme.Space.small)
         .background(Theme.background)
+        .motion(Theme.Motion.standard, value: group.stage.map { progression.isStageOpen($0) })
     }
 
 
@@ -254,7 +287,8 @@ struct LibraryScreen: View {
             }
             .frame(minWidth: 80)
             Text(settings.localized("%lld of %lld lessons", shown, total)).font(Theme.meta).lineLimit(1)
-                .fixedSize().accessibilityLabel(settings.localized("%lld of %lld lessons", shown, total))
+                .fixedSize().contentTransition(motion.numeric).motion(value: shown)
+                .accessibilityLabel(settings.localized("%lld of %lld lessons", shown, total))
             Button {
                 query = ""; cross = ""
                 settings.libraryStarFilters = LibraryStarFilter.allCases.map(\.id)
@@ -298,12 +332,12 @@ struct LibraryScreen: View {
             else { progression.requestStageAccessChange(for: stage.id, action: relock ? .relock : .unlock) }
         }, secondaryActionTitle: pending ? settings.localized("Cancel") : nil,
                           secondaryAction: { progression.cancelStageAccessChange() })
-        .sensoryFeedback(.selection, trigger: bannerPulse)
-        .keyframeAnimator(initialValue: 0.0, trigger: bannerPulse) { content, opacity in
-            content.overlay(Rectangle().stroke(Theme.orange.opacity(opacity), lineWidth: Theme.Size.border))
-        } keyframes: { _ in
-            LinearKeyframe(1, duration: 0.15)
-            LinearKeyframe(0, duration: 0.6)
+        .overlay(Rectangle().stroke(Theme.orange.opacity(bannerPulse > 0 ? 1 : 0), lineWidth: Theme.Size.border))
+        .motion(value: bannerPulse)
+        .task(id: bannerPulse) {
+            guard bannerPulse > 0 else { return }
+            try? await Task.sleep(for: .milliseconds(400))
+            bannerPulse = 0
         }
     }
 
@@ -367,6 +401,7 @@ struct LibraryLessonRow: View {
         } trailing: {
             StarsView(record: record, lesson: lesson)
         }
+        .lessonSource(lesson.id)
     }
 
     private var difficulty: some View {

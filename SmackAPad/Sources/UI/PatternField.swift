@@ -105,9 +105,8 @@ struct PatternField: View {
         .overlay {
             if let countdown {
                 GeometryReader { box in
-                    Text("\(countdown)")
-                        .font(Theme.canvasDisplay(min(box.size.height * 0.62, 240)))
-                        .foregroundStyle(Theme.black)
+                    CountInNumeral(number: countdown, size: min(box.size.height * 0.62, 240))
+                        .id(countdown)
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
                 }
                 .allowsHitTesting(false)

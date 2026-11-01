@@ -5,7 +5,8 @@ struct StarBurst: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     let event: StarEvent
     let announcement: String
-    @State private var revealed = false
+    @State private var revealed: Set<Int> = []
+    private var motion: Theme.Motion.Policy { .init(reduced: reduceMotion) }
     @State private var visible = false
 
     private var large: Bool { event.award.shouldStop }
@@ -15,10 +16,11 @@ struct StarBurst: View {
             ForEach(0..<3, id: \.self) { index in
                 let fresh = event.award.fresh[index]
                 StarShape()
-                    .fill(Theme.black.opacity(event.award.earned[index] && (!fresh || revealed) ? 1 : 0))
+                    .fill(Theme.black.opacity(event.award.earned[index] && (!fresh || revealed.contains(index)) ? 1 : 0))
                     .overlay(StarShape().stroke(Theme.black, lineWidth: Theme.Size.border))
                     .frame(width: large ? 56 : 28, height: large ? 56 : 28)
-                    .scaleEffect(reduceMotion || !fresh || revealed ? 1 : 0.35)
+                    .scaleEffect(motion.scale(!fresh || revealed.contains(index) ? 1 : 0.35))
+                    .motion(Theme.Motion.emphasis, value: revealed)
             }
         }
         .padding(large ? Theme.Space.page : 12)
@@ -33,15 +35,16 @@ struct StarBurst: View {
         .accessibilityLabel(announcement)
         .accessibilityHidden(!visible)
         .task {
-            withAnimation(.easeOut(duration: 0.15)) { visible = true }
+            withAnimation(motion.animation(Theme.Motion.fast)) { visible = true }
             do {
                 try await Task.sleep(for: .milliseconds(100))
-                withAnimation(reduceMotion ? .easeInOut(duration: 0.25) : .spring(response: 0.4, dampingFraction: 0.6)) {
-                    revealed = true
+                for index in 0..<3 {
+                    revealed.insert(index)
+                    try await Task.sleep(for: Theme.Motion.starStagger)
                 }
                 UIAccessibility.post(notification: .announcement, argument: announcement)
                 try await Task.sleep(for: .milliseconds(large ? 2_700 : 1_700))
-                withAnimation(.easeOut(duration: 0.2)) { visible = false }
+                withAnimation(motion.animation(Theme.Motion.fast)) { visible = false }
             } catch {
                 // A new event, restart or navigation cancels this panel's lifetime.
             }

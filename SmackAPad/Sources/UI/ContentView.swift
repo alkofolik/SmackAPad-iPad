@@ -117,6 +117,9 @@ struct MIDILearnView: View {
                                          bottom: Theme.Space.small, trailing: Theme.Space.regular))
             }
             .appFormStyle()
+            .motion(value: padCount)
+            .motion(value: nameExists)
+            .motion(value: midi.isLearning)
             .navigationTitle(settings.localized("MIDI learn"))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {

@@ -50,7 +50,7 @@ struct ListRow<Meta: View, Trailing: View>: View {
         HStack(spacing: Theme.Space.small) {
             Button(action: action) {
                 HStack(spacing: Theme.Space.small) {
-                    Image(systemName: symbol)
+                    RowStateSymbol(symbol: symbol)
                         .font(Theme.control).frame(width: 24)
                         .accessibilityLabel(stateTitle)
                     if let number {
@@ -74,6 +74,7 @@ struct ListRow<Meta: View, Trailing: View>: View {
 }
 
 struct FilterChip: View {
+    @Environment(\.accessibilityReduceMotion) private var reduced
     let title: String
     let selected: Bool
     let action: () -> Void
@@ -81,6 +82,8 @@ struct FilterChip: View {
     var body: some View {
         Button(action: action) {
             Text(title).font(Theme.control).lineLimit(1).fixedSize()
+                .contentTransition(Theme.Motion.Policy(reduced: reduced).numeric)
+                .motion(value: title)
                 .padding(.horizontal, Theme.Space.small)
                 .frame(minHeight: Theme.Size.touch)
                 .background(selected ? Theme.surface : Theme.background)
@@ -90,6 +93,7 @@ struct FilterChip: View {
         }
         .buttonStyle(.plain).foregroundStyle(Theme.ink)
         .accessibilityAddTraits(selected ? .isSelected : [])
+        .motion(value: selected)
     }
 }
 
@@ -106,10 +110,10 @@ struct InfoBanner: View {
             Image(systemName: symbol).font(Theme.control)
             // Long stage names stay on one line and can be read by scrolling.
             ScrollView(.horizontal, showsIndicators: false) {
-                Text(text).font(Theme.meta).lineLimit(1).fixedSize()
+                Text(text).font(Theme.meta).lineLimit(1).fixedSize().id(text).transition(.opacity)
             }
             if let actionTitle, let action {
-                Button(actionTitle, action: action).font(Theme.control)
+                Button(action: action) { Text(actionTitle).id(actionTitle).transition(.opacity) }.font(Theme.control)
                     .frame(minHeight: Theme.Size.touch).fixedSize()
             }
             if let secondaryActionTitle, let secondaryAction {
@@ -120,6 +124,8 @@ struct InfoBanner: View {
         .padding(.horizontal, Theme.Space.small)
         .frame(height: Theme.Size.touch)
         .background(Theme.surface).foregroundStyle(Theme.ink)
+        .motion(value: text)
+        .motion(value: actionTitle)
     }
 }
 
@@ -129,6 +135,10 @@ struct StarsView: View {
     let record: LessonProgress?
     var lesson: Lesson? = nil
     @State private var showingRequirements = false
+    @Environment(\.returnedStars) private var returnedStars
+    @Environment(\.consumeReturnedStars) private var consumeReturnedStars
+    @Environment(\.accessibilityReduceMotion) private var reduced
+    @State private var popping: Set<Int> = []
 
     private var earned: [Bool] {
         [record?.passed ?? false, record?.mastery ?? false, record?.memory ?? false]
@@ -165,7 +175,23 @@ struct StarsView: View {
 
     private var stars: some View {
         HStack(spacing: Theme.Space.small) {
-            ForEach(0..<3, id: \.self) { star($0) }
+            ForEach(0..<3, id: \.self) { index in
+                star(index)
+                    .scaleEffect(Theme.Motion.Policy(reduced: reduced).scale(popping.contains(index) ? 1.25 : 1))
+                    .opacity(Theme.Motion.Policy(reduced: reduced).opacityOnly && popping.contains(index) ? 0.45 : 1)
+                    .motion(Theme.Motion.emphasis, value: popping)
+            }
+        }
+        .task(id: lesson.map { returnedStars[$0.id] ?? [] } ?? []) {
+            guard let lesson else { return }
+            let fresh = consumeReturnedStars(lesson.id)
+            guard !fresh.isEmpty else { return }
+            for index in fresh.sorted() {
+                popping.insert(index)
+                do { try await Task.sleep(for: Theme.Motion.starStagger) } catch { return }
+            }
+            do { try await Task.sleep(for: .milliseconds(180)) } catch { return }
+            popping = []
         }
     }
 
@@ -179,6 +205,8 @@ struct StarsView: View {
 }
 
 struct ProgressLine: View {
+    @Environment(\.accessibilityReduceMotion) private var reduced
+    @State private var appeared = false
     let full: Int
     var partial = 0
     let total: Int
@@ -187,18 +215,29 @@ struct ProgressLine: View {
         GeometryReader { geometry in
             HStack(spacing: 0) {
                 Rectangle().fill(Theme.ink)
-                    .frame(width: geometry.size.width * CGFloat(full) / CGFloat(max(1, total)))
+                    .frame(width: geometry.size.width * CGFloat(appeared || Theme.Motion.Policy(reduced: reduced).opacityOnly ? full : 0) / CGFloat(max(1, total)))
                 Rectangle().fill(Theme.ink.opacity(0.35))
-                    .frame(width: geometry.size.width * CGFloat(partial) / CGFloat(max(1, total)))
+                    .frame(width: geometry.size.width * CGFloat(appeared || Theme.Motion.Policy(reduced: reduced).opacityOnly ? partial : 0) / CGFloat(max(1, total)))
                 Spacer(minLength: 0)
             }
             .background(Theme.surface)
         }
         .frame(height: Theme.Size.border).accessibilityHidden(true)
+        .onAppear { appeared = true }
+        .motion(Theme.Motion.emphasis, value: appeared)
+        .motion(Theme.Motion.emphasis, value: full)
+        .motion(Theme.Motion.emphasis, value: partial)
+        .transaction { transaction in
+            // Reduce Motion fades the completed line instead of interpolating its width.
+            if Theme.Motion.Policy(reduced: reduced).opacityOnly { transaction.animation = nil }
+        }
+        .opacity(appeared ? 1 : 0)
+        .motion(value: appeared)
     }
 }
 
 private struct AppFormStyle: ViewModifier {
+    @Environment(\.accessibilityReduceMotion) private var reduced
     func body(content: Content) -> some View {
         content
             .font(Theme.control)
@@ -209,9 +248,60 @@ private struct AppFormStyle: ViewModifier {
             .contentMargins(.horizontal, Theme.Space.page, for: .scrollContent)
             .scrollContentBackground(.hidden)
             .background(Theme.background).foregroundStyle(Theme.ink).tint(Theme.orange)
+            .transaction { transaction in
+                if transaction.animation != nil {
+                    transaction.animation = Theme.Motion.Policy(reduced: reduced).opacityOnly ? nil : Theme.Motion.fast
+                }
+            }
     }
 }
 
 extension View {
     func appFormStyle() -> some View { modifier(AppFormStyle()) }
+}
+
+/// Retains an opening lock long enough to read it before it fades away.
+struct AnimatedLock: View {
+    let locked: Bool
+    @State private var showing = false
+    @State private var open = false
+    var body: some View {
+        Image(systemName: open ? "lock.open" : "lock")
+            .contentTransition(.opacity)
+            .opacity(locked || showing ? 1 : 0)
+            .frame(width: locked || showing ? 16 : 0)
+            .motion(value: open)
+            .motion(value: showing)
+            .onAppear { open = !locked }
+            .task(id: locked) {
+                if locked { open = false; showing = false }
+                else {
+                    showing = true; open = true
+                    do { try await Task.sleep(for: .milliseconds(250)) } catch { return }
+                    showing = false
+                }
+            }
+            .accessibilityHidden(!locked)
+    }
+}
+
+private struct RowStateSymbol: View {
+    let symbol: String
+    @State private var wasLocked = false
+    @State private var opening = false
+    var body: some View {
+        Image(systemName: opening ? "lock.open" : symbol)
+            .contentTransition(.opacity)
+            .motion(value: opening)
+            .motion(value: symbol)
+            .onAppear { wasLocked = symbol == "lock" }
+            .task(id: symbol) {
+                guard wasLocked, symbol != "lock" else {
+                    wasLocked = symbol == "lock"; return
+                }
+                opening = true
+                do { try await Task.sleep(for: .milliseconds(250)) } catch { return }
+                opening = false; wasLocked = false
+            }
+    }
 }

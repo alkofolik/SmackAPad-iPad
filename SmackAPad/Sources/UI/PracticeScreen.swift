@@ -3,6 +3,9 @@ import SwiftUI
 @MainActor
 struct PracticeScreen: View {
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.dismissLesson) private var dismissLesson
+    @Environment(\.accessibilityReduceMotion) private var reduced
+    private var motion: Theme.Motion.Policy { .init(reduced: reduced) }
     @Environment(\.scenePhase) private var scenePhase
     @Environment(SettingsManager.self) private var settings
     @Environment(MIDIInput.self) private var midi
@@ -39,6 +42,11 @@ struct PracticeScreen: View {
                                  missGraceSteps: session.missGraceSteps, countdown: session.countdown)
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .overlay {
+                    Theme.background.opacity(session.starEvent == nil ? 0 : 0.18)
+                        .allowsHitTesting(false)
+                        .motion(Theme.Motion.standard, value: session.starEvent?.id)
+                }
                 .overlay(alignment: session.starEvent?.award.shouldStop == true ? .center : .topTrailing) {
                     if let event = session.starEvent {
                         StarBurst(event: event, announcement: starAnnouncement(for: event))
@@ -47,6 +55,7 @@ struct PracticeScreen: View {
                     }
                 }
                 footer(compact: compact)
+                    .motion(Theme.Motion.emphasis, value: session.summary?.id)
                 if let error = session.errorMessage {
                     Text(error).font(Theme.meta).foregroundStyle(Theme.secondary)
                         .frame(maxWidth: .infinity, alignment: .leading)
@@ -94,7 +103,7 @@ struct PracticeScreen: View {
     private func header(compact: Bool) -> some View {
         VStack(alignment: .leading, spacing: Theme.Space.small) {
             HStack(spacing: Theme.Space.regular) {
-                icon(.back, settings.localized("Back to lessons")) { session.stop(); dismiss() }
+                icon(.back, settings.localized("Back to lessons")) { session.stop(); if let dismissLesson { dismissLesson() } else { dismiss() } }
                 VStack(alignment: .leading, spacing: Theme.Space.tight) {
                     Text(session.lesson.title).font(Theme.screenTitle).lineLimit(2)
                     Text("\(session.lesson.cat.uppercased()) · \(settings.localized("LEVEL")) \(session.lesson.level)")
@@ -165,6 +174,7 @@ struct PracticeScreen: View {
             HStack(spacing: Theme.Space.regular) {
                 Button { showingTempo.toggle() } label: {
                     Text("\(session.bpm) → \(session.lesson.targetBpm) BPM").font(Theme.control)
+                        .contentTransition(motion.numeric).motion(value: session.bpm)
                 }
                 .buttonStyle(InstrumentButtonStyle())
                 .opacity(session.running ? 0.45 : 1)
@@ -244,6 +254,7 @@ struct PracticeScreen: View {
         VStack(alignment: .leading, spacing: Theme.Space.regular) {
             Text(settings.localized("Tempo")).font(Theme.screenTitle)
             Text("\(session.bpm) → \(session.lesson.targetBpm) BPM").font(Theme.control)
+                        .contentTransition(motion.numeric).motion(value: session.bpm)
             HStack(spacing: Theme.Space.small) {
                 ForEach([-5, -1, 1, 5], id: \.self) { step in
                     Button(step > 0 ? "+\(step)" : "\(step)") { session.setTempo(session.bpm + step) }
@@ -293,6 +304,8 @@ struct PracticeScreen: View {
                 settings: settings
             )
             SummaryStrip(summary: summary, nextStarText: nextStar, dismiss: session.dismissSummary) { showingDetails = true }
+                .id(summary.id)
+                .transition(motion.summary)
                 .popover(isPresented: $showingDetails) {
                     VStack(alignment: .leading, spacing: Theme.Space.regular) {
                         Text(settings.localized("Practice summary")).font(Theme.screenTitle)

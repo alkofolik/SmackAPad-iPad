@@ -89,10 +89,13 @@ struct InstrumentButtonStyle: ButtonStyle {
             .overlay(Rectangle().stroke(Theme.ink, lineWidth: Theme.Size.border))
             .opacity(configuration.isPressed ? 0.65 : 1)
             .contentShape(Rectangle())
+            .motion(value: selected)
+            .motion(value: configuration.isPressed)
     }
 }
 
 struct TransportControls: View {
+    @Environment(\.accessibilityReduceMotion) private var reduced
     let running: Bool
     let enabled: Bool
     let start: () -> Void
@@ -102,29 +105,31 @@ struct TransportControls: View {
     var body: some View {
         GeometryReader { geometry in
             HStack(spacing: Theme.Space.small) {
+                Button(action: running ? stop : start) {
+                    HStack {
+                        if running { Rectangle().frame(width: 16, height: 16).transition(.opacity) }
+                        Text(running ? "STOP" : "START").id(running).transition(.opacity)
+                    }.frame(maxWidth: .infinity)
+                }
+                .buttonStyle(InstrumentButtonStyle(filled: true, main: true))
+                .frame(width: running ? (geometry.size.width - Theme.Space.small) * 0.6 : geometry.size.width)
+                .disabled(!running && !enabled)
+                .opacity(running || enabled ? 1 : 0.5)
                 if running {
-                    Button(action: stop) {
-                        HStack { Rectangle().frame(width: 16, height: 16); Text("STOP") }
-                            .frame(maxWidth: .infinity)
-                    }
-                    .buttonStyle(InstrumentButtonStyle(filled: true, main: true))
-                    .frame(width: (geometry.size.width - Theme.Space.small) * 0.6)
                     Button(action: restart) {
                         HStack(spacing: Theme.Space.small) {
                             PracticeGlyph(kind: .restart).frame(width: 20, height: 20)
-                            Text("RESTART").font(Theme.display(Theme.Size.body))
+                            Text("RESTART").font(Theme.control)
                         }.frame(maxWidth: .infinity)
                     }
                     .buttonStyle(InstrumentButtonStyle(main: true))
-                } else {
-                    Button(action: start) { Text("START").frame(maxWidth: .infinity) }
-                        .buttonStyle(InstrumentButtonStyle(filled: true, main: true))
-                        .disabled(!enabled)
-                        .opacity(enabled ? 1 : 0.5)
+                    .transition(.opacity)
                 }
             }
         }
         .frame(width: Theme.Size.transportWidth, height: Theme.Size.control)
+        .motion(Theme.Motion.standard, value: running)
+        .transaction { if Theme.Motion.Policy(reduced: reduced).opacityOnly { $0.animation = nil } }
     }
 }
 
@@ -140,6 +145,7 @@ struct RunSummary: Identifiable {
 }
 
 struct SummaryStrip: View {
+    @State private var revealed: Set<Int> = []
     @Environment(SettingsManager.self) private var settings
     let summary: RunSummary
     var nextStarText: String? = nil
@@ -165,9 +171,9 @@ struct SummaryStrip: View {
             HStack(spacing: Theme.Space.regular) {
                 Text("\(Int((summary.score * 100).rounded())) %").font(Theme.control)
                 HStack(spacing: Theme.Space.small) {
-                    star(summary.passed, settings.localized("Passed"))
-                    star(summary.mastery, settings.localized("Goal tempo"))
-                    star(summary.memory, settings.localized("From memory"))
+                    star(summary.passed && revealed.contains(0), settings.localized("Passed"))
+                    star(summary.mastery && revealed.contains(1), settings.localized("Goal tempo"))
+                    star(summary.memory && revealed.contains(2), settings.localized("From memory"))
                 }
                 Button(settings.localized("Details"), action: detail)
                     .font(Theme.control)
@@ -181,6 +187,13 @@ struct SummaryStrip: View {
             Text(settings.localized("Last completed pass"))
                 .font(Theme.meta).foregroundStyle(Theme.secondary)
         }
+        .task(id: summary.id) {
+            revealed = []
+            for index in 0..<3 {
+                do { try await Task.sleep(for: Theme.Motion.starStagger) } catch { return }
+                revealed.insert(index)
+            }
+        }
     }
 
     private func star(_ earned: Bool, _ label: String) -> some View {
@@ -190,6 +203,7 @@ struct SummaryStrip: View {
             .frame(width: 23, height: 23)
             .accessibilityLabel(label)
             .accessibilityValue(settings.localized(earned ? "earned" : "not earned"))
+            .motion(value: earned)
     }
 }
 

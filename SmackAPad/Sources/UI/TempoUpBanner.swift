@@ -12,6 +12,7 @@ struct TempoUpBanner: View {
 
     @State private var visible = false
     @State private var pulse = false
+    private var motion: Theme.Motion.Policy { .init(reduced: reduceMotion) }
 
     var body: some View {
         Text(label)
@@ -26,26 +27,20 @@ struct TempoUpBanner: View {
                 RoundedRectangle(cornerRadius: Theme.Size.blockRadius)
                     .strokeBorder(Theme.black, lineWidth: Theme.Size.border)
             }
-            .scaleEffect(pulse && !reduceMotion ? 1.08 : 1)
+            .scaleEffect(motion.scale(pulse ? 1.08 : 1))
             .opacity(visible ? 1 : 0)
             .allowsHitTesting(false)
             .accessibilityElement(children: .ignore)
             .accessibilityLabel(announcement)
             .accessibilityHidden(!visible)
             .task {
-                withAnimation(.easeOut(duration: 0.15)) { visible = true }
-                if !reduceMotion {
-                    withAnimation(.spring(response: 0.3, dampingFraction: 0.5)) { pulse = true }
-                    do {
-                        try await Task.sleep(for: .milliseconds(300))
-                    } catch { return }
-                    withAnimation(.easeOut(duration: 0.2)) { pulse = false }
-                }
+                withAnimation(motion.animation(Theme.Motion.fast)) { visible = true }
+                withAnimation(motion.animation(Theme.Motion.emphasis)) { pulse = true }
+                do { try await Task.sleep(for: .milliseconds(300)) } catch { return }
+                withAnimation(motion.animation(Theme.Motion.fast)) { pulse = false }
                 UIAccessibility.post(notification: .announcement, argument: announcement)
-                do {
-                    try await Task.sleep(for: .milliseconds(reduceMotion ? 900 : 600))
-                } catch { return }
-                withAnimation(.easeOut(duration: 0.3)) { visible = false }
+                do { try await Task.sleep(for: .milliseconds(600)) } catch { return }
+                withAnimation(motion.animation(Theme.Motion.standard)) { visible = false }
             }
     }
 }
