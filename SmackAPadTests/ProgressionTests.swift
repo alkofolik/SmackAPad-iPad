@@ -365,8 +365,8 @@ final class ProgressionTests: XCTestCase {
         let starterStatus = progression.status(for: "starter")
         XCTAssertTrue(starterStatus.isFirstCategory)
         XCTAssertTrue(starterStatus.isUnlocked)
-        // Default language is Czech (DECISIONS §19)
-        XCTAssertEqual(starterStatus.title, "První kroky")
+        // Default language is English (DECISIONS §19)
+        XCTAssertEqual(starterStatus.title, "First steps")
 
         // Test English titles
         XCTAssertEqual(progression.title(for: "starter", language: .english), "First steps")
