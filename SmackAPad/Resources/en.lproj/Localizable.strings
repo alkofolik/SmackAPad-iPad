@@ -80,3 +80,23 @@
 "Taps were too uneven. Follow the sound and try again. Previous settings kept." = "Taps were too uneven. Follow the sound and try again. Previous settings kept.";
 "Audio timing changed or is not ready. Try again. Previous settings kept." = "Audio timing changed or is not ready. Try again. Previous settings kept.";
 "Audio could not start. Try again. Previous settings kept." = "Audio could not start. Try again. Previous settings kept.";
+
+// Settings screen
+"Settings" = "Settings";
+"Sound kit" = "Sound kit";
+"BPM step" = "BPM step";
+"Tempo step" = "Tempo step";
+"Tempo step after a clean pass" = "Tempo step after a clean pass";
+"BPM increase after a clean pass" = "BPM increase after a clean pass";
+"Controller profiles" = "Controller profiles";
+"Presets" = "Presets";
+"Custom profiles" = "Custom profiles";
+"No custom profiles yet" = "No custom profiles yet";
+"Active" = "Active";
+"Delete profile" = "Delete profile";
+"Delete" = "Delete";
+"Delete \"%@\"?" = "Delete profile \"%@\"?";
+"This custom profile will be permanently deleted." = "This custom profile will be permanently deleted.";
+"Learn new profile (MIDI learn)" = "Learn new profile (MIDI learn)";
+"Hardware & Calibration" = "Hardware & Calibration";
+

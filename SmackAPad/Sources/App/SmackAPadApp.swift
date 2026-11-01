@@ -5,6 +5,7 @@ import SwiftUI
 struct SmackAPadApp: App {
     @State private var settings = SettingsManager.shared
     @State private var progress = ProgressStore.shared
+    @State private var progression = ProgressionManager.shared
     @State private var midi = MIDIInput(settings: .shared)
     @AppStorage("smackapad.practice.appearance") private var appearance = "dark"
     @Environment(\.scenePhase) private var scenePhase
@@ -16,6 +17,7 @@ struct SmackAPadApp: App {
                 .tint(Theme.ink)
                 .environment(settings)
                 .environment(progress)
+                .environment(progression)
                 .environment(midi)
                 .environment(\.locale, Locale(identifier: settings.languagePreference.rawValue))
                 .task { midi.start() }

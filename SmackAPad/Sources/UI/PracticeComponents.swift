@@ -187,7 +187,7 @@ struct StarShape: Shape {
 
 /// A small, deliberately drawn icon set instead of default system symbols.
 struct PracticeGlyph: View {
-    enum Kind { case back, grid, scrolling, eye, legend, tools, restart }
+    enum Kind { case back, grid, scrolling, eye, legend, tools, restart, lock }
     let kind: Kind
 
     var body: some View {
@@ -220,6 +220,14 @@ struct PracticeGlyph: View {
             case .restart:
                 path.addArc(center: CGPoint(x: 12, y: 12), radius: 8, startAngle: .degrees(220), endAngle: .degrees(500), clockwise: false)
                 path.move(to: CGPoint(x: 3, y: 3)); path.addLines([CGPoint(x: 3, y: 10), CGPoint(x: 10, y: 10)])
+            case .lock:
+                path.addRect(CGRect(x: 5, y: 10, width: 14, height: 11))
+                path.move(to: CGPoint(x: 8, y: 10))
+                path.addLine(to: CGPoint(x: 8, y: 6))
+                path.addArc(center: CGPoint(x: 12, y: 6), radius: 4, startAngle: .degrees(180), endAngle: .degrees(0), clockwise: false)
+                path.addLine(to: CGPoint(x: 16, y: 10))
+                path.move(to: CGPoint(x: 12, y: 13))
+                path.addLine(to: CGPoint(x: 12, y: 17))
             }
             context.stroke(path, with: .foreground, style: StrokeStyle(lineWidth: 2, lineCap: .square, lineJoin: .miter))
         }

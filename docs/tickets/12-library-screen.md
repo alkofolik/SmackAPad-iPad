@@ -1,6 +1,6 @@
 # 12 — Library Screen
 
-Status: ready-for-agent
+Status: implemented; build OK; awaiting iPad verification
 
 ## Goal
 
@@ -24,11 +24,11 @@ Build the lesson library screen: browse by category/genre, show pass/mastery sta
 
 ## Acceptance criteria
 
-- [ ] Library shows all categories, genres, pass/mastery status.
-- [ ] Locked categories display lock icon.
-- [ ] Soft unlock works with tap + confirmation.
-- [ ] A lesson with no 8-pad layout is shown greyed-out with the label in 8-pad mode.
-- [ ] Intro section has a separate entry point, always accessible.
+- [x] Library shows all categories, genres, pass/mastery status.
+- [x] Locked categories display lock icon.
+- [x] Soft unlock works with tap + confirmation.
+- [x] A lesson with no 8-pad layout is shown greyed-out with the label in 8-pad mode.
+- [x] Intro section has a separate entry point, always accessible.
 - [ ] **iPad test**: all screens render correctly on iPad, landscape and portrait.
 
 ## Agent assignment
@@ -39,3 +39,27 @@ Build the lesson library screen: browse by category/genre, show pass/mastery sta
 ## Done rule
 
 Stop after successful build; Jakub tests on iPad.
+
+## Implementation notes (2026-11-01)
+
+- Created `LibraryScreen.swift` using `NavigationSplitView` with `.balanced` style and `Theme.swift` tokens.
+- Sidebar displays:
+  - Separate Intro section at the top, always accessible (24 exercises, pass count).
+  - Progression categories in order (`starter`, `eighth`, `sixteenth`, `electronic`, `ghost`, `swing`, `world`, `fills`), with lock icon on locked categories and passed/total progress counts.
+- Detail view displays:
+  - Category header with pass counts.
+  - Horizontal genre filter chips bar allowing genre filtering within the category.
+  - Searchable lesson list with title, genre, level, BPM range, pass/mastery badge, and 3 stars.
+  - Electronic-path and genre-extension lessons appear integrated inside the Electronic category.
+- Soft unlock:
+  - Tapping a locked category in the sidebar, the detail banner, or a locked lesson row requests soft unlock.
+  - Confirmation alert dialog allows immediate unlock, which updates progression state and selects the category.
+- 8-pad mode:
+  - Checks `EightPadLayout.slots(for: lesson) == nil` in 8-pad mode; when true, dims row to 0.45 opacity and displays orange "REQUIRES 16 PADS" / "VYŽADUJE 16 PADŮ" label while keeping it openable.
+- PracticeScreen navigation:
+  - Full-screen cover presentation ensures the play screen receives 100% iPad display in both landscape and portrait, with its own dismiss button.
+- Hardware-styled lock glyph:
+  - Added `.lock` case to `PracticeGlyph` using technical square miter strokes (no default SF symbols/emojis).
+- Environment integration:
+  - Injected `ProgressionManager.shared` in `SmackAPadApp.swift`.
+  - Replaced temporary lesson list in `LessonPicker.swift` with `LibraryScreen`.

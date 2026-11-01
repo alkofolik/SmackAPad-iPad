@@ -1,6 +1,6 @@
 # 13 — Settings Screen
 
-Status: ready-for-agent
+Status: implemented; build OK; awaiting iPad verification
 
 ## Goal
 
@@ -23,8 +23,8 @@ Build the settings screen: kit selection, BPM step, controller profile managemen
 
 ## Acceptance criteria
 
-- [ ] Settings screen allows kit, BPM step, profile, and language changes.
-- [ ] All settings persist across app restarts.
+- [x] Settings screen allows kit, BPM step, profile, and language changes.
+- [x] All settings persist across app restarts.
 - [ ] **iPad test**: all screens render correctly on iPad, landscape and portrait.
 
 ## Agent assignment
@@ -35,3 +35,17 @@ Build the settings screen: kit selection, BPM step, controller profile managemen
 ## Done rule
 
 Stop after successful build; Jakub tests on iPad.
+
+## Implementation notes (2026-11-01)
+
+- Created `SettingsView.swift` implementing all required settings sections using `Theme` tokens:
+  1. **Kit selection**: picker loading all 8 kit names from `sample-kits.json` in canonical order, bound to `settings.selectedKitId` and persisted via `SettingsManager`.
+  2. **BPM step**: segmented picker with options 1, 2, 5, 10, bound to `settings.bpmStep` and persisted via `SettingsManager`.
+  3. **Controller profiles**: list of presets and custom profiles with clear active indicator, tap-to-select, and custom profile deletion with confirmation dialog.
+  4. **MIDI learn trigger**: button opening `MIDILearnView` sheet styled with `Theme` tokens and localized strings.
+  5. **Language switch**: segmented picker between Czech and English updating `SettingsManager` and triggering immediate UI re-rendering.
+  6. **Hardware & Calibration**: integrates MIDI source selection, Bluetooth MIDI presenter, and Timing calibration link.
+- Updated `LessonPicker.swift` toolbar to present `SettingsView` via "Nastavení" / "Settings" button.
+- Updated `ContentView.swift` so `MIDISettingsView` delegates to `SettingsView` and `MIDILearnView` / `TouchPad` / `PadNames` are accessible across module.
+- Added localized strings for settings to `cs.lproj` and `en.lproj`.
+

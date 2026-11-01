@@ -80,3 +80,23 @@
 "Taps were too uneven. Follow the sound and try again. Previous settings kept." = "Úhozy byly příliš nepravidelné. Řiď se zvukem a zkus to znovu. Předchozí nastavení zachováno.";
 "Audio timing changed or is not ready. Try again. Previous settings kept." = "Časování zvuku se změnilo nebo není připravené. Zkus to znovu. Předchozí nastavení zachováno.";
 "Audio could not start. Try again. Previous settings kept." = "Zvuk se nepodařilo spustit. Zkus to znovu. Předchozí nastavení zachováno.";
+
+// Settings screen
+"Settings" = "Nastavení";
+"Sound kit" = "Zvuková sada";
+"BPM step" = "Krok BPM";
+"Tempo step" = "Krok tempa";
+"Tempo step after a clean pass" = "Zrychlení po čistém průchodu";
+"BPM increase after a clean pass" = "Zrychlení tempa po čistém průchodu";
+"Controller profiles" = "Profily kontroléru";
+"Presets" = "Výchozí profily";
+"Custom profiles" = "Vlastní profily";
+"No custom profiles yet" = "Zatím žádné vlastní profily";
+"Active" = "Aktivní";
+"Delete profile" = "Smazat profil";
+"Delete" = "Smazat";
+"Delete \"%@\"?" = "Smazat profil „%@“?";
+"This custom profile will be permanently deleted." = "Tento vlastní profil bude trvale smazán.";
+"Learn new profile (MIDI learn)" = "Naučit nový profil (MIDI learn)";
+"Hardware & Calibration" = "Hardware a kalibrace";
+
