@@ -1,39 +1,46 @@
-# 15 — Localisation (Czech + English)
+# 15 — Localisation (English primary, Czech optional)
 
-Status: ready-for-agent
+Status: ready-for-agent (updated 2026-11-01)
 
 ## Goal
 
-Implement full Czech + English localisation for all UI strings.
+Move all user-facing text into the localisation catalogs. **English is the primary and default language; Czech is optional and selectable in Settings.**
 
 ## Files to read
 
 - `AGENTS.md`
-- `docs/SPEC.md` (§1 Goals — localisation, §9 Open Questions — cs.tsv completeness)
 - `docs/DECISIONS.md` (§19 Localisation)
+- `SmackAPad/Resources/en.lproj/Localizable.strings`, `SmackAPad/Resources/cs.lproj/Localizable.strings`
+- `SmackAPad/Sources/Persistence/Persistence.swift` (`AppLanguage`, `defaultLanguage`)
+
+## Current state
+
+- User-facing text is currently duplicated in code as `czech ? "…" : "…"` and the helper `label(cs, en)` (about 98 places) in `LibraryScreen`, `IntroScreen`, `SettingsView`, `ContentView` (MIDI learn), `PracticeScreen`, `PracticeComponents`, `PatternField` and `Progression.swift`.
+- Catalog files already exist (about 100 lines each).
+- `AppLanguage.defaultLanguage` is already `.english`; the language picker lists English first, then Czech. Do not change this.
 
 ## Tasks
 
-1. Convert legacy `cs.tsv` (tab-separated key/value) into Swift-native `.strings` or `.xcstrings` format.
-2. Create `en.lproj/Localizable.strings` and `cs.lproj/Localizable.strings`.
-3. Audit all UI screens for hardcoded strings. Replace with `NSLocalizedString` / `String(localized:)`.
-4. Add any new strings needed for the native app that weren't in the legacy `cs.tsv` (settings labels, calibration instructions, progression messages, etc.).
-5. Czech is the primary language. Language switchable from settings (ticket 13).
-6. Ensure the app respects the user's language setting from SettingsManager.
+1. List every occurrence of `czech ?` and `label(` (file, line, Czech text, English text).
+2. For each text create a key in BOTH `Localizable.strings` files (identical key sets). English is the reference wording; Czech is the translation.
+3. Replace the code with `String(localized:)` or `LocalizedStringKey`. Texts with variables become format keys (`%d`, `%@`).
+4. Remove `czech` / `label` helpers where no longer needed.
+5. The language switch in Settings must take effect immediately. The app uses `settings.languagePreference`, not the system language, so make sure strings really load from the selected language (e.g. `.environment(\.locale, …)` plus loading from the matching bundle).
+6. Do not change logic, visual design or file names.
 
 ## Acceptance criteria
 
-- [ ] All UI strings are localised (no hardcoded user-facing text).
-- [ ] Czech and English translations present for every string key.
-- [ ] Language switch in settings takes effect immediately.
-- [ ] New strings not covered by legacy cs.tsv are identified and translated.
-- [ ] **iPad test**: both languages display correctly, no truncation or layout issues.
+- [ ] No hardcoded user-facing text remains in code.
+- [ ] English and Czech have the same key set.
+- [ ] A fresh install starts in English; Czech can be selected in Settings and applies immediately.
+- [ ] Build succeeds.
+- [ ] **iPad test (Jakub)**: both languages display correctly, no truncation or layout issues, switching at runtime works.
 
 ## Agent assignment
 
-- **Agent**: Gemini 3.8 Flash High (Antigravity)
+- **Agent**: Gemini 3.8 Flash, High (Antigravity)
 - **Reasoning**: String extraction and file conversion, no complex logic.
 
 ## Done rule
 
-Stop after successful build; Jakub tests on iPad.
+Stop after successful build; Jakub tests on iPad. Commit after the task.

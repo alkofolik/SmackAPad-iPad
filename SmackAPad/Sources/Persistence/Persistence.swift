@@ -42,15 +42,15 @@ public enum BpmStep: Int, CaseIterable, Identifiable, Codable, Sendable {
 
 /// Supported app localization preferences.
 public enum AppLanguage: String, CaseIterable, Identifiable, Codable, Sendable {
-    case czech = "cs"
     case english = "en"
+    case czech = "cs"
 
     public var id: String { rawValue }
 
     public var displayName: String {
         switch self {
-        case .czech: return "Čeština"
         case .english: return "English"
+        case .czech: return "Čeština"
         }
     }
 }
@@ -70,7 +70,7 @@ public final class SettingsManager: @unchecked Sendable {
     public static let defaultKitId = "acoustic"
     public static let defaultBpmStep: Int = BpmStep.defaultStep.rawValue
     public static let defaultProfileName = "Standard 16-Pad"
-    public static let defaultLanguage: AppLanguage = .czech
+    public static let defaultLanguage: AppLanguage = .english
 
     // MARK: Stored Properties
 
