@@ -71,8 +71,9 @@ Required, for **every** lesson (1-bar, 2-bar, 4-bar, longer lessons; static and 
 
 ## Agent assignment
 
-- **Agent**: Claude Opus 4.6 (Antigravity), **high** thinking.
-- **Reasoning**: Touches session state, rendering and star logic together; a root cause must be found for problem 1. Gemini Flash is not recommended.
+- **Agent**: Codex GPT-6.1 Sol (Codex app).
+- **Reasoning effort**: **xhigh**. Do not use `max` (worse results on coding tasks than `xhigh`).
+- **Reasoning**: Touches session state, rendering and star logic together, and a root cause must be found for problem 1. Claude Opus 4.6 on Antigravity is no longer available; Gemini Flash is not recommended for this ticket.
 
 ## Done rule
 

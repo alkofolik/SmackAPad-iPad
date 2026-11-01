@@ -38,4 +38,4 @@ Status: proposal, 2026-11-01. Nothing implemented. If approved it becomes ticket
 
 ## Suggested ticket 27
 
-Agent: Claude Opus 4.6 (Antigravity), **medium** thinking (many small, well-specified changes; the risky ones are listed above). Acceptance: each item switchable off by Reduce Motion, no change in scoring or timing tests, iPad check of 60 fps during a 4-bar scrolling run.
+Agent: Codex GPT-6.1 Sol, **medium** reasoning (many small, well-specified changes; the risky ones are listed above). Acceptance: each item switchable off by Reduce Motion, no change in scoring or timing tests, iPad check of 60 fps during a 4-bar scrolling run.

@@ -67,8 +67,10 @@ Lesson 6 appears once, in Intro only, and counts add up; no `starter` group exis
 
 ## Agent assignment
 
-- **Agent**: Claude Opus 4.6 (Antigravity), **high** thinking.
-- **Reasoning**: Cross-screen refactor plus progression changes and a design judgement call; Flash is not recommended. If it runs long, split after section 1 (design system) and continue in a second conversation with sections 2-5.
+- **Agent**: Codex GPT-6.1 Sol (Codex app).
+- **Reasoning effort**: **high** (xhigh for part A below; never `max`).
+- **Reasoning**: Cross-screen refactor plus progression changes and a design judgement call. Claude Opus 4.6 on Antigravity is no longer available.
+- **Run it in two conversations**: **A** = section 1 (shared design system) and sections 2-3 (library layout, Intro rows); **B** = sections 4-5 (First steps abolished, unlock flow). Commit after each part. Part B starts only after A is committed.
 
 ## Done rule
 
