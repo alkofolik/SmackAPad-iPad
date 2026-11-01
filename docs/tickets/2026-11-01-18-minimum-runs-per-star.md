@@ -1,6 +1,6 @@
 # 18 — Minimum number of runs per star (short lessons)
 
-Status: ready-for-agent (2026-11-01). **Start after tickets 15 and 17 are finished and committed** (both touch `PracticeSession.swift`).
+Status: ready-for-ipad-test (2026-11-01). Implementation, three new unit tests and simulator build complete. Tickets 15 and 17 were committed before this work.
 
 ## Problem
 
@@ -51,10 +51,10 @@ The legacy app only asks for 3 clean runs on intro lessons (`lessonCompletionSta
 
 ## Acceptance criteria
 
-- [ ] A 4-hit lesson needs 4 consecutive good passes for star 1 and the same for stars 2 and 3.
-- [ ] A lesson with 16 or more hits behaves as before.
-- [ ] Auto-stop after the 2nd or 3rd star still works.
-- [ ] Tests pass, build succeeds.
+- [x] A 4-hit lesson needs 4 consecutive qualifying passes for each star.
+- [x] A non-intro lesson with 16 or more hits behaves as before; intro lessons retain the stricter minimum of 3.
+- [x] The existing auto-stop after a newly awarded 2nd or 3rd star uses the completed streak, as does the animation.
+- [x] Tests pass, build succeeds.
 - [ ] **iPad test (Jakub)**: one short intro-level lesson and one long lesson.
 
 ## Agent assignment
@@ -65,3 +65,12 @@ The legacy app only asks for 3 clean runs on intro lessons (`lessonCompletionSta
 ## Done rule
 
 Stop after successful build and tests; Jakub tests on iPad. Commit after the task.
+
+## Implementation and validation (2026-11-01)
+
+- Added the pure `StarStreak` policy with one `minimumHitsPerStar` constant, the clamped hit-count rule and the intro minimum in the same function. Checked ticket 14, `IntroScreen.swift` and `Progression.swift`: the intro screen reuses practice and has no separate consecutive-pass policy.
+- Three session-only counters independently consume the existing per-pass qualifications. START/RESTART/STOP reset them. Tempo scheduling and `ScoringEngine.finish()` are unchanged. Cumulative summary flags, persistence and `StarAward` receive only stars whose streak reached the requirement.
+- A quiet counter next to the score follows the first unearned star, then memory when enabled or goal tempo otherwise. It is hidden for single-pass lessons, Listen, section loops and when all applicable stars are already earned. Both languages include the format and the VoiceOver description/value.
+- Three new XCTest cases passed, each after first demonstrating the missing behavior: required runs for 4/6/8/16 hits and intro minimum; independent consecutive qualifications and failure resets; resets between runs, passing progress across tempo changes and single-pass long lessons. Tests ran on macOS through a temporary Swift package under `build/ticket-18/pure` symlinked to the actual production policy and test file. No previously passed tests were rerun.
+- Final command: `xcodebuild build -project SmackAPad.xcodeproj -scheme SmackAPad -destination 'generic/platform=iOS Simulator' -derivedDataPath build/ticket-18/app CODE_SIGNING_ALLOWED=NO` — **BUILD SUCCEEDED**. `git diff --check` passed. No further builds or tests were run after success.
+- Jakub still verifies a short intro lesson and a long lesson on iPad, including star animation and automatic stop.

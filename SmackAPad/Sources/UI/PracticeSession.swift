@@ -27,6 +27,7 @@ final class PracticeSession {
     private(set) var judgmentVersion = 0
     private(set) var padFlashes: [Int: PadFlash] = [:]
     private(set) var playedHits: [PlayedHit] = []
+    private(set) var starStreak = StarStreak()
     /// How the notes of the pass on screen were played, keyed by the note itself.
     var hitJudgments: [LessonHit: HitJudgment] {
         _ = judgmentVersion
@@ -129,6 +130,16 @@ final class PracticeSession {
                       eightNote: lesson.eightNote, intro: lesson.intro)
     }
     var patternHits: [LessonHit] { practiceLesson.hits(forPadCount: midi.activeProfile.padCount) }
+    var starRunProgress: (count: Int, required: Int, name: String)? {
+        guard running, !listen, !isSectionLoop else { return nil }
+        let required = StarStreak.requiredRuns(expectedHits: patternHits.count, isIntro: lesson.cat == "intro")
+        guard required > 1 else { return nil }
+        let saved = progress.progress(for: lesson.id)
+        if saved?.passed != true { return (starStreak.passedRuns, required, "Passed") }
+        if fromMemory, saved?.memory != true { return (starStreak.memoryRuns, required, "From memory") }
+        if saved?.mastery != true { return (starStreak.masteryRuns, required, "Goal tempo") }
+        return nil
+    }
     var available: Bool { midi.padIndices != nil }
     var position: Double {
         guard running, countdown == nil else { return 0 }
@@ -170,6 +181,7 @@ final class PracticeSession {
             starEvent = nil
             stopAfterStar = false
             tempo.reset()
+            starStreak.reset()
             barVerdicts = [:]
             judgmentsByPass = [:]
             playedHits = []
@@ -210,6 +222,7 @@ final class PracticeSession {
         if !stopAfterStar { finishCompleted(at: now) }
         stopAfterStar = false
         running = false
+        starStreak.reset()
         playedHits = []
         countdown = nil
         task?.cancel(); task = nil
@@ -317,15 +330,18 @@ final class PracticeSession {
             lastResult = result
             tempo.completed(nextBpm: result.nextBpm)
             completedPasses += 1
-            let memory = !isSectionLoop && fromMemory && result.bpm >= lesson.targetBpm && result.score >= 0.8
-            earnedPass = earnedPass || (!isSectionLoop && result.passed)
-            earnedMastery = earnedMastery || (!isSectionLoop && result.mastery)
-            earnedMemory = earnedMemory || memory
             if !isSectionLoop {
+                let memory = fromMemory && result.bpm >= lesson.targetBpm && result.score >= 0.8
+                let required = StarStreak.requiredRuns(expectedHits: result.expectedHitCount, isIntro: lesson.cat == "intro")
+                let stars = starStreak.record(passed: result.passed, mastery: result.mastery,
+                                              memory: memory, requiredRuns: required)
+                earnedPass = earnedPass || stars.passed
+                earnedMastery = earnedMastery || stars.mastery
+                earnedMemory = earnedMemory || stars.memory
                 let award = StarAward(previous: progress.progress(for: lesson.id),
-                                      passed: result.passed, mastery: result.mastery, memory: memory)
-                progress.recordResult(lessonId: lesson.id, passed: result.passed, mastery: result.mastery,
-                                      bpm: result.bpm, score: Float(result.score), memory: memory, autoSave: false)
+                                      passed: stars.passed, mastery: stars.mastery, memory: stars.memory)
+                progress.recordResult(lessonId: lesson.id, passed: stars.passed, mastery: stars.mastery,
+                                      bpm: result.bpm, score: Float(result.score), memory: stars.memory, autoSave: false)
                 if award.fresh.contains(true) { starEvent = StarEvent(award: award) }
                 stopAfterStar = award.shouldStop
             }

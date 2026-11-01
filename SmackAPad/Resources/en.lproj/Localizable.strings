@@ -1,5 +1,7 @@
 
 "MIDI controller" = "MIDI controller";
+"%lld / %lld" = "%lld / %lld";
+"Consecutive passes for %@" = "Consecutive passes for %@";
 "Input" = "Input";
 "All connected controllers" = "All connected controllers";
 "Connect a USB controller or pair a Bluetooth MIDI controller." = "Connect a USB controller or pair a Bluetooth MIDI controller.";

@@ -151,6 +151,12 @@ struct PracticeScreen: View {
             }
             Text(session.listen ? "— %" : session.lastResult.map { "\(Int(($0.score * 100).rounded())) %" } ?? "— %")
                 .font(Theme.text()).accessibilityLabel(settings.localized("Score"))
+            if let progress = session.starRunProgress {
+                Text(settings.localized("%lld / %lld", progress.count, progress.required))
+                    .font(Theme.text(Theme.Size.small)).foregroundStyle(Theme.secondary)
+                    .accessibilityLabel(settings.localized("Consecutive passes for %@", settings.localized(progress.name)))
+                    .accessibilityValue(settings.localized("%lld / %lld", progress.count, progress.required))
+            }
             Spacer(minLength: 0)
             if !compact {
                 handLegend

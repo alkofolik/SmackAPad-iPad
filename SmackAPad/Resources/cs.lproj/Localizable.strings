@@ -1,5 +1,7 @@
 
 "MIDI controller" = "MIDI kontrolér";
+"%lld / %lld" = "%lld / %lld";
+"Consecutive passes for %@" = "Průchody v řadě pro %@";
 "Input" = "Vstup";
 "All connected controllers" = "Všechny připojené kontroléry";
 "Connect a USB controller or pair a Bluetooth MIDI controller." = "Připoj USB kontrolér nebo spáruj Bluetooth MIDI kontrolér.";
