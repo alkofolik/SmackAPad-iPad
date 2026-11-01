@@ -9,7 +9,7 @@ struct PracticeScreen: View {
     @State private var session: PracticeSession
     @AppStorage("smackapad.practice.scrolling") private var scrolling = false
     @AppStorage("smackapad.practice.visibleBars") private var visibleBars = 4
-    @AppStorage("smackapad.practice.showPads") private var showPads = false
+    @AppStorage("smackapad.practice.showPads") private var showPads = true
     @State private var showingLegend = false
     @State private var showingTools = false
     @State private var showingTempo = false
@@ -34,7 +34,10 @@ struct PracticeScreen: View {
                                  position: session.position, running: session.running && session.countdown == nil,
                                  hidden: session.fromMemory && session.running,
                                  scrolling: scrolling, visibleBars: [1, 2, 4].contains(visibleBars) ? visibleBars : 4,
-                                 verdicts: session.barVerdicts, czech: czech)
+                                 verdicts: session.barVerdicts, czech: czech,
+                                 judgments: session.hitJudgments,
+                                 scoring: session.running && !session.listen && session.countdown == nil,
+                                 missGraceSteps: session.missGraceSteps, countdown: session.countdown)
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
                 footer(compact: compact)
@@ -127,20 +130,15 @@ struct PracticeScreen: View {
         HStack(spacing: compact ? Theme.Space.regular : Theme.Space.wide) {
             Button { showingTempo.toggle() } label: {
                 Text("\(session.bpm) → \(session.lesson.targetBpm) BPM").font(Theme.text())
-                    .frame(minHeight: Theme.Size.touch)
             }
+            .buttonStyle(InstrumentButtonStyle())
+            .opacity(session.running ? 0.45 : 1)
             .disabled(session.running)
             .popover(isPresented: $showingTempo) {
                 tempoControls.padding(Theme.Space.page).background(Theme.background)
             }
             Text(session.listen ? "— %" : session.lastResult.map { "\(Int(($0.score * 100).rounded())) %" } ?? "— %")
                 .font(Theme.text()).accessibilityLabel(label("Skóre", "Score"))
-            if let count = session.countdown {
-                Text("\(label("Odpočet", "Count-in")) \(count)").font(Theme.text())
-                    .accessibilityAddTraits(.updatesFrequently)
-            } else {
-                Text("\(label("průchod", "pass")) \(session.passNumber)").font(Theme.text())
-            }
             Spacer(minLength: 0)
             if !compact {
                 handLegend
@@ -206,7 +204,7 @@ struct PracticeScreen: View {
     @ViewBuilder
     private var footerContent: some View {
         if showPads, let pads = midi.padIndices {
-            PadLayoutGrid(pads: pads, used: Set(session.patternHits.map(\.padIndex)))
+            PadLayoutGrid(pads: pads, used: Set(session.patternHits.map(\.padIndex)), flashes: session.padFlashes)
         }
         if let summary = session.summary {
             SummaryStrip(summary: summary, czech: czech) { showingDetails = true }

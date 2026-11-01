@@ -17,6 +17,16 @@ final class PracticeSession {
     private(set) var summary: RunSummary?
     private(set) var errorMessage: String?
     private(set) var barVerdicts: [Int: BarVerdict] = [:]
+    @ObservationIgnored private var judgmentsByPass: [Int: [LessonHit: HitJudgment]] = [:]
+    private(set) var judgmentVersion = 0
+    private(set) var padFlashes: [Int: PadFlash] = [:]
+    /// How the notes of the pass on screen were played, keyed by the note itself.
+    var hitJudgments: [LessonHit: HitJudgment] {
+        _ = judgmentVersion
+        return judgmentsByPass[passNumber] ?? [:]
+    }
+    /// A note not struck this long after its time is shown as missed.
+    var missGraceSteps: Double { Double(bpm) * 4 / 60 * 0.2 }
     var listen = false
     var fromMemory = false
     var lessonSound = false
@@ -151,6 +161,8 @@ final class PracticeSession {
             lastResult = nil
             tempo.reset()
             barVerdicts = [:]
+            judgmentsByPass = [:]
+            judgmentVersion += 1
             completedPasses = 0
             earnedPass = false; earnedMastery = false; earnedMemory = false
             passNumber = 1
@@ -240,6 +252,8 @@ final class PracticeSession {
             if current.number != passNumber {
                 passNumber = current.number
                 barVerdicts = [:]
+                judgmentsByPass = judgmentsByPass.filter { $0.key >= current.number }
+                judgmentVersion += 1
             }
             bpm = current.bpm
             displayStart = current.start
@@ -294,24 +308,45 @@ final class PracticeSession {
     private func receive(_ event: PadInputEvent) {
         guard event.isNoteOn, ready else { return }
         audio.play(padIndex: event.padIndex, velocity: event.velocity)
+        padFlashes[event.padIndex] = PadFlash(mark: nil, date: Date())
         guard running, !listen else { return }
         let sourceTime = AVAudioTime.seconds(forHostTime: event.timestamp)
         let adjusted = max(0, sourceTime - settings.calibrationOffset(for: event.deviceID) / 1_000)
         let timestamp = AVAudioTime.hostTime(forSeconds: adjusted)
         // Probe value copies so early notes at the next boundary and late notes
         // at the previous boundary go to one scorer, never to both.
-        var best: (Pass, ScoringEngine, Double)?
+        var best: (Pass, ScoringEngine, Double, HitFeedback)?
         for pass in passes {
             guard var scorer = pass.scorer else { continue }
             let feedback = scorer.receive(padIndex: event.padIndex, at: timestamp)
             if let error = feedback.timingErrorMilliseconds,
                best == nil || abs(error) < best!.2 {
-                best = (pass, scorer, abs(error))
+                best = (pass, scorer, abs(error), feedback)
             }
         }
-        if let best { best.0.scorer = best.1 }
-        else if let pass = passes.first(where: { $0.start <= adjusted && adjusted < $0.start + $0.duration }) {
-            _ = pass.scorer?.receive(padIndex: event.padIndex, at: timestamp)
+        if let best {
+            best.0.scorer = best.1
+            record(best.3, pass: best.0.number, padIndex: event.padIndex)
+        } else if let pass = passes.first(where: { $0.start <= adjusted && adjusted < $0.start + $0.duration }) {
+            if let feedback = pass.scorer?.receive(padIndex: event.padIndex, at: timestamp) {
+                record(feedback, pass: pass.number, padIndex: event.padIndex)
+            }
+        }
+    }
+
+    /// Colour feedback only. Scoring itself is unchanged.
+    private func record(_ feedback: HitFeedback, pass: Int, padIndex: Int) {
+        let mark: HitMark
+        switch feedback.judgment {
+        case .perfect, .good: mark = .correct
+        case .off: mark = .off
+        case .wrongPad: mark = .wrong
+        }
+        padFlashes[padIndex] = PadFlash(mark: mark, date: Date())
+        let hits = patternHits
+        if let index = feedback.expectedHitIndex, hits.indices.contains(index) {
+            judgmentsByPass[pass, default: [:]][hits[index]] = feedback.judgment
+            judgmentVersion += 1
         }
     }
 

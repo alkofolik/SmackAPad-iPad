@@ -6,6 +6,10 @@ import UIKit
 enum Theme {
     static let orange = Color(red: 1, green: 107.0 / 255, blue: 0)
     static let black = Color.black
+    /// Result marks on the orange band: correct, off the beat, wrong or missed.
+    static let markCorrect = Color(red: 0.04, green: 0.34, blue: 0.15)
+    static let markOff = Color(red: 0.36, green: 0.26, blue: 0)
+    static let markWrong = Color(red: 0.62, green: 0.06, blue: 0.10)
     static let white = Color.white
     static let background = adaptive(light: .white, dark: .black)
     static let ink = adaptive(light: .black, dark: .white)

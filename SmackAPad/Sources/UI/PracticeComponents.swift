@@ -1,5 +1,27 @@
 import SwiftUI
 
+/// How one pad strike or expected note turned out. Shown as colour only.
+enum HitMark {
+    case correct, off, wrong
+
+    var color: Color {
+        switch self {
+        case .correct: return Theme.markCorrect
+        case .off: return Theme.markOff
+        case .wrong: return Theme.markWrong
+        }
+    }
+}
+
+/// A short colour flash on the pad layout; `mark` is nil when nothing is scored.
+struct PadFlash: Equatable {
+    let mark: HitMark?
+    let date: Date
+
+    var color: Color { mark?.color ?? Theme.orange }
+    func strength(at now: Date) -> Double { max(0, 1 - now.timeIntervalSince(date) / 0.4) }
+}
+
 /// Hand colours never change with the page appearance.
 struct PatternBlock: View {
     let abbreviation: String
@@ -218,19 +240,35 @@ struct PadVoice {
 struct PadLayoutGrid: View {
     let pads: [Int]
     let used: Set<Int>
+    var flashes: [Int: PadFlash] = [:]
 
     var body: some View {
-        LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: Theme.Space.tight), count: 4), spacing: Theme.Space.tight) {
-            ForEach(Array(pads.enumerated()), id: \.offset) { _, pad in
-                Text(PadVoice.abbreviation(pad))
-                    .font(Theme.text(Theme.Size.dense))
-                    .frame(maxWidth: .infinity, minHeight: 24)
-                    .foregroundStyle(used.contains(pad) ? Theme.ink : Theme.secondary)
-                    .background(Theme.surface)
-                    .overlay(Rectangle().stroke(Theme.ink, lineWidth: used.contains(pad) ? Theme.Size.border : 0))
-                    .accessibilityLabel("\(PadVoice.name(pad)), pad \(pad + 1)")
+        TimelineView(.animation(minimumInterval: 1.0 / 30, paused: flashes.isEmpty)) { timeline in
+            LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: Theme.Space.tight), count: 4), spacing: Theme.Space.tight) {
+                ForEach(Array(pads.enumerated()), id: \.offset) { _, pad in
+                    cell(pad, now: timeline.date)
+                }
             }
         }
         .frame(width: 176)
+    }
+
+    private func cell(_ pad: Int, now: Date) -> some View {
+        let flash = flashes[pad]
+        let strength = flash?.strength(at: now) ?? 0
+        let isUsed = used.contains(pad)
+        let tint = (flash?.color ?? Theme.orange).opacity(strength)
+        return Text(PadVoice.abbreviation(pad))
+            .font(Theme.text(Theme.Size.dense))
+            .frame(maxWidth: .infinity, minHeight: 24)
+            .foregroundStyle(strength > 0.35 ? Theme.white : (isUsed ? Theme.ink : Theme.secondary))
+            .background {
+                ZStack {
+                    Theme.surface
+                    tint
+                }
+            }
+            .overlay(Rectangle().stroke(Theme.ink, lineWidth: isUsed ? Theme.Size.border : 0))
+            .accessibilityLabel("\(PadVoice.name(pad)), pad \(pad + 1)")
     }
 }
