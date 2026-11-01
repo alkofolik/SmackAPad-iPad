@@ -56,3 +56,12 @@
 | imagegen-frontend-mobile | 10-design-directions |
 | gpt-taste | 11-theme-and-play-screen |
 | code-review | 16-integration-review |
+
+## Feedback round 3 (2026-11-01)
+
+| Ticket | Topic | Agent / thinking | Order |
+|---|---|---|---|
+| 24 | Practice screen: third star, tempo banner, colour tail, progress | Claude Opus 4.6, high | 1st |
+| 25 | Library redesign, unified look, Intro rows, First steps removed, unlock flow | Claude Opus 4.6, high | 2nd (after 24) |
+| 26 | Sound kit "Automatic" and per-lesson choice | Gemini 3.8 Flash, high | any time, parallel |
+| 27 (proposal) | Motion: `docs/design/2026-11-01-motion-proposals.md` | Claude Opus 4.6, medium | after 24-26, needs Jakub's approval |
