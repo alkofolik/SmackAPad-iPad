@@ -149,6 +149,17 @@ struct PracticeScreen: View {
             .popover(isPresented: $showingTempo) {
                 tempoControls.padding(Theme.Space.page).background(Theme.background)
             }
+            .overlay(alignment: .trailing) {
+                if let event = session.tempoUpEvent {
+                    TempoUpBanner(event: event,
+                                  label: settings.localized("Tempo up: %lld → %lld BPM", event.from, event.to),
+                                  announcement: settings.localized("Tempo %lld", event.to))
+                        .id(event.id)
+                        .fixedSize()
+                        .offset(x: 8)
+                        .frame(width: 0, alignment: .leading)
+                }
+            }
             Text(session.listen ? "— %" : session.lastResult.map { "\(Int(($0.score * 100).rounded())) %" } ?? "— %")
                 .font(Theme.text()).accessibilityLabel(settings.localized("Score"))
             if let progress = session.starRunProgress {

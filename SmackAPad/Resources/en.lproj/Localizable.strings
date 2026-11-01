@@ -155,6 +155,9 @@
 "right" = "right";
 "Tempo" = "Tempo";
 "Starting tempo" = "Starting tempo";
+
+"Tempo up: %lld → %lld BPM" = "Tempo up: %lld → %lld BPM";
+"Tempo %lld" = "Tempo %lld";
 "Practice summary" = "Practice summary";
 "%lld completed passes" = "%lld completed passes";
 "Stars: passed / goal tempo / from memory" = "Stars: passed / goal tempo / from memory";

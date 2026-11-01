@@ -7,6 +7,14 @@ struct StarEvent: Identifiable {
     let award: StarAward
 }
 
+/// Published when a pass begins at a higher tempo than the previous pass.
+/// Manual tempo changes do not trigger this event.
+struct TempoUpEvent: Identifiable {
+    let id = UUID()
+    let from: Int
+    let to: Int
+}
+
 /// Owns one continuous practice run, with native host times shared by sound and scoring.
 /// The view only reads position; display refreshes never determine audible note times.
 @MainActor
@@ -21,6 +29,7 @@ final class PracticeSession {
     private(set) var lastResult: ScoringResult?
     private(set) var summary: RunSummary?
     private(set) var starEvent: StarEvent?
+    private(set) var tempoUpEvent: TempoUpEvent?
     private(set) var errorMessage: String?
     private(set) var barVerdicts: [Int: BarVerdict] = [:]
     @ObservationIgnored private var judgmentsByPass: [Int: [LessonHit: HitJudgment]] = [:]
@@ -179,6 +188,7 @@ final class PracticeSession {
             summary = nil
             lastResult = nil
             starEvent = nil
+            tempoUpEvent = nil
             stopAfterStar = false
             tempo.reset()
             starStreak.reset()
@@ -289,6 +299,13 @@ final class PracticeSession {
         }
         if let current = passes.last(where: { $0.start <= time }) {
             if current.number != passNumber {
+                // Announce a tempo increase at the moment the faster pass
+                // actually starts (audible change). Not on the first pass and
+                // not on manual changes (which are blocked while running).
+                if !listen, let event = tempo.tempoUpEvent(newBpm: current.bpm) {
+                    tempoUpEvent = event
+                }
+                tempo.recordPassStart(bpm: current.bpm)
                 passNumber = current.number
                 barVerdicts = [:]
                 judgmentsByPass = judgmentsByPass.filter { $0.key >= current.number }

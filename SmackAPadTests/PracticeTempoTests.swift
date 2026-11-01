@@ -52,4 +52,30 @@ final class PracticeTempoTests: XCTestCase {
         XCTAssertEqual(tempo.queue(after: 50, targetBpm: 80, listenBpm: 90), 90)
         XCTAssertEqual(tempo.queue(after: 90, targetBpm: 80, listenBpm: 90), 90)
     }
+
+    func testTempoUpEventOnHigherPassNotOnFirstOrSameTempo() {
+        var tempo = PracticeTempo()
+
+        // First pass: no event (previousPassBpm is nil).
+        XCTAssertNil(tempo.tempoUpEvent(newBpm: 80),
+                     "No event on the very first pass of a run")
+        tempo.recordPassStart(bpm: 80)
+
+        // Same tempo: no event.
+        XCTAssertNil(tempo.tempoUpEvent(newBpm: 80),
+                     "No event when BPM stays the same")
+        tempo.recordPassStart(bpm: 80)
+
+        // Higher tempo: event with correct from/to.
+        let event = tempo.tempoUpEvent(newBpm: 85)
+        XCTAssertNotNil(event, "Event expected on a higher tempo")
+        XCTAssertEqual(event?.from, 80)
+        XCTAssertEqual(event?.to, 85)
+        tempo.recordPassStart(bpm: 85)
+
+        // After reset (manual change / restart): no event on the next pass.
+        tempo.reset()
+        XCTAssertNil(tempo.tempoUpEvent(newBpm: 90),
+                     "No event after reset (simulates manual change or restart)")
+    }
 }
