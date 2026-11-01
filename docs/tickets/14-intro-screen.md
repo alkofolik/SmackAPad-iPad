@@ -1,6 +1,6 @@
 # 14 — Intro Section Screen
 
-Status: ready-for-agent
+Status: ready-for-ipad-test
 
 ## Goal
 
@@ -22,9 +22,9 @@ Build the intro section entry point and exercise list for the 24 intro exercises
 
 ## Acceptance criteria
 
-- [ ] Intro section is always accessible (no unlock).
-- [ ] All 24 intro exercises listed with status.
-- [ ] Stricter pass/mastery thresholds clearly communicated.
+- [x] Intro section is always accessible (no unlock).
+- [x] All 24 intro exercises listed with status.
+- [x] Stricter pass/mastery thresholds clearly communicated.
 - [ ] **iPad test**: renders correctly on iPad, landscape and portrait.
 
 ## Agent assignment
