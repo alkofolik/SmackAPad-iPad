@@ -296,3 +296,10 @@
 
 "Automatic" = "Automatic";
 "Automatic · %@" = "Automatic · %@";
+
+// Practice feedback, round 3.
+"Run finished: star 3 earned, from memory" = "Run finished: star 3 earned, from memory";
+"Run finished: star 2 earned, goal tempo" = "Run finished: star 2 earned, goal tempo";
+"Bar %lld / %lld" = "Bar %lld / %lld";
+"Position in the current pass" = "Position in the current pass";
+"Bar %lld / %lld, %lld percent" = "Bar %lld / %lld, %lld percent";

@@ -37,10 +37,10 @@ final class PracticeSession {
     private(set) var padFlashes: [Int: PadFlash] = [:]
     private(set) var playedHits: [PlayedHit] = []
     private(set) var starStreak = StarStreak()
-    /// How the notes of the pass on screen were played, keyed by the note itself.
-    var hitJudgments: [LessonHit: HitJudgment] {
+    /// Keep pass identity so a previous repeat can never colour the new one.
+    var hitJudgments: [Int: [LessonHit: HitJudgment]] {
         _ = judgmentVersion
-        return judgmentsByPass[passNumber] ?? [:]
+        return judgmentsByPass
     }
     /// A note not struck this long after its time is shown as missed.
     var missGraceSteps: Double { Double(bpm) * 4 / 60 * 0.2 }
@@ -56,6 +56,7 @@ final class PracticeSession {
     @ObservationIgnored private let settings: SettingsManager
     @ObservationIgnored private let progress: ProgressStore
     @ObservationIgnored private let midi: MIDIInput
+    @ObservationIgnored private let clock: () -> Double
     @ObservationIgnored private let audio = AudioEngine()
     @ObservationIgnored private var task: Task<Void, Never>?
     @ObservationIgnored private var passes: [Pass] = []
@@ -68,6 +69,7 @@ final class PracticeSession {
     @ObservationIgnored private var earnedMastery = false
     @ObservationIgnored private var earnedMemory = false
     @ObservationIgnored private var stopAfterStar = false
+    private(set) var finishedByStar: Int?
     @ObservationIgnored private var prepared = false
     @ObservationIgnored private var active = false
 
@@ -111,11 +113,13 @@ final class PracticeSession {
         }
     }
 
-    init(lesson: Lesson, settings: SettingsManager, progress: ProgressStore, midi: MIDIInput) {
+    init(lesson: Lesson, settings: SettingsManager, progress: ProgressStore, midi: MIDIInput,
+         clock: @escaping () -> Double = { AVAudioTime.seconds(forHostTime: mach_absolute_time()) }) {
         self.lesson = lesson
         self.settings = settings
         self.progress = progress
         self.midi = midi
+        self.clock = clock
         loopEndBar = lesson.bars - 1
         let saved = progress.progress(for: lesson.id)?.currentBpm ?? lesson.startBpm
         bpm = min(400, max(30, saved > 0 ? saved : lesson.startBpm))
@@ -168,7 +172,7 @@ final class PracticeSession {
     var available: Bool { midi.padIndices != nil }
     var position: Double {
         guard running, countdown == nil else { return 0 }
-        let seconds = AVAudioTime.seconds(forHostTime: mach_absolute_time())
+        let seconds = now
         return min(Double(practiceLesson.bars * 16) - 0.0001,
                    max(0, (seconds - displayStart) / displayDuration * Double(practiceLesson.bars * 16)))
     }
@@ -206,6 +210,7 @@ final class PracticeSession {
             starEvent = nil
             tempoUpEvent = nil
             stopAfterStar = false
+            finishedByStar = nil
             tempo.reset()
             starStreak.reset()
             barVerdicts = [:]
@@ -249,8 +254,11 @@ final class PracticeSession {
         if !stopAfterStar { finishCompleted(at: now) }
         stopAfterStar = false
         running = false
+        tempoUpEvent = nil
         starStreak.reset()
         playedHits = []
+        judgmentsByPass = [:]
+        judgmentVersion += 1
         countdown = nil
         task?.cancel(); task = nil
         passes = []; countInEvents = []
@@ -258,12 +266,15 @@ final class PracticeSession {
         if active { resume() }
         if let result = lastResult, !listen {
             summary = RunSummary(score: result.score, bpm: result.bpm, passes: completedPasses,
-                                 passed: earnedPass, mastery: earnedMastery, memory: earnedMemory)
+                                 passed: earnedPass, mastery: earnedMastery, memory: earnedMemory,
+                                 finishedByStar: finishedByStar)
         }
         saveTempo()
     }
 
     func restart() { stop(); start() }
+
+    func dismissSummary() { summary = nil }
 
     func suspend() {
         stop()
@@ -291,14 +302,15 @@ final class PracticeSession {
         barVerdicts[bar] = verdict
     }
 
-    private var now: Double { AVAudioTime.seconds(forHostTime: mach_absolute_time()) }
+    private var now: Double { clock() }
 
     private func makePass(number: Int, start: Double, bpm: Int) -> Pass {
         Pass(number: number, start: start, bpm: bpm, lesson: practiceLesson, padCount: midi.activeProfile.padCount,
              listen: listen, lessonSound: lessonSound, metronome: metronome, bpmStep: settings.bpmStepEnum)
     }
 
-    private func tick() {
+    /// Internal so session tests can advance a supplied host clock without waiting.
+    func tick() {
         let time = now
         finishCompleted(at: time)
         if stopAfterStar {
@@ -325,7 +337,8 @@ final class PracticeSession {
                 tempo.recordPassStart(bpm: current.bpm)
                 passNumber = current.number
                 barVerdicts = [:]
-                judgmentsByPass = judgmentsByPass.filter { $0.key >= current.number }
+                judgmentsByPass = judgmentsByPass.filter { $0.key >= current.number - 1 }
+                playedHits.removeAll { $0.pass < current.number - 1 }
                 judgmentVersion += 1
             }
             bpm = current.bpm
@@ -378,6 +391,7 @@ final class PracticeSession {
                                       bpm: result.bpm, score: Float(result.score), memory: stars.memory, autoSave: false)
                 if award.fresh.contains(true) { starEvent = StarEvent(award: award) }
                 stopAfterStar = award.shouldStop
+                if award.shouldStop { finishedByStar = award.fresh[2] ? 3 : 2 }
             }
             // currentBpm is a preference, including manually lowered tempos.
             saveTempo()

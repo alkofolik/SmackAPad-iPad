@@ -40,7 +40,7 @@ struct StarBurst: View {
                     revealed = true
                 }
                 UIAccessibility.post(notification: .announcement, argument: announcement)
-                try await Task.sleep(for: .milliseconds(1_700))
+                try await Task.sleep(for: .milliseconds(large ? 2_700 : 1_700))
                 withAnimation(.easeOut(duration: 0.2)) { visible = false }
             } catch {
                 // A new event, restart or navigation cancels this panel's lifetime.

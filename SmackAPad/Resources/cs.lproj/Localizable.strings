@@ -296,3 +296,10 @@
 
 "Automatic" = "Automaticky";
 "Automatic · %@" = "Automaticky · %@";
+
+// Practice feedback, round 3.
+"Run finished: star 3 earned, from memory" = "Cvičení skončilo: získána 3. hvězda, z paměti";
+"Run finished: star 2 earned, goal tempo" = "Cvičení skončilo: získána 2. hvězda, cílové tempo";
+"Bar %lld / %lld" = "Takt %lld / %lld";
+"Position in the current pass" = "Pozice v aktuálním průchodu";
+"Bar %lld / %lld, %lld percent" = "Takt %lld / %lld, %lld procent";

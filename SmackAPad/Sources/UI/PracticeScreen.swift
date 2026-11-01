@@ -33,7 +33,7 @@ struct PracticeScreen: View {
                                  hidden: session.fromMemory && session.running && !session.listen,
                                  scrolling: scrolling, visibleBars: [1, 2, 4].contains(visibleBars) ? visibleBars : 4,
                                  verdicts: session.barVerdicts,
-                                 judgments: session.hitJudgments,
+                                 judgments: session.hitJudgments, bpm: session.bpm,
                                  playedHits: session.playedHits, pass: session.passNumber,
                                  scoring: session.running && !session.listen && session.countdown == nil,
                                  missGraceSteps: session.missGraceSteps, countdown: session.countdown)
@@ -161,41 +161,67 @@ struct PracticeScreen: View {
     }
 
     private func status(compact: Bool) -> some View {
-        HStack(spacing: compact ? Theme.Space.regular : Theme.Space.wide) {
-            Button { showingTempo.toggle() } label: {
-                Text("\(session.bpm) → \(session.lesson.targetBpm) BPM").font(Theme.text())
-            }
-            .buttonStyle(InstrumentButtonStyle())
-            .opacity(session.running ? 0.45 : 1)
-            .disabled(session.running)
-            .popover(isPresented: $showingTempo) {
-                tempoControls.padding(Theme.Space.page).background(Theme.background)
-            }
-            .overlay(alignment: .trailing) {
-                if let event = session.tempoUpEvent {
-                    TempoUpBanner(event: event,
-                                  label: settings.localized("Tempo up: %lld → %lld BPM", event.from, event.to),
-                                  announcement: settings.localized("Tempo %lld", event.to))
-                        .id(event.id)
-                        .fixedSize()
-                        .offset(x: 8)
-                        .frame(width: 0, alignment: .leading)
+        VStack(alignment: .leading, spacing: Theme.Space.small) {
+            HStack(spacing: Theme.Space.regular) {
+                Button { showingTempo.toggle() } label: {
+                    Text("\(session.bpm) → \(session.lesson.targetBpm) BPM").font(Theme.text())
                 }
+                .buttonStyle(InstrumentButtonStyle())
+                .opacity(session.running ? 0.45 : 1)
+                .disabled(session.running)
+                .popover(isPresented: $showingTempo) {
+                    tempoControls.padding(Theme.Space.page).background(Theme.background)
+                }
+                // The slot includes room for the pulse. It stays reserved throughout a run.
+                if session.running {
+                    ZStack {
+                        Color.clear
+                        if session.countdown == nil, let event = session.tempoUpEvent {
+                            TempoUpBanner(event: event,
+                                          label: settings.localized("Tempo up: %lld → %lld BPM", event.from, event.to),
+                                          announcement: settings.localized("Tempo %lld", event.to))
+                                .id(event.id)
+                                .frame(width: 220)
+                        }
+                    }
+                    .frame(width: 240, height: Theme.Size.touch)
+                }
+                Text(session.listen ? "— %" : session.lastResult.map { "\(Int(($0.score * 100).rounded())) %" } ?? "— %")
+                    .font(Theme.text()).fixedSize()
+                    .accessibilityLabel(settings.localized("Score"))
+                Spacer(minLength: 0)
+                if !compact { handLegend }
             }
-            Text(session.listen ? "— %" : session.lastResult.map { "\(Int(($0.score * 100).rounded())) %" } ?? "— %")
-                .font(Theme.text()).accessibilityLabel(settings.localized("Score"))
-            if let progress = session.starRunProgress {
-                Text(settings.localized("%lld / %lld", progress.count, progress.required))
-                    .font(Theme.text(Theme.Size.small)).foregroundStyle(Theme.secondary)
-                    .accessibilityLabel(settings.localized("Consecutive passes for %@", settings.localized(progress.name)))
-                    .accessibilityValue(settings.localized("%lld / %lld", progress.count, progress.required))
+            HStack(spacing: Theme.Space.regular) {
+                TimelineView(.animation(minimumInterval: 1.0 / 60, paused: !session.running)) { _ in
+                    let total = max(16, session.practiceLesson.bars * 16)
+                    let position = session.position
+                    VStack(alignment: .leading, spacing: Theme.Space.tight) {
+                        Text(settings.localized("Bar %lld / %lld", min(session.practiceLesson.bars, Int(position) / 16 + 1),
+                                                session.practiceLesson.bars))
+                            .font(Theme.text(Theme.Size.small))
+                        ProgressView(value: position / Double(total))
+                            .tint(Theme.ink)
+                            .accessibilityLabel(settings.localized("Position in the current pass"))
+                    }
+                    .frame(width: 160)
+                    .accessibilityElement(children: .ignore)
+                    .accessibilityLabel(settings.localized("Position in the current pass"))
+                    .accessibilityValue(settings.localized("Bar %lld / %lld, %lld percent",
+                        min(session.practiceLesson.bars, Int(position) / 16 + 1), session.practiceLesson.bars,
+                        Int(position / Double(total) * 100)))
+                }
+                if let progress = session.starRunProgress {
+                    Text(settings.localized("%lld / %lld", progress.count, progress.required))
+                        .font(Theme.text(Theme.Size.small)).foregroundStyle(Theme.secondary)
+                        .accessibilityLabel(settings.localized("Consecutive passes for %@", settings.localized(progress.name)))
+                        .accessibilityValue(settings.localized("%lld / %lld", progress.count, progress.required))
+                }
+                Spacer(minLength: 0)
             }
-            Spacer(minLength: 0)
-            if !compact {
-                handLegend
-            }
+            .opacity(session.countdown == nil ? 1 : 0)
+            .accessibilityHidden(session.countdown != nil)
         }
-        .lineLimit(1)
     }
 
     private var handLegend: some View {
@@ -266,7 +292,7 @@ struct PracticeScreen: View {
                 padCount: midi.activeProfile.padCount,
                 settings: settings
             )
-            SummaryStrip(summary: summary, nextStarText: nextStar) { showingDetails = true }
+            SummaryStrip(summary: summary, nextStarText: nextStar, dismiss: session.dismissSummary) { showingDetails = true }
                 .popover(isPresented: $showingDetails) {
                     VStack(alignment: .leading, spacing: Theme.Space.regular) {
                         Text(settings.localized("Practice summary")).font(Theme.display())

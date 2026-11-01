@@ -136,16 +136,32 @@ struct RunSummary: Identifiable {
     let passed: Bool
     let mastery: Bool
     let memory: Bool
+    var finishedByStar: Int? = nil
 }
 
 struct SummaryStrip: View {
     @Environment(SettingsManager.self) private var settings
     let summary: RunSummary
     var nextStarText: String? = nil
+    var dismiss: (() -> Void)? = nil
     let detail: () -> Void
 
     var body: some View {
         VStack(alignment: .leading, spacing: Theme.Space.small) {
+            if let star = summary.finishedByStar {
+                HStack(spacing: Theme.Space.small) {
+                    Text(settings.localized(star == 3
+                        ? "Run finished: star 3 earned, from memory"
+                        : "Run finished: star 2 earned, goal tempo"))
+                        .font(Theme.text(Theme.Size.small))
+                        .fixedSize(horizontal: false, vertical: true)
+                    if let dismiss {
+                        Button(settings.localized("Close"), action: dismiss)
+                            .font(Theme.text(Theme.Size.small))
+                            .frame(minWidth: Theme.Size.touch, minHeight: Theme.Size.touch)
+                    }
+                }
+            }
             HStack(spacing: Theme.Space.regular) {
                 Text("\(Int((summary.score * 100).rounded())) %").font(Theme.display(Theme.Size.emphasis))
                 HStack(spacing: Theme.Space.small) {

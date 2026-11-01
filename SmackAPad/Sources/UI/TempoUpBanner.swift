@@ -16,6 +16,8 @@ struct TempoUpBanner: View {
     var body: some View {
         Text(label)
             .font(Theme.display(Theme.Size.body))
+            .lineLimit(1)
+            .minimumScaleFactor(0.75)
             .foregroundStyle(Theme.black)
             .padding(.horizontal, Theme.Space.regular)
             .padding(.vertical, Theme.Space.small)
@@ -41,7 +43,7 @@ struct TempoUpBanner: View {
                 }
                 UIAccessibility.post(notification: .announcement, argument: announcement)
                 do {
-                    try await Task.sleep(for: .milliseconds(900))
+                    try await Task.sleep(for: .milliseconds(reduceMotion ? 900 : 600))
                 } catch { return }
                 withAnimation(.easeOut(duration: 0.3)) { visible = false }
             }
