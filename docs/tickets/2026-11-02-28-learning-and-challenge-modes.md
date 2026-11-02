@@ -1,6 +1,6 @@
 # 28 — Practice mode: Learning (default) and Challenge
 
-Status: ready. Source: legacy comparison 2026-11-02 (legacy manual §5.2), Jakub's feedback round 4 ("intro lessons too strict, one failed run resets the whole streak").
+Status: ready-for-ipad-test (2026-11-02). Source: legacy comparison 2026-11-02 (legacy manual §5.2), Jakub's feedback round 4 ("intro lessons too strict, one failed run resets the whole streak").
 
 ## Precondition
 
@@ -47,11 +47,11 @@ Use the existing Settings components and look (ticket 25A). No new colours.
 
 ## Acceptance criteria
 
-- [ ] Default is Learning; a failed pass no longer removes credit; credit survives app restart and is separate for 8 and 16 pads.
-- [ ] Challenge behaves exactly like ticket 18.
-- [ ] Star 1 can be earned through the alternative Learning rule.
-- [ ] Requirement texts match the selected mode in both languages.
-- [ ] Tests pass, build succeeds.
+- [x] Default is Learning; a failed pass no longer removes credit; credit survives app restart and is separate for 8 and 16 pads.
+- [x] Challenge behaves exactly like ticket 18.
+- [x] Star 1 can be earned through the alternative Learning rule.
+- [x] Requirement texts match the selected mode in both languages.
+- [x] Tests pass, build succeeds.
 - [ ] **iPad test (Jakub)**: an intro lesson with one bad pass between good ones (Learning), then the same in Challenge.
 
 ## Agent assignment
@@ -62,3 +62,12 @@ Use the existing Settings components and look (ticket 25A). No new colours.
 ## Done rule
 
 Stop after successful build and tests; Jakub tests on iPad. Commit after the task.
+
+## Implementation and validation (2026-11-02)
+
+- Added the persisted Learning/Challenge setting, defaulting to Learning. Practice snapshots the mode at START; Challenge clears its counters at START/RESTART/STOP. Required run counts, tempo progression, section-loop restrictions and star auto-stop remain unchanged.
+- Replaced the static in-memory dictionary with three Learning counters stored in each lesson record under separate `8` / `16` pad-mode keys. Older JSON records decode with no credit. Every completed full practice pass saves credit alongside progress. Challenge does not modify stored Learning credit.
+- Added the alternative first-star policy and the scoring summary's perfect-or-good hit count without changing the existing score formula or normal qualification. Added the Settings menu and mode-aware requirement text in English and Czech.
+- Three requested XCTest cases passed, each following a failing compilation for its missing production interface: alternative first-star boundaries (60%, 85%, error budgets for 4/16/40 hits); Learning retention and independent Challenge failure resets; real ProgressStore save/load, pad-mode/lesson separation and old-file migration. No already-passed test was rerun. Tests ran on macOS through `build/ticket-28/pure`: production StarStreak was symlinked; the unchanged LessonProgress/ProgressStore section was extracted from Persistence.swift to avoid unrelated app dependencies.
+- Localization files passed `plutil -lint`; `git diff --check` passed before the build. The initial sandboxed app build could not launch Swift macro plugins. The second build succeeded with `xcodebuild build -project SmackAPad.xcodeproj -scheme SmackAPad -destination 'generic/platform=iOS Simulator' -derivedDataPath build/ticket-28/app CODE_SIGNING_ALLOWED=NO 'OTHER_SWIFT_FLAGS=$(inherited) -disable-sandbox'`. No further tests or builds after success.
+- Jakub still verifies an intro lesson with a bad pass between good passes in Learning and Challenge on iPad.

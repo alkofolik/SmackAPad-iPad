@@ -17,6 +17,7 @@ import UIKit
 public enum SettingsKey: String, CaseIterable, Sendable {
     case selectedKitId = "smackapad.settings.selectedKitId"
     case lessonKitOverrides = "smackapad.settings.lessonKitOverrides"
+    case practiceMode = "smackapad.settings.practiceMode"
     case bpmStep = "smackapad.settings.bpmStep"
     case activeProfileName = "smackapad.settings.activeProfileName"
     case calibrationOffsets = "smackapad.settings.calibrationOffsets"
@@ -110,6 +111,10 @@ public final class SettingsManager: @unchecked Sendable {
         didSet {
             persistLessonKitOverrides()
         }
+    }
+
+    public var practiceMode: PracticeMode {
+        didSet { userDefaults.set(practiceMode.rawValue, forKey: SettingsKey.practiceMode.rawValue) }
     }
 
     public var bpmStep: Int {
@@ -209,6 +214,7 @@ public final class SettingsManager: @unchecked Sendable {
 
     public init(userDefaults: UserDefaults = .standard) {
         self.userDefaults = userDefaults
+        practiceMode = PracticeMode(rawValue: userDefaults.string(forKey: SettingsKey.practiceMode.rawValue) ?? "") ?? .learning
         libraryView = LibraryViewMode(rawValue: userDefaults.string(forKey: "smackapad.library.view") ?? "")?.rawValue ?? "path"
         libraryStarFilters = userDefaults.stringArray(forKey: "smackapad.library.stars") ?? LibraryStarFilter.allCases.map(\.rawValue)
         nextLessonSource = NextLessonSource(rawValue: userDefaults.string(forKey: "smackapad.library.nextSource") ?? "")?.rawValue ?? "path"
@@ -430,6 +436,7 @@ public final class SettingsManager: @unchecked Sendable {
         }
         self.selectedKitId = Self.defaultKitId
         self.lessonKitOverrides = [:]
+        self.practiceMode = .learning
         self.bpmStep = Self.defaultBpmStep
         self.activeProfileName = Self.defaultProfileName
         self.calibrationOffsets = [:]
@@ -449,6 +456,7 @@ public struct LessonProgress: Codable, Equatable, Hashable, Sendable {
     public var memory: Bool
     public var currentBpm: Int
     public var bestScore: Float
+    var learningCreditByPadCount: [String: StarStreak] = [:]
 
     public init(
         passed: Bool = false,
@@ -466,7 +474,7 @@ public struct LessonProgress: Codable, Equatable, Hashable, Sendable {
         self.bestScore = bestScore
     }
 
-    private enum CodingKeys: String, CodingKey { case hasPlayed, passed, mastery, memory, currentBpm, bestScore }
+    private enum CodingKeys: String, CodingKey { case hasPlayed, passed, mastery, memory, currentBpm, bestScore, learningCreditByPadCount }
 
     /// Existing progress files predate the memory star.
     public init(from decoder: Decoder) throws {
@@ -476,6 +484,7 @@ public struct LessonProgress: Codable, Equatable, Hashable, Sendable {
         memory = try values.decodeIfPresent(Bool.self, forKey: .memory) ?? false
         currentBpm = try values.decode(Int.self, forKey: .currentBpm)
         bestScore = try values.decode(Float.self, forKey: .bestScore)
+        learningCreditByPadCount = try values.decodeIfPresent([String: StarStreak].self, forKey: .learningCreditByPadCount) ?? [:]
         // Old records did not distinguish a saved tempo from an interrupted attempt.
         hasPlayed = try values.decodeIfPresent(Bool.self, forKey: .hasPlayed) ?? (passed || mastery || memory || currentBpm > 0 || bestScore > 0)
     }
@@ -688,6 +697,20 @@ public final class ProgressStore: @unchecked Sendable {
         lock.lock()
         defer { lock.unlock() }
         return Set(records.filter { $0.value.mastery }.map(\.key))
+    }
+
+    /// Learning credit is isolated by physical pad mode. Missing old-file counters start at zero.
+    func learningCredit(lessonId: Int, padCount: Int) -> StarStreak {
+        progress(for: lessonId)?.learningCreditByPadCount[String(padCount)] ?? StarStreak()
+    }
+
+    func setLearningCredit(_ credit: StarStreak, lessonId: Int, padCount: Int, autoSave: Bool = true) {
+        lock.lock()
+        var record = records[lessonId] ?? LessonProgress()
+        record.learningCreditByPadCount[String(padCount)] = credit
+        records[lessonId] = record
+        lock.unlock()
+        if autoSave { try? save() }
     }
 
     // MARK: - Mutation Methods

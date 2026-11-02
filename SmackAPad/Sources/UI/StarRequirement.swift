@@ -17,25 +17,26 @@ public enum StarRequirement {
         for starIndex: Int,
         requiredRuns: Int = 1,
         targetBpm: Int? = nil,
-        language: AppLanguage = .english
+        language: AppLanguage = .english,
+        mode: PracticeMode = .learning
     ) -> String {
         switch starIndex {
         case 0:
             if requiredRuns > 1 {
-                return language.localized("Pass the lesson, %lld times in a row", requiredRuns)
+                return language.localized(mode == .challenge ? "Pass the lesson, %lld times in a row" : "Pass the lesson, %lld times", requiredRuns)
             } else {
                 return language.localized("Pass the lesson")
             }
         case 1:
             if let bpm = targetBpm {
                 if requiredRuns > 1 {
-                    return language.localized("Reach %lld BPM cleanly, %lld times in a row", bpm, requiredRuns)
+                    return language.localized(mode == .challenge ? "Reach %lld BPM cleanly, %lld times in a row" : "Reach %lld BPM cleanly, %lld times", bpm, requiredRuns)
                 } else {
                     return language.localized("Reach %lld BPM cleanly", bpm)
                 }
             } else {
                 if requiredRuns > 1 {
-                    return language.localized("Reach the goal tempo cleanly, %lld times in a row", requiredRuns)
+                    return language.localized(mode == .challenge ? "Reach the goal tempo cleanly, %lld times in a row" : "Reach the goal tempo cleanly, %lld times", requiredRuns)
                 } else {
                     return language.localized("Reach the goal tempo cleanly")
                 }
@@ -43,13 +44,13 @@ public enum StarRequirement {
         case 2:
             if let bpm = targetBpm {
                 if requiredRuns > 1 {
-                    return language.localized("Play it from memory at %lld BPM, 80 %% or better, %lld times in a row", bpm, requiredRuns)
+                    return language.localized(mode == .challenge ? "Play it from memory at %lld BPM, 80 %% or better, %lld times in a row" : "Play it from memory at %lld BPM, 80 %% or better, %lld times", bpm, requiredRuns)
                 } else {
                     return language.localized("Play it from memory at %lld BPM, 80 %% or better", bpm)
                 }
             } else {
                 if requiredRuns > 1 {
-                    return language.localized("Play it from memory at goal tempo, 80 %% or better, %lld times in a row", requiredRuns)
+                    return language.localized(mode == .challenge ? "Play it from memory at goal tempo, 80 %% or better, %lld times in a row" : "Play it from memory at goal tempo, 80 %% or better, %lld times", requiredRuns)
                 } else {
                     return language.localized("Play it from memory at goal tempo, 80 % or better")
                 }
@@ -66,7 +67,7 @@ public enum StarRequirement {
         targetBpm: Int? = nil,
         settings: SettingsManager? = nil
     ) -> String {
-        requirementText(for: starIndex, requiredRuns: requiredRuns, targetBpm: targetBpm, language: settings?.languagePreference ?? .english)
+        requirementText(for: starIndex, requiredRuns: requiredRuns, targetBpm: targetBpm, language: settings?.languagePreference ?? .english, mode: settings?.practiceMode ?? .learning)
     }
 
     /// Convenience overload for a Lesson.
@@ -87,10 +88,11 @@ public enum StarRequirement {
         progress: LessonProgress?,
         requiredRuns: Int = 1,
         targetBpm: Int? = nil,
-        language: AppLanguage = .english
+        language: AppLanguage = .english,
+        mode: PracticeMode = .learning
     ) -> String? {
         guard let index = nextMissingStarIndex(progress: progress) else { return nil }
-        let text = requirementText(for: index, requiredRuns: requiredRuns, targetBpm: targetBpm, language: language)
+        let text = requirementText(for: index, requiredRuns: requiredRuns, targetBpm: targetBpm, language: language, mode: mode)
         guard !text.isEmpty else { return nil }
         let lowered = text.prefix(1).lowercased() + text.dropFirst()
         return language.localized("Next: %@", lowered)
@@ -103,7 +105,7 @@ public enum StarRequirement {
         targetBpm: Int? = nil,
         settings: SettingsManager? = nil
     ) -> String? {
-        nextMissingStarText(progress: progress, requiredRuns: requiredRuns, targetBpm: targetBpm, language: settings?.languagePreference ?? .english)
+        nextMissingStarText(progress: progress, requiredRuns: requiredRuns, targetBpm: targetBpm, language: settings?.languagePreference ?? .english, mode: settings?.practiceMode ?? .learning)
     }
 
     /// Convenience overload for a Lesson.

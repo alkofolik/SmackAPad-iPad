@@ -33,15 +33,12 @@ final class StarStreakTests: XCTestCase {
         XCTAssertFalse(stars.mastery)
     }
 
-    func testCountsAreKeptPerLessonAndResetClearsThem() {
-        StarStreak.forgetAll()
+    func testResetClearsSessionCounters() {
         var streak = StarStreak()
         _ = streak.record(passed: true, mastery: true, memory: true, requiredRuns: 4)
-        StarStreak.keep(streak, lessonId: 7)
-        XCTAssertEqual(StarStreak.restore(lessonId: 7).passedRuns, 1)
-        XCTAssertEqual(StarStreak.restore(lessonId: 8).passedRuns, 0)
         streak.reset()
+        XCTAssertEqual(streak.passedRuns, 0)
         XCTAssertEqual(streak.masteryRuns, 0)
-        StarStreak.forgetAll()
+        XCTAssertEqual(streak.memoryRuns, 0)
     }
 }

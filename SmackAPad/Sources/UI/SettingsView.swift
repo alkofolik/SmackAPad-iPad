@@ -63,6 +63,22 @@ public struct SettingsView: View {
                             .foregroundStyle(Theme.secondary)
                     }
 
+                    Section {
+                        Picker(settings.localized("Practice mode"), selection: $settings.practiceMode) {
+                            ForEach(PracticeMode.allCases, id: \.self) { mode in
+                                Text(settings.localized(mode.title)).tag(mode)
+                            }
+                        }
+                        .pickerStyle(.menu)
+                        .frame(minHeight: Theme.Size.touch)
+                    } header: {
+                        SectionHeader(title: settings.localized("Practice mode"))
+                    } footer: {
+                        Text(settings.localized(settings.practiceMode.explanation))
+                            .font(Theme.meta)
+                            .foregroundStyle(Theme.secondary)
+                    }
+
                     // MARK: 2b. Pad layout on the practice screen
                     Section {
                         Toggle(settings.localized("Small pad layout"), isOn: $showPads)

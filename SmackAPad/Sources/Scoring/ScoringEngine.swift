@@ -26,6 +26,7 @@ public struct ScoringResult: Equatable, Sendable {
     public let mastery: Bool
     public let bpm: Int
     public let nextBpm: Int
+    public var perfectOrGoodHitCount: Int = 0
 }
 
 /// One pattern attempt, using native mach timestamps for both its start and input.
@@ -52,6 +53,7 @@ public struct ScoringEngine: Sendable {
     private var timingSamples: [Double] = []
     private var timingCenterNanoseconds: Double = 0
     private var lastMatchedTimestampByPad: [Int: UInt64] = [:]
+    private var perfectOrGoodHitCount = 0
     private var extraHitCount = 0
 
     public init(
@@ -114,6 +116,7 @@ public struct ScoringEngine: Sendable {
         lastMatchedTimestampByPad[padIndex] = timestamp
         let judgment: HitJudgment = abs(error) <= perfectNanoseconds ? .perfect
             : abs(error) <= goodNanoseconds ? .good : .off
+        if judgment == .perfect || judgment == .good { perfectOrGoodHitCount += 1 }
         // Learn only matched, calibration-corrected errors within ±110 ms. Using
         // errors before the adaptive shift prevents feeding the correction back
         // into itself. Grade this hit before learning from it.
@@ -145,7 +148,8 @@ public struct ScoringEngine: Sendable {
             expectedHitCount: expected, matchedHitCount: matches, extraHitCount: extraHitCount,
             score: score, passed: expected > 0 && score >= (isIntro ? 0.8 : 0.7),
             isCleanRun: clean, mastery: clean && bpm >= targetBpm,
-            bpm: bpm, nextBpm: clean && bpm < targetBpm ? bpm + min(bpmStep.rawValue, targetBpm - bpm) : bpm
+            bpm: bpm, nextBpm: clean && bpm < targetBpm ? bpm + min(bpmStep.rawValue, targetBpm - bpm) : bpm,
+            perfectOrGoodHitCount: perfectOrGoodHitCount
         )
     }
 }

@@ -37,6 +37,7 @@ final class PracticeSession {
     private(set) var padFlashes: [Int: PadFlash] = [:]
     private(set) var playedHits: [PlayedHit] = []
     private(set) var starStreak: StarStreak
+    private(set) var practiceMode: PracticeMode = .learning
     /// Keep pass identity so a previous repeat can never colour the new one.
     var hitJudgments: [Int: [LessonHit: HitJudgment]] {
         _ = judgmentVersion
@@ -69,6 +70,7 @@ final class PracticeSession {
     @ObservationIgnored private var earnedMastery = false
     @ObservationIgnored private var earnedMemory = false
     @ObservationIgnored private var stopAfterStar = false
+    @ObservationIgnored private var runPadCount = 16
     private(set) var finishedByStar: Int?
     @ObservationIgnored private var prepared = false
     @ObservationIgnored private var active = false
@@ -83,6 +85,7 @@ final class PracticeSession {
         let number: Int
         let start: Double
         let bpm: Int
+        let padCount: Int
         let duration: Double
         let finalTime: Double
         var scorer: ScoringEngine?
@@ -93,6 +96,7 @@ final class PracticeSession {
             self.number = number
             self.start = start
             self.bpm = bpm
+            self.padCount = padCount
             duration = Double(lesson.bars) * 240 / Double(bpm)
             let hits = lesson.hits(forPadCount: padCount)
             let lastHit = Double(hits.map(\.step).max() ?? 0) * 15 / Double(bpm)
@@ -116,7 +120,9 @@ final class PracticeSession {
     init(lesson: Lesson, settings: SettingsManager, progress: ProgressStore, midi: MIDIInput,
          clock: @escaping () -> Double = { AVAudioTime.seconds(forHostTime: mach_absolute_time()) }) {
         self.lesson = lesson
-        self.starStreak = StarStreak.restore(lessonId: lesson.id)
+        self.starStreak = settings.practiceMode == .learning
+            ? progress.learningCredit(lessonId: lesson.id, padCount: midi.activeProfile.padCount) : StarStreak()
+        self.practiceMode = settings.practiceMode
         self.settings = settings
         self.progress = progress
         self.midi = midi
@@ -218,6 +224,10 @@ final class PracticeSession {
             tempoUpEvent = nil
             stopAfterStar = false
             finishedByStar = nil
+            practiceMode = settings.practiceMode
+            runPadCount = midi.activeProfile.padCount
+            starStreak = practiceMode == .learning
+                ? progress.learningCredit(lessonId: lesson.id, padCount: midi.activeProfile.padCount) : StarStreak()
             tempo.reset()
             barVerdicts = [:]
             judgmentsByPass = [:]
@@ -260,6 +270,7 @@ final class PracticeSession {
         if !stopAfterStar { finishCompleted(at: now) }
         stopAfterStar = false
         running = false
+        if practiceMode == .challenge { starStreak.reset() }
         tempoUpEvent = nil
         playedHits = []
         judgmentsByPass = [:]
@@ -310,7 +321,7 @@ final class PracticeSession {
     private var now: Double { clock() }
 
     private func makePass(number: Int, start: Double, bpm: Int) -> Pass {
-        Pass(number: number, start: start, bpm: bpm, lesson: practiceLesson, padCount: midi.activeProfile.padCount,
+        Pass(number: number, start: start, bpm: bpm, lesson: practiceLesson, padCount: runPadCount,
              listen: listen, lessonSound: lessonSound, metronome: metronome, bpmStep: settings.bpmStepEnum)
     }
 
@@ -385,10 +396,16 @@ final class PracticeSession {
             if !isSectionLoop {
                 let memory = fromMemory && result.bpm >= lesson.targetBpm && result.score >= 0.8
                 let required = StarStreak.requiredRuns(expectedHits: result.expectedHitCount, isIntro: lesson.cat == "intro")
-                let stars = starStreak.record(passed: result.passed, mastery: result.mastery,
+                let passed = result.passed || (practiceMode == .learning && StarStreak.learningPassed(
+                    score: result.score, perfectOrGoodHits: result.perfectOrGoodHitCount,
+                    expectedHits: result.expectedHitCount, errors: result.errorCount))
+                let stars = starStreak.record(passed: passed, mastery: result.mastery,
                                               memory: memory, requiredRuns: required,
-                                              passedRequired: StarStreak.requiredRuns(expectedHits: result.expectedHitCount))
-                StarStreak.keep(starStreak, lessonId: lesson.id)
+                                              passedRequired: StarStreak.requiredRuns(expectedHits: result.expectedHitCount),
+                                              mode: practiceMode)
+                if practiceMode == .learning {
+                    progress.setLearningCredit(starStreak, lessonId: lesson.id, padCount: pass.padCount, autoSave: false)
+                }
                 earnedPass = earnedPass || stars.passed
                 earnedMastery = earnedMastery || stars.mastery
                 earnedMemory = earnedMemory || stars.memory

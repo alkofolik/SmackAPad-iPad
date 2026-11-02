@@ -1,7 +1,7 @@
 
 "MIDI controller" = "MIDI controller";
 "%lld / %lld" = "%lld / %lld";
-"Consecutive passes for %@" = "Consecutive passes for %@";
+"Consecutive passes for %@" = "Qualifying passes for %@";
 "Input" = "Input";
 "All connected controllers" = "All connected controllers";
 "Connect a USB controller or pair a Bluetooth MIDI controller." = "Connect a USB controller or pair a Bluetooth MIDI controller.";
@@ -313,3 +313,15 @@
 "Lock again" = "Lock again";
 "Manually unlocked · no stars yet" = "Manually unlocked · no stars yet";
 "Keep offbeat open hats steady over the kick." = "Keep offbeat open hats steady over the kick.";
+
+/* Learning and Challenge progression modes. */
+"Practice mode" = "Practice mode";
+"Learning · keep progress" = "Learning · keep progress";
+"Challenge · consecutive clean runs" = "Challenge · consecutive clean runs";
+"Good passes add up. A weaker pass never takes them away." = "Good passes add up. A weaker pass never takes them away.";
+"Each star needs its passes in a row." = "Each star needs its passes in a row.";
+"Pass the lesson, %lld times" = "Pass the lesson, %lld times";
+"Reach %lld BPM cleanly, %lld times" = "Reach %lld BPM cleanly, %lld times";
+"Reach the goal tempo cleanly, %lld times" = "Reach the goal tempo cleanly, %lld times";
+"Play it from memory at %lld BPM, 80 %% or better, %lld times" = "Play it from memory at %lld BPM, 80 %% or better, %lld times";
+"Play it from memory at goal tempo, 80 %% or better, %lld times" = "Play it from memory at goal tempo, 80 %% or better, %lld times";

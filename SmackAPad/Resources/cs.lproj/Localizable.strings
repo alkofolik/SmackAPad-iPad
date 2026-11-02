@@ -1,7 +1,7 @@
 
 "MIDI controller" = "MIDI kontrolér";
 "%lld / %lld" = "%lld / %lld";
-"Consecutive passes for %@" = "Průchody v řadě pro %@";
+"Consecutive passes for %@" = "Úspěšné průchody pro %@";
 "Input" = "Vstup";
 "All connected controllers" = "Všechny připojené kontroléry";
 "Connect a USB controller or pair a Bluetooth MIDI controller." = "Připoj USB kontrolér nebo spáruj Bluetooth MIDI kontrolér.";
@@ -313,3 +313,15 @@
 "Lock again" = "Znovu zamknout";
 "Manually unlocked · no stars yet" = "Ručně odemčeno · zatím bez hvězd";
 "Keep offbeat open hats steady over the kick." = "Drž otevřenou hi-hatku pravidelně na „a“ mezi údery kopáku.";
+
+/* Learning and Challenge progression modes. */
+"Practice mode" = "Režim cvičení";
+"Learning · keep progress" = "Učení · zachovat postup";
+"Challenge · consecutive clean runs" = "Výzva · čisté průchody za sebou";
+"Good passes add up. A weaker pass never takes them away." = "Úspěšné průchody se sčítají. Slabší průchod ti je nikdy nevezme.";
+"Each star needs its passes in a row." = "Pro každou hvězdu je třeba zvládnout průchody za sebou.";
+"Pass the lesson, %lld times" = "Splň lekci, %lldkrát";
+"Reach %lld BPM cleanly, %lld times" = "Dosáhni čistě %lld BPM, %lldkrát";
+"Reach the goal tempo cleanly, %lld times" = "Dosáhni čistě cílového tempa, %lldkrát";
+"Play it from memory at %lld BPM, 80 %% or better, %lld times" = "Zahraj zpaměti v %lld BPM na 80 %% a lépe, %lldkrát";
+"Play it from memory at goal tempo, 80 %% or better, %lld times" = "Zahraj zpaměti v cílovém tempu na 80 %% a lépe, %lldkrát";
