@@ -127,8 +127,6 @@
 "Rhythm pattern" = "Rytmický pattern";
 "From memory, notes hidden" = "Z paměti, noty skryté";
 "%lld bars, %@" = "%lld taktů, %@";
-"next pass" = "další průchod";
-"BAR %lld" = "TAKT %lld";
 "clean" = "čistý";
 "ahead" = "předbíháš";
 "behind" = "zaostáváš";
@@ -137,7 +135,7 @@
 "Goal tempo" = "Cílové tempo";
 "From memory" = "Z paměti";
 "Details" = "Detail";
-"Last completed pass" = "Poslední dokončený průchod";
+"Last run" = "Poslední běh";
 "Star earned: %@" = "Získána hvězda: %@";
 "Back to lessons" = "Zpět na lekce";
 "LEVEL" = "ÚROVEŇ";
@@ -303,7 +301,6 @@
 // Practice feedback, round 3.
 "Run finished: star 3 earned, from memory" = "Cvičení skončilo: získána 3. hvězda, z paměti";
 "Run finished: star 2 earned, goal tempo" = "Cvičení skončilo: získána 2. hvězda, cílové tempo";
-"Bar %lld / %lld" = "Takt %lld / %lld";
 "Position in the current pass" = "Pozice v aktuálním průchodu";
 "Bar %lld / %lld, %lld percent" = "Takt %lld / %lld, %lld procent";
 
@@ -445,3 +442,9 @@
 "No matched hits to show." = "Zatím žádné přiřazené údery.";
 "Orange: within the good window. Grey: outside it." = "Oranžová: v dobrém časovém rozmezí. Šedá: mimo něj.";
 "Run stopped before the first pass finished." = "Běh skončil před dokončením prvního průchodu.";
+
+/* Practice screen round 6 */
+"From memory for ★3" = "Z paměti o ★3";
+"Starts Play from memory for the 3rd star" = "Spustí hru z paměti o 3. hvězdu";
+"Band colour" = "Barva pásu";
+"The band gets deeper as the tempo nears the goal. A glow on the right edge: you are rushing; on the left: you are dragging." = "Čím blíž cílovému tempu, tím sytější pás. Záře u pravého okraje: spěcháš, u levého: zpožďuješ se.";

@@ -53,6 +53,8 @@ struct PatternField: View {
     let scoring: Bool
     let missGraceSteps: Double
     let countdown: Int?
+    var band: Color = Theme.orange
+    var edgeTendency: Double = 0
 
     private var rows: [Int] {
         let used = Set(hits.map(\.padIndex))
@@ -115,7 +117,16 @@ struct PatternField: View {
                 .allowsHitTesting(false)
             }
         }
-        .background(Theme.orange)
+        .overlay(alignment: .bottom) {
+            if lesson.bars > 1 {
+                PatternPassProgress(position: position, bars: lesson.bars)
+            }
+        }
+        .overlay { BandEdgeGlow(tendency: edgeTendency) }
+        .background {
+            Rectangle().fill(band)
+                .animation(reduceMotion ? nil : .easeInOut(duration: 1.2), value: band)
+        }
         .clipped()
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(settings.localized("Rhythm pattern"))
@@ -140,10 +151,8 @@ private struct PatternBar: View {
 
     var body: some View {
         HStack(spacing: Theme.Space.regular) {
-            Rectangle().fill(active ? Theme.black : Theme.orange).frame(width: Theme.Size.bracket)
-            VStack(alignment: .leading, spacing: Theme.Space.small) {
-                BarHeader(bar: bar, verdict: verdict)
-                Canvas { context, size in
+            Rectangle().fill(active ? Theme.black : Color.clear).frame(width: Theme.Size.bracket)
+            Canvas { context, size in
                     let cellWidth = size.width / 16
                     let countHeight: CGFloat = 32
                     let rowHeight = max(1, (size.height - countHeight) / CGFloat(max(1, rows.count)))
@@ -201,7 +210,6 @@ private struct PatternBar: View {
             }
         }
     }
-}
 
 private struct ScrollingPattern: View {
     @Environment(SettingsManager.self) private var settings
@@ -225,7 +233,7 @@ private struct ScrollingPattern: View {
             let markerX = size.width / 3
             let countY = size.height * 0.24
             let rowTop = countY + 36
-            let rowBottom = size.height - 64
+            let rowBottom = size.height - 24
             let rowHeight = max(1, (rowBottom - rowTop) / CGFloat(max(1, rows.count)))
             let firstStep = Int(floor(position - Double(markerX / cellWidth))) - 1
             let lastStep = Int(ceil(position + Double((size.width - markerX) / cellWidth))) + 1
@@ -239,28 +247,16 @@ private struct ScrollingPattern: View {
                 guard globalStep >= 0 else { continue }
                 let step = (globalStep % total + total) % total
                 let recordedPass = globalStep / total + 1
-                let bar = step / 16
                 let x = markerX + CGFloat(Double(globalStep) - position) * cellWidth
                 let beat = step.isMultiple(of: 4)
                 let label = beat ? String(step % 16 / 4 + 1) : ["", "e", "&", "a"][step % 4]
                 context.draw(Text(label).font(beat ? Theme.canvasDisplay(Theme.Size.beat) : Theme.canvasText(Theme.Size.body)).foregroundColor(Theme.black),
                              at: CGPoint(x: x, y: countY))
-                if step.isMultiple(of: 16) {
-                    let next = recordedPass > pass
-                    let word = next ? settings.localized("next pass") : (recordedPass == pass ? verdicts[bar]?.label(settings: settings) : nil)
-                    let header = "\(settings.localized("BAR %lld", bar + 1))\(word.map { "  \($0)" } ?? "")"
-                    context.draw(Text(header).font(Theme.canvasText(Theme.Size.body)).foregroundColor(Theme.black),
-                                 at: CGPoint(x: max(0, x), y: 16), anchor: .topLeading)
-                    if globalStep / 16 == Int(position) / 16 {
-                        context.fill(Path(CGRect(x: x - Theme.Size.bracket / 2, y: rowTop, width: Theme.Size.bracket,
-                                                 height: max(1, rowBottom - rowTop))), with: .color(Theme.black))
-                    }
-                }
                 if beat {
                     var path = Path()
                     path.move(to: CGPoint(x: x, y: countY + 22))
                     path.addLine(to: CGPoint(x: x, y: rowBottom))
-                    context.stroke(path, with: .color(Theme.black), lineWidth: step.isMultiple(of: 16) ? 3 : 1)
+                    context.stroke(path, with: .color(Theme.black), lineWidth: step.isMultiple(of: 16) ? 2 : 1)
                 }
                 if !hidden {
                     for hit in hits where hit.step == step {
@@ -297,15 +293,6 @@ private struct ScrollingPattern: View {
                 }
             }
             drawMarker(x: markerX, top: countY - 20, bottom: rowBottom, context: &context)
-            let overview = CGRect(x: 0, y: size.height - 22, width: size.width, height: 16)
-            context.stroke(Path(overview), with: .color(Theme.black), lineWidth: Theme.Size.border)
-            for bar in 1..<max(1, lesson.bars) {
-                let x = size.width * CGFloat(bar) / CGFloat(lesson.bars)
-                context.fill(Path(CGRect(x: x, y: overview.minY, width: 2, height: overview.height)), with: .color(Theme.black))
-            }
-            let localPosition = position.truncatingRemainder(dividingBy: Double(total))
-            drawMarker(x: size.width * CGFloat(localPosition / Double(total)), top: overview.minY - 3,
-                       bottom: overview.maxY + 3, context: &context)
         }
     }
 }
@@ -355,4 +342,37 @@ private func drawMarker(x: CGFloat, top: CGFloat, bottom: CGFloat, context: inou
     path.move(to: CGPoint(x: x, y: top)); path.addLine(to: CGPoint(x: x, y: bottom))
     context.stroke(path, with: .color(Theme.white), lineWidth: 6)
     context.stroke(path, with: .color(Theme.black), lineWidth: 3)
+}
+
+/// A single thin line (2-3 pt) at the bottom edge of the pattern band with bar notches.
+private struct PatternPassProgress: View {
+    @Environment(SettingsManager.self) private var settings
+    let position: Double
+    let bars: Int
+
+    var body: some View {
+        let count = max(1, bars)
+        let totalSteps = Double(count * 16)
+        let localPosition = position.truncatingRemainder(dividingBy: totalSteps)
+        let fraction = totalSteps > 0 ? min(1, max(0, localPosition / totalSteps)) : 0
+        Canvas { context, size in
+            let y = size.height - 2
+            context.fill(Path(CGRect(x: 0, y: y - 1, width: size.width, height: 2)),
+                         with: .color(Theme.black.opacity(0.25)))
+            if fraction > 0 {
+                context.fill(Path(CGRect(x: 0, y: y - 1, width: size.width * fraction, height: 2)),
+                             with: .color(Theme.black))
+            }
+            for bar in 0...count {
+                let x = min(size.width - 1, max(1, size.width * Double(bar) / Double(count)))
+                context.fill(Path(CGRect(x: x - 1, y: y - 4, width: 2, height: 6)),
+                             with: .color(Theme.black))
+            }
+        }
+        .frame(height: 8)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(settings.localized("Position in the current pass"))
+        .accessibilityValue(settings.localized("Bar %lld / %lld, %lld percent",
+            min(count, Int(position) / 16 + 1), count, Int(fraction * 100)))
+    }
 }

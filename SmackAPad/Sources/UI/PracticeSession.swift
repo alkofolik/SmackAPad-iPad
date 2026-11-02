@@ -86,6 +86,12 @@ final class PracticeSession {
     @ObservationIgnored private var stopAfterStar = false
     @ObservationIgnored private var runPadCount = 16
     private(set) var finishedByStar: Int?
+    /// Best score and tempo of this run, written to the store once at STOP.
+    /// Writing during a run re-encodes all progress and refreshes the library
+    /// behind the practice cover, which caused the hitch at every pass boundary.
+    @ObservationIgnored private var pendingScore: Float?
+    @ObservationIgnored private var pendingBpm = 0
+    @ObservationIgnored private var pendingCredit = false
     @ObservationIgnored private var prepared = false
     @ObservationIgnored private var active = false
 
@@ -240,9 +246,10 @@ final class PracticeSession {
         return nil
     }
     var available: Bool { midi.padIndices != nil }
-    var patternFrame: PatternFrame {
+    var patternFrame: PatternFrame { tapeFrame(seconds: now) }
+
+    private func tapeFrame(seconds: Double) -> PatternFrame {
         let total = practiceLesson.bars * 16
-        let seconds = now
         guard running, let current = passes.last(where: { $0.start <= seconds }) else {
             return PatternFrame(tapePosition: 0, totalSteps: total, bpm: bpm)
         }
@@ -254,6 +261,12 @@ final class PracticeSession {
         return PatternFrame(tapePosition: distance, totalSteps: total, bpm: current.bpm)
     }
     var position: Double { patternFrame.position }
+
+    /// Samples the tape for the frame SwiftUI is about to show, not for the moment
+    /// the view body happens to run. Even frame spacing keeps the tape motion smooth.
+    func patternFrame(at date: Date) -> PatternFrame {
+        tapeFrame(seconds: now + min(0.05, max(-0.05, date.timeIntervalSinceNow)))
+    }
 
     func prepare() async {
         active = true
@@ -315,6 +328,7 @@ final class PracticeSession {
             runPadCount = midi.activeProfile.padCount
             starStreak = practiceMode == .learning
                 ? progress.learningCredit(lessonId: lesson.id, padCount: midi.activeProfile.padCount) : StarStreak()
+            pendingScore = nil; pendingBpm = 0; pendingCredit = false
             tempo.reset()
             barVerdicts = [:]
             judgmentsByPass = [:]
@@ -360,6 +374,7 @@ final class PracticeSession {
         // queued after it, even if the app was delayed long enough to finish it.
         if !stopAfterStar { finishCompleted(at: now) }
         let accuracy = currentRunAccuracy
+        flushPendingProgress()
         stopAfterStar = false
         running = false
         midi.resetControlPickup()
@@ -385,6 +400,20 @@ final class PracticeSession {
     }
 
     func restart() { stop(); start() }
+
+    /// One store write per run instead of one per pass.
+    private func flushPendingProgress() {
+        if pendingCredit, practiceMode == .learning {
+            progress.setLearningCredit(starStreak, lessonId: lesson.id, padCount: runPadCount, autoSave: false)
+        }
+        if let score = pendingScore {
+            progress.recordResult(lessonId: lesson.id, passed: false, mastery: false,
+                                  bpm: pendingBpm, score: score, autoSave: false)
+        }
+        pendingScore = nil
+        pendingBpm = 0
+        pendingCredit = false
+    }
 
     func dismissSummary() { summary = nil }
 
@@ -457,15 +486,18 @@ final class PracticeSession {
                 }
                 tempo.recordPassStart(bpm: current.bpm)
                 passNumber = current.number
-                barVerdicts = [:]
+                if !barVerdicts.isEmpty { barVerdicts = [:] }
                 judgmentsByPass = judgmentsByPass.filter { $0.key >= current.number - 1 }
                 playedHits.removeAll { $0.pass < current.number - 1 }
                 judgmentVersion += 1
             }
-            bpm = current.bpm
-            countdown = nil
+            // Observation publishes every assignment, even an equal value. Writing
+            // these 100x per second re-rendered the whole practice screen.
+            if bpm != current.bpm { bpm = current.bpm }
+            if countdown != nil { countdown = nil }
         } else if let first = passes.first {
-            countdown = min(4, max(1, Int(ceil((first.start - time) * Double(bpm) / 60))))
+            let next = min(4, max(1, Int(ceil((first.start - time) * Double(bpm) / 60))))
+            if countdown != next { countdown = next }
         }
         do {
             while let click = countInEvents.first, click <= horizon {
@@ -509,22 +541,28 @@ final class PracticeSession {
                                               memory: memory, requiredRuns: required,
                                               passedRequired: StarStreak.requiredRuns(expectedHits: result.expectedHitCount),
                                               mode: practiceMode)
-                if practiceMode == .learning {
-                    progress.setLearningCredit(starStreak, lessonId: lesson.id, padCount: pass.padCount, autoSave: false)
-                }
+                if practiceMode == .learning { pendingCredit = true }
                 earnedPass = earnedPass || stars.passed
                 earnedMastery = earnedMastery || stars.mastery
                 earnedMemory = earnedMemory || stars.memory
                 let award = StarAward(previous: progress.progress(for: lesson.id),
                                       passed: stars.passed, mastery: stars.mastery, memory: stars.memory)
-                progress.recordResult(lessonId: lesson.id, passed: stars.passed, mastery: stars.mastery,
-                                      bpm: result.bpm, score: Float(result.score), memory: stars.memory, autoSave: false)
-                if award.fresh.contains(true) { starEvent = StarEvent(award: award) }
+                pendingScore = max(pendingScore ?? 0, Float(result.score))
+                pendingBpm = max(pendingBpm, result.bpm)
+                if award.fresh.contains(true) {
+                    // A new star is rare and must be visible at once (library, next-star text).
+                    progress.recordResult(lessonId: lesson.id, passed: stars.passed, mastery: stars.mastery,
+                                          bpm: result.bpm, score: Float(result.score), memory: stars.memory, autoSave: false)
+                    if practiceMode == .learning {
+                        progress.setLearningCredit(starStreak, lessonId: lesson.id, padCount: pass.padCount, autoSave: false)
+                        pendingCredit = false
+                    }
+                    starEvent = StarEvent(award: award)
+                }
                 stopAfterStar = award.shouldStop
                 if award.shouldStop { finishedByStar = award.fresh[2] ? 3 : 2 }
             }
-            // currentBpm is a preference, including manually lowered tempos.
-            saveTempo()
+            // The tempo preference is saved once at STOP, not at every pass.
             if let error = progress.lastSaveError { errorMessage = error.localizedDescription }
             if stopAfterStar { return }
         }

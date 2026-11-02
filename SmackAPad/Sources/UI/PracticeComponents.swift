@@ -58,22 +58,6 @@ enum BarVerdict: String {
     }
 }
 
-struct BarHeader: View {
-    @Environment(SettingsManager.self) private var settings
-    let bar: Int
-    let verdict: BarVerdict?
-
-    var body: some View {
-        HStack(spacing: Theme.Space.regular) {
-            Text(settings.localized("BAR %lld", bar + 1)).font(Theme.display(Theme.Size.body))
-            if let verdict { Text(verdict.label(settings: settings)).font(Theme.text()) }
-            Spacer(minLength: 0)
-        }
-        .foregroundStyle(Theme.black)
-        .accessibilityElement(children: .combine)
-    }
-}
-
 struct InstrumentButtonStyle: ButtonStyle {
     var filled = false
     var selected = false
@@ -168,35 +152,6 @@ struct TransportControls: View {
         .frame(width: Theme.Size.transportWidth, height: Theme.Size.control)
         .motion(Theme.Motion.standard, value: running)
         .transaction { if Theme.Motion.Policy(reduced: reduced).opacityOnly { $0.animation = nil } }
-    }
-}
-
-/// Full-width pass position. Ticks mark every bar, including the two ends.
-struct RunProgressLine: View {
-    @Environment(SettingsManager.self) private var settings
-    let position: Double
-    let bars: Int
-
-    var body: some View {
-        let count = max(1, bars)
-        let fraction = min(1, max(0, position / Double(count * 16)))
-        Canvas { context, size in
-            let y = size.height / 2
-            context.fill(Path(CGRect(x: 0, y: y - 1, width: size.width, height: 2)),
-                         with: .color(Theme.secondary.opacity(0.3)))
-            context.fill(Path(CGRect(x: 0, y: y - 1, width: size.width * fraction, height: 2)),
-                         with: .color(Theme.orange))
-            for bar in 0...count {
-                let x = min(size.width - 1, max(1, size.width * Double(bar) / Double(count)))
-                context.fill(Path(CGRect(x: x - 1, y: y - 4, width: 2, height: 8)),
-                             with: .color(Theme.secondary))
-            }
-        }
-        .frame(height: 10)
-        .accessibilityElement(children: .ignore)
-        .accessibilityLabel(settings.localized("Position in the current pass"))
-        .accessibilityValue(settings.localized("Bar %lld / %lld, %lld percent",
-            min(count, Int(position) / 16 + 1), count, Int(fraction * 100)))
     }
 }
 
@@ -330,7 +285,6 @@ struct SummaryStrip: View {
     @State private var revealed: Set<Int> = []
     @Environment(SettingsManager.self) private var settings
     let summary: RunSummary
-    var nextStarText: String? = nil
     var dismiss: (() -> Void)? = nil
     let detail: () -> Void
 
@@ -361,12 +315,7 @@ struct SummaryStrip: View {
                     .font(Theme.control)
                     .frame(minHeight: Theme.Size.touch)
             }
-            if let nextStarText {
-                Text(nextStarText)
-                    .font(Theme.meta)
-                    .foregroundStyle(Theme.ink)
-            }
-            Text(settings.localized(summary.passes > 0 ? "Last completed pass" : "This run"))
+            Text(settings.localized("Last run"))
                 .font(Theme.meta).foregroundStyle(Theme.secondary)
         }
         .task(id: summary.id) {

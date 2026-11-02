@@ -127,8 +127,6 @@
 "Rhythm pattern" = "Rhythm pattern";
 "From memory, notes hidden" = "From memory, notes hidden";
 "%lld bars, %@" = "%lld bars, %@";
-"next pass" = "next pass";
-"BAR %lld" = "BAR %lld";
 "clean" = "clean";
 "ahead" = "ahead";
 "behind" = "behind";
@@ -137,7 +135,7 @@
 "Goal tempo" = "Goal tempo";
 "From memory" = "From memory";
 "Details" = "Details";
-"Last completed pass" = "Last completed pass";
+"Last run" = "Last run";
 "Star earned: %@" = "Star earned: %@";
 "Back to lessons" = "Back to lessons";
 "LEVEL" = "LEVEL";
@@ -303,7 +301,6 @@
 // Practice feedback, round 3.
 "Run finished: star 3 earned, from memory" = "Run finished: star 3 earned, from memory";
 "Run finished: star 2 earned, goal tempo" = "Run finished: star 2 earned, goal tempo";
-"Bar %lld / %lld" = "Bar %lld / %lld";
 "Position in the current pass" = "Position in the current pass";
 "Bar %lld / %lld, %lld percent" = "Bar %lld / %lld, %lld percent";
 
@@ -445,3 +442,9 @@
 "No matched hits to show." = "No matched hits to show.";
 "Orange: within the good window. Grey: outside it." = "Orange: within the good window. Grey: outside it.";
 "Run stopped before the first pass finished." = "Run stopped before the first pass finished.";
+
+/* Practice screen round 6 */
+"From memory for ★3" = "From memory for ★3";
+"Starts Play from memory for the 3rd star" = "Starts Play from memory for the 3rd star";
+"Band colour" = "Band colour";
+"The band gets deeper as the tempo nears the goal. A glow on the right edge: you are rushing; on the left: you are dragging." = "The band gets deeper as the tempo nears the goal. A glow on the right edge: you are rushing; on the left: you are dragging.";
