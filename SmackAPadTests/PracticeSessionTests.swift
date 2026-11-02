@@ -4,6 +4,8 @@ import XCTest
 @testable import SmackAPad
 
 final class PracticeSessionTests: XCTestCase {
+    override func setUp() { super.setUp(); StarStreak.forgetAll() }
+
     @MainActor
     func testMemoryStarAtEightyPercentEmitsEventAndAutomaticallyStopsAfterRequiredPasses() async throws {
         let suite = "practice-feedback-\(UUID().uuidString)"

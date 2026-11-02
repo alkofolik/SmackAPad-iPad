@@ -81,7 +81,7 @@ struct InstrumentButtonStyle: ButtonStyle {
 
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
-            .font(Theme.control)
+            .font(main ? Theme.display(Theme.Size.emphasis) : Theme.control)
             .foregroundStyle(filled || selected ? Theme.background : Theme.ink)
             .padding(.horizontal, Theme.Space.regular)
             .frame(minHeight: main ? Theme.Size.control : Theme.Size.touch)
@@ -119,7 +119,7 @@ struct TransportControls: View {
                     Button(action: restart) {
                         HStack(spacing: Theme.Space.small) {
                             PracticeGlyph(kind: .restart).frame(width: 20, height: 20)
-                            Text("RESTART").font(Theme.control)
+                            Text("RESTART").font(Theme.display(Theme.Size.emphasis))
                         }.frame(maxWidth: .infinity)
                     }
                     .buttonStyle(InstrumentButtonStyle(main: true))

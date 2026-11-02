@@ -36,7 +36,7 @@ final class PracticeSession {
     private(set) var judgmentVersion = 0
     private(set) var padFlashes: [Int: PadFlash] = [:]
     private(set) var playedHits: [PlayedHit] = []
-    private(set) var starStreak = StarStreak()
+    private(set) var starStreak: StarStreak
     /// Keep pass identity so a previous repeat can never colour the new one.
     var hitJudgments: [Int: [LessonHit: HitJudgment]] {
         _ = judgmentVersion
@@ -116,6 +116,7 @@ final class PracticeSession {
     init(lesson: Lesson, settings: SettingsManager, progress: ProgressStore, midi: MIDIInput,
          clock: @escaping () -> Double = { AVAudioTime.seconds(forHostTime: mach_absolute_time()) }) {
         self.lesson = lesson
+        self.starStreak = StarStreak.restore(lessonId: lesson.id)
         self.settings = settings
         self.progress = progress
         self.midi = midi
@@ -162,9 +163,10 @@ final class PracticeSession {
     var starRunProgress: (count: Int, required: Int, name: String)? {
         guard running, !listen, !isSectionLoop else { return nil }
         let required = StarStreak.requiredRuns(expectedHits: patternHits.count, isIntro: lesson.cat == "intro")
-        guard required > 1 else { return nil }
+        let passedRequired = StarStreak.requiredRuns(expectedHits: patternHits.count)
         let saved = progress.progress(for: lesson.id)
-        if saved?.passed != true { return (starStreak.passedRuns, required, "Passed") }
+        if saved?.passed != true { return passedRequired > 1 ? (starStreak.passedRuns, passedRequired, "Passed") : nil }
+        guard required > 1 else { return nil }
         if fromMemory, saved?.memory != true { return (starStreak.memoryRuns, required, "From memory") }
         if saved?.mastery != true { return (starStreak.masteryRuns, required, "Goal tempo") }
         return nil
@@ -173,8 +175,13 @@ final class PracticeSession {
     var position: Double {
         guard running, countdown == nil else { return 0 }
         let seconds = now
-        return min(Double(practiceLesson.bars * 16) - 0.0001,
-                   max(0, (seconds - displayStart) / displayDuration * Double(practiceLesson.bars * 16)))
+        let total = Double(practiceLesson.bars * 16)
+        // Use the pass that is playing right now, not the value the 10 ms timer last stored,
+        // so the pattern keeps moving across the pass boundary without a stall and jump.
+        let current = passes.last(where: { $0.start <= seconds })
+        let start = current?.start ?? displayStart
+        let duration = current?.duration ?? displayDuration
+        return min(total - 0.0001, max(0, (seconds - start) / duration * total))
     }
 
     func prepare() async {
@@ -212,7 +219,6 @@ final class PracticeSession {
             stopAfterStar = false
             finishedByStar = nil
             tempo.reset()
-            starStreak.reset()
             barVerdicts = [:]
             judgmentsByPass = [:]
             playedHits = []
@@ -255,7 +261,6 @@ final class PracticeSession {
         stopAfterStar = false
         running = false
         tempoUpEvent = nil
-        starStreak.reset()
         playedHits = []
         judgmentsByPass = [:]
         judgmentVersion += 1
@@ -381,7 +386,9 @@ final class PracticeSession {
                 let memory = fromMemory && result.bpm >= lesson.targetBpm && result.score >= 0.8
                 let required = StarStreak.requiredRuns(expectedHits: result.expectedHitCount, isIntro: lesson.cat == "intro")
                 let stars = starStreak.record(passed: result.passed, mastery: result.mastery,
-                                              memory: memory, requiredRuns: required)
+                                              memory: memory, requiredRuns: required,
+                                              passedRequired: StarStreak.requiredRuns(expectedHits: result.expectedHitCount))
+                StarStreak.keep(starStreak, lessonId: lesson.id)
                 earnedPass = earnedPass || stars.passed
                 earnedMastery = earnedMastery || stars.mastery
                 earnedMemory = earnedMemory || stars.memory

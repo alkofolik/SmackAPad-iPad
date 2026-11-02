@@ -77,7 +77,7 @@ public enum StarRequirement {
         settings: SettingsManager? = nil
     ) -> String {
         let expectedHits = lesson.hits(forPadCount: padCount).count
-        let runs = StarStreak.requiredRuns(expectedHits: expectedHits, isIntro: lesson.cat == "intro")
+        let runs = StarStreak.requiredRuns(expectedHits: expectedHits, isIntro: lesson.cat == "intro" && starIndex != 0)
         return requirementText(for: starIndex, requiredRuns: runs, targetBpm: lesson.targetBpm, settings: settings)
     }
 
@@ -114,7 +114,8 @@ public enum StarRequirement {
         settings: SettingsManager? = nil
     ) -> String? {
         let expectedHits = lesson.hits(forPadCount: padCount).count
-        let runs = StarStreak.requiredRuns(expectedHits: expectedHits, isIntro: lesson.cat == "intro")
+        let first = nextMissingStarIndex(progress: progress) == 0
+        let runs = StarStreak.requiredRuns(expectedHits: expectedHits, isIntro: lesson.cat == "intro" && !first)
         return nextMissingStarText(progress: progress, requiredRuns: runs, targetBpm: lesson.targetBpm, settings: settings)
     }
 }

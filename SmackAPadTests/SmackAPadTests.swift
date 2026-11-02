@@ -216,7 +216,7 @@ final class SmackAPadLessonModelsTests: XCTestCase {
     func testLessonStoreLoadsBundledLessonsByDefault() {
         let store = LessonStore()
         XCTAssertEqual(store.lessons.count, 587, "Expected 587 bundled lessons (539 core + 24 intro + 12 electronic + 12 extensions)")
-        XCTAssertEqual(store.categories.count, 8, "Expected 8 core categories")
+        XCTAssertEqual(store.categories.count, 7, "Expected 7 categories (First steps was removed in ticket 25B)")
 
         // Fast lookup by ID
         XCTAssertNotNil(store.lesson(for: 6))
@@ -226,9 +226,9 @@ final class SmackAPadLessonModelsTests: XCTestCase {
         XCTAssertNotNil(store.lesson(for: 14001)) // genre-extensions
 
         // Category query
-        let starterLessons = store.lessons(in: "starter")
-        XCTAssertEqual(starterLessons.map(\.id), [6])
-        XCTAssertTrue(starterLessons.allSatisfy { $0.cat == "starter" })
+        // The former First steps lesson now lives in Intro.
+        XCTAssertTrue(store.lessons(in: "starter").isEmpty)
+        XCTAssertEqual(store.lesson(for: 6)?.cat, "intro")
     }
 
     // MARK: 2. Content Pack Registration & Merging
