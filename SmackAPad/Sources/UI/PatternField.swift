@@ -7,6 +7,8 @@ struct PlayedHit {
     let pass: Int
     let mark: HitMark?
 
+    func tapeStep(totalSteps: Int) -> Double { Double((pass - 1) * totalSteps) + step }
+
     func isVisible(in currentPass: Int, before position: Double, steps: Range<Int>,
                    totalSteps: Int? = nil, bpm: Int = 60, reduceMotion: Bool = false) -> Bool {
         guard step >= Double(steps.lowerBound), step < Double(steps.upperBound) else { return false }
@@ -38,6 +40,7 @@ struct PatternField: View {
     let lesson: Lesson
     let hits: [LessonHit]
     let position: Double
+    let tapePosition: Double
     let running: Bool
     let hidden: Bool
     let scrolling: Bool
@@ -73,10 +76,10 @@ struct PatternField: View {
     var body: some View {
         GeometryReader { geometry in
             if scrolling {
-                ScrollingPattern(lesson: lesson, hits: hits, rows: rows, position: position,
+                ScrollingPattern(lesson: lesson, hits: hits, rows: rows, position: tapePosition,
                                  running: running, hidden: hidden, verdicts: verdicts,
-                                 feedback: feedback,
-                                 playedHits: visiblePlayedHits(steps: 0..<(lesson.bars * 16)),
+                                 judgments: judgments, pass: pass,
+                                 playedHits: playedHits,
                                  scoring: scoring, missGraceSteps: missGraceSteps)
             } else {
                 let count = min(visibleBars, min(lesson.bars, 4))
@@ -209,7 +212,8 @@ private struct ScrollingPattern: View {
     let running: Bool
     let hidden: Bool
     let verdicts: [Int: BarVerdict]
-    let feedback: PatternFeedback
+    let judgments: [Int: [LessonHit: HitJudgment]]
+    let pass: Int
     let playedHits: [PlayedHit]
     let scoring: Bool
     let missGraceSteps: Double
@@ -232,7 +236,9 @@ private struct ScrollingPattern: View {
                 context.stroke(path, with: .color(Theme.black), lineWidth: 1)
             }
             for globalStep in firstStep...lastStep {
+                guard globalStep >= 0 else { continue }
                 let step = (globalStep % total + total) % total
+                let recordedPass = globalStep / total + 1
                 let bar = step / 16
                 let x = markerX + CGFloat(Double(globalStep) - position) * cellWidth
                 let beat = step.isMultiple(of: 4)
@@ -240,12 +246,12 @@ private struct ScrollingPattern: View {
                 context.draw(Text(label).font(beat ? Theme.canvasDisplay(Theme.Size.beat) : Theme.canvasText(Theme.Size.body)).foregroundColor(Theme.black),
                              at: CGPoint(x: x, y: countY))
                 if step.isMultiple(of: 16) {
-                    let next = globalStep >= total
-                    let word = next ? settings.localized("next pass") : verdicts[bar]?.label(settings: settings)
+                    let next = recordedPass > pass
+                    let word = next ? settings.localized("next pass") : (recordedPass == pass ? verdicts[bar]?.label(settings: settings) : nil)
                     let header = "\(settings.localized("BAR %lld", bar + 1))\(word.map { "  \($0)" } ?? "")"
                     context.draw(Text(header).font(Theme.canvasText(Theme.Size.body)).foregroundColor(Theme.black),
                                  at: CGPoint(x: max(0, x), y: 16), anchor: .topLeading)
-                    if bar == Int(position) / 16 && globalStep >= 0 && globalStep < total {
+                    if globalStep / 16 == Int(position) / 16 {
                         context.fill(Path(CGRect(x: x - Theme.Size.bracket / 2, y: rowTop, width: Theme.Size.bracket,
                                                  height: max(1, rowBottom - rowTop))), with: .color(Theme.black))
                     }
@@ -262,30 +268,30 @@ private struct ScrollingPattern: View {
                         let y = rowTop + (CGFloat(row) + 0.5) * rowHeight
                         let rect = CGRect(x: x - cellWidth * 0.42, y: y - min(rowHeight - 6, 64) / 2,
                                           width: cellWidth * 0.84, height: max(8, min(rowHeight - 6, 64)))
-                        let offset = Int(floor(Double(globalStep) / Double(total)))
-                        let strength = feedback.strength(offset: offset, step: Double(step))
-                        let mark = strength > 0
-                            ? hitMark(hit, judgments: feedback.judgments[feedback.pass + offset] ?? [:], scoring: scoring,
-                                      elapsedSteps: position - Double(globalStep), grace: missGraceSteps)
-                            : nil
+                        // A note keeps the judgment of its own tape repeat. Fade only
+                        // as its block leaves the viewport, independent of pass changes.
+                        let strength = min(1, max(0, rect.maxX / rect.width))
+                        let mark = hitMark(hit, judgments: judgments[recordedPass] ?? [:], scoring: scoring,
+                                           elapsedSteps: position - Double(globalStep), grace: missGraceSteps)
                         drawHit(hit, in: rect, active: running && globalStep == Int(position), mark: mark,
                                 strength: strength, fontSize: Theme.Size.body, context: &context)
                     }
                 }
             }
-            if hidden {
+            if hidden && running {
                 var playedContext = context
                 playedContext.clip(to: Path(CGRect(x: 0, y: rowTop, width: markerX, height: max(1, rowBottom - rowTop))))
                 for hit in playedHits {
                     guard let row = rows.firstIndex(of: hit.padIndex) else { continue }
-                    let step = hit.step + Double((hit.pass - feedback.pass) * total)
+                    let step = hit.tapeStep(totalSteps: total)
+                    guard step >= 0, step < position else { continue }
                     let x = markerX + CGFloat(step - position) * cellWidth
                     guard x + cellWidth * 0.42 >= 0 else { continue }
                     let y = rowTop + (CGFloat(row) + 0.5) * rowHeight
                     let rect = CGRect(x: x - cellWidth * 0.42, y: y - min(rowHeight - 6, 64) / 2,
                                       width: cellWidth * 0.84, height: max(8, min(rowHeight - 6, 64)))
                     var hitContext = playedContext
-                    hitContext.opacity = feedback.strength(offset: hit.pass - feedback.pass, step: hit.step)
+                    hitContext.opacity = min(1, max(0, rect.maxX / rect.width))
                     drawPlayedHit(hit, hand: hits.first(where: { $0.padIndex == hit.padIndex })?.hand ?? "L",
                                   in: rect, fontSize: Theme.Size.body, context: &hitContext)
                 }
@@ -297,7 +303,8 @@ private struct ScrollingPattern: View {
                 let x = size.width * CGFloat(bar) / CGFloat(lesson.bars)
                 context.fill(Path(CGRect(x: x, y: overview.minY, width: 2, height: overview.height)), with: .color(Theme.black))
             }
-            drawMarker(x: size.width * CGFloat(position / Double(total)), top: overview.minY - 3,
+            let localPosition = position.truncatingRemainder(dividingBy: Double(total))
+            drawMarker(x: size.width * CGFloat(localPosition / Double(total)), top: overview.minY - 3,
                        bottom: overview.maxY + 3, context: &context)
         }
     }

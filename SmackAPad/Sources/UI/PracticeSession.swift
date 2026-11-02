@@ -15,6 +15,17 @@ struct TempoUpEvent: Identifiable {
     let to: Int
 }
 
+/// One display sample: tape position and repeat identity always share one clock read.
+struct PatternFrame {
+    let tapePosition: Double
+    let totalSteps: Int
+    let bpm: Int
+
+    var pass: Int { Int(floor(tapePosition / Double(totalSteps))) + 1 }
+    var position: Double { tapePosition.truncatingRemainder(dividingBy: Double(totalSteps)) }
+    var missGraceSteps: Double { Double(bpm) / 15 * 0.2 }
+}
+
 /// Owns one continuous practice run, with native host times shared by sound and scoring.
 /// The view only reads position; display refreshes never determine audible note times.
 @MainActor
@@ -63,7 +74,6 @@ final class PracticeSession {
     @ObservationIgnored private var passes: [Pass] = []
     @ObservationIgnored private var countInEvents: [Double] = []
     @ObservationIgnored private var displayStart: Double = 0
-    @ObservationIgnored private var displayDuration: Double = 1
     @ObservationIgnored private var completedPasses = 0
     @ObservationIgnored private var tempo = PracticeTempo()
     @ObservationIgnored private var earnedPass = false
@@ -199,17 +209,20 @@ final class PracticeSession {
         return nil
     }
     var available: Bool { midi.padIndices != nil }
-    var position: Double {
-        guard running, countdown == nil else { return 0 }
+    var patternFrame: PatternFrame {
+        let total = practiceLesson.bars * 16
         let seconds = now
-        let total = Double(practiceLesson.bars * 16)
-        // Use the pass that is playing right now, not the value the 10 ms timer last stored,
-        // so the pattern keeps moving across the pass boundary without a stall and jump.
-        let current = passes.last(where: { $0.start <= seconds })
-        let start = current?.start ?? displayStart
-        let duration = current?.duration ?? displayDuration
-        return min(total - 0.0001, max(0, (seconds - start) / duration * total))
+        guard running, let current = passes.last(where: { $0.start <= seconds }) else {
+            return PatternFrame(tapePosition: 0, totalSteps: total, bpm: bpm)
+        }
+        // Audio scheduling and drawing share native host seconds. A queued tempo
+        // change alters the slope at its start, never the tape's accumulated distance.
+        // Do not clamp at the pass end: a delayed scheduler tick cannot freeze drawing.
+        let distance = Double((current.number - 1) * total)
+            + max(0, seconds - current.start) * Double(current.bpm) / 15
+        return PatternFrame(tapePosition: distance, totalSteps: total, bpm: current.bpm)
     }
+    var position: Double { patternFrame.position }
 
     func prepare() async {
         active = true
@@ -283,7 +296,6 @@ final class PracticeSession {
             let beat = 60 / Double(bpm)
             countInEvents = (0..<4).map { first + Double($0) * beat }
             displayStart = first + 4 * beat
-            displayDuration = Double(practiceLesson.bars) * 240 / Double(bpm)
             passes = [makePass(number: 1, start: displayStart, bpm: bpm)]
             tempo.recordPassStart(bpm: bpm)
             if !listen {
@@ -412,8 +424,6 @@ final class PracticeSession {
                 judgmentVersion += 1
             }
             bpm = current.bpm
-            displayStart = current.start
-            displayDuration = current.duration
             countdown = nil
         } else if let first = passes.first {
             countdown = min(4, max(1, Int(ceil((first.start - time) * Double(bpm) / 60))))
