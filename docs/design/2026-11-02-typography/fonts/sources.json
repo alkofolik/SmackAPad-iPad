@@ -1,0 +1,44 @@
+[
+  {
+    "file": "IBMPlexSans[wdth,wght].ttf",
+    "source": "https://raw.githubusercontent.com/google/fonts/main/ofl/ibmplexsans/IBMPlexSans%5Bwdth%2Cwght%5D.ttf",
+    "git_blob_sha": "30f837e8b02e8ecddce6cbebc425b1f422392515",
+    "sha256": "3b031aa4216174205bd8471f88a49b91f093169e9e87bd5262242bc5967fe2e3",
+    "bytes": 537244
+  },
+  {
+    "file": "ibmplexsans-METADATA.pb",
+    "source": "https://raw.githubusercontent.com/google/fonts/main/ofl/ibmplexsans/METADATA.pb",
+    "git_blob_sha": "ccfb809905fe8f3133b5ea2937b8abdce1134f02",
+    "sha256": "85f7e73668461cfacc4d9ecf94a7b67dd14dc24a71c0ae2cecd36215f0ca856c",
+    "bytes": 1554
+  },
+  {
+    "file": "ibmplexsans-OFL.txt",
+    "source": "https://raw.githubusercontent.com/google/fonts/main/ofl/ibmplexsans/OFL.txt",
+    "git_blob_sha": "c35c4c618fab33da8695177b3a6cefe0810b7b28",
+    "sha256": "7e6b2818edbd8f6a01ae80641cc8f16a51080d08fb4e532be3a0b6f74adb07da",
+    "bytes": 4456
+  },
+  {
+    "file": "AtkinsonHyperlegibleNext[wght].ttf",
+    "source": "https://raw.githubusercontent.com/google/fonts/main/ofl/atkinsonhyperlegiblenext/AtkinsonHyperlegibleNext%5Bwght%5D.ttf",
+    "git_blob_sha": "92a357554bdcca62a7e80d5e3724bf4eb8932e5e",
+    "sha256": "5a455d1cfa099b601ab70751bb9673e8fe1854dc4500c80e1a220d0d75e31745",
+    "bytes": 114552
+  },
+  {
+    "file": "atkinsonhyperlegiblenext-METADATA.pb",
+    "source": "https://raw.githubusercontent.com/google/fonts/main/ofl/atkinsonhyperlegiblenext/METADATA.pb",
+    "git_blob_sha": "46bf17848ee7f9a3f7aabe51cd10e8f47089c853",
+    "sha256": "9d0050e8a74b976099f69ba23a25063b60deeb91eae89388bb20dffb5b4a5669",
+    "bytes": 1639
+  },
+  {
+    "file": "atkinsonhyperlegiblenext-OFL.txt",
+    "source": "https://raw.githubusercontent.com/google/fonts/main/ofl/atkinsonhyperlegiblenext/OFL.txt",
+    "git_blob_sha": "88955733b80000358ef3e5521f3369b276e066a9",
+    "sha256": "aca6a428580965d2297d1b718042dd427c2a9443ece3b0d02d758e161e0c4030",
+    "bytes": 4431
+  }
+]

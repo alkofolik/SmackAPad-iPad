@@ -1,0 +1,251 @@
+{
+  "czech_characters" : "ěščřžýáíéúůďťňĚŠČŘŽÝÁÍÉÚŮĎŤŇ",
+  "date" : "2026-11-02",
+  "png_count" : 33,
+  "proof" : "Příliš žluťoučký kůň úpěl ďábelské ódy.",
+  "renderer" : "macOS AppKit \/ CoreText; process-local font registration",
+  "results" : [
+    {
+      "czech_missing_glyphs" : 0,
+      "czech_shaped_run_fonts_nfc_and_nfd" : [
+        ".AppleSystemUIFontRounded-Regular"
+      ],
+      "family" : ".AppleSystemUIFontRounded",
+      "postscript_name" : ".AppleSystemUIFontRounded-Regular",
+      "proportional_i_m_W_advances_at_32pt" : [
+        6.90625,
+        26.078125,
+        29.9375
+      ],
+      "tabular_digit_advances_at_32pt" : [
+        19.71875,
+        19.71875,
+        19.71875,
+        19.71875,
+        19.71875,
+        19.71875,
+        19.71875,
+        19.71875,
+        19.71875,
+        19.71875
+      ],
+      "variant" : "A · SF Pro Rounded",
+      "variation" : {
+
+      },
+      "version" : "22.0d3e2",
+      "weight" : 400,
+      "x_height_at_32pt" : 16.25
+    },
+    {
+      "czech_missing_glyphs" : 0,
+      "czech_shaped_run_fonts_nfc_and_nfd" : [
+        ".AppleSystemUIFontRounded-Bold"
+      ],
+      "family" : ".AppleSystemUIFontRounded",
+      "postscript_name" : ".AppleSystemUIFontRounded-Bold",
+      "proportional_i_m_W_advances_at_32pt" : [
+        8.046875,
+        28,
+        31.265625
+      ],
+      "tabular_digit_advances_at_32pt" : [
+        21.078125,
+        21.078125,
+        21.078125,
+        21.078125,
+        21.078125,
+        21.078125,
+        21.078125,
+        21.078125,
+        21.078125,
+        21.078125
+      ],
+      "variant" : "A · SF Pro Rounded",
+      "variation" : {
+        "2003265652" : 700
+      },
+      "version" : "22.0d3e2",
+      "weight" : 700,
+      "x_height_at_32pt" : 16.75
+    },
+    {
+      "czech_missing_glyphs" : 0,
+      "czech_shaped_run_fonts_nfc_and_nfd" : [
+        "IBMPlexSans-Regular"
+      ],
+      "family" : "IBM Plex Sans",
+      "postscript_name" : "IBMPlexSans-Regular",
+      "proportional_i_m_W_advances_at_32pt" : [
+        8,
+        27.936,
+        28.512
+      ],
+      "tabular_digit_advances_at_32pt" : [
+        19.199999999999999,
+        19.199999999999999,
+        19.199999999999999,
+        19.199999999999999,
+        19.199999999999999,
+        19.199999999999999,
+        19.199999999999999,
+        19.199999999999999,
+        19.199999999999999,
+        19.199999999999999
+      ],
+      "variant" : "B · IBM Plex Sans",
+      "variation" : {
+
+      },
+      "version" : "Version 3.201",
+      "weight" : 400,
+      "x_height_at_32pt" : 16.512
+    },
+    {
+      "czech_missing_glyphs" : 0,
+      "czech_shaped_run_fonts_nfc_and_nfd" : [
+        "IBMPlexSans-Bold"
+      ],
+      "family" : "IBM Plex Sans",
+      "postscript_name" : "IBMPlexSans-Bold",
+      "proportional_i_m_W_advances_at_32pt" : [
+        9.152000000000001,
+        28.608000000000001,
+        31.135999999999999
+      ],
+      "tabular_digit_advances_at_32pt" : [
+        19.199999999999999,
+        19.199999999999999,
+        19.199999999999999,
+        19.199999999999999,
+        19.199999999999999,
+        19.199999999999999,
+        19.199999999999999,
+        19.199999999999999,
+        19.199999999999999,
+        19.199999999999999
+      ],
+      "variant" : "B · IBM Plex Sans",
+      "variation" : {
+        "2003265652" : 700
+      },
+      "version" : "Version 3.201",
+      "weight" : 700,
+      "x_height_at_32pt" : 16.800000000000001
+    },
+    {
+      "czech_missing_glyphs" : 0,
+      "czech_shaped_run_fonts_nfc_and_nfd" : [
+        "AtkinsonHyperlegibleNext-Regular"
+      ],
+      "family" : "Atkinson Hyperlegible Next",
+      "postscript_name" : "AtkinsonHyperlegibleNext-Regular",
+      "proportional_i_m_W_advances_at_32pt" : [
+        8.0640000000000001,
+        27.039999999999999,
+        27.391999999999999
+      ],
+      "tabular_digit_advances_at_32pt" : [
+        20.224,
+        20.224,
+        20.224,
+        20.224,
+        20.224,
+        20.224,
+        20.224,
+        20.224,
+        20.224,
+        20.224
+      ],
+      "variant" : "C · Atkinson Hyperlegible Next",
+      "variation" : {
+
+      },
+      "version" : "Version 2.001",
+      "weight" : 400,
+      "x_height_at_32pt" : 15.872
+    },
+    {
+      "czech_missing_glyphs" : 0,
+      "czech_shaped_run_fonts_nfc_and_nfd" : [
+        "AtkinsonHyperlegibleNext-Regular_Bold"
+      ],
+      "family" : "Atkinson Hyperlegible Next",
+      "postscript_name" : "AtkinsonHyperlegibleNext-Regular_Bold",
+      "proportional_i_m_W_advances_at_32pt" : [
+        9.5979914474161045,
+        28.209993476842794,
+        28.353994636515186
+      ],
+      "tabular_digit_advances_at_32pt" : [
+        20.224,
+        20.224,
+        20.224,
+        20.224,
+        20.224,
+        20.224,
+        20.224,
+        20.224,
+        20.224,
+        20.224
+      ],
+      "variant" : "C · Atkinson Hyperlegible Next",
+      "variation" : {
+        "2003265652" : 700
+      },
+      "version" : "Version 2.001",
+      "weight" : 700,
+      "x_height_at_32pt" : 15.872
+    },
+    {
+      "font" : ".SFNS-Bold",
+      "sf_design_study" : "Výchozí",
+      "specimen_width" : 749.7890625,
+      "traits" : {
+        "NSCTFontProportionTrait" : 0,
+        "NSCTFontSlantTrait" : 0,
+        "NSCTFontSymbolicTrait" : 16386,
+        "NSCTFontUIFontDesignTrait" : "NSCTFontUIFontDesignDefault",
+        "NSCTFontWeightTrait" : 0.40000000596046448
+      }
+    },
+    {
+      "font" : ".AppleSystemUIFontRounded-Bold",
+      "sf_design_study" : "Rounded · vybraná varianta A",
+      "specimen_width" : 751.203125,
+      "traits" : {
+        "NSCTFontProportionTrait" : 0,
+        "NSCTFontSlantTrait" : 0,
+        "NSCTFontSymbolicTrait" : 16386,
+        "NSCTFontUIFontDesignTrait" : "NSCTFontUIFontDesignRounded",
+        "NSCTFontWeightTrait" : 0.40000000596046448
+      }
+    },
+    {
+      "font" : ".SFNS-ExpandedBold",
+      "sf_design_study" : "Expanded",
+      "specimen_width" : 947.47906528413296,
+      "traits" : {
+        "NSCTFontProportionTrait" : 0.20000000298023224,
+        "NSCTFontSlantTrait" : 0,
+        "NSCTFontSymbolicTrait" : 16418,
+        "NSCTFontUIFontDesignTrait" : "NSCTFontUIFontDesignDefault",
+        "NSCTFontWeightTrait" : 0.40000000596046448
+      }
+    }
+  ],
+  "screen_count" : 24,
+  "screen_pixels" : [
+    2388,
+    1668
+  ],
+  "screen_points" : [
+    1194,
+    834
+  ],
+  "single_line_fit_checks" : 685,
+  "weights" : [
+    400,
+    700
+  ]
+}
