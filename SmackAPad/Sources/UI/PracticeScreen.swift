@@ -19,6 +19,7 @@ struct PracticeScreen: View {
     @State private var showingDetails = false
     @State private var showingMIDI = false
     @State private var showingMemoryHint = false
+    @State private var showingInfo = false
 
     init(lesson: Lesson, settings: SettingsManager, progress: ProgressStore, midi: MIDIInput) {
         _session = State(initialValue: PracticeSession(lesson: lesson, settings: settings, progress: progress, midi: midi))
@@ -79,7 +80,12 @@ struct PracticeScreen: View {
         }
         .onChange(of: settings.activeProfileName) { _, _ in session.stop() }
         .onChange(of: session.running) { _, running in
-            if running { dismissMemoryHint() } else { checkMemoryHint() }
+            if running {
+                dismissMemoryHint()
+                showingInfo = false
+            } else {
+                checkMemoryHint()
+            }
         }
         .onChange(of: session.fromMemory) { _, memory in
             if memory { dismissMemoryHint() }
@@ -105,7 +111,7 @@ struct PracticeScreen: View {
             HStack(spacing: Theme.Space.regular) {
                 icon(.back, settings.localized("Back to lessons")) { session.stop(); if let dismissLesson { dismissLesson() } else { dismiss() } }
                 VStack(alignment: .leading, spacing: Theme.Space.tight) {
-                    Text(session.lesson.title).font(Theme.screenTitle).lineLimit(2)
+                    Text(settings.localized(session.lesson.title)).font(Theme.screenTitle).lineLimit(2)
                     Text("\(session.lesson.cat.uppercased()) · \(settings.localized("LEVEL")) \(session.lesson.level)")
                         .font(Theme.meta).foregroundStyle(Theme.secondary).lineLimit(1)
                 }
@@ -150,6 +156,10 @@ struct PracticeScreen: View {
                             .alignmentGuide(.bottom) { d in d[.top] - 6 }
                     }
                 }
+            if !session.running {
+                icon(.info, settings.localized("Lesson info")) { showingInfo.toggle() }
+                    .popover(isPresented: $showingInfo, arrowEdge: .top) { lessonInfo }
+            }
             icon(.legend, settings.localized("Legend")) { showingLegend.toggle() }
                 .popover(isPresented: $showingLegend, arrowEdge: .top) { legend }
             icon(.tools, settings.localized("More tools")) { showingTools.toggle() }
@@ -286,9 +296,9 @@ struct PracticeScreen: View {
 
     private var transport: some View {
         TransportControls(running: session.running, enabled: session.ready && session.available,
-                          start: { dismissMemoryHint(); session.start() },
+                          start: { dismissMemoryHint(); showingInfo = false; session.start() },
                           stop: session.stop,
-                          restart: { dismissMemoryHint(); session.restart() })
+                          restart: { dismissMemoryHint(); showingInfo = false; session.restart() })
     }
 
     @ViewBuilder
@@ -397,6 +407,127 @@ struct PracticeScreen: View {
         }
         .frame(width: 420, height: min(620, CGFloat(Set(session.patternHits.map { "\($0.padIndex):\($0.hand)" }).count) * 64 + 160))
         .foregroundStyle(Theme.ink).background(Theme.background)
+    }
+
+    private var lessonInfo: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: Theme.Space.regular) {
+                HStack {
+                    Text(settings.localized("Lesson info")).font(Theme.sectionTitle)
+                    Spacer()
+                    Button(settings.localized("Close")) { showingInfo = false }
+                        .font(Theme.control)
+                        .frame(minHeight: Theme.Size.touch)
+                }
+
+                VStack(alignment: .leading, spacing: Theme.Space.tight) {
+                    Text(settings.localized(session.lesson.title))
+                        .font(Theme.rowTitle)
+                    let barsText = session.lesson.bars == 1
+                        ? settings.localized("1 bar")
+                        : settings.localized("%lld bars", session.lesson.bars)
+                    Text("\(settings.localized("LEVEL")) \(session.lesson.level) · \(barsText) · \(session.lesson.startBpm) → \(session.lesson.targetBpm) BPM")
+                        .font(Theme.meta)
+                        .foregroundStyle(Theme.secondary)
+                }
+
+                if !session.lesson.text.isEmpty {
+                    Text(settings.localized(session.lesson.text))
+                        .font(Theme.control)
+                }
+
+                if let intro = session.lesson.intro {
+                    if !intro.goal.isEmpty {
+                        VStack(alignment: .leading, spacing: Theme.Space.tight) {
+                            Text(settings.localized("Goal")).font(Theme.rowTitle)
+                            Text(settings.localized(intro.goal)).font(Theme.control)
+                        }
+                    }
+                    if !intro.watch.isEmpty {
+                        VStack(alignment: .leading, spacing: Theme.Space.tight) {
+                            Text(settings.localized("Watch for")).font(Theme.rowTitle)
+                            Text(settings.localized(intro.watch)).font(Theme.control)
+                        }
+                    }
+                    let fingersDict = (midi.activeProfile.padCount == 8 ? intro.fingers8 : intro.fingers16) ?? intro.fingers16 ?? intro.fingers8
+                    if let fingersDict, !fingersDict.isEmpty {
+                        VStack(alignment: .leading, spacing: Theme.Space.small) {
+                            Text(settings.localized("Fingers")).font(Theme.rowTitle)
+                            Text(settings.localized("1 = thumb … 5 = little finger"))
+                                .font(Theme.meta)
+                                .foregroundStyle(Theme.secondary)
+                            let sortedKeys = fingersDict.keys.sorted { a, b in
+                                let padA = Int(a.split(separator: ":").first ?? "") ?? 0
+                                let padB = Int(b.split(separator: ":").first ?? "") ?? 0
+                                let handA = a.split(separator: ":").dropFirst().first ?? ""
+                                let handB = b.split(separator: ":").dropFirst().first ?? ""
+                                if handA != handB { return handA < handB }
+                                return padA < padB
+                            }
+                            ForEach(sortedKeys, id: \.self) { key in
+                                let parts = key.split(separator: ":")
+                                let pad = Int(parts[0]) ?? 0
+                                let hand = parts.count > 1 ? String(parts[1]) : "L"
+                                let finger = fingersDict[key] ?? 1
+                                let padName = PadVoice.name(pad, settings: settings)
+                                let padLabel = "\(padName) \(hand)"
+                                let handLabel = hand == "L" ? settings.localized("left hand") : settings.localized("right hand")
+                                let fingerLabel = settings.localized("finger %lld", finger)
+                                HStack(spacing: Theme.Space.regular) {
+                                    PatternBlock(abbreviation: PadVoice.abbreviation(pad), hand: hand)
+                                        .overlay(Rectangle().stroke(Theme.ink, lineWidth: 1))
+                                    Text("\(padLabel) · \(handLabel) · \(fingerLabel)")
+                                        .font(Theme.control)
+                                }
+                            }
+                        }
+                    }
+                }
+
+                VStack(alignment: .leading, spacing: Theme.Space.small) {
+                    Text(settings.localized("How to earn the stars")).font(Theme.rowTitle)
+                    ForEach(0..<3, id: \.self) { index in
+                        let earned = isStarEarned(index)
+                        let reqText = StarRequirement.requirementText(
+                            for: index,
+                            lesson: session.lesson,
+                            padCount: midi.activeProfile.padCount,
+                            settings: settings
+                        )
+                        HStack(spacing: Theme.Space.small) {
+                            StarShape()
+                                .fill(earned ? Theme.ink : Theme.background)
+                                .overlay(StarShape().stroke(Theme.ink, lineWidth: Theme.Size.border))
+                                .frame(width: 20, height: 20)
+                                .accessibilityLabel(settings.localized(earned ? "earned" : "not earned"))
+                            Text(reqText)
+                                .font(Theme.control)
+                                .foregroundStyle(earned ? Theme.ink : Theme.secondary)
+                        }
+                    }
+                }
+
+                if !session.lesson.src.isEmpty {
+                    Text(settings.localized("Source: %@", session.lesson.src))
+                        .font(Theme.meta)
+                        .foregroundStyle(Theme.secondary)
+                }
+            }
+            .padding(Theme.Space.page)
+        }
+        .frame(width: 480, height: 580)
+        .foregroundStyle(Theme.ink)
+        .background(Theme.background)
+    }
+
+    private func isStarEarned(_ index: Int) -> Bool {
+        guard let progress = session.savedProgress else { return false }
+        switch index {
+        case 0: return progress.passed
+        case 1: return progress.mastery
+        case 2: return progress.memory
+        default: return false
+        }
     }
 }
 

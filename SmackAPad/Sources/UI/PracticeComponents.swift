@@ -223,7 +223,7 @@ struct StarShape: Shape {
 
 /// A small, deliberately drawn icon set instead of default system symbols.
 struct PracticeGlyph: View {
-    enum Kind { case back, grid, scrolling, eye, legend, tools, restart, lock }
+    enum Kind { case back, grid, scrolling, eye, legend, tools, restart, lock, info }
     let kind: Kind
 
     var body: some View {
@@ -249,6 +249,9 @@ struct PracticeGlyph: View {
             case .legend:
                 path.addEllipse(in: CGRect(x: 3, y: 3, width: 18, height: 18))
                 context.draw(Text("?").font(Theme.canvasDisplay(16)).foregroundColor(Theme.ink), at: CGPoint(x: 12, y: 12))
+            case .info:
+                path.addEllipse(in: CGRect(x: 3, y: 3, width: 18, height: 18))
+                context.draw(Text("i").font(Theme.canvasDisplay(16)).foregroundColor(Theme.ink), at: CGPoint(x: 12, y: 12))
             case .tools:
                 for x in [4, 12, 20] {
                     context.fill(Path(ellipseIn: CGRect(x: CGFloat(x) - 1.5, y: 10.5, width: 3, height: 3)), with: .foreground)

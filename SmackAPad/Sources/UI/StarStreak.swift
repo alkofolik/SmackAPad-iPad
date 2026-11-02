@@ -20,6 +20,7 @@ public struct StarStreak: Codable, Equatable, Hashable, Sendable {
     }
 
     static let minimumHitsPerStar = 16
+    public static func forgetAll() {}
     private(set) var passedRuns = 0
     private(set) var masteryRuns = 0
     private(set) var memoryRuns = 0

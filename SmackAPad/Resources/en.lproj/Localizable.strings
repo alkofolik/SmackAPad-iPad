@@ -326,6 +326,19 @@
 "Play it from memory at %lld BPM, 80 %% or better, %lld times" = "Play it from memory at %lld BPM, 80 %% or better, %lld times";
 "Play it from memory at goal tempo, 80 %% or better, %lld times" = "Play it from memory at goal tempo, 80 %% or better, %lld times";
 
+/* Ticket 30: Lesson instructions panel */
+"Lesson info" = "Lesson info";
+"Goal" = "Goal";
+"Watch for" = "Watch for";
+"Fingers" = "Fingers";
+"1 = thumb … 5 = little finger" = "1 = thumb … 5 = little finger";
+"left hand" = "left hand";
+"right hand" = "right hand";
+"finger %lld" = "finger %lld";
+"How to earn the stars" = "How to earn the stars";
+"Source: %@" = "Source: %@";
+"1 bar" = "1 bar";
+
 /* MIDI practice buttons and tempo knob. */
 "Controller buttons" = "Controller buttons";
 "Start / stop" = "Start / stop";

@@ -66,9 +66,38 @@ public enum AppLanguage: String, CaseIterable, Identifiable, Codable, Sendable {
         return .main
     }
 
+    private static let czechTSVLookup: [String: String] = {
+        let bundles = [Bundle.main, Bundle(for: SettingsManager.self)]
+        var foundURL: URL?
+        for b in bundles {
+            if let url = try? DataLoader.shared.findResourceURL(named: "cs", withExtension: "tsv", in: b) {
+                foundURL = url
+                break
+            }
+        }
+        guard let url = foundURL, let content = try? String(contentsOf: url, encoding: .utf8) else {
+            return [:]
+        }
+        var dict: [String: String] = [:]
+        content.enumerateLines { line, _ in
+            let parts = line.split(separator: "\t", maxSplits: 1).map(String.init)
+            if parts.count == 2 {
+                dict[parts[0]] = parts[1]
+            }
+        }
+        return dict
+    }()
+
     /// Localize a key using this language bundle.
     public func localized(_ key: String) -> String {
-        bundle.localizedString(forKey: key, value: nil, table: nil)
+        let localized = bundle.localizedString(forKey: key, value: nil, table: nil)
+        if localized != key {
+            return localized
+        }
+        if self == .czech, let tsv = Self.czechTSVLookup[key] {
+            return tsv
+        }
+        return localized
     }
 
     /// Localize a format key using this language bundle and locale.

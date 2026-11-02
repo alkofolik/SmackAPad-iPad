@@ -30,11 +30,11 @@ Czech translations of lesson texts, goals and watch lines already exist in `Smac
 
 ## Acceptance criteria
 
-- [ ] Every lesson shows its instruction; intro lessons also show goal, watch for and fingers for the current pad mode.
-- [ ] The button is hidden during a run.
-- [ ] Czech shows translated lesson texts where they exist.
-- [ ] Look matches the existing popovers: three colours, existing fonts.
-- [ ] Build succeeds. No new tests.
+- [x] Every lesson shows its instruction; intro lessons also show goal, watch for and fingers for the current pad mode.
+- [x] The button is hidden during a run.
+- [x] Czech shows translated lesson texts where they exist.
+- [x] Look matches the existing popovers: three colours, existing fonts.
+- [x] Build succeeds. No new tests.
 - [ ] **iPad test (Jakub)**: one intro lesson and one ordinary lesson, in English and Czech.
 
 ## Agent assignment

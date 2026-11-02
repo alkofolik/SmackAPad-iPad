@@ -326,6 +326,19 @@
 "Play it from memory at %lld BPM, 80 %% or better, %lld times" = "Zahraj zpaměti v %lld BPM na 80 %% a lépe, %lldkrát";
 "Play it from memory at goal tempo, 80 %% or better, %lld times" = "Zahraj zpaměti v cílovém tempu na 80 %% a lépe, %lldkrát";
 
+/* Ticket 30: Lesson instructions panel */
+"Lesson info" = "Informace o lekci";
+"Goal" = "Cíl";
+"Watch for" = "Dávej pozor na";
+"Fingers" = "Prsty";
+"1 = thumb … 5 = little finger" = "1 = palec … 5 = malíček";
+"left hand" = "levá ruka";
+"right hand" = "pravá ruka";
+"finger %lld" = "prst %lld";
+"How to earn the stars" = "Jak získat hvězdy";
+"Source: %@" = "Zdroj: %@";
+"1 bar" = "1 takt";
+
 /* MIDI practice buttons and tempo knob. */
 "Controller buttons" = "Tlačítka kontroléru";
 "Start / stop" = "Spustit / zastavit";
