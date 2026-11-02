@@ -18,6 +18,7 @@ public struct SettingsView: View {
     @State private var showingMIDILearn = false
     @State private var profileToDelete: ControllerProfile?
     @State private var showingDeleteAlert = false
+    @State private var showingControlPadWarning = false
     @State private var kits: [SampleKit] = []
     @AppStorage("smackapad.practice.showPads") private var showPads = true
 
@@ -139,6 +140,8 @@ public struct SettingsView: View {
                             .foregroundStyle(Theme.secondary)
                     }
 
+                    ControllerMappingSections()
+
                     // MARK: 4. Language Switch
                     Section {
                         Picker(settings.localized("App language"), selection: $settings.languagePreference) {
@@ -209,7 +212,16 @@ public struct SettingsView: View {
                         LabeledContent(settings.localized("Timestamp fallbacks"), value: midi.fallbackCount.formatted())
                             .font(Theme.meta)
 
-                        if let note = midi.lastNote {
+                        if let message = midi.lastControlMessage, message.signal.kind == .cc {
+                            LabeledContent(settings.localized("Message"), value: settings.localized("Control change"))
+                                .font(Theme.meta)
+                            LabeledContent(settings.localized("Channel"), value: message.signal.channel.formatted())
+                                .font(Theme.meta)
+                            LabeledContent(settings.localized("CC number"), value: message.signal.number.formatted())
+                                .font(Theme.meta)
+                            LabeledContent(settings.localized("Value"), value: message.value.formatted())
+                                .font(Theme.meta)
+                        } else if let note = midi.lastNote {
                             LabeledContent(settings.localized("MIDI note"), value: note.note.formatted())
                                 .font(Theme.meta)
                             LabeledContent(settings.localized("Channel"), value: note.channel.formatted())
@@ -308,6 +320,16 @@ public struct SettingsView: View {
             .task {
                 loadKits()
             }
+            .onChange(of: midi.pendingControlSignal) { _, signal in
+                showingControlPadWarning = signal != nil
+            }
+            .alert(settings.localized("Use this pad as a controller button?"), isPresented: $showingControlPadWarning) {
+                Button(settings.localized("Use for control")) { midi.confirmControlMapping() }
+                Button(settings.localized("Cancel"), role: .cancel) { midi.cancelControlLearning() }
+            } message: {
+                Text(settings.localized("This pad will no longer play a sound."))
+            }
+            .onDisappear { midi.cancelControlLearning() }
         }
     }
 
@@ -361,5 +383,109 @@ private struct ProfileRow: View {
                 }
             }
         }
+    }
+}
+
+/// Shared Form sections keep controller assignments in the existing Settings style.
+@MainActor
+struct ControllerMappingSections: View {
+    @Environment(SettingsManager.self) private var settings
+    @Environment(MIDIInput.self) private var midi
+    @State private var advanced = false
+
+    var body: some View {
+        @Bindable var settings = settings
+        Group {
+            Section {
+                actionRow(.startStop)
+                DisclosureGroup(settings.localized("Advanced"), isExpanded: $advanced) {
+                    ForEach(MIDIPracticeAction.allCases.filter { $0 != .startStop }, id: \.self) { action in
+                        actionRow(action)
+                    }
+                }
+            } header: {
+                SectionHeader(title: settings.localized("Controller buttons"))
+            } footer: {
+                Text(settings.localized("Controller actions work only with an open practice lesson. Tempo changes only while stopped."))
+                    .font(Theme.meta).foregroundStyle(Theme.secondary)
+            }
+            Section {
+                mappingRow(title: "Tempo knob", signal: settings.midiControls.knob.signal, target: .knob)
+                Picker(settings.localized("Knob mode"), selection: $settings.midiControls.knob.mode) {
+                    ForEach(MIDIKnobMode.allCases, id: \.self) { mode in
+                        Text(settings.localized(mode.title)).tag(mode)
+                    }
+                }
+                .pickerStyle(.menu)
+                if settings.midiControls.knob.mode == .absolute {
+                    Stepper(settings.localized("Minimum BPM: %lld", settings.midiControls.knob.minimumBpm),
+                            value: $settings.midiControls.knob.minimumBpm,
+                            in: PracticeTempo.minimumBpm...settings.midiControls.knob.maximumBpm)
+                    Stepper(settings.localized("Maximum BPM: %lld", settings.midiControls.knob.maximumBpm),
+                            value: $settings.midiControls.knob.maximumBpm,
+                            in: settings.midiControls.knob.minimumBpm...PracticeTempo.maximumBpm)
+                    Toggle(settings.localized("Pickup"), isOn: $settings.midiControls.knob.pickup)
+                }
+                Toggle(settings.localized("Reverse direction"), isOn: $settings.midiControls.knob.reversed)
+            } header: {
+                SectionHeader(title: settings.localized("Tempo knob"))
+            } footer: {
+                Text(settings.localized("Pickup waits until the knob reaches the current tempo. Relative steps change tempo by 1 BPM. Tempo changes only while stopped."))
+                    .font(Theme.meta).foregroundStyle(Theme.secondary)
+            }
+        }
+
+    }
+
+    @ViewBuilder
+    private func actionRow(_ action: MIDIPracticeAction) -> some View {
+        let mapping = settings.midiControls.buttons[action.rawValue]
+        mappingRow(title: action.title, signal: mapping?.signal, target: .action(action))
+        if mapping?.signal.kind == .cc {
+            Picker(settings.localized("CC button behaviour"), selection: Binding(
+                get: { settings.midiControls.buttons[action.rawValue]?.behavior ?? .rising64 },
+                set: { settings.midiControls.buttons[action.rawValue]?.behavior = $0 }
+            )) {
+                ForEach(MIDICCButtonBehavior.allCases, id: \.self) { behavior in
+                    Text(settings.localized(behavior.title)).tag(behavior)
+                }
+            }
+            .pickerStyle(.menu)
+        }
+    }
+
+    @ViewBuilder
+    private func mappingRow(title: String, signal: MIDIControlSignal?, target: MIDIControlLearnTarget) -> some View {
+        VStack(alignment: .leading, spacing: Theme.Space.small) {
+            HStack(spacing: Theme.Space.regular) {
+                VStack(alignment: .leading, spacing: Theme.Space.tight) {
+                    Text(settings.localized(title)).font(Theme.control)
+                    Text(mappingText(signal)).font(Theme.meta).foregroundStyle(Theme.secondary)
+                }
+                Spacer()
+                Button(settings.localized("Learn")) { midi.startControlLearning(target) }
+                    .buttonStyle(.borderless)
+                    .frame(minWidth: Theme.Size.touch, minHeight: Theme.Size.touch)
+                    .accessibilityLabel(settings.localized("Learn: %@", settings.localized(title)))
+                Button(settings.localized("Clear")) { midi.clearControlMapping(target) }
+                    .buttonStyle(.borderless)
+                    .frame(minWidth: Theme.Size.touch, minHeight: Theme.Size.touch)
+                    .disabled(signal == nil)
+                    .accessibilityLabel(settings.localized("Clear: %@", settings.localized(title)))
+            }
+            if midi.controlLearningTarget == target {
+                Text(settings.localized(midi.controlLearningNotice ?? (target == .knob
+                    ? "Turn the tempo knob slightly." : "Press the controller button once.")))
+                    .font(Theme.meta).foregroundStyle(Theme.secondary)
+                Button(settings.localized("Cancel")) { midi.cancelControlLearning() }
+                    .buttonStyle(.borderless).frame(minHeight: Theme.Size.touch)
+            }
+        }
+    }
+
+    private func mappingText(_ signal: MIDIControlSignal?) -> String {
+        guard let signal else { return settings.localized("Not assigned") }
+        return settings.localized("%@ %lld · ch %lld", settings.localized(signal.kind == .cc ? "CC" : "Note"),
+                                  signal.number, signal.channel)
     }
 }

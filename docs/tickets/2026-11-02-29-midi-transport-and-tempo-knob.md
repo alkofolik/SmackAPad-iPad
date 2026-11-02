@@ -1,6 +1,6 @@
 # 29 — Start/stop from the MIDI controller and tempo knob
 
-Status: ready. Source: legacy comparison 2026-11-02 (legacy manual §8.3). Jakub plays on a MIDI controller; he should not need to reach for the iPad to start, stop or change tempo.
+Status: ready-for-ipad-test (2026-11-02). Source: legacy comparison 2026-11-02 (legacy manual §8.3). Jakub plays on a MIDI controller; he should not need to reach for the iPad to start, stop or change tempo.
 
 ## Goal
 
@@ -59,11 +59,11 @@ Settings → MIDI and controller: new section "Controller buttons" (Start / stop
 
 ## Acceptance criteria
 
-- [ ] A learned button starts and stops practice; a mapped pad note no longer plays or scores.
-- [ ] Tempo −/+ and the knob change tempo only while stopped, within limits.
-- [ ] Conflicts are refused with a clear message.
-- [ ] Mappings survive app restart.
-- [ ] Tests pass, build succeeds.
+- [x] A learned button starts and stops practice; a mapped pad note no longer plays or scores.
+- [x] Tempo −/+ and the knob change tempo only while stopped, within limits.
+- [x] Conflicts are refused with a clear message.
+- [x] Mappings survive app restart.
+- [x] Tests pass, build succeeds.
 - [ ] **iPad test (Jakub)**: assign a button and a knob on his controller; play a lesson started and stopped only from the controller.
 
 ## Agent assignment
@@ -74,3 +74,13 @@ Settings → MIDI and controller: new section "Controller buttons" (Start / stop
 ## Done rule
 
 Stop after successful build and tests; Jakub tests on iPad. Commit after the task.
+
+## Implementation and validation (2026-11-02)
+
+- Added MIDI 1.0 UMP CC decoding alongside notes, preserving packet order. Controller learning and control routing run before pad mapping, audio, calibration callbacks and scoring. Mapped presses and releases remain consumed outside practice; only the active, ready PracticeSession executes actions.
+- Added global UserDefaults mappings, Learn/Clear controls, duplicate-signal rejection, confirmation before taking a pad note, and the three CC button behaviors. Start/stop stays visible; Restart, Listen and tempo buttons are under Advanced. Listen selects the existing Listen mode while stopped, matching the on-screen button.
+- Added absolute tempo mapping with limits, pickup and reverse direction, plus all three relative formats. Each relative step is one BPM; accelerated messages can contain multiple steps. Practice and knob settings share the existing 30–400 BPM limits through PracticeTempo. Tempo controls do nothing while running; pickup rearms after tempo changes, runs and suspension.
+- Added English/Czech strings and CC type/channel/number/value in the Settings input monitor. Assignment learning is cancelled when Settings closes or the MIDI source/profile changes.
+- Only the four requested unit tests ran: CC edges for three behaviors; three relative formats, direction and limits; absolute pickup and rearming; mapped-note routing never returning the pad path, including releases. All four passed on the first run using a macOS Swift package in `build/ticket-29/pure`, symlinked to production MIDIControl/PracticeTempo and the test file; TempoUpEvent was extracted unchanged from PracticeSession. No passed tests were rerun.
+- Localization files passed `plutil -lint`; `git diff --check` passed. App build succeeded with `xcodebuild build -project SmackAPad.xcodeproj -scheme SmackAPad -destination 'generic/platform=iOS Simulator' -derivedDataPath build/ticket-29/app CODE_SIGNING_ALLOWED=NO 'OTHER_SWIFT_FLAGS=$(inherited) -disable-sandbox'`. No further tests or builds after success.
+- Jakub still verifies a real controller button and knob on iPad. Concurrent ticket-30 edits were preserved and excluded from this task's commit.

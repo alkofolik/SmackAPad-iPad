@@ -33,6 +33,10 @@ public struct PadInputEvent: Sendable {
 public final class MIDIInput {
     public private(set) var sources: [MIDISource] = []
     public private(set) var lastNote: MIDINoteEvent?
+    public private(set) var lastControlMessage: MIDIControlMessage?
+    public private(set) var controlLearningTarget: MIDIControlLearnTarget?
+    public private(set) var pendingControlSignal: MIDIControlSignal?
+    public private(set) var controlLearningNotice: String?
     public private(set) var lastPad: PadInputEvent?
     public private(set) var pressedPadIndices: Set<Int> = []
     public private(set) var noteOnCount = 0
@@ -55,6 +59,10 @@ public final class MIDIInput {
     @ObservationIgnored public var onPadEvent: ((PadInputEvent) -> Void)?
     /// Calibration listens before profile mapping so any controller pad can tap the pulse.
     @ObservationIgnored public var onNoteEvent: ((MIDINoteEvent) -> Void)?
+    @ObservationIgnored var onPracticeAction: ((MIDIPracticeAction) -> Void)?
+    @ObservationIgnored var stoppedPracticeTempo: (() -> Int?)?
+    @ObservationIgnored var onPracticeTempo: ((Int) -> Void)?
+    @ObservationIgnored private var controlRouter = MIDIControlRouter()
     @ObservationIgnored private let settings: SettingsManager
     @ObservationIgnored private var client: MIDIClientRef = 0
     @ObservationIgnored private var ports: [MIDIEndpointRef: MIDIPortRef] = [:]
@@ -68,6 +76,7 @@ public final class MIDIInput {
     }
 
     public var isLearning: Bool { learningPadCount != nil }
+    public var isLearningControl: Bool { controlLearningTarget != nil }
     public var learningComplete: Bool { learnedNotes.count == learningPadCount }
     public var activeProfile: ControllerProfile { settings.activeProfile() }
     public var padIndices: [Int]? {
@@ -138,12 +147,17 @@ public final class MIDIInput {
                     client, name as CFString, ._1_0, &port
                 ) { [weak self] eventList, _ in
                     let receipt = mach_absolute_time()
-                    let events = Self.noteEvents(in: eventList, receipt: receipt, deviceID: deviceID)
+                    let events = Self.inputEvents(in: eventList, receipt: receipt, deviceID: deviceID)
                     guard !events.isEmpty else { return }
                     Task { @MainActor [weak self] in
                         guard let self, self.generation == session,
                               self.sources.contains(where: { $0.id == deviceID }) else { return }
-                        for event in events { self.receive(event) }
+                        for event in events {
+                            switch event {
+                            case .note(let note): self.receive(note)
+                            case .cc(let message): self.receiveControlChange(message)
+                            }
+                        }
                     }
                 }
                 guard status == noErr else {
@@ -166,11 +180,16 @@ public final class MIDIInput {
         }
     }
 
-    /// Copies only note messages before leaving CoreMIDI's callback; never keeps packet pointers.
-    nonisolated private static func noteEvents(
+    private enum InputEvent: Sendable {
+        case note(MIDINoteEvent)
+        case cc(MIDIControlMessage)
+    }
+
+    /// Copies note and CC messages in packet order; never keeps packet pointers.
+    nonisolated private static func inputEvents(
         in list: UnsafePointer<MIDIEventList>, receipt: UInt64, deviceID: String
-    ) -> [MIDINoteEvent] {
-        var events: [MIDINoteEvent] = []
+    ) -> [InputEvent] {
+        var events: [InputEvent] = []
         withUnsafePointer(to: list.pointee.packet) { first in
             var packet = first
             for _ in 0..<list.pointee.numPackets {
@@ -190,13 +209,19 @@ public final class MIDIInput {
                                 let status = (word >> 20) & 0xF
                                 if status == 0x8 || status == 0x9 {
                                     let velocity = Int(word & 0x7F)
-                                    events.append(MIDINoteEvent(
+                                    events.append(.note(MIDINoteEvent(
                                         note: Int((word >> 8) & 0x7F), velocity: velocity,
                                         channel: Int((word >> 16) & 0xF) + 1,
                                         isNoteOn: status == 0x9 && velocity > 0,
                                         timestamp: timestamp, receiptTimestamp: receipt,
                                         usedReceiptTime: timestamp != rawTimestamp, deviceID: deviceID
-                                    ))
+                                    )))
+                                } else if status == 0xB {
+                                    events.append(.cc(MIDIControlMessage(
+                                        signal: MIDIControlSignal(kind: .cc, channel: Int((word >> 16) & 0xF) + 1,
+                                                                  number: Int((word >> 8) & 0x7F)),
+                                        value: Int(word & 0x7F), deviceID: deviceID
+                                    )))
                                 }
                             }
                             index += length
@@ -212,13 +237,19 @@ public final class MIDIInput {
     private func receive(_ event: MIDINoteEvent) {
         guard selectedSourceID == nil || selectedSourceID == event.deviceID else { return }
         lastNote = event
-        onNoteEvent?(event)
         if event.usedReceiptTime { fallbackCount += 1 }
         if event.isNoteOn { noteOnCount += 1 }
+        let message = MIDIControlMessage(
+            signal: MIDIControlSignal(kind: .note, channel: event.channel, number: event.note),
+            value: event.isNoteOn ? event.velocity : 0, deviceID: event.deviceID)
+        lastControlMessage = message
+        if isLearningControl { learnControl(message); return }
         if isLearning {
             if event.isNoteOn { learn(event) }
             return
         }
+        guard !routeControl(message) else { return }
+        onNoteEvent?(event)
         let key = "\(event.deviceID)/\(event.channel)/\(event.note)"
         let padIndex: Int
         if event.isNoteOn {
@@ -234,8 +265,89 @@ public final class MIDIInput {
                            isNoteOn: event.isNoteOn, timestamp: event.timestamp, deviceID: event.deviceID))
     }
 
+    private func receiveControlChange(_ message: MIDIControlMessage) {
+        guard selectedSourceID == nil || selectedSourceID == message.deviceID else { return }
+        lastControlMessage = message
+        if isLearningControl { learnControl(message); return }
+        guard !isLearning else { return }
+        _ = routeControl(message)
+    }
+
+    /// Returning true prevents the message from ever reaching pad/audio/scoring consumers.
+    private func routeControl(_ message: MIDIControlMessage) -> Bool {
+        switch controlRouter.route(message, configuration: settings.midiControls,
+                                   stoppedTempo: stoppedPracticeTempo?()) {
+        case .pad: return false
+        case .consumed: return true
+        case .action(let action): onPracticeAction?(action); return true
+        case .tempo(let bpm): onPracticeTempo?(bpm); return true
+        }
+    }
+
+    func resetControlPickup() { controlRouter.resetPickup() }
+
+    public func startControlLearning(_ target: MIDIControlLearnTarget) {
+        releaseHeldPads()
+        cancelLearning()
+        controlLearningTarget = target
+    }
+
+    public func cancelControlLearning() {
+        controlLearningTarget = nil
+        pendingControlSignal = nil
+        controlLearningNotice = nil
+    }
+
+    private func learnControl(_ message: MIDIControlMessage) {
+        guard let target = controlLearningTarget, pendingControlSignal == nil,
+              message.signal.kind == .cc || message.value > 0 else { return }
+        if target == .knob && message.signal.kind != .cc { return }
+        guard !settings.midiControls.conflicts(message.signal, excluding: target) else {
+            controlLearningNotice = "This signal is already assigned. Clear its other mapping first."
+            return
+        }
+        if message.signal.kind == .note, activeProfile.target(forMidiNote: message.signal.number) != nil {
+            pendingControlSignal = message.signal
+            return
+        }
+        assignControl(message.signal, to: target)
+    }
+
+    public func confirmControlMapping() {
+        guard let signal = pendingControlSignal, let target = controlLearningTarget else { return }
+        guard !settings.midiControls.conflicts(signal, excluding: target) else {
+            pendingControlSignal = nil
+            controlLearningNotice = "This signal is already assigned. Clear its other mapping first."
+            return
+        }
+        assignControl(signal, to: target)
+    }
+
+    private func assignControl(_ signal: MIDIControlSignal, to target: MIDIControlLearnTarget) {
+        var configuration = settings.midiControls
+        switch target {
+        case .action(let action):
+            let behavior = configuration.buttons[action.rawValue]?.behavior ?? .rising64
+            configuration.buttons[action.rawValue] = MIDIButtonMapping(signal: signal, behavior: behavior)
+        case .knob: configuration.knob.signal = signal
+        }
+        settings.midiControls = configuration
+        controlRouter = MIDIControlRouter()
+        cancelControlLearning()
+    }
+
+    public func clearControlMapping(_ target: MIDIControlLearnTarget) {
+        cancelControlLearning()
+        var configuration = settings.midiControls
+        switch target {
+        case .action(let action): configuration.buttons.removeValue(forKey: action.rawValue)
+        case .knob: configuration.knob.signal = nil
+        }
+        settings.midiControls = configuration
+    }
+
     public func touch(padIndex: Int, isPressed: Bool) {
-        guard !isLearning, padIndices?.contains(padIndex) == true else { return }
+        guard !isLearning, !isLearningControl, padIndices?.contains(padIndex) == true else { return }
         let key = "touch/\(padIndex)"
         if isPressed { heldPads[key] = padIndex }
         else if heldPads.removeValue(forKey: key) == nil { return }
@@ -250,6 +362,7 @@ public final class MIDIInput {
     }
 
     private func releaseHeldPads() {
+        controlRouter = MIDIControlRouter()
         let timestamp = mach_absolute_time()
         let pending = heldPads
         heldPads.removeAll()
@@ -268,6 +381,7 @@ public final class MIDIInput {
     }
 
     public func cancelLearning() {
+        cancelControlLearning()
         learningPadCount = nil
         learnedNotes = []
         learningDeviceID = nil

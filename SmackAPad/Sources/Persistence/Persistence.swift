@@ -17,6 +17,7 @@ import UIKit
 public enum SettingsKey: String, CaseIterable, Sendable {
     case selectedKitId = "smackapad.settings.selectedKitId"
     case lessonKitOverrides = "smackapad.settings.lessonKitOverrides"
+    case midiControls = "smackapad.settings.midiControls"
     case practiceMode = "smackapad.settings.practiceMode"
     case bpmStep = "smackapad.settings.bpmStep"
     case activeProfileName = "smackapad.settings.activeProfileName"
@@ -110,6 +111,14 @@ public final class SettingsManager: @unchecked Sendable {
     public var lessonKitOverrides: [Int: String] {
         didSet {
             persistLessonKitOverrides()
+        }
+    }
+
+    public var midiControls: MIDIControlConfiguration {
+        didSet {
+            if let data = try? JSONEncoder().encode(midiControls) {
+                userDefaults.set(data, forKey: SettingsKey.midiControls.rawValue)
+            }
         }
     }
 
@@ -214,6 +223,12 @@ public final class SettingsManager: @unchecked Sendable {
 
     public init(userDefaults: UserDefaults = .standard) {
         self.userDefaults = userDefaults
+        if let data = userDefaults.data(forKey: SettingsKey.midiControls.rawValue),
+           let controls = try? JSONDecoder().decode(MIDIControlConfiguration.self, from: data) {
+            midiControls = controls.validated()
+        } else {
+            midiControls = MIDIControlConfiguration()
+        }
         practiceMode = PracticeMode(rawValue: userDefaults.string(forKey: SettingsKey.practiceMode.rawValue) ?? "") ?? .learning
         libraryView = LibraryViewMode(rawValue: userDefaults.string(forKey: "smackapad.library.view") ?? "")?.rawValue ?? "path"
         libraryStarFilters = userDefaults.stringArray(forKey: "smackapad.library.stars") ?? LibraryStarFilter.allCases.map(\.rawValue)
@@ -436,6 +451,7 @@ public final class SettingsManager: @unchecked Sendable {
         }
         self.selectedKitId = Self.defaultKitId
         self.lessonKitOverrides = [:]
+        self.midiControls = MIDIControlConfiguration()
         self.practiceMode = .learning
         self.bpmStep = Self.defaultBpmStep
         self.activeProfileName = Self.defaultProfileName

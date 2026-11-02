@@ -129,7 +129,7 @@ final class PracticeSession {
         self.clock = clock
         loopEndBar = lesson.bars - 1
         let saved = progress.progress(for: lesson.id)?.currentBpm ?? lesson.startBpm
-        bpm = min(400, max(30, saved > 0 ? saved : lesson.startBpm))
+        bpm = PracticeTempo.clamp(saved > 0 ? saved : lesson.startBpm)
     }
 
     var hits: [LessonHit] { lesson.hits(forPadCount: midi.activeProfile.padCount) }
@@ -194,6 +194,15 @@ final class PracticeSession {
         active = true
         midi.setLesson(lesson)
         midi.onPadEvent = { [weak self] event in self?.receive(event) }
+        midi.onPracticeAction = { [weak self] action in self?.performControllerAction(action) }
+        midi.stoppedPracticeTempo = { [weak self] in
+            guard let self, self.active, self.ready, !self.running else { return nil }
+            return self.bpm
+        }
+        midi.onPracticeTempo = { [weak self] bpm in
+            guard let self, self.active, self.ready else { return }
+            self.setTempo(bpm)
+        }
         do {
             let engine = audio
             try await Task.detached(priority: .userInitiated) { try engine.prepare() }.value
@@ -207,8 +216,19 @@ final class PracticeSession {
 
     func setTempo(_ tempo: Int) {
         guard !running else { return }
-        bpm = min(400, max(30, tempo))
+        bpm = PracticeTempo.clamp(tempo)
         saveTempo()
+    }
+
+    private func performControllerAction(_ action: MIDIPracticeAction) {
+        guard active, ready else { return }
+        switch action {
+        case .startStop: if running { stop() } else { start() }
+        case .restart: restart()
+        case .listen: if !running { listen = true }
+        case .tempoDown: setTempo(bpm - MIDIPracticeAction.tempoButtonStep)
+        case .tempoUp: setTempo(bpm + MIDIPracticeAction.tempoButtonStep)
+        }
     }
 
     func start() {
@@ -250,6 +270,7 @@ final class PracticeSession {
                 progress.setProgress(record, for: lesson.id)
                 settings.lastLessonID = lesson.id
             }
+            midi.resetControlPickup()
             running = true
             countdown = 4
             task = Task { [weak self] in
@@ -270,6 +291,7 @@ final class PracticeSession {
         if !stopAfterStar { finishCompleted(at: now) }
         stopAfterStar = false
         running = false
+        midi.resetControlPickup()
         if practiceMode == .challenge { starStreak.reset() }
         tempoUpEvent = nil
         playedHits = []
@@ -293,6 +315,7 @@ final class PracticeSession {
     func dismissSummary() { summary = nil }
 
     func suspend() {
+        midi.resetControlPickup()
         stop()
         audio.stop()
         ready = false
@@ -307,6 +330,10 @@ final class PracticeSession {
     func close() {
         active = false
         suspend()
+        midi.onPracticeAction = nil
+        midi.stoppedPracticeTempo = nil
+        midi.onPracticeTempo = nil
+        midi.resetControlPickup()
         midi.onPadEvent = nil
         midi.setLesson(nil)
     }

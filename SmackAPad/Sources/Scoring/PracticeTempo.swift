@@ -1,5 +1,9 @@
 /// Value-only tempo policy for the boundary between continuous passes.
 struct PracticeTempo {
+    static let minimumBpm = 30
+    static let maximumBpm = 400
+    static func clamp(_ bpm: Int) -> Int { min(maximumBpm, max(minimumBpm, bpm)) }
+
     private var pendingNextBpm: Int?
     /// The BPM of the pass that was on-screen before the current one started.
     /// `nil` for the very first pass of a run.
