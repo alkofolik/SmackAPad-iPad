@@ -8,14 +8,13 @@ struct SmackAPadApp: App {
     @State private var progress = ProgressStore.shared
     @State private var progression = ProgressionManager.shared
     @State private var midi = MIDIInput(settings: .shared)
-    @AppStorage("smackapad.practice.appearance") private var appearance = "dark"
     @Environment(\.scenePhase) private var scenePhase
 
     var body: some Scene {
         WindowGroup {
             ContentView()
                 .id(settings.languagePreference)
-                .preferredColorScheme(appearance == "light" ? .light : .dark)
+                .preferredColorScheme(settings.appearance.colorScheme)
                 .tint(Theme.ink)
                 .environment(store)
                 .environment(settings)

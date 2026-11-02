@@ -32,15 +32,17 @@ struct PracticeScreen: View {
                 header(compact: compact)
                 status(compact: compact)
                 TimelineView(.animation(minimumInterval: 1.0 / 60, paused: !session.running)) { _ in
+                    let frame = session.patternFrame
                     PatternField(lesson: session.practiceLesson, hits: session.patternHits,
-                                 position: session.position, running: session.running && session.countdown == nil,
+                                 position: frame.position, tapePosition: frame.tapePosition,
+                                 running: session.running && session.countdown == nil,
                                  hidden: session.fromMemory && session.running && !session.listen,
                                  scrolling: scrolling, visibleBars: [1, 2, 4].contains(visibleBars) ? visibleBars : 4,
                                  verdicts: session.barVerdicts,
-                                 judgments: session.hitJudgments, bpm: session.bpm,
-                                 playedHits: session.playedHits, pass: session.passNumber,
+                                 judgments: session.hitJudgments, bpm: frame.bpm,
+                                 playedHits: session.playedHits, pass: frame.pass,
                                  scoring: session.running && !session.listen && session.countdown == nil,
-                                 missGraceSteps: session.missGraceSteps, countdown: session.countdown)
+                                 missGraceSteps: frame.missGraceSteps, countdown: session.countdown)
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
                 .overlay {
@@ -218,7 +220,7 @@ struct PracticeScreen: View {
             HStack(spacing: Theme.Space.regular) {
                 TimelineView(.animation(minimumInterval: 1.0 / 60, paused: !session.running)) { _ in
                     let total = max(16, session.practiceLesson.bars * 16)
-                    let position = session.position
+                    let position = session.patternFrame.position
                     VStack(alignment: .leading, spacing: Theme.Space.tight) {
                         Text(settings.localized("Bar %lld / %lld", min(session.practiceLesson.bars, Int(position) / 16 + 1),
                                                 session.practiceLesson.bars))
@@ -540,7 +542,6 @@ private struct PracticeTools: View {
     @Bindable var session: PracticeSession
     @Binding var showPads: Bool
     let openMIDI: () -> Void
-    @AppStorage("smackapad.practice.appearance") private var appearance = "dark"
 
     var body: some View {
         @Bindable var settings = settings
@@ -606,10 +607,12 @@ private struct PracticeTools: View {
                 Text(settings.localized("Section loops do not earn lesson stars."))
             }.disabled(session.running)
             Section(settings.localized("Appearance")) {
-                Picker(settings.localized("Appearance"), selection: $appearance) {
-                    Text(settings.localized("Dark")).tag("dark")
-                    Text(settings.localized("Light")).tag("light")
+                Picker(settings.localized("Appearance"), selection: $settings.appearance) {
+                    ForEach(AppAppearance.allCases) { appearance in
+                        Text(settings.localized(appearance.title)).tag(appearance)
+                    }
                 }
+                .pickerStyle(.segmented)
             }
             Button(settings.localized("MIDI and controller"), action: openMIDI).disabled(session.running)
         }

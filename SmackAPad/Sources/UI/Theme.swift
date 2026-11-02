@@ -16,6 +16,29 @@ enum Theme {
     static let secondary = adaptive(light: UIColor(white: 0.35, alpha: 1), dark: UIColor(white: 0.7, alpha: 1))
     static let surface = adaptive(light: UIColor(white: 0.94, alpha: 1), dark: UIColor(white: 0.09, alpha: 1))
 
+    /// Star progression colours: not done grey, 1 star light orange, 2 stars medium orange, 3 stars full orange.
+    static func starColor(for stars: Int) -> Color {
+        switch stars {
+        case 3:
+            return orange
+        case 2:
+            return adaptive(
+                light: UIColor(red: 1.0, green: 0.58, blue: 0.20, alpha: 1.0),
+                dark: UIColor(red: 0.95, green: 0.52, blue: 0.15, alpha: 1.0)
+            )
+        case 1:
+            return adaptive(
+                light: UIColor(red: 1.0, green: 0.76, blue: 0.45, alpha: 1.0),
+                dark: UIColor(red: 0.80, green: 0.50, blue: 0.25, alpha: 1.0)
+            )
+        default:
+            return adaptive(
+                light: UIColor(white: 0.82, alpha: 1.0),
+                dark: UIColor(white: 0.25, alpha: 1.0)
+            )
+        }
+    }
+
     // Five roles for screen chrome. Pattern notation keeps its fixed canvas sizes.
     static let screenTitle = display(28)
     static let sectionTitle = display(22)
@@ -61,6 +84,16 @@ enum Theme {
 
     private static func adaptive(light: UIColor, dark: UIColor) -> Color {
         Color(uiColor: UIColor { $0.userInterfaceStyle == .dark ? dark : light })
+    }
+}
+
+extension AppAppearance {
+    public var colorScheme: ColorScheme? {
+        switch self {
+        case .light: return .light
+        case .dark: return .dark
+        case .system: return nil
+        }
     }
 }
 

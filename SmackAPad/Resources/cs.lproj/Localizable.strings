@@ -176,6 +176,9 @@
 "Appearance" = "Vzhled";
 "Dark" = "Tmavý";
 "Light" = "Světlý";
+"System" = "Podle systému";
+"APPEARANCE" = "VZHLED";
+"Choose light, dark or follow your system appearance." = "Zvol světlý či tmavý vzhled nebo vzhled podle systému.";
 "MIDI and controller" = "MIDI a ovladač";
 "SOUND KIT" = "ZVUKOVÁ SADA";
 "All 8 kits are bundled with the app for practice and playback." = "Všech 8 sad je součástí aplikace. Používají se při cvičení i přehrávání.";

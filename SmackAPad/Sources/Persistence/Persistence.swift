@@ -28,6 +28,24 @@ public enum SettingsKey: String, CaseIterable, Sendable {
     case metronomeVolume = "smackapad.settings.volume.metronome"
     case padsVolume = "smackapad.settings.volume.pads"
     case patternVolume = "smackapad.settings.volume.pattern"
+    case appearance = "smackapad.settings.appearance"
+}
+
+/// Supported app appearances (Light, Dark, or follow System).
+public enum AppAppearance: String, CaseIterable, Identifiable, Codable, Sendable {
+    case light = "light"
+    case dark = "dark"
+    case system = "system"
+
+    public var id: String { rawValue }
+
+    public var title: String {
+        switch self {
+        case .light: return "Light"
+        case .dark: return "Dark"
+        case .system: return "System"
+        }
+    }
 }
 
 /// Allowed tempo increase steps for BPM auto-progression.
@@ -131,6 +149,7 @@ public final class SettingsManager: @unchecked Sendable {
     public static let defaultBpmStep: Int = BpmStep.defaultStep.rawValue
     public static let defaultProfileName = "Standard 16-Pad"
     public static let defaultLanguage: AppLanguage = .english
+    public static let defaultAppearance: AppAppearance = .dark
     public static let defaultMetronomeVolume: Int = 80
     public static let defaultPadsVolume: Int = 100
     public static let defaultPatternVolume: Int = 70
@@ -187,6 +206,12 @@ public final class SettingsManager: @unchecked Sendable {
     public var languagePreference: AppLanguage {
         didSet {
             persistLanguage()
+        }
+    }
+
+    public var appearance: AppAppearance {
+        didSet {
+            persistAppearance()
         }
     }
 
@@ -349,6 +374,18 @@ public final class SettingsManager: @unchecked Sendable {
             self.languagePreference = Self.defaultLanguage
         }
 
+        // Read appearance preference
+        if let rawAppearance = userDefaults.string(forKey: SettingsKey.appearance.rawValue),
+           let app = AppAppearance(rawValue: rawAppearance) {
+            self.appearance = app
+        } else if let legacyAppearance = userDefaults.string(forKey: "smackapad.practice.appearance"),
+                  let app = AppAppearance(rawValue: legacyAppearance) {
+            self.appearance = app
+            userDefaults.set(app.rawValue, forKey: SettingsKey.appearance.rawValue)
+        } else {
+            self.appearance = Self.defaultAppearance
+        }
+
         // Read custom controller profiles
         if let data = userDefaults.data(forKey: SettingsKey.customProfiles.rawValue),
            let profiles = try? JSONDecoder().decode([ControllerProfile].self, from: data) {
@@ -421,6 +458,13 @@ public final class SettingsManager: @unchecked Sendable {
         lock.lock()
         defer { lock.unlock() }
         userDefaults.set(languagePreference.rawValue, forKey: SettingsKey.languagePreference.rawValue)
+    }
+
+    private func persistAppearance() {
+        lock.lock()
+        defer { lock.unlock() }
+        userDefaults.set(appearance.rawValue, forKey: SettingsKey.appearance.rawValue)
+        userDefaults.set(appearance.rawValue, forKey: "smackapad.practice.appearance")
     }
 
     private func persistCustomProfiles() {
@@ -549,6 +593,7 @@ public final class SettingsManager: @unchecked Sendable {
         self.activeProfileName = Self.defaultProfileName
         self.calibrationOffsets = [:]
         self.languagePreference = Self.defaultLanguage
+        self.appearance = Self.defaultAppearance
         self.customProfiles = []
         self.metronomeVolume = Self.defaultMetronomeVolume
         self.padsVolume = Self.defaultPadsVolume

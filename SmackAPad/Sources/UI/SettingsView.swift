@@ -166,7 +166,23 @@ public struct SettingsView: View {
 
                     ControllerMappingSections()
 
-                    // MARK: 4. Language Switch
+                    // MARK: 4. Appearance
+                    Section {
+                        Picker(settings.localized("Appearance"), selection: $settings.appearance) {
+                            ForEach(AppAppearance.allCases) { appearance in
+                                Text(settings.localized(appearance.title)).tag(appearance)
+                            }
+                        }
+                        .pickerStyle(.segmented)
+                    } header: {
+                        SectionHeader(title: settings.localized("APPEARANCE"))
+                    } footer: {
+                        Text(settings.localized("Choose light, dark or follow your system appearance."))
+                            .font(Theme.meta)
+                            .foregroundStyle(Theme.secondary)
+                    }
+
+                    // MARK: 5. Language Switch
                     Section {
                         Picker(settings.localized("App language"), selection: $settings.languagePreference) {
                             ForEach(AppLanguage.allCases) { lang in

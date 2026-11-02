@@ -176,6 +176,9 @@
 "Appearance" = "Appearance";
 "Dark" = "Dark";
 "Light" = "Light";
+"System" = "System";
+"APPEARANCE" = "APPEARANCE";
+"Choose light, dark or follow your system appearance." = "Choose light, dark or follow your system appearance.";
 "MIDI and controller" = "MIDI and controller";
 "SOUND KIT" = "SOUND KIT";
 "All 8 kits are bundled with the app for practice and playback." = "All 8 kits are bundled with the app for practice and playback.";
