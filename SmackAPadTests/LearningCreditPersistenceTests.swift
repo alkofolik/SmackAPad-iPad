@@ -3,8 +3,8 @@ import XCTest
 
 final class LearningCreditPersistenceTests: XCTestCase {
     func testLearningCreditSurvivesSaveLoadSeparatelyForLessonsAndPadModes() throws {
-        let directory = URL(fileURLWithPath: #filePath).deletingLastPathComponent()
-            .appendingPathComponent(".ticket-28-\(UUID().uuidString)")
+        let directory = FileManager.default.temporaryDirectory
+            .appendingPathComponent("ticket-28-\(UUID().uuidString)")
         defer { try? FileManager.default.removeItem(at: directory) }
         let url = directory.appendingPathComponent("progress.json")
         let store = ProgressStore(fileURL: url, autoLoad: false)

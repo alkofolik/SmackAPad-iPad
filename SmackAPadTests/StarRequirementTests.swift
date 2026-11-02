@@ -20,13 +20,13 @@ final class StarRequirementTests: XCTestCase {
                            "Další: splň lekci")
 
             // Multiple runs
-            XCTAssertEqual(StarRequirement.requirementText(for: 0, requiredRuns: 4, targetBpm: 85, language: .english),
+            XCTAssertEqual(StarRequirement.requirementText(for: 0, requiredRuns: 4, targetBpm: 85, language: .english, mode: .challenge),
                            "Pass the lesson, 4 times in a row")
-            XCTAssertEqual(StarRequirement.requirementText(for: 0, requiredRuns: 4, targetBpm: 85, language: .czech),
+            XCTAssertEqual(StarRequirement.requirementText(for: 0, requiredRuns: 4, targetBpm: 85, language: .czech, mode: .challenge),
                            "Splň lekci, 4krát za sebou")
-            XCTAssertEqual(StarRequirement.nextMissingStarText(progress: progress, requiredRuns: 4, targetBpm: 85, language: .english),
+            XCTAssertEqual(StarRequirement.nextMissingStarText(progress: progress, requiredRuns: 4, targetBpm: 85, language: .english, mode: .challenge),
                            "Next: pass the lesson, 4 times in a row")
-            XCTAssertEqual(StarRequirement.nextMissingStarText(progress: progress, requiredRuns: 4, targetBpm: 85, language: .czech),
+            XCTAssertEqual(StarRequirement.nextMissingStarText(progress: progress, requiredRuns: 4, targetBpm: 85, language: .czech, mode: .challenge),
                            "Další: splň lekci, 4krát za sebou")
         }
     }
@@ -46,13 +46,13 @@ final class StarRequirementTests: XCTestCase {
                        "Další: dosáhni čistě 85 BPM")
 
         // Multiple runs with target BPM
-        XCTAssertEqual(StarRequirement.requirementText(for: 1, requiredRuns: 3, targetBpm: 85, language: .english),
+        XCTAssertEqual(StarRequirement.requirementText(for: 1, requiredRuns: 3, targetBpm: 85, language: .english, mode: .challenge),
                        "Reach 85 BPM cleanly, 3 times in a row")
-        XCTAssertEqual(StarRequirement.requirementText(for: 1, requiredRuns: 3, targetBpm: 85, language: .czech),
+        XCTAssertEqual(StarRequirement.requirementText(for: 1, requiredRuns: 3, targetBpm: 85, language: .czech, mode: .challenge),
                        "Dosáhni čistě 85 BPM, 3krát za sebou")
-        XCTAssertEqual(StarRequirement.nextMissingStarText(progress: progress, requiredRuns: 3, targetBpm: 85, language: .english),
+        XCTAssertEqual(StarRequirement.nextMissingStarText(progress: progress, requiredRuns: 3, targetBpm: 85, language: .english, mode: .challenge),
                        "Next: reach 85 BPM cleanly, 3 times in a row")
-        XCTAssertEqual(StarRequirement.nextMissingStarText(progress: progress, requiredRuns: 3, targetBpm: 85, language: .czech),
+        XCTAssertEqual(StarRequirement.nextMissingStarText(progress: progress, requiredRuns: 3, targetBpm: 85, language: .czech, mode: .challenge),
                        "Další: dosáhni čistě 85 BPM, 3krát za sebou")
 
         // Without target BPM
@@ -60,9 +60,9 @@ final class StarRequirementTests: XCTestCase {
                        "Reach the goal tempo cleanly")
         XCTAssertEqual(StarRequirement.requirementText(for: 1, requiredRuns: 1, targetBpm: nil, language: .czech),
                        "Dosáhni čistě cílového tempa")
-        XCTAssertEqual(StarRequirement.requirementText(for: 1, requiredRuns: 2, targetBpm: nil, language: .english),
+        XCTAssertEqual(StarRequirement.requirementText(for: 1, requiredRuns: 2, targetBpm: nil, language: .english, mode: .challenge),
                        "Reach the goal tempo cleanly, 2 times in a row")
-        XCTAssertEqual(StarRequirement.requirementText(for: 1, requiredRuns: 2, targetBpm: nil, language: .czech),
+        XCTAssertEqual(StarRequirement.requirementText(for: 1, requiredRuns: 2, targetBpm: nil, language: .czech, mode: .challenge),
                        "Dosáhni čistě cílového tempa, 2krát za sebou")
     }
 
@@ -81,13 +81,13 @@ final class StarRequirementTests: XCTestCase {
                        "Další: zahraj zpaměti v 85 BPM na 80 % a lépe")
 
         // Multiple runs with target BPM
-        XCTAssertEqual(StarRequirement.requirementText(for: 2, requiredRuns: 4, targetBpm: 85, language: .english),
+        XCTAssertEqual(StarRequirement.requirementText(for: 2, requiredRuns: 4, targetBpm: 85, language: .english, mode: .challenge),
                        "Play it from memory at 85 BPM, 80 % or better, 4 times in a row")
-        XCTAssertEqual(StarRequirement.requirementText(for: 2, requiredRuns: 4, targetBpm: 85, language: .czech),
+        XCTAssertEqual(StarRequirement.requirementText(for: 2, requiredRuns: 4, targetBpm: 85, language: .czech, mode: .challenge),
                        "Zahraj zpaměti v 85 BPM na 80 % a lépe, 4krát za sebou")
-        XCTAssertEqual(StarRequirement.nextMissingStarText(progress: progress, requiredRuns: 4, targetBpm: 85, language: .english),
+        XCTAssertEqual(StarRequirement.nextMissingStarText(progress: progress, requiredRuns: 4, targetBpm: 85, language: .english, mode: .challenge),
                        "Next: play it from memory at 85 BPM, 80 % or better, 4 times in a row")
-        XCTAssertEqual(StarRequirement.nextMissingStarText(progress: progress, requiredRuns: 4, targetBpm: 85, language: .czech),
+        XCTAssertEqual(StarRequirement.nextMissingStarText(progress: progress, requiredRuns: 4, targetBpm: 85, language: .czech, mode: .challenge),
                        "Další: zahraj zpaměti v 85 BPM na 80 % a lépe, 4krát za sebou")
 
         // Without target BPM
@@ -95,9 +95,9 @@ final class StarRequirementTests: XCTestCase {
                        "Play it from memory at goal tempo, 80 % or better")
         XCTAssertEqual(StarRequirement.requirementText(for: 2, requiredRuns: 1, targetBpm: nil, language: .czech),
                        "Zahraj zpaměti v cílovém tempu na 80 % a lépe")
-        XCTAssertEqual(StarRequirement.requirementText(for: 2, requiredRuns: 4, targetBpm: nil, language: .english),
+        XCTAssertEqual(StarRequirement.requirementText(for: 2, requiredRuns: 4, targetBpm: nil, language: .english, mode: .challenge),
                        "Play it from memory at goal tempo, 80 % or better, 4 times in a row")
-        XCTAssertEqual(StarRequirement.requirementText(for: 2, requiredRuns: 4, targetBpm: nil, language: .czech),
+        XCTAssertEqual(StarRequirement.requirementText(for: 2, requiredRuns: 4, targetBpm: nil, language: .czech, mode: .challenge),
                        "Zahraj zpaměti v cílovém tempu na 80 % a lépe, 4krát za sebou")
     }
 
@@ -106,7 +106,7 @@ final class StarRequirementTests: XCTestCase {
         XCTAssertNil(StarRequirement.nextMissingStarIndex(progress: progress))
         XCTAssertNil(StarRequirement.nextMissingStarText(progress: progress, requiredRuns: 1, targetBpm: 85, language: .english))
         XCTAssertNil(StarRequirement.nextMissingStarText(progress: progress, requiredRuns: 1, targetBpm: 85, language: .czech))
-        XCTAssertNil(StarRequirement.nextMissingStarText(progress: progress, requiredRuns: 4, targetBpm: 85, language: .english))
-        XCTAssertNil(StarRequirement.nextMissingStarText(progress: progress, requiredRuns: 4, targetBpm: 85, language: .czech))
+        XCTAssertNil(StarRequirement.nextMissingStarText(progress: progress, requiredRuns: 4, targetBpm: 85, language: .english, mode: .challenge))
+        XCTAssertNil(StarRequirement.nextMissingStarText(progress: progress, requiredRuns: 4, targetBpm: 85, language: .czech, mode: .challenge))
     }
 }
