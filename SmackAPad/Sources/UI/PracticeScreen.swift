@@ -79,6 +79,9 @@ struct PracticeScreen: View {
             if phase == .active { session.resume() } else { session.suspend() }
         }
         .onChange(of: settings.activeProfileName) { _, _ in session.stop() }
+        .onChange(of: settings.metronomeVolume) { _, newVolume in session.setMetronomeVolume(newVolume) }
+        .onChange(of: settings.padsVolume) { _, newVolume in session.setPadsVolume(newVolume) }
+        .onChange(of: settings.patternVolume) { _, newVolume in session.setPatternVolume(newVolume) }
         .onChange(of: session.running) { _, running in
             if running {
                 dismissMemoryHint()
@@ -560,6 +563,38 @@ private struct PracticeTools: View {
                     Text(session.automaticKitPickerLabel).tag("auto")
                     ForEach(session.kits) { kit in Text(kit.name).tag(kit.kitId) }
                 }.disabled(session.running)
+            }
+            Section(settings.localized("Sound")) {
+                VolumeSliderRow(
+                    title: settings.localized("Metronome"),
+                    value: Binding(
+                        get: { settings.metronomeVolume },
+                        set: {
+                            settings.metronomeVolume = $0
+                            session.setMetronomeVolume($0)
+                        }
+                    )
+                )
+                VolumeSliderRow(
+                    title: settings.localized("Pads"),
+                    value: Binding(
+                        get: { settings.padsVolume },
+                        set: {
+                            settings.padsVolume = $0
+                            session.setPadsVolume($0)
+                        }
+                    )
+                )
+                VolumeSliderRow(
+                    title: settings.localized("Pattern sound"),
+                    value: Binding(
+                        get: { settings.patternVolume },
+                        set: {
+                            settings.patternVolume = $0
+                            session.setPatternVolume($0)
+                        }
+                    )
+                )
             }
             Section(settings.localized("Bar loop")) {
                 Picker(settings.localized("First bar"), selection: $session.loopStartBar) {

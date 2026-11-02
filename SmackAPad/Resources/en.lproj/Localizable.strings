@@ -379,3 +379,8 @@
 "CC" = "CC";
 "Note" = "Note";
 "%@ %lld · ch %lld" = "%@ %lld · ch %lld";
+"Sound" = "Sound";
+"SOUND" = "SOUND";
+"Pads" = "Pads";
+"Pattern sound" = "Pattern sound";
+"Separate volume for metronome, pads and pattern playback." = "Separate volume for metronome, pads and pattern playback.";

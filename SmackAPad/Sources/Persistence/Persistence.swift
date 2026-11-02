@@ -25,6 +25,9 @@ public enum SettingsKey: String, CaseIterable, Sendable {
     case languagePreference = "smackapad.settings.language"
     case customProfiles = "smackapad.settings.customProfiles"
     case softUnlockedCategories = "smackapad.settings.softUnlockedCategories"
+    case metronomeVolume = "smackapad.settings.volume.metronome"
+    case padsVolume = "smackapad.settings.volume.pads"
+    case patternVolume = "smackapad.settings.volume.pattern"
 }
 
 /// Allowed tempo increase steps for BPM auto-progression.
@@ -128,6 +131,14 @@ public final class SettingsManager: @unchecked Sendable {
     public static let defaultBpmStep: Int = BpmStep.defaultStep.rawValue
     public static let defaultProfileName = "Standard 16-Pad"
     public static let defaultLanguage: AppLanguage = .english
+    public static let defaultMetronomeVolume: Int = 80
+    public static let defaultPadsVolume: Int = 100
+    public static let defaultPatternVolume: Int = 70
+
+    public static func clampVolume(_ value: Int) -> Int {
+        let clamped = min(max(value, 0), 100)
+        return ((clamped + 2) / 5) * 5
+    }
 
     // MARK: Stored Properties
 
@@ -182,6 +193,39 @@ public final class SettingsManager: @unchecked Sendable {
     public var customProfiles: [ControllerProfile] {
         didSet {
             persistCustomProfiles()
+        }
+    }
+
+    public var metronomeVolume: Int {
+        didSet {
+            let clamped = Self.clampVolume(metronomeVolume)
+            if metronomeVolume != clamped {
+                metronomeVolume = clamped
+                return
+            }
+            userDefaults.set(metronomeVolume, forKey: SettingsKey.metronomeVolume.rawValue)
+        }
+    }
+
+    public var padsVolume: Int {
+        didSet {
+            let clamped = Self.clampVolume(padsVolume)
+            if padsVolume != clamped {
+                padsVolume = clamped
+                return
+            }
+            userDefaults.set(padsVolume, forKey: SettingsKey.padsVolume.rawValue)
+        }
+    }
+
+    public var patternVolume: Int {
+        didSet {
+            let clamped = Self.clampVolume(patternVolume)
+            if patternVolume != clamped {
+                patternVolume = clamped
+                return
+            }
+            userDefaults.set(patternVolume, forKey: SettingsKey.patternVolume.rawValue)
         }
     }
 
@@ -311,6 +355,25 @@ public final class SettingsManager: @unchecked Sendable {
             self.customProfiles = profiles.filter(\.isValid)
         } else {
             self.customProfiles = []
+        }
+
+        // Read volume settings (0-100% in steps of 5)
+        if userDefaults.object(forKey: SettingsKey.metronomeVolume.rawValue) != nil {
+            self.metronomeVolume = Self.clampVolume(userDefaults.integer(forKey: SettingsKey.metronomeVolume.rawValue))
+        } else {
+            self.metronomeVolume = Self.defaultMetronomeVolume
+        }
+
+        if userDefaults.object(forKey: SettingsKey.padsVolume.rawValue) != nil {
+            self.padsVolume = Self.clampVolume(userDefaults.integer(forKey: SettingsKey.padsVolume.rawValue))
+        } else {
+            self.padsVolume = Self.defaultPadsVolume
+        }
+
+        if userDefaults.object(forKey: SettingsKey.patternVolume.rawValue) != nil {
+            self.patternVolume = Self.clampVolume(userDefaults.integer(forKey: SettingsKey.patternVolume.rawValue))
+        } else {
+            self.patternVolume = Self.defaultPatternVolume
         }
     }
 
@@ -487,6 +550,9 @@ public final class SettingsManager: @unchecked Sendable {
         self.calibrationOffsets = [:]
         self.languagePreference = Self.defaultLanguage
         self.customProfiles = []
+        self.metronomeVolume = Self.defaultMetronomeVolume
+        self.padsVolume = Self.defaultPadsVolume
+        self.patternVolume = Self.defaultPatternVolume
     }
 }
 

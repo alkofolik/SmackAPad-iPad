@@ -2588,3 +2588,6 @@ Check game complete	Kontrolní hra dokončena
 playing	právě hraje
 Keyboard input is available.	Klávesnice je dostupná.
 This browser does not support MIDI. Open the app in Chrome, Edge or another Chromium browser.	Tento prohlížeč nepodporuje MIDI. Otevři aplikaci v Chrome, Edge nebo jiném prohlížeči založeném na Chromiu.
+Pattern sound	Zvuk patternu
+SOUND	ZVUK
+Separate volume for metronome, pads and pattern playback.	Samostatná hlasitost pro metronom, pady a zvuk patternu.

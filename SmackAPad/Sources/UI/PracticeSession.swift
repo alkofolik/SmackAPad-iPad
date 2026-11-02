@@ -130,6 +130,9 @@ final class PracticeSession {
         loopEndBar = lesson.bars - 1
         let saved = progress.progress(for: lesson.id)?.currentBpm ?? lesson.startBpm
         bpm = PracticeTempo.clamp(saved > 0 ? saved : lesson.startBpm)
+        audio.setMetronomeVolume(Float(settings.metronomeVolume) / 100)
+        audio.setPadsVolume(Float(settings.padsVolume) / 100)
+        audio.setPatternVolume(Float(settings.patternVolume) / 100)
     }
 
     var hits: [LessonHit] { lesson.hits(forPadCount: midi.activeProfile.padCount) }
@@ -148,6 +151,24 @@ final class PracticeSession {
     func applyResolvedKit() {
         guard ready, !running else { return }
         try? audio.selectKit(resolvedKitId)
+    }
+
+    func setMetronomeVolume(_ percent: Int) {
+        audio.setMetronomeVolume(Float(percent) / 100)
+    }
+
+    func setPadsVolume(_ percent: Int) {
+        audio.setPadsVolume(Float(percent) / 100)
+    }
+
+    func setPatternVolume(_ percent: Int) {
+        audio.setPatternVolume(Float(percent) / 100)
+    }
+
+    func applyVolumes() {
+        audio.setMetronomeVolume(Float(settings.metronomeVolume) / 100)
+        audio.setPadsVolume(Float(settings.padsVolume) / 100)
+        audio.setPatternVolume(Float(settings.patternVolume) / 100)
     }
     var isSectionLoop: Bool { loopStartBar != 0 || loopEndBar != lesson.bars - 1 }
     var practiceLesson: Lesson {
@@ -208,6 +229,7 @@ final class PracticeSession {
             try await Task.detached(priority: .userInitiated) { try engine.prepare() }.value
             guard !Task.isCancelled, active else { audio.stop(); return }
             prepared = true
+            applyVolumes()
             try audio.selectKit(resolvedKitId)
             try audio.start()
             ready = true
@@ -234,6 +256,7 @@ final class PracticeSession {
     func start() {
         guard ready, !running, available else { return }
         do {
+            applyVolumes()
             try audio.selectKit(resolvedKitId)
             try audio.start()
             audio.logTiming("practice-start")
@@ -323,7 +346,11 @@ final class PracticeSession {
 
     func resume() {
         guard active, prepared else { return }
-        do { try audio.start(); ready = true }
+        do {
+            applyVolumes()
+            try audio.start()
+            ready = true
+        }
         catch { errorMessage = error.localizedDescription }
     }
 

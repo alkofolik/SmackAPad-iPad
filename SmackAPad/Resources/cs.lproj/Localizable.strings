@@ -379,3 +379,8 @@
 "CC" = "CC";
 "Note" = "Nota";
 "%@ %lld · ch %lld" = "%@ %lld · kanál %lld";
+"Sound" = "Zvuk";
+"SOUND" = "ZVUK";
+"Pads" = "Pady";
+"Pattern sound" = "Zvuk patternu";
+"Separate volume for metronome, pads and pattern playback." = "Samostatná hlasitost pro metronom, pady a zvuk patternu.";

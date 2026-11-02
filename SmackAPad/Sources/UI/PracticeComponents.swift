@@ -323,3 +323,32 @@ struct PadLayoutGrid: View {
             .accessibilityLabel("\(PadVoice.name(pad)), pad \(pad + 1)")
     }
 }
+
+/// A volume slider row (0–100% in steps of 5) following the app's three-colour theme.
+struct VolumeSliderRow: View {
+    let title: String
+    @Binding var value: Int
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: Theme.Space.tight) {
+            HStack {
+                Text(title)
+                    .font(Theme.control)
+                Spacer()
+                Text("\(value) %")
+                    .font(Theme.text(Theme.Size.dense))
+                    .foregroundStyle(Theme.secondary)
+            }
+            Slider(
+                value: Binding(
+                    get: { Double(value) },
+                    set: { value = SettingsManager.clampVolume(Int($0.rounded())) }
+                ),
+                in: 0...100,
+                step: 5
+            )
+            .tint(Theme.orange)
+        }
+        .padding(.vertical, Theme.Space.tight)
+    }
+}

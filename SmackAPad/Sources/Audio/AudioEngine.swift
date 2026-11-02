@@ -93,8 +93,18 @@ public final class AudioEngine: @unchecked Sendable {
     private let sessionOwnerID = UUID()
     private let engine = AVAudioEngine()
     private let format = AVAudioFormat(standardFormatWithSampleRate: 48_000, channels: 2)!
+    private let metronomeMixer = AVAudioMixerNode()
+    private let padsMixer = AVAudioMixerNode()
+    private let patternMixer = AVAudioMixerNode()
+
     private let clickPlayer = AVAudioPlayerNode()
-    private var players: [Player] = []
+    private let calibrationClickPlayer = AVAudioPlayerNode()
+    private var padPlayers: [Player] = []
+    private var patternPlayers: [Player] = []
+
+    public private(set) var metronomeVolume: Float = 0.8
+    public private(set) var padsVolume: Float = 1.0
+    public private(set) var patternVolume: Float = 0.7
     private var kits: [String: [String: [Layer]]] = [:]
     private var kitModels: [SampleKit] = []
     private var selectedKit = "acoustic"
@@ -173,6 +183,33 @@ public final class AudioEngine: @unchecked Sendable {
     public var lastError: Error? { queue.sync { failure } }
     public var isRunning: Bool { queue.sync { engine.isRunning } }
 
+    public func setMetronomeVolume(_ volume: Float) {
+        queue.async { [weak self] in
+            guard let self else { return }
+            let clamped = max(0, min(1, volume))
+            self.metronomeVolume = clamped
+            if self.prepared { self.metronomeMixer.outputVolume = clamped }
+        }
+    }
+
+    public func setPadsVolume(_ volume: Float) {
+        queue.async { [weak self] in
+            guard let self else { return }
+            let clamped = max(0, min(1, volume))
+            self.padsVolume = clamped
+            if self.prepared { self.padsMixer.outputVolume = clamped }
+        }
+    }
+
+    public func setPatternVolume(_ volume: Float) {
+        queue.async { [weak self] in
+            guard let self else { return }
+            let clamped = max(0, min(1, volume))
+            self.patternVolume = clamped
+            if self.prepared { self.patternMixer.outputVolume = clamped }
+        }
+    }
+
     /// Temporary diagnostics are controlled in AudioTimingDiagnostics only.
     public func logTiming(_ event: String) { queue.sync { logTimingOnQueue(event) } }
 
@@ -202,14 +239,34 @@ public final class AudioEngine: @unchecked Sendable {
             }
             try loadKits()
             clickBuffer = try makeClick()
-            for _ in 0..<64 {
+
+            engine.attach(metronomeMixer)
+            engine.connect(metronomeMixer, to: engine.mainMixerNode, format: format)
+            engine.attach(padsMixer)
+            engine.connect(padsMixer, to: engine.mainMixerNode, format: format)
+            engine.attach(patternMixer)
+            engine.connect(patternMixer, to: engine.mainMixerNode, format: format)
+
+            metronomeMixer.outputVolume = metronomeVolume
+            padsMixer.outputVolume = padsVolume
+            patternMixer.outputVolume = patternVolume
+
+            for _ in 0..<48 {
                 let node = AVAudioPlayerNode()
                 engine.attach(node)
-                engine.connect(node, to: engine.mainMixerNode, format: format)
-                players.append(Player(node: node))
+                engine.connect(node, to: padsMixer, format: format)
+                padPlayers.append(Player(node: node))
+            }
+            for _ in 0..<48 {
+                let node = AVAudioPlayerNode()
+                engine.attach(node)
+                engine.connect(node, to: patternMixer, format: format)
+                patternPlayers.append(Player(node: node))
             }
             engine.attach(clickPlayer)
-            engine.connect(clickPlayer, to: engine.mainMixerNode, format: format)
+            engine.connect(clickPlayer, to: metronomeMixer, format: format)
+            engine.attach(calibrationClickPlayer)
+            engine.connect(calibrationClickPlayer, to: engine.mainMixerNode, format: format)
             engine.prepare()
             prepared = true
         }
@@ -246,6 +303,7 @@ public final class AudioEngine: @unchecked Sendable {
         queue.sync {
             wantsPlayback = false
             stopPlayers()
+            calibrationClickPlayer.stop()
             engine.stop()
             do {
                 try Self.sessionOwnership.release(for: sessionOwnerID)
@@ -261,7 +319,7 @@ public final class AudioEngine: @unchecked Sendable {
         queue.async { [weak self] in
             guard let self else { return }
             do {
-                try self.playOnQueue(padIndex: padIndex, velocity: velocity, audibleHostTime: nil)
+                try self.playOnQueue(padIndex: padIndex, velocity: velocity, audibleHostTime: nil, isPattern: false)
             } catch {
                 self.failure = error
             }
@@ -272,7 +330,7 @@ public final class AudioEngine: @unchecked Sendable {
     /// Submit ahead of time; late notes are rejected instead of silently moving the beat.
     public func schedule(padIndex: Int, velocity: Int, audibleHostTime: UInt64) throws {
         try queue.sync {
-            try playOnQueue(padIndex: padIndex, velocity: velocity, audibleHostTime: audibleHostTime)
+            try playOnQueue(padIndex: padIndex, velocity: velocity, audibleHostTime: audibleHostTime, isPattern: true)
         }
     }
 
@@ -330,9 +388,9 @@ public final class AudioEngine: @unchecked Sendable {
             let first = mach_absolute_time() + ticks(timing.presentationLatency + 0.6)
             for index in 0..<14 {
                 let time = try renderTime(for: first + ticks(Double(index)))
-                clickPlayer.scheduleBuffer(clickBuffer, at: time)
+                calibrationClickPlayer.scheduleBuffer(clickBuffer, at: time)
             }
-            clickPlayer.play()
+            calibrationClickPlayer.play()
             return AVAudioTime.seconds(forHostTime: first)
         }
     }
@@ -382,7 +440,7 @@ public final class AudioEngine: @unchecked Sendable {
             engine.mainMixerNode.removeTap(onBus: 0)
             calibrationTapInstalled = false
         }
-        clickPlayer.stop()
+        calibrationClickPlayer.stop()
     }
 
     /// Schedules one audible click. A continuous lesson owns the beat times so a
@@ -396,7 +454,7 @@ public final class AudioEngine: @unchecked Sendable {
         }
     }
 
-    private func playOnQueue(padIndex: Int, velocity: Int, audibleHostTime: UInt64?) throws {
+    private func playOnQueue(padIndex: Int, velocity: Int, audibleHostTime: UInt64?, isPattern: Bool) throws {
         guard prepared else { throw Failure.notPrepared }
         guard padVoices.indices.contains(padIndex) else { throw Failure.invalidPad(padIndex) }
         guard (0...127).contains(velocity) else { throw Failure.invalidVelocity(velocity) }
@@ -408,18 +466,31 @@ public final class AudioEngine: @unchecked Sendable {
         }
         let time = try audibleHostTime.map { try renderTime(for: $0) }
         let now = mach_absolute_time()
-        guard let index = players.firstIndex(where: { $0.availableAt <= now }) else {
-            throw Failure.voiceLimit
+        if isPattern {
+            guard let index = patternPlayers.firstIndex(where: { $0.availableAt <= now }) else {
+                throw Failure.voiceLimit
+            }
+            let buffer = layer.nextBuffer()
+            let node = patternPlayers[index].node
+            node.stop()
+            node.volume = Float(velocity) / 127
+            node.scheduleBuffer(buffer, at: time, options: [])
+            node.play()
+            let start = time?.hostTime ?? now
+            patternPlayers[index].availableAt = start + ticks(Double(buffer.frameLength) / format.sampleRate + ioDuration)
+        } else {
+            guard let index = padPlayers.firstIndex(where: { $0.availableAt <= now }) else {
+                throw Failure.voiceLimit
+            }
+            let buffer = layer.nextBuffer()
+            let node = padPlayers[index].node
+            node.stop()
+            node.volume = Float(velocity) / 127
+            node.scheduleBuffer(buffer, at: time, options: [])
+            node.play()
+            let start = time?.hostTime ?? now
+            padPlayers[index].availableAt = start + ticks(Double(buffer.frameLength) / format.sampleRate + ioDuration)
         }
-        let buffer = layer.nextBuffer()
-        let node = players[index].node
-        node.stop()
-        node.volume = Float(velocity) / 127
-        node.scheduleBuffer(buffer, at: time, options: [])
-        node.play()
-        let start = time?.hostTime ?? now
-        // Keep a render-buffer margin before reusing a node with a sounding tail.
-        players[index].availableAt = start + ticks(Double(buffer.frameLength) / format.sampleRate + ioDuration)
     }
 
     private func activateSession() throws {
@@ -487,9 +558,13 @@ public final class AudioEngine: @unchecked Sendable {
     private func stopPlayers() {
         calibrationCapture?.clockChanged = true
         stopMetronomeOnQueue()
-        for index in players.indices {
-            players[index].node.stop()
-            players[index].availableAt = 0
+        for index in padPlayers.indices {
+            padPlayers[index].node.stop()
+            padPlayers[index].availableAt = 0
+        }
+        for index in patternPlayers.indices {
+            patternPlayers[index].node.stop()
+            patternPlayers[index].availableAt = 0
         }
     }
 

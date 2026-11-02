@@ -32,11 +32,11 @@ Three volume sliders, 0–100 % in steps of 5:
 
 ## Acceptance criteria
 
-- [ ] Each slider changes only its own group, immediately, also during a run.
-- [ ] Calibration still works unchanged.
-- [ ] Values survive app restart.
-- [ ] Texts in `en` and `cs`.
-- [ ] Build succeeds. No new tests.
+- [x] Each slider changes only its own group, immediately, also during a run.
+- [x] Calibration still works unchanged.
+- [x] Values survive app restart.
+- [x] Texts in `en` and `cs`.
+- [x] Build succeeds. No new tests.
 - [ ] **iPad test (Jakub)**: metronome at 30 %, pattern sound at 50 %, pads at 100 % during Play; then run calibration once.
 
 ## Agent assignment

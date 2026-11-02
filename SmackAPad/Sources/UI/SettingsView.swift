@@ -48,6 +48,28 @@ public struct SettingsView: View {
                             .foregroundStyle(Theme.secondary)
                     }
 
+                    // MARK: 1b. Sound Volumes
+                    Section {
+                        VolumeSliderRow(
+                            title: settings.localized("Metronome"),
+                            value: $settings.metronomeVolume
+                        )
+                        VolumeSliderRow(
+                            title: settings.localized("Pads"),
+                            value: $settings.padsVolume
+                        )
+                        VolumeSliderRow(
+                            title: settings.localized("Pattern sound"),
+                            value: $settings.patternVolume
+                        )
+                    } header: {
+                        SectionHeader(title: settings.localized("SOUND"))
+                    } footer: {
+                        Text(settings.localized("Separate volume for metronome, pads and pattern playback."))
+                            .font(Theme.meta)
+                            .foregroundStyle(Theme.secondary)
+                    }
+
                     // MARK: 2. BPM Step
                     Section {
                         Picker(settings.localized("Tempo step"), selection: $settings.bpmStep) {
