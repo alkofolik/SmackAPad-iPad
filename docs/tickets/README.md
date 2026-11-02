@@ -65,3 +65,14 @@
 | 25 | Library redesign, unified look, Intro rows, First steps removed, unlock flow | Codex GPT-6.1 Sol, high (two conversations A and B) | 2nd (after 24) |
 | 26 | Sound kit "Automatic" and per-lesson choice | Gemini 3.8 Flash, high (done 2026-11-01) | done |
 | 27 | Motion: `2026-11-01-27-motion.md` (spec: `docs/design/2026-11-01-motion-proposals.md`) | Codex GPT-6.1 Sol, medium | after 24-26 (approved) |
+
+## Legacy parity, priority 1 (2026-11-02)
+
+Source: comparison of the legacy app (user manual 2026-10-25) with the iPad app. Tickets are independent of each other; 28 builds on commit 1fc4a31 (round-4 star change).
+
+| Ticket | Topic | Agent / thinking | Order |
+|---|---|---|---|
+| 28 | Practice mode: Learning (default) and Challenge | Codex GPT-6.1 Sol, high | 1st |
+| 29 | Start/stop from the MIDI controller, tempo knob | Codex GPT-6.1 Sol, high | after 28 (same agent) |
+| 30 | Lesson instructions panel | Gemini 3.8 Flash, high | any time, parallel |
+| 31 | Volume for metronome, pads and pattern sound | Gemini 3.8 Flash, high | any time, parallel with 30 (different files except Settings/PracticeTools — run one after the other if on the same account) |
