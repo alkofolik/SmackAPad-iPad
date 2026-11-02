@@ -411,3 +411,18 @@
 "Purchases restored" = "Purchases restored";
 "No previous purchases found" = "No previous purchases found";
 "Restore failed. Please try again." = "Restore failed. Please try again.";
+
+/* Ticket 34: Practice controls and lesson information. */
+"Static view" = "Static view";
+"Pattern view" = "Pattern view";
+"Bars shown" = "Bars shown";
+"Next lesson" = "Next lesson";
+"No next lesson available" = "No next lesson available";
+"How to play" = "How to play";
+"Tips" = "Tips";
+"Stars" = "Stars";
+"Play a steady groove at %lld BPM." = "Play a steady groove at %lld BPM.";
+"Follow the pattern and keep the left and right hands steady." = "Follow the pattern and keep the left and right hands steady.";
+"Listen to the pattern first. Start slowly, then work towards the goal tempo." = "Listen to the pattern first. Start slowly, then work towards the goal tempo.";
+"Start" = "Start";
+"Stop" = "Stop";

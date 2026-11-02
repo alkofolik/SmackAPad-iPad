@@ -9,6 +9,9 @@ struct PracticeScreen: View {
     @Environment(\.scenePhase) private var scenePhase
     @Environment(SettingsManager.self) private var settings
     @Environment(MIDIInput.self) private var midi
+    @Environment(ProgressStore.self) private var progress
+    @Environment(ProgressionManager.self) private var progression
+    @Environment(StoreManager.self) private var store
     @State private var session: PracticeSession
     @AppStorage("smackapad.practice.scrolling") private var scrolling = false
     @AppStorage("smackapad.practice.visibleBars") private var visibleBars = 4
@@ -20,6 +23,7 @@ struct PracticeScreen: View {
     @State private var showingMIDI = false
     @State private var showingMemoryHint = false
     @State private var showingInfo = false
+    @State private var purchaseAccess: String?
 
     init(lesson: Lesson, settings: SettingsManager, progress: ProgressStore, midi: MIDIInput) {
         _session = State(initialValue: PracticeSession(lesson: lesson, settings: settings, progress: progress, midi: midi))
@@ -69,7 +73,7 @@ struct PracticeScreen: View {
             .foregroundStyle(Theme.ink)
         }
         .toolbar(.hidden, for: .navigationBar)
-        .task {
+        .task(id: session.lesson.id) {
             await session.prepare()
             checkMemoryHint()
         }
@@ -98,6 +102,9 @@ struct PracticeScreen: View {
         .onChange(of: showingMIDI) { _, showing in
             if showing { session.suspend() }
         }
+        .sheet(isPresented: Binding(get: { purchaseAccess != nil }, set: { if !$0 { purchaseAccess = nil } })) {
+            PurchaseSheet(access: purchaseAccess ?? "full")
+        }
         .sheet(isPresented: $showingMIDI, onDismiss: { session.resume() }) {
             MIDISettingsView()
                 .presentationDragIndicator(.visible)
@@ -114,7 +121,15 @@ struct PracticeScreen: View {
     private func header(compact: Bool) -> some View {
         VStack(alignment: .leading, spacing: Theme.Space.small) {
             HStack(spacing: Theme.Space.regular) {
-                icon(.back, settings.localized("Back to lessons")) { session.stop(); if let dismissLesson { dismissLesson() } else { dismiss() } }
+                Button {
+                    session.stop()
+                    if let dismissLesson { dismissLesson() } else { dismiss() }
+                } label: {
+                    Label(settings.localized("Library"), systemImage: "square.grid.2x2")
+                        .lineLimit(1)
+                        .fixedSize(horizontal: true, vertical: false)
+                }
+                .buttonStyle(InstrumentButtonStyle())
                 VStack(alignment: .leading, spacing: Theme.Space.tight) {
                     Text(settings.localized(session.lesson.title)).font(Theme.screenTitle).lineLimit(2)
                     Text("\(session.lesson.cat.uppercased()) · \(settings.localized("LEVEL")) \(session.lesson.level)")
@@ -128,60 +143,69 @@ struct PracticeScreen: View {
     }
 
     private var tools: some View {
-        HStack(spacing: Theme.Space.small) {
+        HStack(spacing: Theme.Space.regular) {
             HStack(spacing: 0) {
                 Button(settings.localized("Listen")) { session.listen = true }
                     .buttonStyle(InstrumentButtonStyle(selected: session.listen))
                 Button(settings.localized("Play")) { session.listen = false }
                     .buttonStyle(InstrumentButtonStyle(selected: !session.listen))
             }
+            .lineLimit(1)
+            .fixedSize(horizontal: true, vertical: false)
             .disabled(session.running)
             .accessibilityLabel(settings.localized("Lesson mode"))
-            Menu {
-                ForEach([1, 2, 4], id: \.self) { count in
-                    Button(count == 4 ? settings.localized("All bars") : settings.localized("%lld bars", count)) {
-                        visibleBars = count; scrolling = false
-                    }
+
+            HStack(spacing: Theme.Space.small) {
+                icon("eye.slash", settings.localized("From memory"), selected: session.fromMemory) {
+                    dismissMemoryHint()
+                    session.fromMemory.toggle()
                 }
-            } label: {
-                PracticeGlyph(kind: .grid).frame(width: 24, height: 24)
-            }
-            .buttonStyle(InstrumentButtonStyle(selected: !scrolling))
-            .accessibilityLabel(settings.localized("Static view, bar count"))
-            icon(.scrolling, settings.localized("Scrolling view"), selected: scrolling) { scrolling = true }
-            icon(.eye, settings.localized("From memory"), selected: session.fromMemory) {
-                dismissMemoryHint()
-                session.fromMemory.toggle()
-            }
                 .disabled(session.running)
-                .accessibilityValue(session.fromMemory ? settings.localized("On") : settings.localized("Off"))
+                .accessibilityValue(settings.localized(session.fromMemory ? "On" : "Off"))
                 .overlay(alignment: .bottom) {
                     if showingMemoryHint {
                         memoryHintCallout
                             .alignmentGuide(.bottom) { d in d[.top] - 6 }
                     }
                 }
-            if !session.running {
-                icon(.info, settings.localized("Lesson info")) { showingInfo.toggle() }
-                    .popover(isPresented: $showingInfo, arrowEdge: .top) { lessonInfo }
-            }
-            icon(.legend, settings.localized("Legend")) { showingLegend.toggle() }
-                .popover(isPresented: $showingLegend, arrowEdge: .top) { legend }
-            icon(.tools, settings.localized("More tools")) { showingTools.toggle() }
-                .popover(isPresented: $showingTools, arrowEdge: .top) {
-                    PracticeTools(session: session, showPads: $showPads, openMIDI: {
-                        showingTools = false; showingMIDI = true
-                    })
+
+                toolSeparator
+
+                HStack(spacing: 0) {
+                    icon("rectangle.split.2x2", settings.localized("Static view"), selected: !scrolling) { scrolling = false }
+                    icon("arrow.right.to.line", settings.localized("Scrolling view"), selected: scrolling) { scrolling = true }
                 }
+                .accessibilityElement(children: .contain)
+                .accessibilityLabel(settings.localized("Pattern view"))
+
+                toolSeparator
+
+                HStack(spacing: 0) {
+                    icon("info.circle", settings.localized("Lesson info")) { showingInfo.toggle() }
+                        .disabled(session.running)
+                        .popover(isPresented: $showingInfo, arrowEdge: .top) { lessonInfo }
+                    icon("list.bullet.rectangle", settings.localized("Legend")) { showingLegend.toggle() }
+                        .popover(isPresented: $showingLegend, arrowEdge: .top) { legend }
+                    icon("slider.horizontal.3", settings.localized("More tools")) { showingTools.toggle() }
+                        .popover(isPresented: $showingTools, arrowEdge: .top) {
+                            PracticeTools(session: session, showPads: $showPads, openMIDI: {
+                                showingTools = false; showingMIDI = true
+                            })
+                        }
+                }
+            }
         }
+        .fixedSize(horizontal: true, vertical: false)
     }
 
-    private func icon(_ kind: PracticeGlyph.Kind, _ text: String, selected: Bool = false,
+    private var toolSeparator: some View {
+        Rectangle().fill(Theme.ink.opacity(0.2)).frame(width: 1, height: 28)
+            .accessibilityHidden(true)
+    }
+
+    private func icon(_ symbol: String, _ text: String, selected: Bool = false,
                       action: @escaping () -> Void) -> some View {
-        Button(action: action) { PracticeGlyph(kind: kind).frame(width: 24, height: 24) }
-            .buttonStyle(InstrumentButtonStyle(selected: selected))
-            .accessibilityLabel(text)
-            .accessibilityAddTraits(selected ? .isSelected : [])
+        PracticeIconButton(symbol: symbol, title: text, selected: selected, action: action)
     }
 
     private func status(compact: Bool) -> some View {
@@ -300,10 +324,53 @@ struct PracticeScreen: View {
     }
 
     private var transport: some View {
-        TransportControls(running: session.running, enabled: session.ready && session.available,
-                          start: { dismissMemoryHint(); showingInfo = false; session.start() },
-                          stop: session.stop,
-                          restart: { dismissMemoryHint(); showingInfo = false; session.restart() })
+        VStack(alignment: .trailing, spacing: Theme.Space.small) {
+            if !session.running, session.savedProgress?.passed == true {
+                nextLessonControl
+            }
+            TransportControls(running: session.running, enabled: session.ready && session.available,
+                              start: { dismissMemoryHint(); showingInfo = false; session.start() },
+                              stop: session.stop,
+                              restart: { dismissMemoryHint(); showingInfo = false; session.restart() })
+        }
+    }
+
+    private var nextLesson: Lesson? {
+        progression.nextLesson(after: session.lesson,
+                               source: NextLessonSource(rawValue: settings.nextLessonSource) ?? .path)
+    }
+
+    @ViewBuilder
+    private var nextLessonControl: some View {
+        if let next = nextLesson {
+            Button { openNextLesson(next) } label: {
+                Label(settings.localized("Next lesson"), systemImage: store.isUnlocked(next) ? "arrow.right" : "lock")
+                    .lineLimit(1)
+                    .fixedSize(horizontal: true, vertical: false)
+            }
+            .buttonStyle(InstrumentButtonStyle())
+            .accessibilityHint(settings.localized(next.title))
+        } else {
+            Text(settings.localized("No next lesson available"))
+                .font(Theme.meta)
+                .foregroundStyle(Theme.secondary)
+        }
+    }
+
+    private func openNextLesson(_ lesson: Lesson) {
+        guard store.isUnlocked(lesson) else {
+            purchaseAccess = lesson.access ?? "full"
+            return
+        }
+        guard progression.isLessonOpen(lesson) else { return }
+        dismissMemoryHint()
+        showingInfo = false
+        showingLegend = false
+        showingTools = false
+        showingTempo = false
+        showingDetails = false
+        session.close()
+        session = PracticeSession(lesson: lesson, settings: settings, progress: progress, midi: midi)
     }
 
     @ViewBuilder
@@ -416,7 +483,7 @@ struct PracticeScreen: View {
 
     private var lessonInfo: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: Theme.Space.regular) {
+            VStack(alignment: .leading, spacing: Theme.Space.page) {
                 HStack {
                     Text(settings.localized("Lesson info")).font(Theme.sectionTitle)
                     Spacer()
@@ -436,61 +503,65 @@ struct PracticeScreen: View {
                         .foregroundStyle(Theme.secondary)
                 }
 
-                if !session.lesson.text.isEmpty {
-                    Text(settings.localized(session.lesson.text))
-                        .font(Theme.control)
+                infoBlock("Goal") {
+                    if let goal = session.lesson.intro?.goal, !goal.isEmpty {
+                        infoParagraphs(settings.localized(goal))
+                    } else {
+                        infoParagraphs(settings.localized("Play a steady groove at %lld BPM.", session.lesson.targetBpm))
+                    }
                 }
 
-                if let intro = session.lesson.intro {
-                    if !intro.goal.isEmpty {
-                        VStack(alignment: .leading, spacing: Theme.Space.tight) {
-                            Text(settings.localized("Goal")).font(Theme.rowTitle)
-                            Text(settings.localized(intro.goal)).font(Theme.control)
-                        }
+                infoBlock("How to play") {
+                    if !session.lesson.text.isEmpty {
+                        infoParagraphs(settings.localized(session.lesson.text))
+                    } else {
+                        infoParagraphs(settings.localized("Follow the pattern and keep the left and right hands steady."))
                     }
-                    if !intro.watch.isEmpty {
-                        VStack(alignment: .leading, spacing: Theme.Space.tight) {
-                            Text(settings.localized("Watch for")).font(Theme.rowTitle)
-                            Text(settings.localized(intro.watch)).font(Theme.control)
-                        }
-                    }
-                    let fingersDict = (midi.activeProfile.padCount == 8 ? intro.fingers8 : intro.fingers16) ?? intro.fingers16 ?? intro.fingers8
-                    if let fingersDict, !fingersDict.isEmpty {
-                        VStack(alignment: .leading, spacing: Theme.Space.small) {
-                            Text(settings.localized("Fingers")).font(Theme.rowTitle)
-                            Text(settings.localized("1 = thumb … 5 = little finger"))
-                                .font(Theme.meta)
-                                .foregroundStyle(Theme.secondary)
-                            let sortedKeys = fingersDict.keys.sorted { a, b in
-                                let padA = Int(a.split(separator: ":").first ?? "") ?? 0
-                                let padB = Int(b.split(separator: ":").first ?? "") ?? 0
-                                let handA = a.split(separator: ":").dropFirst().first ?? ""
-                                let handB = b.split(separator: ":").dropFirst().first ?? ""
-                                if handA != handB { return handA < handB }
-                                return padA < padB
-                            }
-                            ForEach(sortedKeys, id: \.self) { key in
-                                let parts = key.split(separator: ":")
-                                let pad = Int(parts[0]) ?? 0
-                                let hand = parts.count > 1 ? String(parts[1]) : "L"
-                                let finger = fingersDict[key] ?? 1
-                                let padName = PadVoice.name(pad, settings: settings)
-                                let padLabel = "\(padName) \(hand)"
-                                let handLabel = hand == "L" ? settings.localized("left hand") : settings.localized("right hand")
-                                let fingerLabel = settings.localized("finger %lld", finger)
-                                HStack(spacing: Theme.Space.regular) {
-                                    PatternBlock(abbreviation: PadVoice.abbreviation(pad), hand: hand)
-                                        .overlay(Rectangle().stroke(Theme.ink, lineWidth: 1))
-                                    Text("\(padLabel) · \(handLabel) · \(fingerLabel)")
-                                        .font(Theme.control)
+                    if let intro = session.lesson.intro {
+                        let fingersDict = (midi.activeProfile.padCount == 8 ? intro.fingers8 : intro.fingers16) ?? intro.fingers16 ?? intro.fingers8
+                        if let fingersDict, !fingersDict.isEmpty {
+                            VStack(alignment: .leading, spacing: Theme.Space.small) {
+                                Text(settings.localized("Fingers")).font(Theme.rowTitle)
+                                Text(settings.localized("1 = thumb … 5 = little finger"))
+                                    .font(Theme.meta)
+                                    .foregroundStyle(Theme.secondary)
+                                let sortedKeys = fingersDict.keys.sorted { a, b in
+                                    let padA = Int(a.split(separator: ":").first ?? "") ?? 0
+                                    let padB = Int(b.split(separator: ":").first ?? "") ?? 0
+                                    let handA = a.split(separator: ":").dropFirst().first ?? ""
+                                    let handB = b.split(separator: ":").dropFirst().first ?? ""
+                                    if handA != handB { return handA < handB }
+                                    return padA < padB
+                                }
+                                ForEach(sortedKeys, id: \.self) { key in
+                                    let parts = key.split(separator: ":")
+                                    let pad = Int(parts[0]) ?? 0
+                                    let hand = parts.count > 1 ? String(parts[1]) : "L"
+                                    let finger = fingersDict[key] ?? 1
+                                    let padName = PadVoice.name(pad, settings: settings)
+                                    let padLabel = "\(padName) \(hand)"
+                                    let handLabel = hand == "L" ? settings.localized("left hand") : settings.localized("right hand")
+                                    let fingerLabel = settings.localized("finger %lld", finger)
+                                    HStack(spacing: Theme.Space.regular) {
+                                        PatternBlock(abbreviation: PadVoice.abbreviation(pad), hand: hand)
+                                            .overlay(Rectangle().stroke(Theme.ink, lineWidth: 1))
+                                        Text("\(padLabel) · \(handLabel) · \(fingerLabel)")
+                                            .font(Theme.control)
+                                    }
                                 }
                             }
                         }
                     }
                 }
 
-                VStack(alignment: .leading, spacing: Theme.Space.small) {
-                    Text(settings.localized("How to earn the stars")).font(Theme.rowTitle)
+                infoBlock("Tips") {
+                    if let watch = session.lesson.intro?.watch, !watch.isEmpty {
+                        infoParagraphs(settings.localized(watch))
+                    }
+                    infoParagraphs(settings.localized("Listen to the pattern first. Start slowly, then work towards the goal tempo."))
+                }
+
+                infoBlock("Stars") {
                     ForEach(0..<3, id: \.self) { index in
                         let earned = isStarEarned(index)
                         let reqText = StarRequirement.requirementText(
@@ -499,7 +570,7 @@ struct PracticeScreen: View {
                             padCount: midi.activeProfile.padCount,
                             settings: settings
                         )
-                        HStack(spacing: Theme.Space.small) {
+                        HStack(alignment: .top, spacing: Theme.Space.small) {
                             StarShape()
                                 .fill(earned ? Theme.ink : Theme.background)
                                 .overlay(StarShape().stroke(Theme.ink, lineWidth: Theme.Size.border))
@@ -525,6 +596,28 @@ struct PracticeScreen: View {
         .background(Theme.background)
     }
 
+    private func infoBlock<Content: View>(_ title: String, @ViewBuilder content: () -> Content) -> some View {
+        VStack(alignment: .leading, spacing: Theme.Space.regular) {
+            Text(settings.localized(title)).font(Theme.rowTitle)
+                .accessibilityAddTraits(.isHeader)
+            content()
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.top, Theme.Space.regular)
+        .overlay(alignment: .top) {
+            Rectangle().fill(Theme.ink.opacity(0.2)).frame(height: 1)
+        }
+    }
+
+    private func infoParagraphs(_ text: String) -> some View {
+        VStack(alignment: .leading, spacing: Theme.Space.small) {
+            ForEach(Array(text.components(separatedBy: .newlines).filter { !$0.isEmpty }.enumerated()), id: \.offset) { _, paragraph in
+                Text(paragraph).font(Theme.control)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        }
+    }
+
     private func isStarEarned(_ index: Int) -> Bool {
         guard let progress = session.savedProgress else { return false }
         switch index {
@@ -541,12 +634,18 @@ private struct PracticeTools: View {
     @Environment(SettingsManager.self) private var settings
     @Bindable var session: PracticeSession
     @Binding var showPads: Bool
+    @AppStorage("smackapad.practice.visibleBars") private var visibleBars = 4
     let openMIDI: () -> Void
 
     var body: some View {
         @Bindable var settings = settings
         Form {
             Section(settings.localized("Practice")) {
+                Picker(settings.localized("Bars shown"), selection: $visibleBars) {
+                    Text(settings.localized("1 bar")).tag(1)
+                    Text(settings.localized("%lld bars", 2)).tag(2)
+                    Text(settings.localized("All bars")).tag(4)
+                }
                 Toggle(settings.localized("Small pad layout"), isOn: $showPads)
                 Toggle(settings.localized("Pattern sound in Play"), isOn: $session.lessonSound)
                     .disabled(session.running)

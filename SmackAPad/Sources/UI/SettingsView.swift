@@ -21,6 +21,7 @@ public struct SettingsView: View {
     @State private var showingControlPadWarning = false
     @State private var kits: [SampleKit] = []
     @AppStorage("smackapad.practice.showPads") private var showPads = true
+    @AppStorage("smackapad.practice.visibleBars") private var visibleBars = 4
 
     public init() {}
 
@@ -106,6 +107,11 @@ public struct SettingsView: View {
 
                     // MARK: 2b. Pad layout on the practice screen
                     Section {
+                        Picker(settings.localized("Bars shown"), selection: $visibleBars) {
+                            Text(settings.localized("1 bar")).tag(1)
+                            Text(settings.localized("%lld bars", 2)).tag(2)
+                            Text(settings.localized("All bars")).tag(4)
+                        }
                         Toggle(settings.localized("Small pad layout"), isOn: $showPads)
                     } header: {
                         SectionHeader(title: settings.localized("PRACTICE SCREEN"))

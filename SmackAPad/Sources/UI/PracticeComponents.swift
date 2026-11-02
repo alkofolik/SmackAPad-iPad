@@ -94,7 +94,41 @@ struct InstrumentButtonStyle: ButtonStyle {
     }
 }
 
+/// A tap performs the action; holding the icon reveals its localized name.
+struct PracticeIconButton: View {
+    let symbol: String
+    let title: String
+    var selected = false
+    let action: () -> Void
+    @State private var showingHint = false
+
+    var body: some View {
+        Button(action: action) {
+            Image(systemName: symbol)
+                .font(.system(size: 21, weight: .medium))
+                .frame(width: Theme.Size.touch, height: Theme.Size.touch)
+                .foregroundStyle(selected ? Theme.background : Theme.ink)
+                .background(selected ? Theme.ink : Theme.background)
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(title)
+        .accessibilityAddTraits(selected ? .isSelected : [])
+        .help(title)
+        .highPriorityGesture(LongPressGesture(minimumDuration: 0.5).onEnded { _ in showingHint = true })
+        .popover(isPresented: $showingHint, arrowEdge: .top) {
+            Text(title)
+                .font(Theme.control)
+                .padding(Theme.Space.regular)
+                .foregroundStyle(Theme.ink)
+                .background(Theme.background)
+                .presentationCompactAdaptation(.popover)
+        }
+    }
+}
+
 struct TransportControls: View {
+    @Environment(SettingsManager.self) private var settings
     @Environment(\.accessibilityReduceMotion) private var reduced
     let running: Bool
     let enabled: Bool
@@ -108,7 +142,9 @@ struct TransportControls: View {
                 Button(action: running ? stop : start) {
                     HStack {
                         if running { Rectangle().frame(width: 16, height: 16).transition(.opacity) }
-                        Text(running ? "STOP" : "START").id(running).transition(.opacity)
+                        Text(settings.localized(running ? "Stop" : "Start"))
+                            .lineLimit(1).minimumScaleFactor(0.7)
+                            .id(running).transition(.opacity)
                     }.frame(maxWidth: .infinity)
                 }
                 .buttonStyle(InstrumentButtonStyle(filled: true, main: true))
@@ -119,7 +155,9 @@ struct TransportControls: View {
                     Button(action: restart) {
                         HStack(spacing: Theme.Space.small) {
                             PracticeGlyph(kind: .restart).frame(width: 20, height: 20)
-                            Text("RESTART").font(Theme.display(Theme.Size.emphasis))
+                            Text(settings.localized("Restart"))
+                                .font(Theme.display(18))
+                                .lineLimit(1).minimumScaleFactor(0.7)
                         }.frame(maxWidth: .infinity)
                     }
                     .buttonStyle(InstrumentButtonStyle(main: true))

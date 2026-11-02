@@ -411,3 +411,18 @@
 "Purchases restored" = "Nákupy byly obnoveny";
 "No previous purchases found" = "Nebyly nalezeny žádné předchozí nákupy";
 "Restore failed. Please try again." = "Nákupy se nepodařilo obnovit. Zkus to znovu.";
+
+/* Ticket 34: Practice controls and lesson information. */
+"Static view" = "Statické zobrazení";
+"Pattern view" = "Zobrazení patternu";
+"Bars shown" = "Počet zobrazených taktů";
+"Next lesson" = "Další lekce";
+"No next lesson available" = "Žádná další lekce není k dispozici";
+"How to play" = "Jak hrát";
+"Tips" = "Tipy";
+"Stars" = "Hvězdy";
+"Play a steady groove at %lld BPM." = "Zahraj rovnoměrný rytmus při %lld BPM.";
+"Follow the pattern and keep the left and right hands steady." = "Hraj podle patternu a udržuj rovnoměrné údery levé i pravé ruky.";
+"Listen to the pattern first. Start slowly, then work towards the goal tempo." = "Nejdřív si pattern poslechni. Začni pomalu a postupně se přibližuj cílovému tempu.";
+"Start" = "Start";
+"Stop" = "Stop";
