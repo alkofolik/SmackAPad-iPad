@@ -108,6 +108,8 @@ public struct Lesson: Codable, Equatable, Identifiable, Sendable {
     public let hits8: [LessonHit]?
     public let eightNote: String?
     public let intro: IntroMetadata?
+    /// `free`, `full`, or `pack:<id>`. Missing metadata defaults to Full access.
+    public let access: String?
 
     public init(
         id: Int,
@@ -126,7 +128,8 @@ public struct Lesson: Codable, Equatable, Identifiable, Sendable {
         hits: [LessonHit],
         hits8: [LessonHit]? = nil,
         eightNote: String? = nil,
-        intro: IntroMetadata? = nil
+        intro: IntroMetadata? = nil,
+        access: String? = "full"
     ) {
         self.id = id
         self.cat = cat
@@ -145,6 +148,7 @@ public struct Lesson: Codable, Equatable, Identifiable, Sendable {
         self.hits8 = hits8
         self.eightNote = eightNote
         self.intro = intro
+        self.access = access
     }
 
     /// Returns the effective hits for the given controller pad count mode.

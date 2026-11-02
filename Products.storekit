@@ -1,0 +1,61 @@
+{
+  "identifier": "5A99AE1B-3232-4B9F-8F3A-3EF4D03C7932",
+  "nonRenewingSubscriptions": [],
+  "products": [
+    {
+      "displayPrice": "19.99",
+      "familyShareable": false,
+      "internalID": "32001",
+      "localizations": [
+        {
+          "description": "All lessons in the base library.",
+          "displayName": "Full unlock",
+          "locale": "en_US"
+        }
+      ],
+      "productID": "cz.kju.SmackAPad.full",
+      "referenceName": "Full unlock",
+      "type": "NonConsumable"
+    },
+    {
+      "displayPrice": "4.99",
+      "familyShareable": false,
+      "internalID": "32002",
+      "localizations": [
+        {
+          "description": "Placeholder for a future lesson pack. Hidden in the app.",
+          "displayName": "Example pack (test only)",
+          "locale": "en_US"
+        }
+      ],
+      "productID": "cz.kju.SmackAPad.pack.example",
+      "referenceName": "Example pack (test only)",
+      "type": "NonConsumable"
+    },
+    {
+      "displayPrice": "24.99",
+      "familyShareable": false,
+      "internalID": "32003",
+      "localizations": [
+        {
+          "description": "Full unlock and all lesson packs. Not offered in the app.",
+          "displayName": "Everything bundle (disabled)",
+          "locale": "en_US"
+        }
+      ],
+      "productID": "cz.kju.SmackAPad.bundle.all",
+      "referenceName": "Everything bundle (disabled)",
+      "type": "NonConsumable"
+    }
+  ],
+  "settings": {
+    "_failTransactionsEnabled": false,
+    "_locale": "en_US",
+    "_storefront": "USA"
+  },
+  "subscriptionGroups": [],
+  "version": {
+    "major": 3,
+    "minor": 0
+  }
+}

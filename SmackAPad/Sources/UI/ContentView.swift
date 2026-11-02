@@ -237,6 +237,7 @@ enum BluetoothMIDIPresenter {
 
 #Preview {
     SettingsView()
+        .environment(StoreManager.shared)
         .environment(SettingsManager.shared)
         .environment(MIDIInput(settings: .shared))
 }

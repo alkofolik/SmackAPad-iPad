@@ -384,3 +384,27 @@
 "Pads" = "Pady";
 "Pattern sound" = "Zvuk patternu";
 "Separate volume for metronome, pads and pattern playback." = "Samostatná hlasitost pro metronom, pady a zvuk patternu.";
+
+// In-app purchases
+"Access" = "Přístup";
+"Full" = "Plná verze";
+"Free" = "Zdarma";
+"Full unlock" = "Odemknout plnou verzi";
+"Owned" = "Zakoupeno";
+"Purchases" = "Nákupy";
+"Restore Purchases" = "Obnovit nákupy";
+"Unlock · %@" = "Odemknout · %@";
+"Loading purchases" = "Načítání nákupů";
+"Purchases are unavailable. Free lessons still work." = "Nákupy nejsou dostupné. Volné lekce fungují dál.";
+"Try again" = "Zkusit znovu";
+"Purchase required" = "Vyžaduje nákup";
+"%lld lessons" = "%lld lekcí";
+"One-time payment" = "Jednorázová platba";
+"No subscription" = "Bez předplatného";
+"Stage progress still follows your stars." = "Stupně se dál odemykají podle získaných hvězd.";
+"Purchase could not be verified. Please try again." = "Nákup se nepodařilo ověřit. Zkus to znovu.";
+"Purchase pending approval" = "Nákup čeká na schválení";
+"Purchase failed. Please try again." = "Nákup se nepodařil. Zkus to znovu.";
+"Purchases restored" = "Nákupy byly obnoveny";
+"No previous purchases found" = "Nebyly nalezeny žádné předchozí nákupy";
+"Restore failed. Please try again." = "Nákupy se nepodařilo obnovit. Zkus to znovu.";

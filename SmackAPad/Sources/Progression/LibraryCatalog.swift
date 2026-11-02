@@ -153,7 +153,8 @@ struct LibraryCatalog {
                       eightNote: lesson.eightNote,
                       intro: IntroMetadata(number: 21, stage: "Control and detail",
                                            goal: "Keep offbeat open hats steady over the kick.",
-                                           watch: "Keep the kick pulse steady even when the hats feel stronger."))
+                                           watch: "Keep the kick pulse steady even when the hats feel stronger."),
+                      access: lesson.access)
     }
 
     static func isExtension(_ lesson: Lesson) -> Bool { ["jersey", "footwork"].contains(lesson.cat) }

@@ -3,6 +3,7 @@ import SwiftUI
 /// Three projections of the same catalogue, sharing stage access and saved progress.
 @MainActor
 struct LibraryScreen: View {
+    @Environment(StoreManager.self) private var store
     @Environment(SettingsManager.self) private var settings
     @Environment(ProgressStore.self) private var progress
     @Environment(ProgressionManager.self) private var progression
@@ -22,6 +23,7 @@ struct LibraryScreen: View {
     @Environment(\.accessibilityReduceMotion) private var reduced
     private var motion: Theme.Motion.Policy { .init(reduced: reduced) }
     @State private var showingSettings = false
+    @State private var purchaseAccess: String?
     @State private var bannerPulse = 0
     @State private var columnVisibility: NavigationSplitViewVisibility = .all
 
@@ -40,7 +42,7 @@ struct LibraryScreen: View {
                 .navigationSplitViewColumnWidth(min: 280, ideal: 320, max: 380)
         } detail: {
             Group {
-                if showingIntro { IntroScreen { selectedLesson = $0 }.id("intro").transition(motion.transition) }
+                if showingIntro { IntroScreen { open($0) }.id("intro").transition(motion.transition) }
                 else if let group { detail(group).id(mode.id + group.id).transition(motion.transition) }
                 else { Text(settings.localized("No matching lessons")) }
             }
@@ -56,6 +58,9 @@ struct LibraryScreen: View {
         .font(Theme.control)
         .background(Theme.background).foregroundStyle(Theme.ink).tint(Theme.orange)
         .sheet(isPresented: $showingSettings) { SettingsView() }
+        .sheet(isPresented: Binding(get: { purchaseAccess != nil }, set: { if !$0 { purchaseAccess = nil } })) {
+            PurchaseSheet(access: purchaseAccess ?? "full")
+        }
         .environment(\.lessonNamespace, lessonNamespace)
         .environment(\.returnedStars, returnedStars)
         .environment(\.consumeReturnedStars, { id in
@@ -215,7 +220,7 @@ struct LibraryScreen: View {
                     progressLine(group.lessons)
                 }
                 .frame(width: 128)
-                Button(settings.localized("Play next")) { if let next { selectedLesson = next } }
+                Button(settings.localized("Play next")) { if let next { open(next) } }
                     .font(Theme.control).padding(.horizontal, Theme.Space.small)
                     .frame(minHeight: Theme.Size.touch)
                     .foregroundStyle(Theme.black).background(Theme.orange).disabled(next == nil)
@@ -233,9 +238,8 @@ struct LibraryScreen: View {
                     LibraryLessonRow(lesson: lesson, settings: settings, progress: progress,
                                      number: (group.lessons.firstIndex { $0.id == lesson.id } ?? 0) + 1,
                                      showTechnique: mode == .genre,
-                                     locked: !progression.isLessonOpen(lesson), isNext: lesson.id == nextID) {
-                        if progression.isLessonOpen(lesson) { selectedLesson = lesson }
-                        else { open(lesson) }
+                                     locked: !progression.isLessonOpen(lesson), purchaseLocked: !store.isUnlocked(lesson), isNext: lesson.id == nextID) {
+                        open(lesson)
                     }
                     .listRowInsets(EdgeInsets())
                     .listRowBackground(Theme.background)
@@ -342,6 +346,10 @@ struct LibraryScreen: View {
     }
 
     private func open(_ lesson: Lesson) {
+        guard store.isUnlocked(lesson) else {
+            purchaseAccess = lesson.access ?? "full"
+            return
+        }
         if progression.isLessonOpen(lesson) { selectedLesson = lesson; return }
         guard let stage = catalog.stage(for: lesson) else { return }
         settings.libraryView = LibraryViewMode.path.id
@@ -358,6 +366,7 @@ struct LibraryLessonRow: View {
     var number = 0
     var showTechnique = false
     var locked = false
+    var purchaseLocked = false
     var isNext = false
     var introGoal: String? = nil
     let onSelect: () -> Void
@@ -373,6 +382,7 @@ struct LibraryLessonRow: View {
         return "circle"
     }
     private var stateTitle: String {
+        if purchaseLocked { return "Purchase required" }
         if locked { return "Locked" }
         if isNext { return "Up next" }
         return LibraryStarFilter.classify(record).title
@@ -399,6 +409,14 @@ struct LibraryLessonRow: View {
                 }
             }
         } trailing: {
+            if purchaseLocked {
+                Button(action: onSelect) {
+                    Image(systemName: "lock.fill").font(Theme.meta).foregroundStyle(Theme.orange)
+                        .frame(minWidth: Theme.Size.touch, minHeight: Theme.Size.touch)
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel(settings.localized("Purchase required"))
+            }
             StarsView(record: record, lesson: lesson)
         }
         .lessonSource(lesson.id)

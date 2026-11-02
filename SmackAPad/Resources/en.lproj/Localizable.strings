@@ -384,3 +384,27 @@
 "Pads" = "Pads";
 "Pattern sound" = "Pattern sound";
 "Separate volume for metronome, pads and pattern playback." = "Separate volume for metronome, pads and pattern playback.";
+
+// In-app purchases
+"Access" = "Access";
+"Full" = "Full";
+"Free" = "Free";
+"Full unlock" = "Full unlock";
+"Owned" = "Owned";
+"Purchases" = "Purchases";
+"Restore Purchases" = "Restore Purchases";
+"Unlock · %@" = "Unlock · %@";
+"Loading purchases" = "Loading purchases";
+"Purchases are unavailable. Free lessons still work." = "Purchases are unavailable. Free lessons still work.";
+"Try again" = "Try again";
+"Purchase required" = "Purchase required";
+"%lld lessons" = "%lld lessons";
+"One-time payment" = "One-time payment";
+"No subscription" = "No subscription";
+"Stage progress still follows your stars." = "Stage progress still follows your stars.";
+"Purchase could not be verified. Please try again." = "Purchase could not be verified. Please try again.";
+"Purchase pending approval" = "Purchase pending approval";
+"Purchase failed. Please try again." = "Purchase failed. Please try again.";
+"Purchases restored" = "Purchases restored";
+"No previous purchases found" = "No previous purchases found";
+"Restore failed. Please try again." = "Restore failed. Please try again.";

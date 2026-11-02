@@ -44,6 +44,7 @@ enum IntroStage: String, CaseIterable, Identifiable {
 /// Always accessible without category unlocks; communicates stricter pass and mastery rules.
 @MainActor
 public struct IntroScreen: View {
+    @Environment(StoreManager.self) private var purchases
     @Environment(SettingsManager.self) private var settings
     @Environment(ProgressStore.self) private var progress
     @State private var store = LessonStore.shared
@@ -109,6 +110,7 @@ public struct IntroScreen: View {
     private func exerciseRow(_ lesson: Lesson) -> some View {
         LibraryLessonRow(lesson: lesson, settings: settings, progress: progress,
                          number: (introLessons.firstIndex { $0.id == lesson.id } ?? 0) + 1,
+                         purchaseLocked: !purchases.isUnlocked(lesson),
                          introGoal: (lesson.intro?.goal).map { settings.localized($0) }) {
             onSelect(lesson)
         }

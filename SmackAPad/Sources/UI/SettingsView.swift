@@ -31,6 +31,8 @@ public struct SettingsView: View {
         NavigationStack {
             Form {
                 Group {
+                    PurchasesSection()
+
                     // MARK: 1. Kit Selection
                     Section {
                         Picker(settings.localized("Sound kit"), selection: $settings.selectedKitId) {
