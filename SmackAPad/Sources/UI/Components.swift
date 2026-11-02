@@ -38,6 +38,7 @@ struct SectionHeader: View {
 /// The primary action and trailing controls are siblings, never nested buttons.
 struct ListRow<Meta: View, Trailing: View>: View {
     let symbol: String
+    var symbolTint: Color? = nil
     let stateTitle: String
     var number: Int? = nil
     let title: String
@@ -52,6 +53,7 @@ struct ListRow<Meta: View, Trailing: View>: View {
                 HStack(spacing: Theme.Space.small) {
                     RowStateSymbol(symbol: symbol)
                         .font(Theme.control).frame(width: 24)
+                        .foregroundStyle(symbolTint ?? (dimmed ? Theme.secondary : Theme.ink))
                         .accessibilityLabel(stateTitle)
                     if let number {
                         Text(number.formatted()).font(Theme.meta).frame(minWidth: 24)
@@ -81,17 +83,18 @@ struct FilterChip: View {
 
     var body: some View {
         Button(action: action) {
-            Text(title).font(Theme.control).lineLimit(1).fixedSize()
+            Text(title).font(Theme.meta).lineLimit(1).fixedSize()
                 .contentTransition(Theme.Motion.Policy(reduced: reduced).numeric)
                 .motion(value: title)
                 .padding(.horizontal, Theme.Space.small)
-                .frame(minHeight: Theme.Size.touch)
+                .frame(minHeight: 28)
                 .background(selected ? Theme.surface : Theme.background)
-                .overlay(alignment: .bottom) {
-                    if selected { Rectangle().fill(Theme.orange).frame(height: Theme.Size.border) }
-                }
+                .overlay(
+                    RoundedRectangle(cornerRadius: Theme.Size.blockRadius)
+                        .stroke(selected ? Theme.orange : Theme.secondary.opacity(0.35), lineWidth: 1)
+                )
         }
-        .buttonStyle(.plain).foregroundStyle(Theme.ink)
+        .buttonStyle(.plain).foregroundStyle(selected ? Theme.orange : Theme.ink)
         .accessibilityAddTraits(selected ? .isSelected : [])
         .motion(value: selected)
     }
@@ -144,32 +147,50 @@ struct StarsView: View {
         [record?.passed ?? false, record?.mastery ?? false, record?.memory ?? false]
     }
 
+    private var starCount: Int {
+        earned.filter { $0 }.count
+    }
+
     var body: some View {
-        if let lesson {
-            Button { showingRequirements.toggle() } label: {
-                stars.padding(.horizontal, Theme.Space.small)
-                    .frame(minHeight: Theme.Size.touch).contentShape(Rectangle())
-            }
-            .buttonStyle(.plain)
-            .accessibilityLabel(settings.localized("Lesson stars"))
-            .popover(isPresented: $showingRequirements, arrowEdge: .trailing) {
-                VStack(alignment: .leading, spacing: Theme.Space.regular) {
-                    SectionHeader(title: settings.localized("Lesson stars"))
-                    ForEach(0..<3, id: \.self) { index in
-                        HStack(spacing: Theme.Space.small) {
-                            star(index)
-                            Text(StarRequirement.requirementText(for: index, lesson: lesson,
-                                padCount: settings.activeProfile().padCount, settings: settings))
-                                .font(Theme.control).fixedSize(horizontal: false, vertical: true)
-                        }
-                        .accessibilityElement(children: .combine)
-                    }
+        HStack(spacing: Theme.Space.tight) {
+            if let lesson {
+                Button { showingRequirements.toggle() } label: {
+                    stars.padding(.horizontal, Theme.Space.tight)
+                        .frame(minHeight: Theme.Size.touch).contentShape(Rectangle())
                 }
-                .padding(Theme.Space.page).frame(maxWidth: 380)
-                .foregroundStyle(Theme.ink).background(Theme.background)
+                .buttonStyle(.plain)
+                .accessibilityLabel(settings.localized("Lesson stars"))
+
+                Button { showingRequirements.toggle() } label: {
+                    Image(systemName: "info.circle")
+                        .font(Theme.meta)
+                        .foregroundStyle(Theme.secondary)
+                        .frame(width: 28, height: Theme.Size.touch)
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel(settings.localized("Star requirements"))
+                .popover(isPresented: $showingRequirements, arrowEdge: .trailing) {
+                    VStack(alignment: .leading, spacing: Theme.Space.regular) {
+                        SectionHeader(title: settings.localized("Lesson stars"))
+                        ForEach(0..<3, id: \.self) { index in
+                            HStack(spacing: Theme.Space.small) {
+                                Image(systemName: earned[index] ? "star.fill" : "star")
+                                    .font(Theme.control).frame(width: 16, height: 24)
+                                    .foregroundStyle(earned[index] ? Theme.starColor(for: index + 1) : Theme.starColor(for: 0))
+                                Text(StarRequirement.requirementText(for: index, lesson: lesson,
+                                    padCount: settings.activeProfile().padCount, settings: settings))
+                                    .font(Theme.control).fixedSize(horizontal: false, vertical: true)
+                            }
+                            .accessibilityElement(children: .combine)
+                        }
+                    }
+                    .padding(Theme.Space.page).frame(maxWidth: 380)
+                    .foregroundStyle(Theme.ink).background(Theme.background)
+                }
+            } else {
+                stars
             }
-        } else {
-            stars
         }
     }
 
@@ -196,37 +217,56 @@ struct StarsView: View {
     }
 
     private func star(_ index: Int) -> some View {
-        Image(systemName: earned[index] ? "star.fill" : "star")
+        let isEarned = earned[index]
+        return Image(systemName: isEarned ? "star.fill" : "star")
             .font(Theme.control).frame(width: 16, height: 24)
-            .foregroundStyle(earned[index] ? Theme.orange : Theme.ink)
+            .foregroundStyle(isEarned ? Theme.starColor(for: starCount) : Theme.starColor(for: 0))
             .accessibilityLabel(settings.localized(["Passed", "Goal tempo", "From memory"][index]))
-            .accessibilityValue(settings.localized(earned[index] ? "On" : "Off"))
+            .accessibilityValue(settings.localized(isEarned ? "On" : "Off"))
     }
 }
 
 struct ProgressLine: View {
     @Environment(\.accessibilityReduceMotion) private var reduced
     @State private var appeared = false
-    let full: Int
-    var partial = 0
+    let threeStars: Int
+    let twoStars: Int
+    let oneStar: Int
     let total: Int
+
+    init(threeStars: Int, twoStars: Int = 0, oneStar: Int = 0, total: Int) {
+        self.threeStars = threeStars
+        self.twoStars = twoStars
+        self.oneStar = oneStar
+        self.total = total
+    }
+
+    init(full: Int, partial: Int = 0, total: Int) {
+        self.init(threeStars: full, twoStars: partial, oneStar: 0, total: total)
+    }
 
     var body: some View {
         GeometryReader { geometry in
+            let w = geometry.size.width
+            let t = CGFloat(max(1, total))
+            let factor = appeared || Theme.Motion.Policy(reduced: reduced).opacityOnly ? 1.0 : 0.0
             HStack(spacing: 0) {
-                Rectangle().fill(Theme.ink)
-                    .frame(width: geometry.size.width * CGFloat(appeared || Theme.Motion.Policy(reduced: reduced).opacityOnly ? full : 0) / CGFloat(max(1, total)))
-                Rectangle().fill(Theme.ink.opacity(0.35))
-                    .frame(width: geometry.size.width * CGFloat(appeared || Theme.Motion.Policy(reduced: reduced).opacityOnly ? partial : 0) / CGFloat(max(1, total)))
+                Rectangle().fill(Theme.starColor(for: 3))
+                    .frame(width: w * CGFloat(threeStars) / t * factor)
+                Rectangle().fill(Theme.starColor(for: 2))
+                    .frame(width: w * CGFloat(twoStars) / t * factor)
+                Rectangle().fill(Theme.starColor(for: 1))
+                    .frame(width: w * CGFloat(oneStar) / t * factor)
                 Spacer(minLength: 0)
             }
-            .background(Theme.surface)
+            .background(Theme.starColor(for: 0))
         }
         .frame(height: Theme.Size.border).accessibilityHidden(true)
         .onAppear { appeared = true }
         .motion(Theme.Motion.emphasis, value: appeared)
-        .motion(Theme.Motion.emphasis, value: full)
-        .motion(Theme.Motion.emphasis, value: partial)
+        .motion(Theme.Motion.emphasis, value: threeStars)
+        .motion(Theme.Motion.emphasis, value: twoStars)
+        .motion(Theme.Motion.emphasis, value: oneStar)
         .transaction { transaction in
             // Reduce Motion fades the completed line instead of interpolating its width.
             if Theme.Motion.Policy(reduced: reduced).opacityOnly { transaction.animation = nil }

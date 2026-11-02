@@ -107,7 +107,10 @@
 "Reload" = "Načíst znovu";
 "%lld / %lld PASSED" = "%lld / %lld SPLNĚNO";
 "No matching lessons" = "Žádné odpovídající lekce";
-"Clear filters" = "Zrušit filtry";
+"Clear filters" = "Vymazat";
+"Overall progress" = "Celkový postup";
+"Star requirements" = "Podmínky pro hvězdy";
+"%lld of %lld stars" = "%lld z %lld hvězd";
 "Search lessons..." = "Hledat v lekcích...";
 "Category is locked" = "Kategorie je uzamčená";
 "Tap to unlock immediately and practice." = "Klepni pro okamžité odemčení a trénink.";

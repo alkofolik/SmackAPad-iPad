@@ -17,9 +17,9 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
-		7C0000000000000000000032 /* Products.storekit */ = {isa = PBXFileReference; lastKnownFileType = text; path = Products.storekit; sourceTree = "<group>"; };
 		7C0000000000000000000004 /* SmackAPad.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = SmackAPad.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		7C0000000000000000000005 /* SmackAPadTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = SmackAPadTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		7C0000000000000000000032 /* Products.storekit */ = {isa = PBXFileReference; lastKnownFileType = text; path = Products.storekit; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */

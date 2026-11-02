@@ -107,7 +107,10 @@
 "Reload" = "Reload";
 "%lld / %lld PASSED" = "%lld / %lld PASSED";
 "No matching lessons" = "No matching lessons";
-"Clear filters" = "Clear filters";
+"Clear filters" = "Clear";
+"Overall progress" = "Overall progress";
+"Star requirements" = "Star requirements";
+"%lld of %lld stars" = "%lld of %lld stars";
 "Search lessons..." = "Search lessons...";
 "Category is locked" = "Category is locked";
 "Tap to unlock immediately and practice." = "Tap to unlock immediately and practice.";

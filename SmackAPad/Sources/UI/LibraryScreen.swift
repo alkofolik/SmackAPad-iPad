@@ -95,12 +95,41 @@ struct LibraryScreen: View {
 
     private var introLessons: [Lesson] { catalog.introLessons }
 
+    private var overallCourseProgress: some View {
+        let allLessons = catalog.path
+        let three = allLessons.filter { LibraryStarFilter.stars(progress.progress(for: $0.id)) == 3 }.count
+        let two = allLessons.filter { LibraryStarFilter.stars(progress.progress(for: $0.id)) == 2 }.count
+        let one = allLessons.filter { LibraryStarFilter.stars(progress.progress(for: $0.id)) == 1 }.count
+        let earnedStars = three * 3 + two * 2 + one
+        let maxStars = allLessons.count * 3
+
+        return VStack(alignment: .leading, spacing: Theme.Space.tight) {
+            HStack(spacing: Theme.Space.small) {
+                Text(settings.localized("Overall progress")).font(Theme.meta).foregroundStyle(Theme.secondary)
+                Spacer(minLength: 0)
+                HStack(spacing: 2) {
+                    Image(systemName: "star.fill").font(Theme.meta).foregroundStyle(Theme.orange)
+                    Text("\(earnedStars)/\(maxStars)").font(Theme.meta).bold()
+                }
+            }
+            HStack(spacing: Theme.Space.small) {
+                ProgressLine(threeStars: three, twoStars: two, oneStar: one, total: allLessons.count)
+                Text(settings.localized("%lld lessons", allLessons.count))
+                    .font(Theme.meta).foregroundStyle(Theme.secondary).fixedSize()
+            }
+        }
+        .padding(.vertical, Theme.Space.tight)
+    }
+
     private var sidebar: some View {
         List {
             Section {
+                overallCourseProgress
+            }
+            Section {
                 Button { showingIntro = true } label: {
                     VStack(alignment: .leading, spacing: 0) {
-                        sidebarLabel(settings.localized("Intro exercises"), lessons: introLessons)
+                        sidebarLabel(settings.localized("Intro exercises"), lessons: introLessons, isCategory: true)
                         Text(settings.localized("%lld exercises · always open", introLessons.count))
                             .font(Theme.meta).foregroundStyle(Theme.secondary).lineLimit(1)
                     }
@@ -126,7 +155,8 @@ struct LibraryScreen: View {
                                     .rotationEffect(motion.angle(expandedLevels.contains(level) ? 90 : 0))
                                     .font(Theme.meta).frame(width: 16)
                                 sidebarLabel(settings.localized("Level %lld", level),
-                                             lessons: catalog.path.filter { $0.level == level })
+                                             lessons: catalog.path.filter { $0.level == level },
+                                             isCategory: true)
                             }
                         }
                         .buttonStyle(.plain)
@@ -134,7 +164,15 @@ struct LibraryScreen: View {
                         .listRowBackground(Theme.background)
                         if expandedLevels.contains(level) {
                             ForEach(groups.filter { $0.stage?.level == level }) { item in
-                                sidebarRow(item).padding(.leading, Theme.Space.regular)
+                                HStack(spacing: 0) {
+                                    Rectangle()
+                                        .fill(Theme.secondary.opacity(0.35))
+                                        .frame(width: 2)
+                                        .padding(.leading, 7)
+                                        .padding(.trailing, Theme.Space.small)
+                                    sidebarRow(item)
+                                }
+                                .padding(.leading, Theme.Space.small)
                             }
                         }
                     }
@@ -168,7 +206,7 @@ struct LibraryScreen: View {
         } label: {
             HStack(spacing: Theme.Space.small) {
                 AnimatedLock(locked: locked).font(Theme.meta)
-                sidebarLabel(settings.localized(item.title), lessons: item.lessons)
+                sidebarLabel(settings.localized(item.title), lessons: item.lessons, isCategory: false)
             }
             .foregroundStyle(selected ? Theme.orange : Theme.ink)
             .contentShape(Rectangle())
@@ -177,29 +215,38 @@ struct LibraryScreen: View {
         .accessibilityAddTraits(selected ? .isSelected : [])
     }
 
-    private func sidebarLabel(_ title: String, lessons: [Lesson]) -> some View {
-        VStack(alignment: .leading, spacing: Theme.Space.small) {
+    private func sidebarLabel(_ title: String, lessons: [Lesson], isCategory: Bool = false) -> some View {
+        let three = lessons.filter { LibraryStarFilter.stars(progress.progress(for: $0.id)) == 3 }.count
+        let two = lessons.filter { LibraryStarFilter.stars(progress.progress(for: $0.id)) == 2 }.count
+        let one = lessons.filter { LibraryStarFilter.stars(progress.progress(for: $0.id)) == 1 }.count
+        let earnedStars = three * 3 + two * 2 + one
+        let maxStars = lessons.count * 3
+
+        return VStack(alignment: .leading, spacing: Theme.Space.tight) {
             HStack(spacing: Theme.Space.small) {
-                Text(title).font(Theme.rowTitle).lineLimit(1)
+                Text(title)
+                    .font(isCategory ? Theme.rowTitle : Theme.control)
+                    .fontWeight(isCategory ? .heavy : .regular)
+                    .lineLimit(1)
                 Spacer(minLength: 0)
-                Text("\(lessons.filter { progress.isPassed(lessonId: $0.id) }.count)/\(lessons.count)")
-                    .font(Theme.meta).fixedSize().accessibilityLabel(passedText(lessons))
+                HStack(spacing: 2) {
+                    Image(systemName: "star.fill").font(Theme.meta)
+                        .foregroundStyle(earnedStars > 0 ? Theme.orange : Theme.secondary)
+                    Text("\(earnedStars)/\(maxStars)")
+                        .font(Theme.meta).fixedSize()
+                }
+                .accessibilityLabel(settings.localized("%lld of %lld stars", earnedStars, maxStars))
             }
             progressLine(lessons)
         }
-        .frame(minHeight: Theme.Size.touch)
-    }
-
-    private func passedText(_ lessons: [Lesson]) -> String {
-        let passed = lessons.filter { progress.isPassed(lessonId: $0.id) }.count
-        return settings.localized("%lld/%lld passed", passed, lessons.count)
+        .frame(minHeight: isCategory ? Theme.Size.touch : 40)
     }
 
     private func progressLine(_ lessons: [Lesson]) -> some View {
-        ProgressLine(
-            full: lessons.filter { LibraryStarFilter.stars(progress.progress(for: $0.id)) == 3 }.count,
-            partial: lessons.filter { (1...2).contains(LibraryStarFilter.stars(progress.progress(for: $0.id))) }.count,
-            total: lessons.count)
+        let three = lessons.filter { LibraryStarFilter.stars(progress.progress(for: $0.id)) == 3 }.count
+        let two = lessons.filter { LibraryStarFilter.stars(progress.progress(for: $0.id)) == 2 }.count
+        let one = lessons.filter { LibraryStarFilter.stars(progress.progress(for: $0.id)) == 1 }.count
+        return ProgressLine(threeStars: three, twoStars: two, oneStar: one, total: lessons.count)
     }
 
     private func detail(_ group: LibraryGroup) -> some View {
@@ -212,14 +259,11 @@ struct LibraryScreen: View {
                     try? lessonStore.reload()
                 }
             }
+            filters(matching: matching)
             ScreenHeader(title: group.stage.map {
                 settings.localized("Level %lld · %@", $0.level, settings.localized(group.title))
             } ?? settings.localized(group.title)) {
-                VStack(alignment: .leading, spacing: Theme.Space.small) {
-                    Text(passedText(group.lessons)).font(Theme.meta).lineLimit(1)
-                    progressLine(group.lessons)
-                }
-                .frame(width: 128)
+                courseProgressIndicator(group: group, shown: filtered.count, total: group.lessons.count)
                 Button(settings.localized("Play next")) { if let next { open(next) } }
                     .font(Theme.control).padding(.horizontal, Theme.Space.small)
                     .frame(minHeight: Theme.Size.touch)
@@ -228,7 +272,6 @@ struct LibraryScreen: View {
             if let stage = group.stage, !progression.isStageOpen(stage) || progression.canRelockStage(stage) {
                 stageBanner(stage).id("stage-lock").transition(motion.transition)
             }
-            filters(matching: matching, shown: filtered.count, total: group.lessons.count)
             List {
                 if filtered.isEmpty {
                     Text(settings.localized("No matching lessons")).font(Theme.control)
@@ -254,15 +297,45 @@ struct LibraryScreen: View {
         .motion(Theme.Motion.standard, value: group.stage.map { progression.isStageOpen($0) })
     }
 
+    private func courseProgressIndicator(group: LibraryGroup, shown: Int, total: Int) -> some View {
+        let three = group.lessons.filter { LibraryStarFilter.stars(progress.progress(for: $0.id)) == 3 }.count
+        let two = group.lessons.filter { LibraryStarFilter.stars(progress.progress(for: $0.id)) == 2 }.count
+        let one = group.lessons.filter { LibraryStarFilter.stars(progress.progress(for: $0.id)) == 1 }.count
+        let earnedStars = three * 3 + two * 2 + one
+        let maxStars = total * 3
 
-    private func filters(matching: [Lesson], shown: Int, total: Int) -> some View {
+        return VStack(alignment: .leading, spacing: Theme.Space.tight) {
+            HStack(spacing: Theme.Space.small) {
+                HStack(spacing: 2) {
+                    Image(systemName: "star.fill").font(Theme.meta).foregroundStyle(Theme.orange)
+                    Text("\(earnedStars)/\(maxStars)").font(Theme.meta).bold()
+                }
+                Spacer(minLength: 4)
+                Text(shown == total ? settings.localized("%lld lessons", total) : settings.localized("%lld of %lld lessons", shown, total))
+                    .font(Theme.meta).foregroundStyle(Theme.secondary).lineLimit(1)
+                    .contentTransition(motion.numeric).motion(value: shown)
+            }
+            progressLine(group.lessons)
+        }
+        .frame(minWidth: 140, idealWidth: 170, maxWidth: 200)
+    }
+
+    private func filters(matching: [Lesson]) -> some View {
         HStack(spacing: Theme.Space.small) {
-            TextField(settings.localized("Title, genre…"), text: $query)
-                .textFieldStyle(.plain).font(Theme.control)
-                .padding(.horizontal, Theme.Space.small)
-                .frame(minWidth: 112, idealWidth: 160, maxWidth: 200, minHeight: Theme.Size.touch)
-                .background(Theme.surface)
-                .accessibilityLabel(settings.localized("Search lessons..."))
+            HStack(spacing: Theme.Space.tight) {
+                Image(systemName: "magnifyingglass").font(Theme.meta).foregroundStyle(Theme.secondary)
+                TextField(settings.localized("Title, genre…"), text: $query)
+                    .textFieldStyle(.plain).font(Theme.meta)
+            }
+            .padding(.horizontal, Theme.Space.small)
+            .frame(minWidth: 100, idealWidth: 140, maxWidth: 170, minHeight: 28)
+            .background(Theme.surface)
+            .overlay(
+                RoundedRectangle(cornerRadius: Theme.Size.blockRadius)
+                    .stroke(Theme.secondary.opacity(0.35), lineWidth: 1)
+            )
+            .accessibilityLabel(settings.localized("Search lessons..."))
+
             Menu {
                 Picker(settings.localized(mode == .genre ? "Technique" : "Genre"), selection: $cross) {
                     Text(settings.localized("All")).tag("")
@@ -273,39 +346,52 @@ struct LibraryScreen: View {
                     }
                 }
             } label: {
-                Label(settings.localized(mode == .genre ? "Technique" : "Genre"), systemImage: cross.isEmpty ? "line.3.horizontal.decrease" : "line.3.horizontal.decrease.circle.fill")
-                    .font(Theme.control).lineLimit(1).frame(minHeight: Theme.Size.touch)
+                HStack(spacing: Theme.Space.tight) {
+                    Image(systemName: cross.isEmpty ? "line.3.horizontal.decrease" : "line.3.horizontal.decrease.circle.fill")
+                    Text(crossTitle)
+                }
+                .font(Theme.meta).lineLimit(1)
+                .padding(.horizontal, Theme.Space.small)
+                .frame(minHeight: 28)
+                .background(cross.isEmpty ? Theme.background : Theme.surface)
+                .overlay(
+                    RoundedRectangle(cornerRadius: Theme.Size.blockRadius)
+                        .stroke(cross.isEmpty ? Theme.secondary.opacity(0.35) : Theme.orange, lineWidth: 1)
+                )
             }
             .accessibilityValue(crossTitle)
-            ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: Theme.Space.small) {
-                    ForEach(LibraryStarFilter.allCases) { filter in
-                        let count = matching.filter { LibraryStarFilter.classify(progress.progress(for: $0.id)) == filter }.count
-                        let selected = settings.libraryStarFilters.contains(filter.id)
-                        FilterChip(title: "\(settings.localized(filter.title)) (\(count))", selected: selected) {
-                            if selected { settings.libraryStarFilters.removeAll { $0 == filter.id } }
-                            else { settings.libraryStarFilters.append(filter.id) }
-                        }
-                    }
+
+            ForEach(LibraryStarFilter.allCases) { filter in
+                let count = matching.filter { LibraryStarFilter.classify(progress.progress(for: $0.id)) == filter }.count
+                let selected = settings.libraryStarFilters.contains(filter.id)
+                FilterChip(title: "\(settings.localized(filter.title)) (\(count))", selected: selected) {
+                    if selected { settings.libraryStarFilters.removeAll { $0 == filter.id } }
+                    else { settings.libraryStarFilters.append(filter.id) }
                 }
             }
-            .frame(minWidth: 80)
-            Text(settings.localized("%lld of %lld lessons", shown, total)).font(Theme.meta).lineLimit(1)
-                .fixedSize().contentTransition(motion.numeric).motion(value: shown)
-                .accessibilityLabel(settings.localized("%lld of %lld lessons", shown, total))
+
+            Spacer(minLength: 0)
+
             Button {
                 query = ""; cross = ""
                 settings.libraryStarFilters = LibraryStarFilter.allCases.map(\.id)
             } label: {
-                ViewThatFits(in: .horizontal) {
-                    Text(settings.localized("Clear filters")).font(Theme.control).fixedSize()
-                    Image(systemName: "xmark.circle").font(Theme.control)
+                HStack(spacing: Theme.Space.tight) {
+                    Image(systemName: "xmark").font(Theme.meta)
+                    Text(settings.localized("Clear filters")).font(Theme.meta).fixedSize()
                 }
-                .frame(minWidth: Theme.Size.touch, minHeight: Theme.Size.touch)
+                .padding(.horizontal, Theme.Space.small)
+                .frame(minHeight: 28)
+                .background(Theme.surface)
+                .overlay(
+                    RoundedRectangle(cornerRadius: Theme.Size.blockRadius)
+                        .stroke(Theme.secondary.opacity(0.4), lineWidth: 1)
+                )
             }
+            .buttonStyle(.plain)
             .accessibilityLabel(settings.localized("Clear filters"))
         }
-        .frame(height: Theme.Size.touch)
+        .frame(minHeight: 32)
     }
 
     private var crossTitle: String {
@@ -389,7 +475,8 @@ struct LibraryLessonRow: View {
     }
 
     var body: some View {
-        ListRow(symbol: symbol, stateTitle: settings.localized(stateTitle),
+        ListRow(symbol: symbol, symbolTint: stars > 0 ? Theme.starColor(for: stars) : nil,
+                stateTitle: settings.localized(stateTitle),
                 number: number > 0 ? number : nil, title: settings.localized(lesson.title),
                 dimmed: locked, action: onSelect) {
             if let introGoal {
