@@ -171,6 +171,150 @@ struct TransportControls: View {
     }
 }
 
+/// Full-width pass position. Ticks mark every bar, including the two ends.
+struct RunProgressLine: View {
+    @Environment(SettingsManager.self) private var settings
+    let position: Double
+    let bars: Int
+
+    var body: some View {
+        let count = max(1, bars)
+        let fraction = min(1, max(0, position / Double(count * 16)))
+        Canvas { context, size in
+            let y = size.height / 2
+            context.fill(Path(CGRect(x: 0, y: y - 1, width: size.width, height: 2)),
+                         with: .color(Theme.secondary.opacity(0.3)))
+            context.fill(Path(CGRect(x: 0, y: y - 1, width: size.width * fraction, height: 2)),
+                         with: .color(Theme.orange))
+            for bar in 0...count {
+                let x = min(size.width - 1, max(1, size.width * Double(bar) / Double(count)))
+                context.fill(Path(CGRect(x: x - 1, y: y - 4, width: 2, height: 8)),
+                             with: .color(Theme.secondary))
+            }
+        }
+        .frame(height: 10)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(settings.localized("Position in the current pass"))
+        .accessibilityValue(settings.localized("Bar %lld / %lld, %lld percent",
+            min(count, Int(position) / 16 + 1), count, Int(fraction * 100)))
+    }
+}
+
+struct HitTimingBar: View {
+    @Environment(SettingsManager.self) private var settings
+    let history: TimingHistory
+    let windows: (maximum: Double, good: Double)
+    let active: Bool
+
+    private var tendencyText: String {
+        switch history.tendency {
+        case .early(let ms): return settings.localized("Early %lld ms", ms)
+        case .late(let ms): return settings.localized("Late %lld ms", ms)
+        case .centred: return settings.localized("Centred")
+        case nil: return "—"
+        }
+    }
+
+    var body: some View {
+        HStack(spacing: Theme.Space.regular) {
+            VStack(spacing: Theme.Space.tight) {
+                HStack {
+                    Text(settings.localized("Early"))
+                    Spacer()
+                    Text(settings.localized("On time"))
+                    Spacer()
+                    Text(settings.localized("Late"))
+                }
+                .font(Theme.meta).foregroundStyle(Theme.secondary)
+                TimelineView(.animation(minimumInterval: 1.0 / 30, paused: !active)) { timeline in
+                    Canvas { context, size in
+                        let y = size.height / 2
+                        let goodFraction = windows.good / windows.maximum
+                        context.fill(Path(CGRect(x: 0, y: y - 2, width: size.width, height: 4)),
+                                     with: .color(Theme.secondary.opacity(0.35)))
+                        context.fill(Path(CGRect(x: size.width * (1 - goodFraction) / 2, y: y - 2,
+                                                 width: size.width * goodFraction, height: 4)),
+                                     with: .color(Theme.orange))
+                        let samples = Array(history.samples.suffix(7))
+                        for (index, sample) in samples.enumerated() {
+                            let latest = index == samples.count - 1
+                            let age = max(0, timeline.date.timeIntervalSince(sample.date))
+                            let opacity = latest ? 1 : max(0, 1 - age / 4) * Double(index + 1) / Double(samples.count)
+                            let x = 1 + (size.width - 2) * (sample.normalized + 1) / 2
+                            context.fill(Path(CGRect(x: x - 1, y: y - 7, width: 2, height: 14)),
+                                         with: .color((sample.isGood ? Theme.orange : Theme.secondary).opacity(opacity)))
+                        }
+                    }
+                    .frame(height: 16)
+                }
+            }
+            Text(tendencyText).font(Theme.meta).monospacedDigit()
+                .lineLimit(1).minimumScaleFactor(0.85)
+                .frame(width: 176, alignment: .trailing)
+        }
+        .frame(height: 40)
+        .opacity(active ? 1 : 0)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(settings.localized("Hit timing"))
+        .accessibilityValue(tendencyText)
+        .accessibilityHidden(!active)
+        .transaction { $0.animation = nil }
+    }
+}
+
+/// The most recent 32 matched strikes, chronological from left to right.
+struct HitTimingPlot: View {
+    @Environment(SettingsManager.self) private var settings
+    let history: TimingHistory
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: Theme.Space.small) {
+            Text(settings.localized("Last 32 hits")).font(Theme.control)
+            if history.samples.isEmpty {
+                Text(settings.localized("No matched hits to show.")).font(Theme.meta)
+            } else {
+                HStack(spacing: Theme.Space.small) {
+                    VStack {
+                        Text(settings.localized("Early"))
+                        Spacer()
+                        Text(settings.localized("On time"))
+                        Spacer()
+                        Text(settings.localized("Late"))
+                    }
+                    .font(Theme.meta).foregroundStyle(Theme.secondary)
+                    Canvas { context, size in
+                        let inset = 4.0
+                        let height = max(1, size.height - inset * 2)
+                        let width = max(1, size.width - inset * 2)
+                        let good = history.samples.last.map { $0.goodMilliseconds / $0.maximumMilliseconds } ?? 0
+                        context.fill(Path(CGRect(x: 0, y: inset + height * (1 - good) / 2,
+                                                 width: size.width, height: height * good)),
+                                     with: .color(Theme.orange.opacity(0.12)))
+                        context.fill(Path(CGRect(x: 0, y: size.height / 2, width: size.width, height: 1)),
+                                     with: .color(Theme.secondary.opacity(0.4)))
+                        for (index, sample) in history.samples.enumerated() {
+                            let x = inset + width * Double(index) / 31
+                            let y = inset + height * (sample.normalized + 1) / 2
+                            context.fill(Path(ellipseIn: CGRect(x: x - 3, y: y - 3, width: 6, height: 6)),
+                                         with: .color(sample.isGood ? Theme.orange : Theme.secondary))
+                        }
+                    }
+                }
+                .frame(height: 140)
+                .accessibilityElement(children: .ignore)
+                .accessibilityLabel(settings.localized("Last 32 hits"))
+                .accessibilityValue(history.samples.map { sample in
+                    sample.errorMilliseconds < 0
+                        ? settings.localized("Early %lld ms", Int(abs(sample.errorMilliseconds).rounded()))
+                        : settings.localized("Late %lld ms", Int(sample.errorMilliseconds.rounded()))
+                }.joined(separator: ", "))
+                Text(settings.localized("Orange: within the good window. Grey: outside it."))
+                    .font(Theme.meta).foregroundStyle(Theme.secondary)
+            }
+        }
+    }
+}
+
 struct RunSummary: Identifiable {
     let id = UUID()
     let score: Double
@@ -222,7 +366,7 @@ struct SummaryStrip: View {
                     .font(Theme.meta)
                     .foregroundStyle(Theme.ink)
             }
-            Text(settings.localized("Last completed pass"))
+            Text(settings.localized(summary.passes > 0 ? "Last completed pass" : "This run"))
                 .font(Theme.meta).foregroundStyle(Theme.secondary)
         }
         .task(id: summary.id) {

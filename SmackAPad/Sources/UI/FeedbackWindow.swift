@@ -1,3 +1,43 @@
+import Foundation
+
+/// Bounded presentation history; signed deviations come directly from scoring.
+struct TimingHistory {
+    struct Sample {
+        let errorMilliseconds: Double
+        let maximumMilliseconds: Double
+        let goodMilliseconds: Double
+        let date: Date
+
+        var isGood: Bool { abs(errorMilliseconds) <= goodMilliseconds }
+        var normalized: Double { min(1, max(-1, errorMilliseconds / maximumMilliseconds)) }
+    }
+
+    enum Tendency: Equatable {
+        case early(Int), late(Int), centred
+    }
+
+    private(set) var samples: [Sample] = []
+
+    mutating func record(errorMilliseconds: Double, maximumMilliseconds: Double,
+                         goodMilliseconds: Double, date: Date = Date()) {
+        samples.append(Sample(errorMilliseconds: errorMilliseconds,
+                              maximumMilliseconds: maximumMilliseconds,
+                              goodMilliseconds: goodMilliseconds, date: date))
+        if samples.count > 32 { samples.removeFirst(samples.count - 32) }
+    }
+
+    var tendency: Tendency? {
+        let sorted = samples.suffix(8).map(\.errorMilliseconds).sorted()
+        guard !sorted.isEmpty else { return nil }
+        let middle = sorted.count / 2
+        let median = sorted.count.isMultiple(of: 2)
+            ? (sorted[middle - 1] + sorted[middle]) / 2 : sorted[middle]
+        if abs(median) < 8 { return .centred }
+        let milliseconds = Int(abs(median).rounded())
+        return median < 0 ? .early(milliseconds) : .late(milliseconds)
+    }
+}
+
 /// Presentation policy shared by expected notes and played hits in both pattern views.
 /// Pass identity is preserved even when the same note appears in adjacent repeats.
 enum FeedbackWindow {

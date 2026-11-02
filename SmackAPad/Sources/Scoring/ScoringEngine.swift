@@ -56,6 +56,10 @@ public struct ScoringEngine: Sendable {
     private var perfectOrGoodHitCount = 0
     private var extraHitCount = 0
 
+    /// Read-only presentation scales, derived from the actual scoring windows.
+    public var maximumTimingMilliseconds: Double { maximumNanoseconds / 1_000_000 }
+    public var goodTimingMilliseconds: Double { goodNanoseconds / 1_000_000 }
+
     public init(
         lesson: Lesson, bpm: Int, startTimestamp: UInt64, padCount: Int = 16,
         calibrationOffsetMilliseconds: Double = 0, bpmStep: BpmStep = .defaultStep

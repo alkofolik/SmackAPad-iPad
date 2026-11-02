@@ -426,3 +426,19 @@
 "Listen to the pattern first. Start slowly, then work towards the goal tempo." = "Nejdřív si pattern poslechni. Začni pomalu a postupně se přibližuj cílovému tempu.";
 "Start" = "Start";
 "Stop" = "Stop";
+
+// Practice indicators (ticket 35).
+"This run" = "Tento běh";
+"Best: %@" = "Nejlepší: %@";
+"Accuracy" = "Přesnost";
+"Early" = "Předbíháš";
+"On time" = "Přesně";
+"Late" = "Zaostáváš";
+"Early %lld ms" = "Předbíháš o %lld ms";
+"Late %lld ms" = "Zaostáváš o %lld ms";
+"Centred" = "Vyrovnaně";
+"Hit timing" = "Načasování úderů";
+"Last 32 hits" = "Posledních 32 úderů";
+"No matched hits to show." = "Zatím žádné přiřazené údery.";
+"Orange: within the good window. Grey: outside it." = "Oranžová: v dobrém časovém rozmezí. Šedá: mimo něj.";
+"Run stopped before the first pass finished." = "Běh skončil před dokončením prvního průchodu.";

@@ -37,6 +37,11 @@ struct PracticeScreen: View {
                 status(compact: compact)
                 TimelineView(.animation(minimumInterval: 1.0 / 60, paused: !session.running)) { _ in
                     let frame = session.patternFrame
+                    RunProgressLine(position: frame.position, bars: session.practiceLesson.bars)
+                }
+                .padding(.horizontal, -Theme.Space.page)
+                TimelineView(.animation(minimumInterval: 1.0 / 60, paused: !session.running)) { _ in
+                    let frame = session.patternFrame
                     PatternField(lesson: session.practiceLesson, hits: session.patternHits,
                                  position: frame.position, tapePosition: frame.tapePosition,
                                  running: session.running && session.countdown == nil,
@@ -61,6 +66,9 @@ struct PracticeScreen: View {
                             .padding(Theme.Space.regular)
                     }
                 }
+                // Reserve this lane before START as well, keeping the field and readout fixed.
+                HitTimingBar(history: session.timingHistory, windows: session.timingWindows,
+                             active: session.running && !session.listen && session.countdown == nil)
                 footer(compact: compact)
                     .motion(Theme.Motion.emphasis, value: session.summary?.id)
                 if let error = session.errorMessage {
@@ -209,8 +217,8 @@ struct PracticeScreen: View {
     }
 
     private func status(compact: Bool) -> some View {
-        VStack(alignment: .leading, spacing: Theme.Space.small) {
-            HStack(spacing: Theme.Space.regular) {
+        HStack(spacing: Theme.Space.regular) {
+            VStack(alignment: .leading, spacing: Theme.Space.tight) {
                 Button { showingTempo.toggle() } label: {
                     Text("\(session.bpm) → \(session.lesson.targetBpm) BPM").font(Theme.control)
                         .contentTransition(motion.numeric).motion(value: session.bpm)
@@ -221,56 +229,52 @@ struct PracticeScreen: View {
                 .popover(isPresented: $showingTempo) {
                     tempoControls.padding(Theme.Space.page).background(Theme.background)
                 }
-                // The slot includes room for the pulse. It stays reserved throughout a run.
-                if session.running {
-                    ZStack {
-                        Color.clear
-                        if session.countdown == nil, let event = session.tempoUpEvent {
-                            TempoUpBanner(event: event,
-                                          label: settings.localized("Tempo up: %lld → %lld BPM", event.from, event.to),
-                                          announcement: settings.localized("Tempo %lld", event.to))
-                                .id(event.id)
-                                .frame(width: 220)
-                        }
+                ZStack(alignment: .leading) {
+                    Color.clear
+                    if session.running, session.countdown == nil, let event = session.tempoUpEvent {
+                        TempoUpBanner(event: event,
+                                      label: settings.localized("Tempo up: %lld → %lld BPM", event.from, event.to),
+                                      announcement: settings.localized("Tempo %lld", event.to))
+                            .id(event.id)
                     }
-                    .frame(width: 240, height: Theme.Size.touch)
                 }
-                Text(session.listen ? "— %" : session.lastResult.map { "\(Int(($0.score * 100).rounded())) %" } ?? "— %")
-                    .font(Theme.control).fixedSize()
-                    .accessibilityLabel(settings.localized("Score"))
-                Spacer(minLength: 0)
-                if !compact { handLegend }
+                .frame(width: 240, height: 24)
             }
-            HStack(spacing: Theme.Space.regular) {
-                TimelineView(.animation(minimumInterval: 1.0 / 60, paused: !session.running)) { _ in
-                    let total = max(16, session.practiceLesson.bars * 16)
-                    let position = session.patternFrame.position
-                    VStack(alignment: .leading, spacing: Theme.Space.tight) {
-                        Text(settings.localized("Bar %lld / %lld", min(session.practiceLesson.bars, Int(position) / 16 + 1),
-                                                session.practiceLesson.bars))
-                            .font(Theme.meta)
-                        ProgressView(value: position / Double(total))
-                            .tint(Theme.ink)
-                            .accessibilityLabel(settings.localized("Position in the current pass"))
-                    }
-                    .frame(width: 160)
-                    .accessibilityElement(children: .ignore)
-                    .accessibilityLabel(settings.localized("Position in the current pass"))
-                    .accessibilityValue(settings.localized("Bar %lld / %lld, %lld percent",
-                        min(session.practiceLesson.bars, Int(position) / 16 + 1), session.practiceLesson.bars,
-                        Int(position / Double(total) * 100)))
-                }
-                if let progress = session.starRunProgress {
-                    Text(settings.localized("%lld / %lld", progress.count, progress.required))
+            if let progress = session.starRunProgress {
+                Text(settings.localized("%lld / %lld", progress.count, progress.required))
+                    .font(Theme.meta).foregroundStyle(Theme.secondary)
+                    .accessibilityLabel(settings.localized("Consecutive passes for %@", settings.localized(progress.name)))
+                    .accessibilityValue(settings.localized("%lld / %lld", progress.count, progress.required))
+            }
+            Spacer(minLength: 0)
+            if !compact { handLegend }
+            TimelineView(.animation(minimumInterval: 0.1, paused: !session.running)) { _ in
+                VStack(alignment: .trailing, spacing: Theme.Space.tight) {
+                    Text(settings.localized("This run")).font(Theme.control)
+                        .opacity(session.running && !session.listen ? 1 : 0)
+                    Text(session.currentRunAccuracy.map { "\(Int(($0 * 100).rounded())) %" } ?? "— %")
+                        .font(Theme.display(32)).monospacedDigit()
+                        .opacity(session.running && !session.listen ? 1 : 0)
+                    Text(settings.localized("Best: %@", session.savedProgress.map {
+                        "\(Int(($0.bestScore * 100).rounded())) %"
+                    } ?? "— %"))
                         .font(Theme.meta).foregroundStyle(Theme.secondary)
-                        .accessibilityLabel(settings.localized("Consecutive passes for %@", settings.localized(progress.name)))
-                        .accessibilityValue(settings.localized("%lld / %lld", progress.count, progress.required))
                 }
-                Spacer(minLength: 0)
+                .frame(width: 176, alignment: .trailing)
+                .accessibilityElement(children: .ignore)
+                .accessibilityLabel(settings.localized("Accuracy"))
+                .accessibilityValue(accuracyDescription)
             }
-            .opacity(session.countdown == nil ? 1 : 0)
-            .accessibilityHidden(session.countdown != nil)
         }
+    }
+
+    private var accuracyDescription: String {
+        let best = settings.localized("Best: %@", session.savedProgress.map {
+            "\(Int(($0.bestScore * 100).rounded())) %"
+        } ?? "— %")
+        guard session.running, !session.listen else { return best }
+        let current = session.currentRunAccuracy.map { "\(Int(($0 * 100).rounded())) %" } ?? "— %"
+        return "\(settings.localized("This run")): \(current). \(best)"
     }
 
     private var handLegend: some View {
@@ -393,7 +397,10 @@ struct PracticeScreen: View {
                         Text(settings.localized("Practice summary")).font(Theme.screenTitle)
                         Text("\(summary.bpm) BPM · \(settings.localized("%lld completed passes", summary.passes))")
                         Text(settings.localized("Stars: passed / goal tempo / from memory"))
-                        Text(settings.localized("Score is from the last completed pass. Stars are earned across this run."))
+                        Text(settings.localized(summary.passes > 0
+                            ? "Score is from the last completed pass. Stars are earned across this run."
+                            : "Run stopped before the first pass finished."))
+                        HitTimingPlot(history: session.timingHistory)
                     }
                     .font(Theme.control).padding(Theme.Space.page).frame(maxWidth: 440)
                     .foregroundStyle(Theme.ink).background(Theme.background)

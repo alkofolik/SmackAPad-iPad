@@ -426,3 +426,19 @@
 "Listen to the pattern first. Start slowly, then work towards the goal tempo." = "Listen to the pattern first. Start slowly, then work towards the goal tempo.";
 "Start" = "Start";
 "Stop" = "Stop";
+
+// Practice indicators (ticket 35).
+"This run" = "This run";
+"Best: %@" = "Best: %@";
+"Accuracy" = "Accuracy";
+"Early" = "Early";
+"On time" = "On time";
+"Late" = "Late";
+"Early %lld ms" = "Early %lld ms";
+"Late %lld ms" = "Late %lld ms";
+"Centred" = "Centred";
+"Hit timing" = "Hit timing";
+"Last 32 hits" = "Last 32 hits";
+"No matched hits to show." = "No matched hits to show.";
+"Orange: within the good window. Grey: outside it." = "Orange: within the good window. Grey: outside it.";
+"Run stopped before the first pass finished." = "Run stopped before the first pass finished.";

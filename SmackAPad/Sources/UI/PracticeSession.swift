@@ -47,6 +47,10 @@ final class PracticeSession {
     private(set) var judgmentVersion = 0
     private(set) var padFlashes: [Int: PadFlash] = [:]
     private(set) var playedHits: [PlayedHit] = []
+    private(set) var timingHistory = TimingHistory()
+    @ObservationIgnored private var completedMatches = 0
+    @ObservationIgnored private var completedExpected = 0
+    @ObservationIgnored private var completedExtras = 0
     private(set) var starStreak: StarStreak
     private(set) var practiceMode: PracticeMode = .learning
     /// Keep pass identity so a previous repeat can never colour the new one.
@@ -196,6 +200,33 @@ final class PracticeSession {
                       eightNote: lesson.eightNote, intro: lesson.intro)
     }
     var savedProgress: LessonProgress? { progress.progress(for: lesson.id) }
+    var timingWindows: (maximum: Double, good: Double) {
+        let scorer = passes.last(where: { $0.start <= now })?.scorer
+            ?? passes.last?.scorer
+        return (scorer?.maximumTimingMilliseconds ?? 1, scorer?.goodTimingMilliseconds ?? 0)
+    }
+
+    /// The same matched/expected-plus-extra ratio as scoring, across this run.
+    /// Future notes enter the denominator only once their matching window closes.
+    var currentRunAccuracy: Double? {
+        guard running, !listen else { return nil }
+        let time = now
+        var matches = completedMatches
+        var denominator = completedExpected + completedExtras
+        let hits = patternHits
+        for pass in passes {
+            guard let scorer = pass.scorer else { continue }
+            let result = scorer.finish()
+            let missed = hits.filter { hit in
+                pass.start + Double(hit.step) * 15 / Double(pass.bpm)
+                    + scorer.maximumTimingMilliseconds / 1_000 <= time
+                    && judgmentsByPass[pass.number]?[hit] == nil
+            }.count
+            matches += result.matchedHitCount
+            denominator += result.matchedHitCount + missed + result.extraHitCount
+        }
+        return denominator > 0 ? Double(matches) / Double(denominator) : nil
+    }
     var patternHits: [LessonHit] { practiceLesson.hits(forPadCount: midi.activeProfile.padCount) }
     var starRunProgress: (count: Int, required: Int, name: String)? {
         guard running, !listen, !isSectionLoop else { return nil }
@@ -288,6 +319,10 @@ final class PracticeSession {
             barVerdicts = [:]
             judgmentsByPass = [:]
             playedHits = []
+            timingHistory = TimingHistory()
+            completedMatches = 0
+            completedExpected = 0
+            completedExtras = 0
             judgmentVersion += 1
             completedPasses = 0
             earnedPass = false; earnedMastery = false; earnedMemory = false
@@ -324,6 +359,7 @@ final class PracticeSession {
         // An automatic stop already credited the winning pass. Discard everything
         // queued after it, even if the app was delayed long enough to finish it.
         if !stopAfterStar { finishCompleted(at: now) }
+        let accuracy = currentRunAccuracy
         stopAfterStar = false
         running = false
         midi.resetControlPickup()
@@ -341,6 +377,9 @@ final class PracticeSession {
             summary = RunSummary(score: result.score, bpm: result.bpm, passes: completedPasses,
                                  passed: earnedPass, mastery: earnedMastery, memory: earnedMemory,
                                  finishedByStar: finishedByStar)
+        } else if !listen, let accuracy {
+            summary = RunSummary(score: accuracy, bpm: bpm, passes: 0,
+                                 passed: false, mastery: false, memory: false)
         }
         saveTempo()
     }
@@ -455,6 +494,9 @@ final class PracticeSession {
             let result = scorer.finish()
             pass.scorer = nil
             lastResult = result
+            completedMatches += result.matchedHitCount
+            completedExpected += result.expectedHitCount
+            completedExtras += result.extraHitCount
             tempo.completed(nextBpm: result.nextBpm)
             completedPasses += 1
             if !isSectionLoop {
@@ -514,6 +556,11 @@ final class PracticeSession {
         }
         if let best {
             best.0.scorer = best.1
+            if let error = best.3.timingErrorMilliseconds {
+                timingHistory.record(errorMilliseconds: error,
+                                     maximumMilliseconds: best.1.maximumTimingMilliseconds,
+                                     goodMilliseconds: best.1.goodTimingMilliseconds)
+            }
             mark = record(best.3, pass: best.0.number, padIndex: event.padIndex)
         } else if let pass = passes.first(where: { $0.start <= adjusted && adjusted < $0.start + $0.duration }) {
             if let feedback = pass.scorer?.receive(padIndex: event.padIndex, at: timestamp) {
