@@ -13,6 +13,8 @@ Status: ready. Source: Jakub, 2026-11-03. He rejected the three concepts of tick
 
 ## Part 1 — App icon
 
+**Moved to ticket 57 (2026-11-03).** Skip this part here if 57 is done.
+
 - Fill the 1024×1024 slot of `SmackAPad/Assets.xcassets/AppIcon.appiconset` (single universal iOS icon, as the existing `Contents.json` is set up).
 - Build the PNG from `smack-a-pad-icon.svg`, but **full-bleed and square**: remove the rounded corners of the background (the `rx="22.5"` rect) — iPadOS applies the mask itself. Opaque, no transparency, no alpha channel (App Store requirement), sRGB.
 - Keep the pad proportions of the SVG. Commit the PNG and the square SVG source next to each other under `docs/design/2026-11-03-logo-source/` (e.g. `app-icon-1024.png`, `app-icon-square.svg`). Do not add dark/tinted icon variants now.

@@ -86,3 +86,4 @@ Source: Jakub's iPad test. Bluetooth MIDI breaks timing; cable works.
 | 55 | "Bars shown" setting ignored in static view | Gemini 3.8 Flash, high | 1st, independent |
 | 54 | Bluetooth MIDI timing (phase A log, phase B fix) | Gemini 3.8 Pro, high (fallback Codex GPT-6.1 Sol, high) | 2nd |
 | 56 | Playhead speeds up at run start | Gemini 3.8 Pro, medium | after 54 (same file) |
+| 57 | App icon from the existing logo (Part 1 of 46, split off) | Gemini 3.8 Flash, high | any time, independent |
