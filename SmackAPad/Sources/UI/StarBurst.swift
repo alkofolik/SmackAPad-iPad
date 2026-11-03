@@ -1,53 +1,48 @@
 import SwiftUI
 import UIKit
 
+/// The existing award event fills only its new stars, in place in the result row.
 struct StarBurst: View {
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
-    let event: StarEvent
+    @Environment(\.accessibilityReduceMotion) private var reduced
+    let earned: [Bool]
+    let event: StarEvent?
     let announcement: String
-    @State private var revealed: Set<Int> = []
-    private var motion: Theme.Motion.Policy { .init(reduced: reduceMotion) }
-    @State private var visible = false
-
-    private var large: Bool { event.award.shouldStop }
+    @State private var revealed = false
+    @State private var scale: CGFloat = 0.86
 
     var body: some View {
-        HStack(spacing: large ? Theme.Space.regular : Theme.Space.small) {
+        HStack(spacing: 20) {
             ForEach(0..<3, id: \.self) { index in
-                let fresh = event.award.fresh[index]
-                StarShape()
-                    .fill(Theme.black.opacity(event.award.earned[index] && (!fresh || revealed.contains(index)) ? 1 : 0))
-                    .overlay(StarShape().stroke(Theme.black, lineWidth: Theme.Size.border))
-                    .frame(width: large ? 56 : 28, height: large ? 56 : 28)
-                    .scaleEffect(motion.scale(!fresh || revealed.contains(index) ? 1 : 0.35))
-                    .motion(Theme.Motion.emphasis, value: revealed)
-            }
-        }
-        .padding(large ? Theme.Space.page : 12)
-        .background(Theme.orange, in: RoundedRectangle(cornerRadius: Theme.Size.panelRadius))
-        .overlay {
-            RoundedRectangle(cornerRadius: Theme.Size.panelRadius)
-                .strokeBorder(Theme.black, lineWidth: Theme.Size.border)
-        }
-        .opacity(visible ? 1 : 0)
-        .allowsHitTesting(false)
-        .accessibilityElement(children: .ignore)
-        .accessibilityLabel(announcement)
-        .accessibilityHidden(!visible)
-        .task {
-            withAnimation(motion.animation(Theme.Motion.fast)) { visible = true }
-            do {
-                try await Task.sleep(for: .milliseconds(100))
-                for index in 0..<3 {
-                    revealed.insert(index)
-                    try await Task.sleep(for: Theme.Motion.starStagger)
+                let fresh = event?.award.fresh[index] == true
+                ZStack {
+                    Image(systemName: "star")
+                        .foregroundStyle(earned[index] && (!fresh || revealed || reduced)
+                                         ? PracticeBandStyle.orange : Theme.ink)
+                    Image(systemName: "star.fill")
+                        .foregroundStyle(PracticeBandStyle.orange)
+                        .opacity(earned[index] && (!fresh || revealed || reduced) ? 1 : 0)
                 }
-                UIAccessibility.post(notification: .announcement, argument: announcement)
-                try await Task.sleep(for: .milliseconds(large ? 2_700 : 1_700))
-                withAnimation(motion.animation(Theme.Motion.fast)) { visible = false }
-            } catch {
-                // A new event, restart or navigation cancels this panel's lifetime.
+                .font(.system(size: 40, weight: .regular))
+                .frame(width: 40, height: 52)
+                .scaleEffect(fresh && !reduced ? scale : 1)
             }
+        }
+        .padding(.horizontal, 7)
+        .accessibilityHidden(true)
+        .transaction { if reduced { $0.animation = nil } }
+        .task(id: event?.id) {
+            guard event != nil else { return }
+            var transaction = Transaction()
+            transaction.disablesAnimations = true
+            withTransaction(transaction) { revealed = reduced; scale = reduced ? 1 : 0.86 }
+            await Task.yield()
+            guard !Task.isCancelled else { return }
+            if !reduced {
+                withAnimation(.easeOut(duration: 0.18)) { revealed = true; scale = 1.08 }
+                do { try await Task.sleep(for: .milliseconds(180)) } catch { return }
+                withAnimation(.easeInOut(duration: 0.30)) { scale = 1 }
+            }
+            UIAccessibility.post(notification: .announcement, argument: announcement)
         }
     }
 }

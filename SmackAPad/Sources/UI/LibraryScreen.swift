@@ -109,7 +109,7 @@ struct LibraryScreen: View {
                 Spacer(minLength: 0)
                 HStack(spacing: 2) {
                     Image(systemName: "star.fill").font(Theme.meta).foregroundStyle(Theme.orange)
-                    Text("\(earnedStars)/\(maxStars)").font(Theme.meta).bold()
+                    Text("\(earnedStars)/\(maxStars)").font(Theme.meta).monospacedDigit()
                 }
             }
             HStack(spacing: Theme.Space.small) {
@@ -131,19 +131,16 @@ struct LibraryScreen: View {
                     VStack(alignment: .leading, spacing: 0) {
                         sidebarLabel(settings.localized("Intro exercises"), lessons: introLessons, isCategory: true)
                         Text(settings.localized("%lld exercises · always open", introLessons.count))
-                            .font(Theme.meta).foregroundStyle(Theme.secondary).lineLimit(1)
+                            .font(Theme.meta).foregroundStyle(Theme.secondary).fixedSize(horizontal: false, vertical: true)
                     }
                 }
                 .buttonStyle(.plain)
                 .listRowBackground(showingIntro ? Theme.surface : Theme.background)
             }
             Section {
-                Picker(settings.localized("Organise by"), selection: Binding(
+                PlexSegmentedPicker(title: settings.localized("Organise by"), selection: Binding(
                     get: { settings.libraryView }, set: { settings.libraryView = $0 }
-                )) {
-                    ForEach(LibraryViewMode.allCases) { view in Text(settings.localized(view.title)).tag(view.id) }
-                }
-                .pickerStyle(.segmented).frame(minHeight: Theme.Size.touch)
+                ), options: LibraryViewMode.allCases.map { ($0.id, settings.localized($0.title)) }, fitsColumn: true)
                 if mode == .path {
                     ForEach(1...5, id: \.self) { level in
                         Button {
@@ -206,7 +203,7 @@ struct LibraryScreen: View {
         } label: {
             HStack(spacing: Theme.Space.small) {
                 AnimatedLock(locked: locked).font(Theme.meta)
-                sidebarLabel(settings.localized(item.title), lessons: item.lessons, isCategory: false)
+                sidebarLabel(settings.localized(item.title), lessons: item.lessons, selected: selected)
             }
             .foregroundStyle(selected ? Theme.orange : Theme.ink)
             .contentShape(Rectangle())
@@ -215,31 +212,35 @@ struct LibraryScreen: View {
         .accessibilityAddTraits(selected ? .isSelected : [])
     }
 
-    private func sidebarLabel(_ title: String, lessons: [Lesson], isCategory: Bool = false) -> some View {
+    private func sidebarLabel(_ title: String, lessons: [Lesson], isCategory: Bool = false, selected: Bool = false) -> some View {
         let three = lessons.filter { LibraryStarFilter.stars(progress.progress(for: $0.id)) == 3 }.count
         let two = lessons.filter { LibraryStarFilter.stars(progress.progress(for: $0.id)) == 2 }.count
         let one = lessons.filter { LibraryStarFilter.stars(progress.progress(for: $0.id)) == 1 }.count
         let earnedStars = three * 3 + two * 2 + one
         let maxStars = lessons.count * 3
 
+        let titleLabel = Text(title)
+            .font(isCategory ? Theme.sectionTitle : (selected ? Theme.display(22) : Theme.navigation))
+            .fixedSize(horizontal: false, vertical: true)
+        let stars = HStack(spacing: 2) {
+            Image(systemName: "star.fill").font(Theme.meta)
+                .foregroundStyle(earnedStars > 0 ? Theme.orange : Theme.secondary)
+            Text("\(earnedStars)/\(maxStars)").font(Theme.meta).monospacedDigit().fixedSize()
+        }
+        .accessibilityLabel(settings.localized("%lld of %lld stars", earnedStars, maxStars))
         return VStack(alignment: .leading, spacing: Theme.Space.tight) {
-            HStack(spacing: Theme.Space.small) {
-                Text(title)
-                    .font(isCategory ? Theme.rowTitle : Theme.control)
-                    .fontWeight(isCategory ? .heavy : .regular)
-                    .lineLimit(1)
-                Spacer(minLength: 0)
-                HStack(spacing: 2) {
-                    Image(systemName: "star.fill").font(Theme.meta)
-                        .foregroundStyle(earnedStars > 0 ? Theme.orange : Theme.secondary)
-                    Text("\(earnedStars)/\(maxStars)")
-                        .font(Theme.meta).fixedSize()
+            ViewThatFits(in: .horizontal) {
+                HStack(spacing: Theme.Space.small) {
+                    titleLabel.fixedSize()
+                    Spacer(minLength: 0)
+                    stars
                 }
-                .accessibilityLabel(settings.localized("%lld of %lld stars", earnedStars, maxStars))
+                VStack(alignment: .leading, spacing: Theme.Space.tight) { titleLabel; stars }
             }
             progressLine(lessons)
         }
-        .frame(minHeight: isCategory ? Theme.Size.touch : 40)
+        .padding(.vertical, Theme.Space.tight)
+        .frame(minHeight: Theme.Size.touch)
     }
 
     private func progressLine(_ lessons: [Lesson]) -> some View {
@@ -308,70 +309,72 @@ struct LibraryScreen: View {
             HStack(spacing: Theme.Space.small) {
                 HStack(spacing: 2) {
                     Image(systemName: "star.fill").font(Theme.meta).foregroundStyle(Theme.orange)
-                    Text("\(earnedStars)/\(maxStars)").font(Theme.meta).bold()
+                    Text("\(earnedStars)/\(maxStars)").font(Theme.meta).monospacedDigit()
                 }
                 Spacer(minLength: 4)
                 Text(shown == total ? settings.localized("%lld lessons", total) : settings.localized("%lld of %lld lessons", shown, total))
-                    .font(Theme.meta).foregroundStyle(Theme.secondary).lineLimit(1)
+                    .font(Theme.meta).foregroundStyle(Theme.secondary).fixedSize(horizontal: false, vertical: true)
                     .contentTransition(motion.numeric).motion(value: shown)
             }
             progressLine(group.lessons)
         }
-        .frame(minWidth: 140, idealWidth: 170, maxWidth: 200)
+        .frame(minWidth: 180, idealWidth: 240)
     }
 
     private func filters(matching: [Lesson]) -> some View {
         HStack(spacing: Theme.Space.small) {
-            HStack(spacing: Theme.Space.tight) {
-                Image(systemName: "magnifyingglass").font(Theme.meta).foregroundStyle(Theme.secondary)
-                TextField(settings.localized("Title, genre…"), text: $query)
-                    .textFieldStyle(.plain).font(Theme.meta)
-            }
-            .padding(.horizontal, Theme.Space.small)
-            .frame(minWidth: 100, idealWidth: 140, maxWidth: 170, minHeight: 28)
-            .background(Theme.surface)
-            .overlay(
-                RoundedRectangle(cornerRadius: Theme.Size.blockRadius)
-                    .stroke(Theme.secondary.opacity(0.35), lineWidth: 1)
-            )
-            .accessibilityLabel(settings.localized("Search lessons..."))
+            ScrollView(.horizontal) {
+                HStack(spacing: Theme.Space.small) {
+                    HStack(spacing: Theme.Space.tight) {
+                        Image(systemName: "magnifyingglass").font(Theme.meta).foregroundStyle(Theme.secondary)
+                        TextField(settings.localized("Search"), text: $query)
+                            .textFieldStyle(.plain).font(Theme.meta)
+                    }
+                    .padding(.horizontal, Theme.Space.small)
+                    .frame(minWidth: 100, idealWidth: 140, maxWidth: 170, minHeight: Theme.Size.touch)
+                    .background(Theme.surface)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: Theme.Size.blockRadius)
+                            .stroke(Theme.secondary.opacity(0.35), lineWidth: 1)
+                    )
+                    .accessibilityLabel(settings.localized("Search lessons..."))
 
-            Menu {
-                Picker(settings.localized(mode == .genre ? "Technique" : "Genre"), selection: $cross) {
-                    Text(settings.localized("All")).tag("")
-                    if mode == .genre {
-                        ForEach(LessonTechnique.allCases) { Text(settings.localized($0.title)).tag($0.id) }
-                    } else {
-                        ForEach(LessonGenre.allCases) { Text(settings.localized($0.title)).tag($0.id) }
+                    Menu {
+                        Picker(settings.localized(mode == .genre ? "Technique" : "Genre"), selection: $cross) {
+                            Text(settings.localized("All")).tag("")
+                            if mode == .genre {
+                                ForEach(LessonTechnique.allCases) { Text(settings.localized($0.title)).tag($0.id) }
+                            } else {
+                                ForEach(LessonGenre.allCases) { Text(settings.localized($0.title)).tag($0.id) }
+                            }
+                        }
+                    } label: {
+                        HStack(spacing: Theme.Space.tight) {
+                            Image(systemName: cross.isEmpty ? "line.3.horizontal.decrease" : "line.3.horizontal.decrease.circle.fill")
+                            Text(crossTitle)
+                        }
+                        .font(Theme.meta).lineLimit(1)
+                        .padding(.horizontal, Theme.Space.small)
+                        .frame(minHeight: Theme.Size.touch)
+                        .background(cross.isEmpty ? Theme.background : Theme.surface)
+                        .overlay(
+                            RoundedRectangle(cornerRadius: Theme.Size.blockRadius)
+                                .stroke(cross.isEmpty ? Theme.secondary.opacity(0.35) : Theme.orange, lineWidth: 1)
+                        )
+                    }
+                    .accessibilityValue(crossTitle)
+
+                    ForEach(LibraryStarFilter.allCases) { filter in
+                        let count = matching.filter { LibraryStarFilter.classify(progress.progress(for: $0.id)) == filter }.count
+                        let selected = settings.libraryStarFilters.contains(filter.id)
+                        FilterChip(title: "\(settings.localized(filter.title)) (\(count))", selected: selected) {
+                            if selected { settings.libraryStarFilters.removeAll { $0 == filter.id } }
+                            else { settings.libraryStarFilters.append(filter.id) }
+                        }
                     }
                 }
-            } label: {
-                HStack(spacing: Theme.Space.tight) {
-                    Image(systemName: cross.isEmpty ? "line.3.horizontal.decrease" : "line.3.horizontal.decrease.circle.fill")
-                    Text(crossTitle)
-                }
-                .font(Theme.meta).lineLimit(1)
-                .padding(.horizontal, Theme.Space.small)
-                .frame(minHeight: 28)
-                .background(cross.isEmpty ? Theme.background : Theme.surface)
-                .overlay(
-                    RoundedRectangle(cornerRadius: Theme.Size.blockRadius)
-                        .stroke(cross.isEmpty ? Theme.secondary.opacity(0.35) : Theme.orange, lineWidth: 1)
-                )
+                .fixedSize(horizontal: true, vertical: false)
             }
-            .accessibilityValue(crossTitle)
-
-            ForEach(LibraryStarFilter.allCases) { filter in
-                let count = matching.filter { LibraryStarFilter.classify(progress.progress(for: $0.id)) == filter }.count
-                let selected = settings.libraryStarFilters.contains(filter.id)
-                FilterChip(title: "\(settings.localized(filter.title)) (\(count))", selected: selected) {
-                    if selected { settings.libraryStarFilters.removeAll { $0 == filter.id } }
-                    else { settings.libraryStarFilters.append(filter.id) }
-                }
-            }
-
-            Spacer(minLength: 0)
-
             Button {
                 query = ""; cross = ""
                 settings.libraryStarFilters = LibraryStarFilter.allCases.map(\.id)
@@ -381,7 +384,7 @@ struct LibraryScreen: View {
                     Text(settings.localized("Clear filters")).font(Theme.meta).fixedSize()
                 }
                 .padding(.horizontal, Theme.Space.small)
-                .frame(minHeight: 28)
+                .frame(minHeight: Theme.Size.touch)
                 .background(Theme.surface)
                 .overlay(
                     RoundedRectangle(cornerRadius: Theme.Size.blockRadius)
@@ -391,7 +394,9 @@ struct LibraryScreen: View {
             .buttonStyle(.plain)
             .accessibilityLabel(settings.localized("Clear filters"))
         }
-        .frame(minHeight: 32)
+        .fixedSize(horizontal: false, vertical: true)
+        .scrollBounceBehavior(.basedOnSize)
+        .frame(minHeight: Theme.Size.touch)
     }
 
     private var crossTitle: String {
@@ -482,16 +487,17 @@ struct LibraryLessonRow: View {
             if let introGoal {
                 Text(introGoal)
             } else {
-                HStack(spacing: Theme.Space.small) {
-                    Text(settings.localized(showTechnique ? LessonTechnique.classify(lesson).title : lesson.genre))
-                        .lineLimit(1).layoutPriority(-1)
-                    Text("·")
-                    difficulty
-                    Text("·")
-                    tempo
-                    if settings.activeProfile().isEightPad && EightPadLayout.slots(for: lesson) == nil {
-                        Image(systemName: "square.grid.4x3.fill")
-                            .accessibilityLabel(settings.localized("REQUIRES 16 PADS"))
+                ViewThatFits(in: .horizontal) {
+                    HStack(spacing: Theme.Space.small) {
+                        genre
+                        difficulty
+                        tempo
+                        padRequirement
+                    }
+                    .fixedSize(horizontal: true, vertical: false)
+                    VStack(alignment: .leading, spacing: Theme.Space.tight) {
+                        HStack(spacing: Theme.Space.small) { genre; difficulty; padRequirement }
+                        tempo
                     }
                 }
             }
@@ -509,6 +515,17 @@ struct LibraryLessonRow: View {
         .lessonSource(lesson.id)
     }
 
+    private var genre: some View {
+        Text(settings.localized(showTechnique ? LessonTechnique.classify(lesson).title : lesson.genre))
+    }
+
+    @ViewBuilder private var padRequirement: some View {
+        if settings.activeProfile().isEightPad && EightPadLayout.slots(for: lesson) == nil {
+            Image(systemName: "square.grid.4x3.fill")
+                .accessibilityLabel(settings.localized("REQUIRES 16 PADS"))
+        }
+    }
+
     private var difficulty: some View {
         HStack(spacing: 3) {
             ForEach(1...5, id: \.self) { level in
@@ -521,6 +538,6 @@ struct LibraryLessonRow: View {
     private var tempo: some View {
         let bpm = (record?.currentBpm ?? 0) > 0 ? record!.currentBpm : lesson.startBpm
         return Text("\(settings.localized(lesson.bars == 1 ? "%lld bar" : "%lld bars", lesson.bars)) · \(bpm) → \(lesson.targetBpm) BPM")
-            .font(Theme.meta).lineLimit(1).fixedSize()
+            .font(Theme.meta).monospacedDigit().fixedSize(horizontal: false, vertical: true)
     }
 }

@@ -2,7 +2,7 @@ import SwiftUI
 import UIKit
 
 /// Orange carries the score; black and white carry hand and hierarchy.
-/// Both typefaces are supplied by iPadOS. No font files are redistributed.
+/// IBM Plex Sans is bundled under the SIL Open Font License 1.1.
 enum Theme {
     static let orange = Color(red: 1, green: 107.0 / 255, blue: 0)
     static let black = Color.black
@@ -39,12 +39,14 @@ enum Theme {
         }
     }
 
-    // Five roles for screen chrome. Pattern notation keeps its fixed canvas sizes.
+    static let mainValue = display(44)
     static let screenTitle = display(28)
     static let sectionTitle = display(22)
-    static let rowTitle = display(18)
-    static let meta = text(13)
-    static let control = text(16)
+    static let rowTitle = display(22)
+    static let meta = text(16)
+    static let control = text(18)
+    static let navigation = text(18)
+    static let action = display(24)
 
     enum Space {
         static let tight: CGFloat = 4
@@ -57,30 +59,64 @@ enum Theme {
     enum Size {
         static let touch: CGFloat = 48
         static let control: CGFloat = 72
-        static let transportWidth: CGFloat = 380
+        static let transportWidth: CGFloat = 420
         static let border: CGFloat = 2
         static let bracket: CGFloat = 6
         static let blockRadius: CGFloat = 3
         static let panelRadius: CGFloat = 0
-        static let title: CGFloat = 28
+        static let title: CGFloat = 32
         static let emphasis: CGFloat = 24
-        static let listTitle: CGFloat = 22
+        static let listTitle: CGFloat = 28
         static let beat: CGFloat = 32
-        static let body: CGFloat = 18
-        static let small: CGFloat = 16
-        static let dense: CGFloat = 13
+        static let body: CGFloat = 22
+        static let small: CGFloat = 20
+        static let dense: CGFloat = 20
     }
 
     static func display(_ size: CGFloat = Size.title) -> Font {
-        .custom("AvenirNext-Heavy", size: size, relativeTo: .headline)
+        _ = verifiedFonts
+        return .custom("IBMPlexSans-Bold", size: size, relativeTo: .headline)
     }
 
     static func text(_ size: CGFloat = Size.body) -> Font {
-        .custom("Menlo-Regular", size: size, relativeTo: .body)
+        _ = verifiedFonts
+        return .custom("IBMPlexSans-Regular", size: size, relativeTo: .body)
     }
 
-    static func canvasDisplay(_ size: CGFloat) -> Font { .custom("AvenirNext-Heavy", fixedSize: size) }
-    static func canvasText(_ size: CGFloat) -> Font { .custom("Menlo-Regular", fixedSize: size) }
+    // Callers scale the notation together with its geometry, never to fit a cell.
+    static func canvasDisplay(_ size: CGFloat) -> Font {
+        _ = verifiedFonts
+        return .custom("IBMPlexSans-Bold", fixedSize: size)
+    }
+    static func canvasText(_ size: CGFloat) -> Font {
+        _ = verifiedFonts
+        return .custom("IBMPlexSans-Regular", fixedSize: size)
+    }
+
+    private static let verifiedFonts: Void = {
+        for name in ["IBMPlexSans-Regular", "IBMPlexSans-Bold"] {
+            precondition(UIFont(name: name, size: 32)?.familyName == "IBM Plex Sans",
+                         "Missing bundled IBM Plex Sans face: \(name)")
+        }
+        #if DEBUG
+        assert(UIFont.familyNames.contains("IBM Plex Sans"))
+        print("Typography: IBM Plex Sans loaded — \(UIFont.fontNames(forFamilyName: "IBM Plex Sans"))")
+        #endif
+    }()
+
+    /// Retain translated legacy keys while removing all-capital section labels.
+    static func sentenceCase(_ text: String) -> String {
+        guard text == text.uppercased() else { return text }
+        var result = text.lowercased()
+        for abbreviation in ["MIDI", "BPM", "USB", "CC"] {
+            result = result.replacingOccurrences(of: "\\b\(abbreviation.lowercased())\\b",
+                with: abbreviation, options: .regularExpression)
+        }
+        if let first = result.firstIndex(where: { $0.isLetter }) {
+            result.replaceSubrange(first...first, with: String(result[first]).uppercased())
+        }
+        return result
+    }
 
     private static func adaptive(light: UIColor, dark: UIColor) -> Color {
         Color(uiColor: UIColor { $0.userInterfaceStyle == .dark ? dark : light })
@@ -246,7 +282,7 @@ struct CountInNumeral: View {
     let size: CGFloat
     @State private var visible = false
     var body: some View {
-        Text("\(number)").font(Theme.canvasDisplay(size)).foregroundStyle(Theme.black)
+        Text("\(number)").font(Theme.canvasDisplay(size)).monospacedDigit().foregroundStyle(Theme.black)
             .scaleEffect(Theme.Motion.Policy(reduced: reduced).scale(visible ? 1 : 1.15))
             .opacity(visible ? 1 : 0)
             .motion(Theme.Motion.fast, value: visible)

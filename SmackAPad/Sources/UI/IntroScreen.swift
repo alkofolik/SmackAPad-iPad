@@ -48,6 +48,7 @@ public struct IntroScreen: View {
     @Environment(SettingsManager.self) private var settings
     @Environment(ProgressStore.self) private var progress
     @State private var store = LessonStore.shared
+    @State private var showingRules = false
 
     /// Called when the user taps an exercise. The host presents the practice screen.
     let onSelect: (Lesson) -> Void
@@ -71,8 +72,33 @@ public struct IntroScreen: View {
     public var body: some View {
         List {
             Section {
-                IntroRulesCard(passedCount: passedCount, masteredCount: masteredCount, totalCount: introLessons.count)
-                    .listRowSeparator(.hidden)
+                Button { showingRules = true } label: {
+                    Label(settings.localized("Rules"), systemImage: "info.circle")
+                        .font(Theme.control)
+                        .frame(minHeight: 48, alignment: .leading)
+                }
+                .buttonStyle(.plain)
+                .popover(isPresented: $showingRules, arrowEdge: .top) {
+                    ScrollView {
+                        VStack(alignment: .leading, spacing: Theme.Space.page) {
+                            HStack {
+                                Spacer()
+                                Button(settings.localized("Close")) { showingRules = false }
+                                    .font(Theme.control)
+                                    .frame(minHeight: Theme.Size.touch)
+                            }
+                            IntroRulesCard(passedCount: passedCount, masteredCount: masteredCount,
+                                           totalCount: introLessons.count)
+                        }
+                        .padding(Theme.Space.page)
+                    }
+                    .frame(width: 480, height: 580)
+                    .background(Theme.background)
+                    .foregroundStyle(Theme.ink)
+                    .tint(Theme.orange)
+                }
+                .listRowSeparator(.hidden)
+                .listRowBackground(Theme.background)
             }
             ForEach(IntroStage.allCases) { stage in
                 let stageLessons = introLessons.filter { $0.intro?.stage == stage.rawValue }
@@ -130,7 +156,7 @@ struct IntroRulesCard: View {
         VStack(alignment: .leading, spacing: Theme.Space.small) {
             SectionHeader(title: settings.localized("INTRO SECTION RULES"))
             Text(settings.localized("Intro exercises build foundational motor habits and steady timing. They are always accessible without unlock requirements, but enforce stricter scoring limits than standard lessons:"))
-                .font(Theme.meta).foregroundStyle(Theme.secondary)
+                .font(Theme.navigation).lineSpacing(7).foregroundStyle(Theme.secondary)
             ViewThatFits(in: .horizontal) {
                 HStack(spacing: Theme.Space.page) { rules }
                 VStack(alignment: .leading, spacing: Theme.Space.small) { rules }

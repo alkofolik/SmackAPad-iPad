@@ -26,11 +26,8 @@ struct MIDILearnView: View {
                     Section {
                         TextField(settings.localized("Profile name"), text: $profileName)
                             .font(Theme.control)
-                        Picker(settings.localized("Pad count"), selection: $padCount) {
-                            Text(settings.localized("8 pads")).tag(8)
-                            Text(settings.localized("16 pads")).tag(16)
-                        }
-                        .pickerStyle(.segmented)
+                        PlexSegmentedPicker(title: settings.localized("Pad count"), selection: $padCount,
+                            options: [(8, settings.localized("8 pads")), (16, settings.localized("16 pads"))])
                         .disabled(midi.isLearning)
 
                         if nameExists {
