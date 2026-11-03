@@ -28,7 +28,7 @@ After the run stops automatically on the second star, the result card offers onl
 
 ## Acceptance criteria
 
-- [ ] After the second star: "From memory for ★3" and "Next lesson" are both visible.
-- [ ] After any passed run: "Next lesson" is visible.
-- [ ] The main button reads "Znovu" while the result is shown, and "Start" before the first run.
-- [ ] Build passes. Commit, stop. Final report max 5 lines.
+- [x] After the second star: "From memory for ★3" and "Next lesson" are both visible.
+- [x] After any passed run: "Next lesson" is visible.
+- [x] The main button reads "Znovu" while the result is shown, and "Start" before the first run.
+- [x] Build passes. Commit, stop. Final report max 5 lines.

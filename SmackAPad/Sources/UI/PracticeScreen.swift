@@ -335,19 +335,37 @@ struct PracticeScreen: View {
                        event: session.starEvent,
                        announcement: session.starEvent.map(starAnnouncement) ?? "",
                        detail: { showingDetails = true }, rules: { showingStarRules = true }) {
-                if showsMemoryChallenge {
-                    Button(action: startMemoryChallenge) {
-                        Text(settings.localized("From memory for ★3"))
-                    }
-                    .buttonStyle(MemoryChallengeButtonStyle())
-                    .accessibilityHint(settings.localized("Starts Play from memory for the 3rd star"))
-                } else if session.savedProgress?.passed == true {
-                    nextLessonControl
-                }
+                resultActions
             }
             .popover(isPresented: $showingDetails) { runDetails(summary) }
             .popover(isPresented: $showingStarRules) { starRules }
         }
+    }
+
+    @ViewBuilder
+    private var resultActions: some View {
+        if showsMemoryChallenge {
+            ViewThatFits(in: .horizontal) {
+                HStack(spacing: Theme.Space.small) {
+                    memoryChallengeControl
+                    nextLessonControl
+                }
+                VStack(alignment: .trailing, spacing: Theme.Space.small) {
+                    memoryChallengeControl
+                    nextLessonControl
+                }
+            }
+        } else if session.savedProgress?.passed == true {
+            nextLessonControl
+        }
+    }
+
+    private var memoryChallengeControl: some View {
+        Button(action: startMemoryChallenge) {
+            Text(settings.localized("From memory for ★3"))
+        }
+        .buttonStyle(MemoryChallengeButtonStyle())
+        .accessibilityHint(settings.localized("Starts Play from memory for the 3rd star"))
     }
 
     private var footer: some View {
@@ -370,6 +388,7 @@ struct PracticeScreen: View {
 
     private func transport(width: CGFloat) -> some View {
         TransportControls(running: session.running, enabled: session.ready && session.available,
+                          showsResult: session.summary != nil && !session.running,
                           preferredWidth: width,
                           start: { showingInfo = false; session.start() },
                           stop: session.stop,

@@ -117,6 +117,7 @@ struct TransportControls: View {
     @Environment(\.accessibilityReduceMotion) private var reduced
     let running: Bool
     let enabled: Bool
+    var showsResult: Bool = false
     var preferredWidth: CGFloat = Theme.Size.transportWidth
     let start: () -> Void
     let stop: () -> Void
@@ -134,13 +135,17 @@ struct TransportControls: View {
         .transaction { if Theme.Motion.Policy(reduced: reduced).opacityOnly { $0.animation = nil } }
     }
 
+    private var actionTitle: String {
+        running ? "Stop" : (showsResult ? "Again" : "Start")
+    }
+
     @ViewBuilder private var buttons: some View {
         Button(action: running ? stop : start) {
             HStack(spacing: Theme.Space.small) {
                 if running { Rectangle().frame(width: 16, height: 16).transition(.opacity) }
-                Text(settings.localized(running ? "Stop" : "Start"))
+                Text(settings.localized(actionTitle))
                     .lineLimit(1).fixedSize()
-                    .id(running).transition(.opacity)
+                    .id(actionTitle).transition(.opacity)
             }
             .frame(maxWidth: .infinity)
         }
