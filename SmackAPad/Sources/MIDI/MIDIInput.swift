@@ -10,9 +10,32 @@ public struct MIDINoteEvent: Sendable {
     public let channel: Int
     public let isNoteOn: Bool
     public let timestamp: UInt64
+    public let rawTimestamp: UInt64
     public let receiptTimestamp: UInt64
     public let usedReceiptTime: Bool
     public let deviceID: String
+
+    public init(
+        note: Int,
+        velocity: Int,
+        channel: Int,
+        isNoteOn: Bool,
+        timestamp: UInt64,
+        rawTimestamp: UInt64 = 0,
+        receiptTimestamp: UInt64 = 0,
+        usedReceiptTime: Bool = false,
+        deviceID: String
+    ) {
+        self.note = note
+        self.velocity = velocity
+        self.channel = channel
+        self.isNoteOn = isNoteOn
+        self.timestamp = timestamp
+        self.rawTimestamp = rawTimestamp
+        self.receiptTimestamp = receiptTimestamp
+        self.usedReceiptTime = usedReceiptTime
+        self.deviceID = deviceID
+    }
 }
 
 public struct MIDISource: Identifiable, Equatable, Sendable {
@@ -27,6 +50,29 @@ public struct PadInputEvent: Sendable {
     public let isNoteOn: Bool
     public let timestamp: UInt64
     public let deviceID: String
+    public let rawTimestamp: UInt64
+    public let receiptTimestamp: UInt64
+    public let usedReceiptTime: Bool
+
+    public init(
+        padIndex: Int,
+        velocity: Int,
+        isNoteOn: Bool,
+        timestamp: UInt64,
+        deviceID: String,
+        rawTimestamp: UInt64 = 0,
+        receiptTimestamp: UInt64 = 0,
+        usedReceiptTime: Bool = false
+    ) {
+        self.padIndex = padIndex
+        self.velocity = velocity
+        self.isNoteOn = isNoteOn
+        self.timestamp = timestamp
+        self.deviceID = deviceID
+        self.rawTimestamp = rawTimestamp
+        self.receiptTimestamp = receiptTimestamp
+        self.usedReceiptTime = usedReceiptTime
+    }
 }
 
 @MainActor
@@ -220,7 +266,7 @@ public final class MIDIInput {
                                         note: Int((word >> 8) & 0x7F), velocity: velocity,
                                         channel: Int((word >> 16) & 0xF) + 1,
                                         isNoteOn: status == 0x9 && velocity > 0,
-                                        timestamp: timestamp, receiptTimestamp: receipt,
+                                        timestamp: timestamp, rawTimestamp: rawTimestamp, receiptTimestamp: receipt,
                                         usedReceiptTime: timestamp != rawTimestamp, deviceID: deviceID
                                     )))
                                 } else if status == 0xB {
@@ -268,8 +314,12 @@ public final class MIDIInput {
             guard let held = heldPads.removeValue(forKey: key) else { return }
             padIndex = held
         }
-        emit(PadInputEvent(padIndex: padIndex, velocity: event.velocity,
-                           isNoteOn: event.isNoteOn, timestamp: event.timestamp, deviceID: event.deviceID))
+        emit(PadInputEvent(
+            padIndex: padIndex, velocity: event.velocity,
+            isNoteOn: event.isNoteOn, timestamp: event.timestamp, deviceID: event.deviceID,
+            rawTimestamp: event.rawTimestamp, receiptTimestamp: event.receiptTimestamp,
+            usedReceiptTime: event.usedReceiptTime
+        ))
     }
 
     private func receiveControlChange(_ message: MIDIControlMessage) {

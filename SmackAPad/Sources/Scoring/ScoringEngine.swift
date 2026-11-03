@@ -8,9 +8,22 @@ public enum HitJudgment: Equatable, Sendable {
 public struct HitFeedback: Equatable, Sendable {
     /// Index in the lesson's effective hits array (hits8 in eight-pad mode).
     public let expectedHitIndex: Int?
+    public let expectedStep: Int?
     public let judgment: HitJudgment
     /// Signed error after calibration and timing-center correction; nil for unmatched input.
     public let timingErrorMilliseconds: Double?
+
+    public init(
+        expectedHitIndex: Int?,
+        expectedStep: Int? = nil,
+        judgment: HitJudgment,
+        timingErrorMilliseconds: Double?
+    ) {
+        self.expectedHitIndex = expectedHitIndex
+        self.expectedStep = expectedStep
+        self.judgment = judgment
+        self.timingErrorMilliseconds = timingErrorMilliseconds
+    }
 }
 
 /// Immutable attempt summary. Score is a fraction (0...1), as in persisted progress.
@@ -35,6 +48,7 @@ public struct ScoringEngine: Sendable {
     private struct ExpectedHit: Sendable {
         let index: Int
         let padIndex: Int
+        let step: Int
         let nanoseconds: Double
     }
 
@@ -59,6 +73,7 @@ public struct ScoringEngine: Sendable {
     /// Read-only presentation scales, derived from the actual scoring windows.
     public var maximumTimingMilliseconds: Double { maximumNanoseconds / 1_000_000 }
     public var goodTimingMilliseconds: Double { goodNanoseconds / 1_000_000 }
+    public var currentTimingCenterMilliseconds: Double { timingCenterNanoseconds / 1_000_000 }
 
     public init(
         lesson: Lesson, bpm: Int, startTimestamp: UInt64, padCount: Int = 16,
@@ -77,7 +92,7 @@ public struct ScoringEngine: Sendable {
         mach_timebase_info(&timebase)
         nanosecondsPerTick = Double(timebase.numer) / Double(timebase.denom)
         expectedHits = lesson.hits(forPadCount: padCount).enumerated().map { index, hit in
-            ExpectedHit(index: index, padIndex: hit.padIndex,
+            ExpectedHit(index: index, padIndex: hit.padIndex, step: hit.step,
                         nanoseconds: Double(hit.step) * 15_000_000_000 / Double(bpm))
         }
         let windows: (Double, Double, Double)
@@ -97,7 +112,7 @@ public struct ScoringEngine: Sendable {
             let distance = timestamp >= previous ? timestamp - previous : previous - timestamp
             if Double(distance) * nanosecondsPerTick <= 30_000_000 {
                 extraHitCount += 1
-                return HitFeedback(expectedHitIndex: nil, judgment: .wrongPad, timingErrorMilliseconds: nil)
+                return HitFeedback(expectedHitIndex: nil, expectedStep: nil, judgment: .wrongPad, timingErrorMilliseconds: nil)
             }
         }
         let elapsed = timestamp >= startTimestamp
@@ -113,7 +128,7 @@ public struct ScoringEngine: Sendable {
         }.min { abs(corrected - $0.nanoseconds) < abs(corrected - $1.nanoseconds) }
         guard let candidate else {
             extraHitCount += 1
-            return HitFeedback(expectedHitIndex: nil, judgment: .wrongPad, timingErrorMilliseconds: nil)
+            return HitFeedback(expectedHitIndex: nil, expectedStep: nil, judgment: .wrongPad, timingErrorMilliseconds: nil)
         }
         let error = corrected - candidate.nanoseconds
         matchedIndices.insert(candidate.index)
@@ -134,7 +149,7 @@ public struct ScoringEngine: Sendable {
                 ? (sorted[middle - 1] + sorted[middle]) / 2
                 : sorted[middle]
         }
-        return HitFeedback(expectedHitIndex: candidate.index, judgment: judgment,
+        return HitFeedback(expectedHitIndex: candidate.index, expectedStep: candidate.step, judgment: judgment,
                            timingErrorMilliseconds: error / 1_000_000)
     }
 

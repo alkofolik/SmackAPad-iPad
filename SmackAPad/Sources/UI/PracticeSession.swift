@@ -347,6 +347,13 @@ final class PracticeSession {
             displayStart = first + 4 * beat
             passes = [makePass(number: 1, start: displayStart, bpm: bpm)]
             tempo.recordPassStart(bpm: bpm)
+            BluetoothTimingDiagnostics.shared.startRun(lessonId: lesson.id, bpm: bpm)
+            BluetoothTimingDiagnostics.shared.logPass(
+                number: 1,
+                startSeconds: displayStart,
+                hostTime: AVAudioTime.hostTime(forSeconds: displayStart),
+                bpm: bpm
+            )
             if !listen {
                 var record = progress.progress(for: lesson.id) ?? LessonProgress()
                 record.hasPlayed = true
@@ -377,6 +384,7 @@ final class PracticeSession {
         flushPendingProgress()
         stopAfterStar = false
         running = false
+        BluetoothTimingDiagnostics.shared.stopRun()
         midi.resetControlPickup()
         if practiceMode == .challenge { starStreak.reset() }
         tempoUpEvent = nil
@@ -473,8 +481,15 @@ final class PracticeSession {
         if let last = passes.last, last.start + last.duration <= horizon {
             let nextBpm = tempo.queue(after: last.bpm, targetBpm: lesson.targetBpm,
                                       listenBpm: listen ? bpm : nil)
-            passes.append(makePass(number: last.number + 1, start: last.start + last.duration,
-                                   bpm: nextBpm))
+            let nextPass = makePass(number: last.number + 1, start: last.start + last.duration,
+                                    bpm: nextBpm)
+            passes.append(nextPass)
+            BluetoothTimingDiagnostics.shared.logPass(
+                number: nextPass.number,
+                startSeconds: nextPass.start,
+                hostTime: AVAudioTime.hostTime(forSeconds: nextPass.start),
+                bpm: nextPass.bpm
+            )
         }
         if let current = passes.last(where: { $0.start <= time }) {
             if current.number != passNumber {
@@ -581,6 +596,10 @@ final class PracticeSession {
         }
         let timestamp = AVAudioTime.hostTime(forSeconds: adjusted)
         var mark: HitMark?
+        var matchedFeedback: HitFeedback?
+        var currentScorerCenter: Double?
+        var matchedPassNumber = passNumber
+
         // Probe value copies so early notes at the next boundary and late notes
         // at the previous boundary go to one scorer, never to both.
         var best: (Pass, ScoringEngine, Double, HitFeedback)?
@@ -600,12 +619,34 @@ final class PracticeSession {
                                      goodMilliseconds: best.1.goodTimingMilliseconds)
             }
             mark = record(best.3, pass: best.0.number, padIndex: event.padIndex)
+            matchedFeedback = best.3
+            currentScorerCenter = best.1.currentTimingCenterMilliseconds
+            matchedPassNumber = best.0.number
         } else if let pass = passes.first(where: { $0.start <= adjusted && adjusted < $0.start + $0.duration }) {
             if let feedback = pass.scorer?.receive(padIndex: event.padIndex, at: timestamp) {
                 mark = record(feedback, pass: pass.number, padIndex: event.padIndex)
+                matchedFeedback = feedback
+                currentScorerCenter = pass.scorer?.currentTimingCenterMilliseconds
+                matchedPassNumber = pass.number
             }
+        } else {
+            let activePass = passes.last(where: { $0.start <= adjusted }) ?? passes.last ?? passes.first
+            currentScorerCenter = activePass?.scorer?.currentTimingCenterMilliseconds
+            if let activePass { matchedPassNumber = activePass.number }
         }
         recordPlayedHit(padIndex: event.padIndex, at: adjusted, mark: mark)
+
+        BluetoothTimingDiagnostics.shared.logNoteOn(
+            deviceID: event.deviceID,
+            rawTimestamp: event.rawTimestamp,
+            receiptTimestamp: event.receiptTimestamp,
+            resolvedTimestamp: event.timestamp,
+            usedReceiptTime: event.usedReceiptTime,
+            expectedStep: matchedFeedback?.expectedStep,
+            timingErrorMs: matchedFeedback?.timingErrorMilliseconds,
+            timingCenterMs: currentScorerCenter,
+            passNumber: matchedPassNumber
+        )
     }
 
     private func recordPlayedHit(padIndex: Int, at time: Double, mark: HitMark?) {
