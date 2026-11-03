@@ -8,13 +8,14 @@ struct SmackAPadApp: App {
     @State private var progress = ProgressStore.shared
     @State private var progression = ProgressionManager.shared
     @State private var midi = MIDIInput(settings: .shared)
+    @State private var showLaunchAnimation = true
     @Environment(\.scenePhase) private var scenePhase
 
     var body: some Scene {
         WindowGroup {
             ContentView()
                 .id(settings.languagePreference)
-                .preferredColorScheme(settings.appearance.colorScheme)
+                .preferredColorScheme(showLaunchAnimation ? .light : settings.appearance.colorScheme)
                 .tint(Theme.ink)
                 .environment(store)
                 .environment(settings)
@@ -29,6 +30,18 @@ struct SmackAPadApp: App {
                     else if phase == .active {
                         midi.start()
                         Task { await store.refreshEntitlements() }
+                    }
+                }
+                .overlay {
+                    if showLaunchAnimation {
+                        LaunchAnimationView {
+                            withAnimation(.easeOut(duration: 0.25)) {
+                                showLaunchAnimation = false
+                            }
+                        }
+                        .ignoresSafeArea()
+                        .transition(.opacity)
+                        .zIndex(999)
                     }
                 }
         }

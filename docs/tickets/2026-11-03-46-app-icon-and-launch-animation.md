@@ -1,6 +1,6 @@
 # 46 — App icon and launch animation from the existing Smack-a-Pad logo
 
-Status: ready. Source: Jakub, 2026-11-03. He rejected the three concepts of ticket 45 and chose his **existing logo** (three black pads, the top-right pad orange and rotated = the "smack") with the **cream background**. Ticket 45 is superseded; its `docs/design/2026-11-03-icon-and-launch/` folder is not used.
+Status: implemented; build OK; awaiting iPad verification. Source: Jakub, 2026-11-03. He rejected the three concepts of ticket 45 and chose his **existing logo** (three black pads, the top-right pad orange and rotated = the "smack") with the **cream background**. Ticket 45 is superseded; its `docs/design/2026-11-03-icon-and-launch/` folder is not used.
 
 ## Source files (already in the repo)
 

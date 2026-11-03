@@ -10,5 +10,10 @@
 	<array>
 		<string>IBMPlexSans[wdth,wght].ttf</string>
 	</array>
+	<key>UILaunchScreen</key>
+	<dict>
+		<key>UIColorName</key>
+		<string>LaunchBackground</string>
+	</dict>
 </dict>
 </plist>
