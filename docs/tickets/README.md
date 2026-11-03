@@ -76,3 +76,13 @@ Source: comparison of the legacy app (user manual 2026-10-25) with the iPad app.
 | 29 | Start/stop from the MIDI controller, tempo knob | Codex GPT-6.1 Sol, high | after 28 (same agent) |
 | 30 | Lesson instructions panel | Gemini 3.8 Flash, high | any time, parallel |
 | 31 | Volume for metronome, pads and pattern sound | Gemini 3.8 Flash, high | any time, parallel with 30 (different files except Settings/PracticeTools — run one after the other if on the same account) |
+
+## Timing and display bugs (2026-11-03)
+
+Source: Jakub's iPad test. Bluetooth MIDI breaks timing; cable works.
+
+| Ticket | Topic | Agent / thinking | Order |
+|---|---|---|---|
+| 55 | "Bars shown" setting ignored in static view | Gemini 3.8 Flash, high | 1st, independent |
+| 54 | Bluetooth MIDI timing (phase A log, phase B fix) | Gemini 3.8 Pro, high (fallback Codex GPT-6.1 Sol, high) | 2nd |
+| 56 | Playhead speeds up at run start | Gemini 3.8 Pro, medium | after 54 (same file) |
