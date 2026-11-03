@@ -1,6 +1,6 @@
 # 59 — A scored run lasts about four bars, as in the original tool
 
-Status: ready-for-agent. Source: Jakub, 2026-11-03, after comparing with the original tool.
+Status: done, verified on iPad (2026-11-03). Source: Jakub, 2026-11-03, after comparing with the original tool.
 Agent: Gemini 3.8 Pro, high thinking (fallback: Codex GPT-6.1 Sol, high).
 Run after ticket 58 (both touch the practice screen).
 

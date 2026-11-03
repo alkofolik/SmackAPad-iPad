@@ -1,6 +1,6 @@
 # 58 — Result card: always offer "Next lesson"; "Start" becomes "Again"
 
-Status: ready-for-agent. Source: Jakub's iPad test, 2026-11-03.
+Status: done, verified on iPad (2026-11-03). Source: Jakub's iPad test, 2026-11-03.
 Agent: Gemini 3.8 Flash, high thinking.
 
 ## Symptom
