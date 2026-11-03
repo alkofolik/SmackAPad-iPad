@@ -64,7 +64,7 @@ Leave multi-sentence messages with their periods (for example `Ready. Choose an 
 
 ## Agent assignment
 
-- **Agent**: Gemini 3.8 Flash (Antigravity), low thinking.
+- **Agent**: Gemini 3.8 Flash (Antigravity), **medium** thinking — about 30 keys in two `.strings` files, with duplicates to merge.
 
 ## Done rule
 
