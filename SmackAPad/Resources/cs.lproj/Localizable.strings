@@ -218,7 +218,7 @@
 "INTRO SECTION RULES" = "PRAVIDLA ÚVODNÍ SEKCE";
 "STRICTER RULES" = "PŘÍSNĚJŠÍ LIMITY";
 "Intro exercises build foundational motor habits and steady timing. They are always accessible without unlock requirements, but enforce stricter scoring limits than standard lessons:" = "Úvodní cvičení slouží k osvojení základních motorických návyků a stabilního timingu. Jsou vždy odemčená bez nutnosti postupu, ale platí pro ně přísnější limity hodnocení než pro běžné lekce:";
-"Passing" = "Splnění (Pass)";
+"Passing" = "Splnění";
 "Standard lessons require 70%" = "Běžné lekce vyžadují 70 %";
 "0 errors" = "0 chyb";
 "At target tempo (normally up to 2)" = "V cílovém tempu (běžně až 2)";
@@ -449,9 +449,30 @@
 "Band colour" = "Barva pásu";
 "The band gets deeper as the tempo nears the goal. A glow on the right edge: you are rushing; on the left: you are dragging." = "Čím blíž cílovému tempu, tím sytější pás. Záře u pravého okraje: spěcháš, u levého: zpožďuješ se.";
 
+"%lld of 3 stars" = "%lld ze 3 hvězd";
+"Detail" = "Detail";
+
+/* Ticket 42: compact library search and controller profile action. */
+"Search" = "Hledat";
+"Learn a new profile (MIDI learn)" = "Naučit nový profil (MIDI učení)";
+
+"Rules" = "Pravidla";
+
 // Debug-only legacy progress import
 "Import from legacy backup" = "Import ze staré zálohy";
 "Choose legacy backup JSON" = "Vybrat starou zálohu JSON";
 "Imported %lld lessons. Added %lld stars." = "Importováno lekcí: %lld. Přidáno hvězd: %lld.";
 "Invalid backup. Choose a padwork backup with formatVersion 1 and rewards.stars. Progress was not changed." = "Neplatná záloha. Vyber zálohu padwork s formatVersion 1 a rewards.stars. Postup se nezměnil.";
 "Import failed. Progress was not changed. %@" = "Import selhal. Postup se nezměnil. %@";
+
+// Hardware keyboard (ticket 41)
+"KEYBOARD" = "KLÁVESNICE";
+"Keyboard" = "Klávesnice";
+"Play pads with keyboard" = "Hrát pady na klávesnici";
+"No keyboard connected" = "Není připojena žádná klávesnice";
+"Hardware keyboard" = "Hardwarová klávesnice";
+"Press any mapped key with the click" = "Stiskni libovolnou namapovanou klávesu s klikem";
+"Row 1 (top)" = "Řada 1 (nahoře)";
+"Row 2" = "Řada 2";
+"Row 3" = "Řada 3";
+"Row 4 (bottom)" = "Řada 4 (dole)";

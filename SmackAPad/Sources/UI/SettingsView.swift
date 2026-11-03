@@ -81,12 +81,8 @@ public struct SettingsView: View {
 
                     // MARK: 2. BPM Step
                     Section {
-                        Picker(settings.localized("Tempo step"), selection: $settings.bpmStep) {
-                            ForEach(BpmStep.allCases) { step in
-                                Text("+\(step.rawValue) BPM").tag(step.rawValue)
-                            }
-                        }
-                        .pickerStyle(.segmented)
+                        PlexSegmentedPicker(title: settings.localized("Tempo step"), selection: $settings.bpmStep,
+                            options: BpmStep.allCases.map { ($0.rawValue, "+\($0.rawValue) BPM") })
                     } header: {
                         SectionHeader(title: settings.localized("TEMPO AUTO-STEP (BPM)"))
                     } footer: {
@@ -178,14 +174,43 @@ public struct SettingsView: View {
 
                     ControllerMappingSections()
 
-                    // MARK: 4. Appearance
+                    // MARK: Keyboard
                     Section {
-                        Picker(settings.localized("Appearance"), selection: $settings.appearance) {
-                            ForEach(AppAppearance.allCases) { appearance in
-                                Text(settings.localized(appearance.title)).tag(appearance)
+                        if midi.isKeyboardConnected {
+                            Toggle(settings.localized("Play pads with keyboard"), isOn: $settings.playPadsWithKeyboard)
+                                .tint(Theme.orange)
+                        } else {
+                            Text(settings.localized("No keyboard connected"))
+                                .font(Theme.meta)
+                                .foregroundStyle(Theme.secondary)
+                        }
+
+                        VStack(alignment: .leading, spacing: Theme.Space.tight) {
+                            ForEach(KeyboardPadMapping.rows, id: \.rowNumber) { row in
+                                if row.rowNumber > 1 {
+                                    Divider()
+                                }
+                                HStack {
+                                    Text(settings.localized(row.label))
+                                        .font(Theme.meta)
+                                        .foregroundStyle(Theme.secondary)
+                                    Spacer()
+                                    Text(row.keys.joined(separator: "   "))
+                                        .font(Theme.control)
+                                        .monospaced()
+                                }
+                                .frame(minHeight: 28)
                             }
                         }
-                        .pickerStyle(.segmented)
+                        .padding(.vertical, Theme.Space.tight)
+                    } header: {
+                        SectionHeader(title: settings.localized("KEYBOARD"))
+                    }
+
+                    // MARK: 4. Appearance
+                    Section {
+                        PlexSegmentedPicker(title: settings.localized("Appearance"), selection: $settings.appearance,
+                            options: AppAppearance.allCases.map { ($0, settings.localized($0.title)) })
                     } header: {
                         SectionHeader(title: settings.localized("APPEARANCE"))
                     } footer: {
@@ -196,12 +221,8 @@ public struct SettingsView: View {
 
                     // MARK: 5. Language Switch
                     Section {
-                        Picker(settings.localized("App language"), selection: $settings.languagePreference) {
-                            ForEach(AppLanguage.allCases) { lang in
-                                Text(lang.displayName).tag(lang)
-                            }
-                        }
-                        .pickerStyle(.segmented)
+                        PlexSegmentedPicker(title: settings.localized("App language"), selection: $settings.languagePreference,
+                            options: AppLanguage.allCases.map { ($0, $0.displayName) })
                     } header: {
                         SectionHeader(title: settings.localized("LANGUAGE"))
                     } footer: {
@@ -329,6 +350,16 @@ public struct SettingsView: View {
                                 .foregroundStyle(Theme.secondary)
                         }
                     }
+
+                    Section {
+                        NavigationLink {
+                            FontLicenceView()
+                        } label: {
+                            Text("SIL Open Font License 1.1").font(Theme.navigation)
+                        }
+                    } header: {
+                        SectionHeader(title: "IBM Plex Sans")
+                    }
                 }
                 .listRowBackground(Theme.surface)
                 .listRowInsets(EdgeInsets(top: Theme.Space.small, leading: Theme.Space.regular,
@@ -352,22 +383,21 @@ public struct SettingsView: View {
                     .environment(settings)
                     .environment(midi)
             }
-            .alert(
-                profileToDelete != nil
-                    ? settings.localized("Delete profile \"%@\"?", profileToDelete?.profileName ?? "")
-                    : "",
-                isPresented: $showingDeleteAlert,
-                presenting: profileToDelete
-            ) { profile in
-                Button(settings.localized("Delete"), role: .destructive) {
-                    settings.deleteProfile(named: profile.profileName)
-                    profileToDelete = nil
+            .sheet(isPresented: $showingDeleteAlert) {
+                if let profile = profileToDelete {
+                    AppConfirmation(title: settings.localized("Delete profile \"%@\"?", profile.profileName),
+                                    message: settings.localized("This custom profile will be permanently deleted.")) {
+                        Button(settings.localized("Delete"), role: .destructive) {
+                            settings.deleteProfile(named: profile.profileName)
+                            showingDeleteAlert = false
+                            profileToDelete = nil
+                        }
+                        Button(settings.localized("Cancel"), role: .cancel) {
+                            showingDeleteAlert = false
+                            profileToDelete = nil
+                        }
+                    }
                 }
-                Button(settings.localized("Cancel"), role: .cancel) {
-                    profileToDelete = nil
-                }
-            } message: { _ in
-                Text(settings.localized("This custom profile will be permanently deleted."))
             }
             .task {
                 loadKits()
@@ -375,11 +405,18 @@ public struct SettingsView: View {
             .onChange(of: midi.pendingControlSignal) { _, signal in
                 showingControlPadWarning = signal != nil
             }
-            .alert(settings.localized("Use this pad as a controller button?"), isPresented: $showingControlPadWarning) {
-                Button(settings.localized("Use for control")) { midi.confirmControlMapping() }
-                Button(settings.localized("Cancel"), role: .cancel) { midi.cancelControlLearning() }
-            } message: {
-                Text(settings.localized("This pad will no longer play a sound."))
+            .sheet(isPresented: $showingControlPadWarning) {
+                AppConfirmation(title: settings.localized("Use this pad as a controller button?"),
+                                message: settings.localized("This pad will no longer play a sound.")) {
+                    Button(settings.localized("Use for control")) {
+                        midi.confirmControlMapping()
+                        showingControlPadWarning = false
+                    }
+                    Button(settings.localized("Cancel"), role: .cancel) {
+                        midi.cancelControlLearning()
+                        showingControlPadWarning = false
+                    }
+                }
             }
             .onDisappear { midi.cancelControlLearning() }
         }
@@ -417,7 +454,7 @@ private struct ProfileRow: View {
             Text("\(settings.localized(profile.padCount == 8 ? "8 pads" : "16 pads")) · \(settings.localized(isCustom ? "Custom" : "Preset"))")
         } trailing: {
             if isActive {
-                Text(settings.localized("ACTIVE")).font(Theme.meta).foregroundStyle(Theme.orange)
+                Text(Theme.sentenceCase(settings.localized("ACTIVE"))).font(Theme.meta).foregroundStyle(Theme.orange)
             }
             if isCustom {
                 Button(role: .destructive, action: onDelete) {
@@ -434,6 +471,35 @@ private struct ProfileRow: View {
                     Label(settings.localized("Delete"), systemImage: "trash")
                 }
             }
+        }
+    }
+}
+
+private struct FontLicenceView: View {
+    private static let licence: String = {
+        guard let url = Bundle.main.url(forResource: "ibmplexsans-OFL", withExtension: "txt"),
+              let text = try? String(contentsOf: url, encoding: .utf8) else {
+            preconditionFailure("Missing bundled IBM Plex Sans licence")
+        }
+        return text
+    }()
+
+    var body: some View {
+        ScrollView {
+            Text(Self.licence)
+                .font(Theme.meta)
+                .lineSpacing(8)
+                .textSelection(.enabled)
+                .fixedSize(horizontal: false, vertical: true)
+                .frame(maxWidth: 760, alignment: .leading)
+                .padding(Theme.Space.page)
+                .frame(maxWidth: .infinity)
+        }
+        .background(Theme.background).foregroundStyle(Theme.ink)
+        .navigationTitle("IBM Plex Sans")
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItem(placement: .principal) { ScreenHeader(title: "IBM Plex Sans") }
         }
     }
 }

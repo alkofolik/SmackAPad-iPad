@@ -21,6 +21,9 @@ struct CalibrationView: View {
                 Section {
                     Picker(settings.localized("Calibration input"), selection: $session.deviceID) {
                         Text(settings.localized("On-screen pads")).tag("touch")
+                        if midi.isKeyboardConnected {
+                            Text(settings.localized("Hardware keyboard")).tag("keyboard")
+                        }
                         ForEach(midi.sources) { source in Text(source.name).font(Theme.rowTitle).tag(source.id) }
                     }
                     .disabled(session.busy)
@@ -50,6 +53,11 @@ struct CalibrationView: View {
                                 .onEnded { _ in touching = false })
                             .accessibilityAddTraits(.isButton)
                             .accessibilityAction { session.touch() }
+                    } else if session.deviceID == "keyboard" {
+                        Text(settings.localized("Press any mapped key with the click"))
+                            .font(Theme.rowTitle)
+                            .frame(maxWidth: .infinity, minHeight: 80)
+                            .background(Theme.background)
                     }
                     if let result = session.result {
                         LabeledContent(settings.localized("Saved offset"), value: signed(result.offsetMilliseconds))
@@ -80,7 +88,12 @@ struct CalibrationView: View {
         .onDisappear { session.close() }
         .onChange(of: scenePhase) { _, phase in if phase != .active { session.cancel() } }
         .onChange(of: midi.sources) { _, sources in
-            if !session.busy, session.deviceID != "touch", !sources.contains(where: { $0.id == session.deviceID }) {
+            if !session.busy, session.deviceID != "touch", session.deviceID != "keyboard", !sources.contains(where: { $0.id == session.deviceID }) {
+                session.deviceID = "touch"
+            }
+        }
+        .onChange(of: midi.isKeyboardConnected) { _, connected in
+            if !session.busy, session.deviceID == "keyboard", !connected {
                 session.deviceID = "touch"
             }
         }

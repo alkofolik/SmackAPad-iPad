@@ -449,9 +449,26 @@
 "Band colour" = "Band colour";
 "The band gets deeper as the tempo nears the goal. A glow on the right edge: you are rushing; on the left: you are dragging." = "The band gets deeper as the tempo nears the goal. A glow on the right edge: you are rushing; on the left: you are dragging.";
 
+"%lld of 3 stars" = "%lld of 3 stars";
+"Detail" = "Detail";
+
+"Rules" = "Rules";
+
 // Debug-only legacy progress import
 "Import from legacy backup" = "Import from legacy backup";
 "Choose legacy backup JSON" = "Choose legacy backup JSON";
 "Imported %lld lessons. Added %lld stars." = "Imported %lld lessons. Added %lld stars.";
 "Invalid backup. Choose a padwork backup with formatVersion 1 and rewards.stars. Progress was not changed." = "Invalid backup. Choose a padwork backup with formatVersion 1 and rewards.stars. Progress was not changed.";
 "Import failed. Progress was not changed. %@" = "Import failed. Progress was not changed. %@";
+
+// Hardware keyboard (ticket 41)
+"KEYBOARD" = "KEYBOARD";
+"Keyboard" = "Keyboard";
+"Play pads with keyboard" = "Play pads with keyboard";
+"No keyboard connected" = "No keyboard connected";
+"Hardware keyboard" = "Hardware keyboard";
+"Press any mapped key with the click" = "Press any mapped key with the click";
+"Row 1 (top)" = "Row 1 (top)";
+"Row 2" = "Row 2";
+"Row 3" = "Row 3";
+"Row 4 (bottom)" = "Row 4 (bottom)";

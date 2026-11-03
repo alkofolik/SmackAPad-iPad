@@ -29,6 +29,7 @@ public enum SettingsKey: String, CaseIterable, Sendable {
     case padsVolume = "smackapad.settings.volume.pads"
     case patternVolume = "smackapad.settings.volume.pattern"
     case appearance = "smackapad.settings.appearance"
+    case playPadsWithKeyboard = "smackapad.settings.playPadsWithKeyboard"
 }
 
 /// Supported app appearances (Light, Dark, or follow System).
@@ -266,6 +267,9 @@ public final class SettingsManager: @unchecked Sendable {
     public var lastLessonID: Int {
         didSet { userDefaults.set(lastLessonID, forKey: "smackapad.library.lastLesson") }
     }
+    public var playPadsWithKeyboard: Bool {
+        didSet { userDefaults.set(playPadsWithKeyboard, forKey: SettingsKey.playPadsWithKeyboard.rawValue) }
+    }
 
     // MARK: - Memory Star Hint
 
@@ -412,6 +416,8 @@ public final class SettingsManager: @unchecked Sendable {
         } else {
             self.patternVolume = Self.defaultPatternVolume
         }
+
+        self.playPadsWithKeyboard = userDefaults.object(forKey: SettingsKey.playPadsWithKeyboard.rawValue) as? Bool ?? true
     }
 
     // MARK: Persistence Helpers
@@ -598,6 +604,7 @@ public final class SettingsManager: @unchecked Sendable {
         self.metronomeVolume = Self.defaultMetronomeVolume
         self.padsVolume = Self.defaultPadsVolume
         self.patternVolume = Self.defaultPatternVolume
+        self.playPadsWithKeyboard = true
     }
 }
 

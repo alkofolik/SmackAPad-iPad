@@ -7,6 +7,7 @@ struct PracticeScreen: View {
     @Environment(\.accessibilityReduceMotion) private var reduced
     private var motion: Theme.Motion.Policy { .init(reduced: reduced) }
     @Environment(\.scenePhase) private var scenePhase
+    @Environment(\.dynamicTypeSize) private var dynamicType
     @Environment(SettingsManager.self) private var settings
     @Environment(MIDIInput.self) private var midi
     @Environment(ProgressStore.self) private var progress
@@ -20,6 +21,7 @@ struct PracticeScreen: View {
     @State private var showingTools = false
     @State private var showingTempo = false
     @State private var showingDetails = false
+    @State private var showingStarRules = false
     @State private var showingMIDI = false
     @State private var showingInfo = false
     @State private var purchaseAccess: String?
@@ -30,46 +32,19 @@ struct PracticeScreen: View {
 
     var body: some View {
         GeometryReader { geometry in
-            let compact = geometry.size.width < 1_000
+            let compact = geometry.size.width < 1_000 || dynamicType > .large
             VStack(spacing: Theme.Space.regular) {
-                header(compact: compact)
-                instrumentRow
-                TimelineView(.animation(minimumInterval: 1.0 / 60, paused: !session.running)) { timeline in
-                    let frame = session.patternFrame(at: timeline.date)
-                    let scored = session.running && !session.listen && session.countdown == nil
-                    PatternField(lesson: session.practiceLesson, hits: session.patternHits,
-                                 position: frame.position, tapePosition: frame.tapePosition,
-                                 running: session.running && session.countdown == nil,
-                                 hidden: session.fromMemory && session.running && !session.listen,
-                                 scrolling: scrolling, visibleBars: [1, 2, 4].contains(visibleBars) ? visibleBars : 4,
-                                 verdicts: session.barVerdicts,
-                                 judgments: session.hitJudgments, bpm: frame.bpm,
-                                 playedHits: session.playedHits, pass: frame.pass,
-                                 scoring: session.running && !session.listen && session.countdown == nil,
-                                 missGraceSteps: frame.missGraceSteps, countdown: session.countdown,
-                                 band: BandTone.color(listen: session.listen,
-                                                      memory: session.fromMemory && !session.listen,
-                                                      bpm: session.bpm, startBpm: session.lesson.startBpm,
-                                                      targetBpm: session.lesson.targetBpm),
-                                 edgeTendency: scored ? BandTone.edgeTendency(session.timingHistory, at: timeline.date) : 0)
+                ViewThatFits(in: .vertical) {
+                    practiceContent(compact: compact)
+                    // Only undersized windows scroll; transport stays outside this region.
+                    ScrollView {
+                        practiceContent(compact: compact)
+                    }
+                    .scrollBounceBehavior(.basedOnSize)
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
-                .overlay(alignment: session.starEvent?.award.shouldStop == true ? .center : .topTrailing) {
-                    if let event = session.starEvent {
-                        StarBurst(event: event, announcement: starAnnouncement(for: event))
-                            .id(event.id)
-                            .padding(Theme.Space.regular)
-                    }
-                }
-                // Reserve this lane before START as well, keeping the field and readout fixed.
-                HitTimingBar(history: session.timingHistory, windows: session.timingWindows,
-                             active: session.running && !session.listen && session.countdown == nil)
-                footer(compact: compact)
-                    .motion(Theme.Motion.emphasis, value: session.summary?.id)
-                if let error = session.errorMessage {
-                    Text(error).font(Theme.meta).foregroundStyle(Theme.secondary)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                }
+                footer
+                    .fixedSize(horizontal: false, vertical: true)
             }
             .padding(Theme.Space.page)
             .background(Theme.background.ignoresSafeArea())
@@ -104,6 +79,54 @@ struct PracticeScreen: View {
         }
     }
 
+    private var lessonCategoryTitle: String {
+        if session.lesson.cat == "intro" || session.lesson.cat == "starter" { return "Intro" }
+        return LessonStore.shared.categories.first { $0.id == session.lesson.cat }?.title ?? session.lesson.genre
+    }
+
+    private func practiceContent(compact: Bool) -> some View {
+        VStack(spacing: Theme.Space.regular) {
+            header(compact: compact)
+                .fixedSize(horizontal: false, vertical: true)
+            instrumentRow
+                .fixedSize(horizontal: false, vertical: true)
+            TimelineView(.animation(minimumInterval: 1.0 / 60, paused: !session.running)) { timeline in
+                let frame = session.patternFrame(at: timeline.date)
+                let scored = session.running && !session.listen && session.countdown == nil
+                PatternField(lesson: session.practiceLesson, hits: session.patternHits,
+                             position: frame.position, tapePosition: frame.tapePosition,
+                             running: session.running && session.countdown == nil,
+                             hidden: session.fromMemory && session.running && !session.listen,
+                             scrolling: scrolling, visibleBars: [1, 2, 4].contains(visibleBars) ? visibleBars : 4,
+                             verdicts: session.barVerdicts,
+                             judgments: session.hitJudgments, bpm: frame.bpm,
+                             playedHits: session.playedHits, pass: frame.pass,
+                             scoring: session.running && !session.listen && session.countdown == nil,
+                             missGraceSteps: frame.missGraceSteps, countdown: session.countdown,
+                             band: BandTone.color(listen: session.listen,
+                                                  memory: session.fromMemory && !session.listen,
+                                                  bpm: session.bpm, startBpm: session.lesson.startBpm,
+                                                  targetBpm: session.lesson.targetBpm),
+                             edgeTendency: scored ? BandTone.edgeTendency(session.timingHistory, at: timeline.date) : 0)
+            }
+            .frame(minHeight: 160,
+                   maxHeight: .infinity)
+            .layoutPriority(-1)
+            if session.summary == nil {
+                HitTimingBar(history: session.timingHistory, windows: session.timingWindows,
+                             active: session.running && !session.listen && session.countdown == nil)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            result
+                .fixedSize(horizontal: false, vertical: true)
+            if let error = session.errorMessage {
+                Text(error).font(Theme.meta).foregroundStyle(Theme.secondary)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        }
+    }
+
     private func starAnnouncement(for event: StarEvent) -> String {
         let names = [settings.localized("Passed"), settings.localized("Goal tempo"), settings.localized("From memory")]
         return names.indices.filter { event.award.fresh[$0] }.map {
@@ -124,14 +147,18 @@ struct PracticeScreen: View {
                 }
                 .buttonStyle(InstrumentButtonStyle())
                 VStack(alignment: .leading, spacing: Theme.Space.tight) {
-                    Text(settings.localized(session.lesson.title)).font(Theme.screenTitle).lineLimit(2)
-                    Text("\(session.lesson.cat.uppercased()) · \(settings.localized("LEVEL")) \(session.lesson.level)")
+                    Text(settings.localized(session.lesson.title)).font(Theme.rowTitle).fixedSize(horizontal: false, vertical: true)
+                    Text("\(Theme.sentenceCase(settings.localized(lessonCategoryTitle))) · \(Theme.sentenceCase(settings.localized("LEVEL"))) \(session.lesson.level)")
                         .font(Theme.meta).foregroundStyle(Theme.secondary).lineLimit(1)
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
                 if !compact { tools }
             }
-            if compact { HStack { Spacer(minLength: 0); tools } }
+            if compact {
+                ScrollView(.horizontal) { HStack { Spacer(minLength: 0); tools } }
+                    .fixedSize(horizontal: false, vertical: true)
+                    .scrollBounceBehavior(.basedOnSize)
+            }
         }
     }
 
@@ -212,7 +239,7 @@ struct PracticeScreen: View {
                         .id(event.id)
                 }
             }
-            .frame(width: 240, height: 40)
+            .frame(maxWidth: .infinity, minHeight: 56)
             Spacer(minLength: 0)
             if let progress = session.starRunProgress {
                 Text(settings.localized("%lld / %lld", progress.count, progress.required))
@@ -259,7 +286,7 @@ struct PracticeScreen: View {
     private var tempoControls: some View {
         VStack(alignment: .leading, spacing: Theme.Space.regular) {
             Text(settings.localized("Tempo")).font(Theme.screenTitle)
-            Text("\(session.bpm) → \(session.lesson.targetBpm) BPM").font(Theme.control)
+            Text("\(session.bpm) → \(session.lesson.targetBpm) BPM").font(Theme.control).monospacedDigit()
                         .contentTransition(motion.numeric).motion(value: session.bpm)
             HStack(spacing: Theme.Space.small) {
                 ForEach([-5, -1, 1, 5], id: \.self) { step in
@@ -275,40 +302,46 @@ struct PracticeScreen: View {
     }
 
     @ViewBuilder
-    private func footer(compact: Bool) -> some View {
-        if compact {
-            VStack(alignment: .trailing, spacing: Theme.Space.small) {
-                HStack(alignment: .bottom) { footerContent; Spacer(minLength: 0) }
-                transport
+    private var result: some View {
+        if let summary = session.summary, !session.running {
+            ResultCard(summary: summary, saved: session.savedProgress,
+                       event: session.starEvent,
+                       announcement: session.starEvent.map(starAnnouncement) ?? "",
+                       detail: { showingDetails = true }, rules: { showingStarRules = true }) {
+                if showsMemoryChallenge {
+                    Button(action: startMemoryChallenge) {
+                        Text(settings.localized("From memory for ★3"))
+                    }
+                    .buttonStyle(MemoryChallengeButtonStyle())
+                    .accessibilityHint(settings.localized("Starts Play from memory for the 3rd star"))
+                } else if session.savedProgress?.passed == true {
+                    nextLessonControl
+                }
             }
-        } else {
+            .popover(isPresented: $showingDetails) { runDetails(summary) }
+            .popover(isPresented: $showingStarRules) { starRules }
+        }
+    }
+
+    private var footer: some View {
+        ViewThatFits(in: .horizontal) {
             HStack(alignment: .bottom, spacing: Theme.Space.page) {
                 footerContent
                 Spacer(minLength: 0)
+                transport
+            }
+            VStack(alignment: .trailing, spacing: Theme.Space.small) {
+                HStack(alignment: .bottom) { footerContent; Spacer(minLength: 0) }
                 transport
             }
         }
     }
 
     private var transport: some View {
-        VStack(alignment: .trailing, spacing: Theme.Space.small) {
-            if !session.running {
-                HStack(spacing: Theme.Space.small) {
-                    if showsMemoryChallenge {
-                        Button(action: startMemoryChallenge) {
-                            Text(settings.localized("From memory for ★3"))
-                        }
-                        .buttonStyle(MemoryChallengeButtonStyle())
-                        .accessibilityHint(settings.localized("Starts Play from memory for the 3rd star"))
-                    }
-                    if session.savedProgress?.passed == true { nextLessonControl }
-                }
-            }
-            TransportControls(running: session.running, enabled: session.ready && session.available,
-                              start: { showingInfo = false; session.start() },
-                              stop: session.stop,
-                              restart: { showingInfo = false; session.restart() })
-        }
+        TransportControls(running: session.running, enabled: session.ready && session.available,
+                          start: { showingInfo = false; session.start() },
+                          stop: session.stop,
+                          restart: { showingInfo = false; session.restart() })
     }
 
     /// After the 2nd star and until the 3rd: a direct way into the from-memory run.
@@ -338,12 +371,13 @@ struct PracticeScreen: View {
                     .lineLimit(1)
                     .fixedSize(horizontal: true, vertical: false)
             }
-            .buttonStyle(InstrumentButtonStyle())
+            .buttonStyle(PracticeNextButtonStyle())
             .accessibilityHint(settings.localized(next.title))
         } else {
-            Text(settings.localized("No next lesson available"))
-                .font(Theme.meta)
-                .foregroundStyle(Theme.secondary)
+            Button(settings.localized("Next lesson")) {}
+                .buttonStyle(PracticeNextButtonStyle())
+                .disabled(true)
+                .accessibilityHint(settings.localized("No next lesson available"))
         }
     }
 
@@ -358,6 +392,7 @@ struct PracticeScreen: View {
         showingTools = false
         showingTempo = false
         showingDetails = false
+        showingStarRules = false
         session.close()
         session = PracticeSession(lesson: lesson, settings: settings, progress: progress, midi: midi)
     }
@@ -365,34 +400,14 @@ struct PracticeScreen: View {
     @ViewBuilder
     private var footerContent: some View {
         if showPads, let pads = midi.padIndices {
-            PadLayoutGrid(pads: pads, used: Set(session.patternHits.map(\.padIndex)), flashes: session.padFlashes)
+            PadLayoutGrid(
+                pads: pads,
+                used: Set(session.patternHits.map(\.padIndex)),
+                flashes: session.padFlashes,
+                showKeyboardKeys: midi.isKeyboardConnected && settings.playPadsWithKeyboard && midi.activeProfile.isSixteenPad
+            )
         }
-        if let summary = session.summary {
-            ResultCard(summary: summary, saved: session.savedProgress) { showingDetails = true }
-                .id(summary.id)
-                .transition(motion.summary)
-                .popover(isPresented: $showingDetails) {
-                    VStack(alignment: .leading, spacing: Theme.Space.regular) {
-                        Text(settings.localized("Practice summary")).font(Theme.screenTitle)
-                        if let star = summary.finishedByStar {
-                            Text(settings.localized(star == 3
-                                ? "Run finished: star 3 earned, from memory"
-                                : "Run finished: star 2 earned, goal tempo"))
-                        }
-                        Text("\(summary.bpm) BPM · \(settings.localized("%lld completed passes", summary.passes))")
-                        Text(settings.localized("Best: %@", session.savedProgress.map {
-                            "\(Int(($0.bestScore * 100).rounded())) %"
-                        } ?? "— %"))
-                        Text(settings.localized(summary.passes > 0
-                            ? "Score is from the last completed pass. Stars are earned across this run."
-                            : "Run stopped before the first pass finished."))
-                            .foregroundStyle(Theme.secondary)
-                        HitTimingPlot(history: session.timingHistory)
-                    }
-                    .font(Theme.control).padding(Theme.Space.page).frame(maxWidth: 440)
-                    .foregroundStyle(Theme.ink).background(Theme.background)
-                }
-        } else if !session.available {
+        if !session.available {
             Text(settings.localized("This lesson requires 16 pads."))
                 .font(Theme.control)
         } else if !session.ready {
@@ -401,6 +416,56 @@ struct PracticeScreen: View {
             Text(settings.localized("From memory · notes hide after START"))
                 .font(Theme.meta)
         }
+    }
+
+    private func runDetails(_ summary: RunSummary) -> some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: Theme.Space.regular) {
+                Text(settings.localized("Practice summary")).font(Theme.screenTitle)
+                if let star = summary.finishedByStar {
+                    Text(settings.localized(star == 3
+                        ? "Run finished: star 3 earned, from memory"
+                        : "Run finished: star 2 earned, goal tempo"))
+                }
+                Text("\(summary.bpm) BPM · \(settings.localized("%lld completed passes", summary.passes))")
+                Text(settings.localized("Best: %@", session.savedProgress.map {
+                    "\(Int(($0.bestScore * 100).rounded())) %"
+                } ?? "— %"))
+                Text(settings.localized(summary.passes > 0
+                    ? "Score is from the last completed pass. Stars are earned across this run."
+                    : "Run stopped before the first pass finished."))
+                    .foregroundStyle(Theme.secondary)
+                HitTimingPlot(history: session.timingHistory)
+            }
+            .font(Theme.control).padding(Theme.Space.page).frame(maxWidth: 440)
+            .foregroundStyle(Theme.ink).background(Theme.background)
+        }
+        .frame(idealWidth: 440, maxHeight: 600)
+    }
+
+    private var starRules: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: Theme.Space.regular) {
+                Text(settings.localized("Star requirements")).font(Theme.sectionTitle)
+                ForEach(0..<3, id: \.self) { index in
+                    HStack(alignment: .top, spacing: Theme.Space.small) {
+                        Image(systemName: isStarEarned(index) ? "star.fill" : "star")
+                            .foregroundStyle(isStarEarned(index) ? PracticeBandStyle.orange : Theme.ink)
+                            .frame(width: 24, height: 24)
+                            .accessibilityHidden(true)
+                        Text(StarRequirement.requirementText(for: index, lesson: session.lesson,
+                            padCount: midi.activeProfile.padCount, settings: settings))
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                    .font(Theme.control)
+                }
+                Button(settings.localized("Close")) { showingStarRules = false }
+                    .font(Theme.control).frame(minHeight: Theme.Size.touch)
+            }
+            .padding(Theme.Space.page)
+        }
+        .frame(width: 420, height: 360)
+        .foregroundStyle(Theme.ink).background(Theme.background)
     }
 
     private var legend: some View {
@@ -448,7 +513,7 @@ struct PracticeScreen: View {
                     let barsText = session.lesson.bars == 1
                         ? settings.localized("1 bar")
                         : settings.localized("%lld bars", session.lesson.bars)
-                    Text("\(settings.localized("LEVEL")) \(session.lesson.level) · \(barsText) · \(session.lesson.startBpm) → \(session.lesson.targetBpm) BPM")
+                    Text("\(Theme.sentenceCase(settings.localized("LEVEL"))) \(session.lesson.level) · \(barsText) · \(session.lesson.startBpm) → \(session.lesson.targetBpm) BPM")
                         .font(Theme.meta)
                         .foregroundStyle(Theme.secondary)
                 }
@@ -463,7 +528,7 @@ struct PracticeScreen: View {
 
                 infoBlock("How to play") {
                     if !session.lesson.text.isEmpty {
-                        infoParagraphs(settings.localized(session.lesson.text))
+                        infoParagraphs(localizedInstructions(session.lesson.text))
                     } else {
                         infoParagraphs(settings.localized("Follow the pattern and keep the left and right hands steady."))
                     }
@@ -559,10 +624,32 @@ struct PracticeScreen: View {
         }
     }
 
+    /// Core lessons compose hand assignments; the table contains their labels and instrument names.
+    private func localizedInstructions(_ text: String) -> String {
+        let translated = settings.localized(text)
+        guard settings.languagePreference == .czech, translated == text else { return translated }
+        let sentences = text.components(separatedBy: ". ")
+        return sentences.enumerated().map { index, sentence in
+            let full = sentence + (index < sentences.count - 1 ? "." : "")
+            let translatedSentence = settings.localized(full)
+            if translatedSentence != full { return translatedSentence }
+            for hand in ["Left hand", "Right hand"] where full.hasPrefix(hand + ": ") {
+                let hasPeriod = full.hasSuffix(".")
+                let assignment = String(full.dropFirst(hand.count + 2).dropLast(hasPeriod ? 1 : 0))
+                let names = assignment.components(separatedBy: ", ").map { name in
+                    let key = name == "open hat" ? "Open hi-hat" : name.prefix(1).uppercased() + name.dropFirst()
+                    return settings.localized(key)
+                }
+                return settings.localized(hand) + ": " + names.joined(separator: ", ") + (hasPeriod ? "." : "")
+            }
+            return full
+        }.joined(separator: " ")
+    }
+
     private func infoParagraphs(_ text: String) -> some View {
         VStack(alignment: .leading, spacing: Theme.Space.small) {
             ForEach(Array(text.components(separatedBy: .newlines).filter { !$0.isEmpty }.enumerated()), id: \.offset) { _, paragraph in
-                Text(paragraph).font(Theme.control)
+                Text(paragraph).font(Theme.navigation).lineSpacing(7)
                     .fixedSize(horizontal: false, vertical: true)
             }
         }
@@ -656,12 +743,8 @@ private struct PracticeTools: View {
                 Text(settings.localized("Section loops do not earn lesson stars."))
             }.disabled(session.running)
             Section(settings.localized("Appearance")) {
-                Picker(settings.localized("Appearance"), selection: $settings.appearance) {
-                    ForEach(AppAppearance.allCases) { appearance in
-                        Text(settings.localized(appearance.title)).tag(appearance)
-                    }
-                }
-                .pickerStyle(.segmented)
+                PlexSegmentedPicker(title: settings.localized("Appearance"), selection: $settings.appearance,
+                    options: AppAppearance.allCases.map { ($0, settings.localized($0.title)) })
             }
             Button(settings.localized("MIDI and controller"), action: openMIDI).disabled(session.running)
         }

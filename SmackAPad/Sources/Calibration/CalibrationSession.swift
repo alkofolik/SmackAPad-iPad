@@ -8,7 +8,11 @@ import Observation
 final class CalibrationSession {
     enum Phase { case idle, preparing, countIn, measuring, completed, cancelled, failed }
 
-    var deviceID = "touch"
+    var deviceID = "touch" {
+        didSet {
+            midi.isCalibratingKeyboard = (deviceID == "keyboard")
+        }
+    }
     private(set) var phase: Phase = .idle
     private(set) var clickNumber = 0
     private(set) var matchedClicks: Set<Int> = []
@@ -42,26 +46,27 @@ final class CalibrationSession {
         previousPadHandler = midi.onPadEvent
         previousNoteHandler = midi.onNoteEvent
         midi.cancelLearning()
+        midi.isCalibratingKeyboard = (deviceID == "keyboard")
         midi.onNoteEvent = { [weak self] event in
             guard event.isNoteOn else { return }
             self?.receive(timestamp: event.timestamp, deviceID: event.deviceID)
         }
         midi.onPadEvent = { [weak self] event in
-            guard event.isNoteOn, event.deviceID == "touch" else { return }
+            guard event.isNoteOn, (event.deviceID == "touch" || event.deviceID == "keyboard") else { return }
             self?.receive(timestamp: event.timestamp, deviceID: event.deviceID)
         }
     }
 
     func start() {
         guard attached, !busy,
-              deviceID == "touch" || midi.sources.contains(where: { $0.id == deviceID }) else { return }
+              deviceID == "touch" || (deviceID == "keyboard" && midi.isKeyboardConnected) || midi.sources.contains(where: { $0.id == deviceID }) else { return }
         let id = UUID()
         runID = id
         measurement = CalibrationMeasurement()
         result = nil; failure = nil; audioError = nil
         clickNumber = 0; matchedClicks = []
         phase = .preparing
-        midi.selectedSourceID = deviceID == "touch" ? nil : deviceID
+        midi.selectedSourceID = (deviceID == "touch" || deviceID == "keyboard") ? nil : deviceID
         task = Task { [weak self] in
             guard let self else { return }
             do {
@@ -83,7 +88,7 @@ final class CalibrationSession {
                 while !Task.isCancelled, runID == id, busy {
                     let snapshot = audio.calibrationSnapshot()
                     guard !snapshot.clockChanged else { fail(.audioClockChanged); return }
-                    guard deviceID == "touch" || midi.sources.contains(where: { $0.id == deviceID }) else {
+                    guard deviceID == "touch" || (deviceID == "keyboard" && midi.isKeyboardConnected) || midi.sources.contains(where: { $0.id == deviceID }) else {
                         cancel()
                         return
                     }
@@ -129,6 +134,7 @@ final class CalibrationSession {
         cancel()
         audio.stopCalibrationClicks()
         audio.stop()
+        midi.isCalibratingKeyboard = false
         guard attached else { return }
         midi.onPadEvent = previousPadHandler
         midi.onNoteEvent = previousNoteHandler

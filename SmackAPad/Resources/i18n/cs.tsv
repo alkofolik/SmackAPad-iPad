@@ -2591,3 +2591,13 @@ This browser does not support MIDI. Open the app in Chrome, Edge or another Chro
 Pattern sound	Zvuk patternu
 SOUND	ZVUK
 Separate volume for metronome, pads and pattern playback.	Samostatná hlasitost pro metronom, pady a zvuk patternu.
+KEYBOARD	KLÁVESNICE
+Keyboard	Klávesnice
+Play pads with keyboard	Hrát pady na klávesnici
+No keyboard connected	Není připojena žádná klávesnice
+Hardware keyboard	Hardwarová klávesnice
+Press any mapped key with the click	Stiskni libovolnou namapovanou klávesu s klikem
+Row 1 (top)	Řada 1 (nahoře)
+Row 2	Řada 2
+Row 3	Řada 3
+Row 4 (bottom)	Řada 4 (dole)

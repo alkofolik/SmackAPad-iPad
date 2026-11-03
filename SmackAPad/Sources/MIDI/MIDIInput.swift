@@ -1,5 +1,6 @@
 import CoreMIDI
 import Foundation
+import GameController
 import Observation
 
 /// A normalized note event. Timestamps stay in the mach_absolute_time clock domain.
@@ -54,6 +55,8 @@ public final class MIDIInput {
     public private(set) var learnedNotes: [Int] = []
     public private(set) var learningNotice: String?
     public private(set) var lesson: Lesson?
+    public private(set) var isKeyboardConnected = false
+    public var isCalibratingKeyboard = false
 
     /// Called for both presses and releases; no calibration or scoring correction is applied here.
     @ObservationIgnored public var onPadEvent: ((PadInputEvent) -> Void)?
@@ -70,6 +73,8 @@ public final class MIDIInput {
     @ObservationIgnored private var learningChannel: Int?
     @ObservationIgnored private var heldPads: [String: Int] = [:]
     @ObservationIgnored private var generation = UUID()
+    @ObservationIgnored private var keyboardConnectObserver: (any NSObjectProtocol)?
+    @ObservationIgnored private var keyboardDisconnectObserver: (any NSObjectProtocol)?
 
     public init(settings: SettingsManager) {
         self.settings = settings
@@ -96,6 +101,7 @@ public final class MIDIInput {
     }
 
     public func start() {
+        startKeyboard()
         guard client == 0 else { return }
         errorMessage = nil
         let status = MIDIClientCreateWithBlock("Smack-a-Pad" as CFString, &client) { [weak self] _ in
@@ -110,6 +116,7 @@ public final class MIDIInput {
     }
 
     public func stop() {
+        stopKeyboard()
         generation = UUID()
         releaseHeldPads()
         cancelLearning()
@@ -353,6 +360,100 @@ public final class MIDIInput {
         else if heldPads.removeValue(forKey: key) == nil { return }
         emit(PadInputEvent(padIndex: padIndex, velocity: isPressed ? 100 : 0,
                            isNoteOn: isPressed, timestamp: mach_absolute_time(), deviceID: "touch"))
+    }
+
+    public func keyboard(padIndex: Int, isPressed: Bool, timestamp: UInt64 = mach_absolute_time()) {
+        let key = "keyboard/\(padIndex)"
+        if isPressed {
+            guard !isLearning, !isLearningControl,
+                  settings.playPadsWithKeyboard,
+                  activeProfile.isSixteenPad,
+                  (lesson != nil || isCalibratingKeyboard),
+                  padIndices?.contains(padIndex) == true else { return }
+            guard heldPads[key] == nil else { return }
+            heldPads[key] = padIndex
+        } else {
+            guard heldPads.removeValue(forKey: key) != nil else { return }
+        }
+        emit(PadInputEvent(padIndex: padIndex, velocity: isPressed ? 100 : 0,
+                           isNoteOn: isPressed, timestamp: timestamp, deviceID: "keyboard"))
+    }
+
+    private func startKeyboard() {
+        updateKeyboardConnection()
+        if keyboardConnectObserver == nil {
+            keyboardConnectObserver = NotificationCenter.default.addObserver(
+                forName: .GCKeyboardDidConnect, object: nil, queue: .main
+            ) { [weak self] _ in
+                self?.updateKeyboardConnection()
+            }
+        }
+        if keyboardDisconnectObserver == nil {
+            keyboardDisconnectObserver = NotificationCenter.default.addObserver(
+                forName: .GCKeyboardDidDisconnect, object: nil, queue: .main
+            ) { [weak self] _ in
+                self?.updateKeyboardConnection()
+            }
+        }
+    }
+
+    private func stopKeyboard() {
+        if let observer = keyboardConnectObserver {
+            NotificationCenter.default.removeObserver(observer)
+            keyboardConnectObserver = nil
+        }
+        if let observer = keyboardDisconnectObserver {
+            NotificationCenter.default.removeObserver(observer)
+            keyboardDisconnectObserver = nil
+        }
+        if let keyboard = GCKeyboard.coalesced {
+            keyboard.keyboardInput?.keyChangedHandler = nil
+        }
+        releaseKeyboardPads()
+        isKeyboardConnected = false
+    }
+
+    private func updateKeyboardConnection() {
+        let connected = GCKeyboard.coalesced != nil
+        isKeyboardConnected = connected
+        guard let keyboard = GCKeyboard.coalesced, let input = keyboard.keyboardInput else {
+            releaseKeyboardPads()
+            return
+        }
+        input.keyChangedHandler = { [weak self] keyboardInput, key, keyCode, pressed in
+            let timestamp = mach_absolute_time()
+            guard !KeyboardPadMapping.isModifier(keyCode: keyCode) else { return }
+            if pressed {
+                let modifierHeld = keyboardInput.button(forKeyCode: .leftGUI)?.isPressed == true ||
+                                   keyboardInput.button(forKeyCode: .rightGUI)?.isPressed == true ||
+                                   keyboardInput.button(forKeyCode: .leftControl)?.isPressed == true ||
+                                   keyboardInput.button(forKeyCode: .rightControl)?.isPressed == true ||
+                                   keyboardInput.button(forKeyCode: .leftAlt)?.isPressed == true ||
+                                   keyboardInput.button(forKeyCode: .rightAlt)?.isPressed == true
+                guard !modifierHeld else { return }
+            }
+            guard let padIndex = KeyboardPadMapping.padIndex(for: keyCode) else { return }
+            if Thread.isMainThread {
+                MainActor.assumeIsolated {
+                    self?.keyboard(padIndex: padIndex, isPressed: pressed, timestamp: timestamp)
+                }
+            } else {
+                Task { @MainActor [weak self] in
+                    self?.keyboard(padIndex: padIndex, isPressed: pressed, timestamp: timestamp)
+                }
+            }
+        }
+    }
+
+    private func releaseKeyboardPads() {
+        let timestamp = mach_absolute_time()
+        let keyboardKeys = heldPads.keys.filter { $0.hasPrefix("keyboard/") }
+        for key in keyboardKeys {
+            if let padIndex = heldPads.removeValue(forKey: key) {
+                emit(PadInputEvent(padIndex: padIndex, velocity: 0, isNoteOn: false,
+                                   timestamp: timestamp, deviceID: "keyboard"))
+            }
+        }
     }
 
     private func emit(_ event: PadInputEvent) {

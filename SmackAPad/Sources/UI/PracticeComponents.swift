@@ -30,7 +30,7 @@ struct PatternBlock: View {
 
     var body: some View {
         Text(abbreviation)
-            .font(Theme.display(Theme.Size.body))
+            .font(Theme.display(32))
             .foregroundStyle(hand == "R" ? Theme.black : Theme.white)
             .frame(minWidth: Theme.Size.touch, minHeight: Theme.Size.touch)
             .background(hand == "R" ? Theme.white : Theme.black,
@@ -65,7 +65,7 @@ struct InstrumentButtonStyle: ButtonStyle {
 
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
-            .font(main ? Theme.display(Theme.Size.emphasis) : Theme.control)
+            .font(main || selected ? Theme.action : Theme.control)
             .foregroundStyle(filled || selected ? Theme.background : Theme.ink)
             .padding(.horizontal, Theme.Space.regular)
             .frame(minHeight: main ? Theme.Size.control : Theme.Size.touch)
@@ -121,37 +121,41 @@ struct TransportControls: View {
     let restart: () -> Void
 
     var body: some View {
-        GeometryReader { geometry in
-            HStack(spacing: Theme.Space.small) {
-                Button(action: running ? stop : start) {
-                    HStack {
-                        if running { Rectangle().frame(width: 16, height: 16).transition(.opacity) }
-                        Text(settings.localized(running ? "Stop" : "Start"))
-                            .lineLimit(1).minimumScaleFactor(0.7)
-                            .id(running).transition(.opacity)
-                    }.frame(maxWidth: .infinity)
-                }
-                .buttonStyle(InstrumentButtonStyle(filled: true, main: true))
-                .frame(width: running ? (geometry.size.width - Theme.Space.small) * 0.6 : geometry.size.width)
-                .disabled(!running && !enabled)
-                .opacity(running || enabled ? 1 : 0.5)
-                if running {
-                    Button(action: restart) {
-                        HStack(spacing: Theme.Space.small) {
-                            PracticeGlyph(kind: .restart).frame(width: 20, height: 20)
-                            Text(settings.localized("Restart"))
-                                .font(Theme.display(18))
-                                .lineLimit(1).minimumScaleFactor(0.7)
-                        }.frame(maxWidth: .infinity)
-                    }
-                    .buttonStyle(InstrumentButtonStyle(main: true))
-                    .transition(.opacity)
-                }
-            }
+        ViewThatFits(in: .horizontal) {
+            HStack(spacing: Theme.Space.small) { buttons }
+                .frame(minWidth: Theme.Size.transportWidth)
+                .fixedSize(horizontal: true, vertical: true)
+            VStack(alignment: .trailing, spacing: Theme.Space.small) { buttons }
         }
-        .frame(width: Theme.Size.transportWidth, height: Theme.Size.control)
+        .fixedSize(horizontal: false, vertical: true)
         .motion(Theme.Motion.standard, value: running)
         .transaction { if Theme.Motion.Policy(reduced: reduced).opacityOnly { $0.animation = nil } }
+    }
+
+    @ViewBuilder private var buttons: some View {
+        Button(action: running ? stop : start) {
+            HStack(spacing: Theme.Space.small) {
+                if running { Rectangle().frame(width: 16, height: 16).transition(.opacity) }
+                Text(settings.localized(running ? "Stop" : "Start"))
+                    .lineLimit(1).fixedSize()
+                    .id(running).transition(.opacity)
+            }
+            .frame(maxWidth: .infinity)
+        }
+        .buttonStyle(InstrumentButtonStyle(filled: true, main: true))
+        .disabled(!running && !enabled)
+        .opacity(running || enabled ? 1 : 0.5)
+        if running {
+            Button(action: restart) {
+                HStack(spacing: Theme.Space.small) {
+                    PracticeGlyph(kind: .restart).frame(width: 20, height: 20)
+                    Text(settings.localized("Restart")).lineLimit(1).fixedSize()
+                }
+                .frame(maxWidth: .infinity)
+            }
+            .buttonStyle(InstrumentButtonStyle(main: true))
+            .transition(.opacity)
+        }
     }
 }
 
@@ -171,49 +175,57 @@ struct HitTimingBar: View {
     }
 
     var body: some View {
-        HStack(spacing: Theme.Space.regular) {
-            VStack(spacing: Theme.Space.tight) {
-                HStack {
-                    Text(settings.localized("Early"))
-                    Spacer()
-                    Text(settings.localized("On time"))
-                    Spacer()
-                    Text(settings.localized("Late"))
-                }
-                .font(Theme.meta).foregroundStyle(Theme.secondary)
-                TimelineView(.animation(minimumInterval: 1.0 / 30, paused: !active)) { timeline in
-                    Canvas { context, size in
-                        let y = size.height / 2
-                        let goodFraction = windows.good / windows.maximum
-                        context.fill(Path(CGRect(x: 0, y: y - 2, width: size.width, height: 4)),
-                                     with: .color(Theme.secondary.opacity(0.35)))
-                        context.fill(Path(CGRect(x: size.width * (1 - goodFraction) / 2, y: y - 2,
-                                                 width: size.width * goodFraction, height: 4)),
-                                     with: .color(Theme.orange))
-                        let samples = Array(history.samples.suffix(7))
-                        for (index, sample) in samples.enumerated() {
-                            let latest = index == samples.count - 1
-                            let age = max(0, timeline.date.timeIntervalSince(sample.date))
-                            let opacity = latest ? 1 : max(0, 1 - age / 4) * Double(index + 1) / Double(samples.count)
-                            let x = 1 + (size.width - 2) * (sample.normalized + 1) / 2
-                            context.fill(Path(CGRect(x: x - 1, y: y - 7, width: 2, height: 14)),
-                                         with: .color((sample.isGood ? Theme.orange : Theme.secondary).opacity(opacity)))
-                        }
-                    }
-                    .frame(height: 16)
-                }
-            }
-            Text(tendencyText).font(Theme.meta).monospacedDigit()
-                .lineLimit(1).minimumScaleFactor(0.85)
-                .frame(width: 176, alignment: .trailing)
+        ViewThatFits(in: .horizontal) {
+            HStack(spacing: Theme.Space.regular) { timingScale; tendency }
+            VStack(alignment: .trailing, spacing: Theme.Space.small) { timingScale; tendency }
         }
-        .frame(height: 40)
+        .frame(minHeight: 50)
         .opacity(active ? 1 : 0)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(settings.localized("Hit timing"))
         .accessibilityValue(tendencyText)
         .accessibilityHidden(!active)
         .transaction { $0.animation = nil }
+    }
+
+    private var tendency: some View {
+        Text(tendencyText).font(Theme.display(28)).monospacedDigit()
+            .fixedSize(horizontal: true, vertical: false)
+    }
+
+    private var timingScale: some View {
+        VStack(spacing: Theme.Space.tight) {
+            HStack {
+                Text(settings.localized("Early"))
+                Spacer()
+                Text(settings.localized("On time"))
+                Spacer()
+                Text(settings.localized("Late"))
+            }
+            .font(Theme.meta).foregroundStyle(Theme.secondary)
+            TimelineView(.animation(minimumInterval: 1.0 / 30, paused: !active)) { timeline in
+                Canvas { context, size in
+                    let y = size.height / 2
+                    let goodFraction = windows.good / windows.maximum
+                    context.fill(Path(CGRect(x: 0, y: y - 2, width: size.width, height: 4)),
+                                 with: .color(Theme.secondary.opacity(0.35)))
+                    context.fill(Path(CGRect(x: size.width * (1 - goodFraction) / 2, y: y - 2,
+                                             width: size.width * goodFraction, height: 4)),
+                                 with: .color(Theme.orange))
+                    let samples = Array(history.samples.suffix(7))
+                    for (index, sample) in samples.enumerated() {
+                        let latest = index == samples.count - 1
+                        let age = max(0, timeline.date.timeIntervalSince(sample.date))
+                        let opacity = latest ? 1 : max(0, 1 - age / 4) * Double(index + 1) / Double(samples.count)
+                        let x = 1 + (size.width - 2) * (sample.normalized + 1) / 2
+                        context.fill(Path(CGRect(x: x - 1, y: y - 7, width: 2, height: 14)),
+                                     with: .color((sample.isGood ? Theme.orange : Theme.secondary).opacity(opacity)))
+                    }
+                }
+                .frame(height: 16)
+            }
+        }
+        .frame(minWidth: 240)
     }
 }
 
@@ -305,7 +317,7 @@ struct SummaryStrip: View {
                 }
             }
             HStack(spacing: Theme.Space.regular) {
-                Text("\(Int((summary.score * 100).rounded())) %").font(Theme.control)
+                Text("\(Int((summary.score * 100).rounded())) %").font(Theme.mainValue).monospacedDigit()
                 HStack(spacing: Theme.Space.small) {
                     star(summary.passed && revealed.contains(0), settings.localized("Passed"))
                     star(summary.mastery && revealed.contains(1), settings.localized("Goal tempo"))
@@ -420,9 +432,11 @@ struct PadVoice {
 /// A small layout diagram, not a second performance surface. Full-size touch
 /// pads remain available in the MIDI tools.
 struct PadLayoutGrid: View {
+    @ScaledMetric(relativeTo: .body) private var width: CGFloat = 176
     let pads: [Int]
     let used: Set<Int>
     var flashes: [Int: PadFlash] = [:]
+    var showKeyboardKeys: Bool = false
 
     var body: some View {
         TimelineView(.animation(minimumInterval: 1.0 / 30, paused: flashes.isEmpty)) { timeline in
@@ -432,7 +446,7 @@ struct PadLayoutGrid: View {
                 }
             }
         }
-        .frame(width: 176)
+        .frame(width: width)
     }
 
     private func cell(_ pad: Int, now: Date) -> some View {
@@ -440,8 +454,17 @@ struct PadLayoutGrid: View {
         let strength = flash?.strength(at: now) ?? 0
         let isUsed = used.contains(pad)
         let tint = (flash?.color ?? Theme.orange).opacity(strength)
-        return Text(PadVoice.abbreviation(pad))
-            .font(Theme.text(Theme.Size.dense))
+        let label: String = {
+            let abbr = PadVoice.abbreviation(pad)
+            if showKeyboardKeys, let key = KeyboardPadMapping.label(for: pad) {
+                return "\(abbr) · \(key)"
+            }
+            return abbr
+        }()
+        return Text(label)
+            .font(Theme.text(showKeyboardKeys ? 12 : Theme.Size.dense))
+            .lineLimit(1)
+            .minimumScaleFactor(0.7)
             .frame(maxWidth: .infinity, minHeight: 24)
             .foregroundStyle(strength > 0.35 ? Theme.white : (isUsed ? Theme.ink : Theme.secondary))
             .background {
@@ -451,7 +474,15 @@ struct PadLayoutGrid: View {
                 }
             }
             .overlay(Rectangle().stroke(Theme.ink, lineWidth: isUsed ? Theme.Size.border : 0))
-            .accessibilityLabel("\(PadVoice.name(pad)), pad \(pad + 1)")
+            .accessibilityLabel(accessibilityLabel(for: pad))
+    }
+
+    private func accessibilityLabel(for pad: Int) -> String {
+        let base = "\(PadVoice.name(pad)), pad \(pad + 1)"
+        if showKeyboardKeys, let key = KeyboardPadMapping.label(for: pad) {
+            return "\(base), key \(key)"
+        }
+        return base
     }
 }
 
@@ -467,7 +498,7 @@ struct VolumeSliderRow: View {
                     .font(Theme.control)
                 Spacer()
                 Text("\(value) %")
-                    .font(Theme.text(Theme.Size.dense))
+                    .font(Theme.meta).monospacedDigit()
                     .foregroundStyle(Theme.secondary)
             }
             Slider(
