@@ -45,6 +45,7 @@ final class PracticeSession {
     private(set) var ready = false
     private(set) var countdown: Int?
     private(set) var passNumber = 1
+    private(set) var currentRepetition = 1
     private(set) var lastResult: ScoringResult?
     private(set) var summary: RunSummary?
     private(set) var starEvent: StarEvent?
@@ -199,6 +200,14 @@ final class PracticeSession {
         audio.setPatternVolume(Float(settings.patternVolume) / 100)
     }
     var isSectionLoop: Bool { loopStartBar != 0 || loopEndBar != lesson.bars - 1 }
+    var repeatsPerRun: Int {
+        guard !listen, !isSectionLoop else { return 1 }
+        return max(1, Int((4.0 / Double(lesson.bars)).rounded()))
+    }
+    var repetitionProgress: String? {
+        guard running, !listen, repeatsPerRun > 1, countdown == nil else { return nil }
+        return "\(currentRepetition)/\(repeatsPerRun)"
+    }
     var practiceLesson: Lesson {
         guard isSectionLoop else { return lesson }
         func slice(_ hits: [LessonHit]) -> [LessonHit] {
@@ -211,6 +220,26 @@ final class PracticeSession {
                       bars: loopEndBar - loopStartBar + 1, startBpm: lesson.startBpm,
                       targetBpm: lesson.targetBpm, level: lesson.level, score: lesson.score,
                       src: lesson.src, hits: slice(lesson.hits), hits8: lesson.hits8.map(slice),
+                      eightNote: lesson.eightNote, intro: lesson.intro)
+    }
+    var scoredLesson: Lesson {
+        let repeats = repeatsPerRun
+        guard repeats > 1 else { return practiceLesson }
+        let baseBars = lesson.bars
+        let baseHits = practiceLesson.hits
+        let baseHits8 = practiceLesson.hits8
+        func repeatHits(_ hits: [LessonHit]) -> [LessonHit] {
+            (0..<repeats).flatMap { k in
+                hits.map {
+                    LessonHit(step: $0.step + k * baseBars * 16, padIndex: $0.padIndex, hand: $0.hand, velocity: $0.velocity)
+                }
+            }
+        }
+        return Lesson(id: lesson.id, cat: lesson.cat, title: lesson.title, genre: lesson.genre,
+                      tags: lesson.tags, text: lesson.text, division: lesson.division,
+                      bars: repeats * baseBars, startBpm: lesson.startBpm,
+                      targetBpm: lesson.targetBpm, level: lesson.level, score: lesson.score,
+                      src: lesson.src, hits: repeatHits(baseHits), hits8: baseHits8.map(repeatHits),
                       eightNote: lesson.eightNote, intro: lesson.intro)
     }
     var savedProgress: LessonProgress? { progress.progress(for: lesson.id) }
@@ -227,14 +256,18 @@ final class PracticeSession {
         let time = now
         var matches = completedMatches
         var denominator = completedExpected + completedExtras
-        let hits = patternHits
+        let hits = scoredLesson.hits(forPadCount: runPadCount)
+        let baseCount = patternHits.count
         for pass in passes {
             guard let scorer = pass.scorer else { continue }
             let result = scorer.finish()
-            let missed = hits.filter { hit in
-                pass.start + Double(hit.step) * 15 / Double(pass.bpm)
+            let missed = hits.enumerated().filter { index, hit in
+                let repIndex = baseCount > 0 ? index / baseCount : 0
+                let cycle = (pass.number - 1) * repeatsPerRun + repIndex + 1
+                let baseHit = patternHits.indices.contains(index % max(1, baseCount)) ? patternHits[index % max(1, baseCount)] : hit
+                return pass.start + Double(hit.step) * 15 / Double(pass.bpm)
                     + scorer.maximumTimingMilliseconds / 1_000 <= time
-                    && judgmentsByPass[pass.number]?[hit] == nil
+                    && judgmentsByPass[cycle]?[baseHit] == nil
             }.count
             matches += result.matchedHitCount
             denominator += result.matchedHitCount + missed + result.extraHitCount
@@ -244,8 +277,9 @@ final class PracticeSession {
     var patternHits: [LessonHit] { practiceLesson.hits(forPadCount: midi.activeProfile.padCount) }
     var starRunProgress: (count: Int, required: Int, name: String)? {
         guard running, !listen, !isSectionLoop else { return nil }
-        let required = StarStreak.requiredRuns(expectedHits: patternHits.count, isIntro: lesson.cat == "intro")
-        let passedRequired = StarStreak.requiredRuns(expectedHits: patternHits.count)
+        let hitsCount = scoredLesson.hits(forPadCount: midi.activeProfile.padCount).count
+        let required = StarStreak.requiredRuns(expectedHits: hitsCount, isIntro: lesson.cat == "intro")
+        let passedRequired = StarStreak.requiredRuns(expectedHits: hitsCount)
         let saved = progress.progress(for: lesson.id)
         if saved?.passed != true { return passedRequired > 1 ? (starStreak.passedRuns, passedRequired, "Passed") : nil }
         guard required > 1 else { return nil }
@@ -265,7 +299,7 @@ final class PracticeSession {
             // Audio scheduling and drawing share native host seconds. A queued tempo
             // change alters the slope at its start, never the tape's accumulated distance.
             // Do not clamp at the pass end: a delayed scheduler tick cannot freeze drawing.
-            let distance = Double((current.number - 1) * total)
+            let distance = Double((current.number - 1) * repeatsPerRun * total)
                 + max(0, seconds - current.start) * Double(current.bpm) / 15
             return PatternFrame(tapePosition: distance, totalSteps: total, bpm: current.bpm, countdown: nil)
         }
@@ -360,6 +394,7 @@ final class PracticeSession {
             completedPasses = 0
             earnedPass = false; earnedMastery = false; earnedMemory = false
             passNumber = 1
+            currentRepetition = 1
             let first = now + 0.6
             let beat = 60 / Double(bpm)
             countInEvents = (0..<4).map { first + Double($0) * beat }
@@ -406,6 +441,7 @@ final class PracticeSession {
         BluetoothTimingDiagnostics.shared.stopRun()
         midi.resetControlPickup()
         if practiceMode == .challenge { starStreak.reset() }
+        currentRepetition = 1
         tempoUpEvent = nil
         playedHits = []
         judgmentsByPass = [:]
@@ -482,7 +518,7 @@ final class PracticeSession {
     private var now: Double { clock() }
 
     private func makePass(number: Int, start: Double, bpm: Int) -> Pass {
-        Pass(number: number, start: start, bpm: bpm, lesson: practiceLesson, padCount: runPadCount,
+        Pass(number: number, start: start, bpm: bpm, lesson: scoredLesson, padCount: runPadCount,
              listen: listen, lessonSound: lessonSound, metronome: metronome, bpmStep: settings.bpmStepEnum)
     }
 
@@ -511,6 +547,11 @@ final class PracticeSession {
             )
         }
         if let current = passes.last(where: { $0.start <= time }) {
+            let total = practiceLesson.bars * 16
+            let elapsed = max(0, time - current.start) * Double(current.bpm) / 15
+            let rep = total > 0 ? min(repeatsPerRun, max(1, Int(floor(elapsed / Double(total))) + 1)) : 1
+            if currentRepetition != rep { currentRepetition = rep }
+
             if current.number != passNumber {
                 // Announce a tempo increase at the moment the faster pass
                 // actually starts (audible change). Not on the first pass and
@@ -521,9 +562,15 @@ final class PracticeSession {
                 tempo.recordPassStart(bpm: current.bpm)
                 passNumber = current.number
                 if !barVerdicts.isEmpty { barVerdicts = [:] }
-                judgmentsByPass = judgmentsByPass.filter { $0.key >= current.number - 1 }
-                playedHits.removeAll { $0.pass < current.number - 1 }
+            }
+            let currentCycle = (current.number - 1) * repeatsPerRun + (total > 0 ? Int(floor(elapsed / Double(total))) : 0) + 1
+            let minCycle = max(1, currentCycle - 3)
+            if judgmentsByPass.keys.contains(where: { $0 < minCycle }) {
+                judgmentsByPass = judgmentsByPass.filter { $0.key >= minCycle }
                 judgmentVersion += 1
+            }
+            if playedHits.contains(where: { $0.pass < minCycle }) {
+                playedHits.removeAll { $0.pass < minCycle }
             }
             // Observation publishes every assignment, even an equal value. Writing
             // these 100x per second re-rendered the whole practice screen.
@@ -670,9 +717,13 @@ final class PracticeSession {
 
     private func recordPlayedHit(padIndex: Int, at time: Double, mark: HitMark?) {
         guard let pass = passes.last(where: { $0.start <= time }) ?? passes.first else { return }
-        // Use the actual strike position, even if scoring matched a neighbouring pass.
-        let step = (time - pass.start) * Double(pass.bpm) / 15
-        playedHits.append(PlayedHit(padIndex: padIndex, step: step, pass: pass.number, mark: mark))
+        let total = practiceLesson.bars * 16
+        guard total > 0 else { return }
+        let elapsedSteps = max(0, time - pass.start) * Double(pass.bpm) / 15
+        let repIndex = Int(floor(elapsedSteps / Double(total)))
+        let cycle = (pass.number - 1) * repeatsPerRun + repIndex + 1
+        let localStep = elapsedSteps.truncatingRemainder(dividingBy: Double(total))
+        playedHits.append(PlayedHit(padIndex: padIndex, step: localStep, pass: cycle, mark: mark))
     }
 
     /// Colour feedback only. Scoring itself is unchanged.
@@ -685,8 +736,13 @@ final class PracticeSession {
         }
         padFlashes[padIndex] = PadFlash(mark: mark, date: Date())
         let hits = patternHits
-        if let index = feedback.expectedHitIndex, hits.indices.contains(index) {
-            judgmentsByPass[pass, default: [:]][hits[index]] = feedback.judgment
+        guard !hits.isEmpty else { return mark }
+        if let index = feedback.expectedHitIndex {
+            let baseCount = hits.count
+            let baseHit = hits[index % baseCount]
+            let repIndex = index / baseCount
+            let cycle = (pass - 1) * repeatsPerRun + repIndex + 1
+            judgmentsByPass[cycle, default: [:]][baseHit] = feedback.judgment
             judgmentVersion += 1
         }
         return mark

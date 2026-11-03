@@ -83,7 +83,7 @@ final class PracticeSessionTests: XCTestCase {
         let progress = ProgressStore(fileURL: file, autoLoad: false)
         let hits = [0, 3, 6, 9, 12].map { LessonHit(step: $0, padIndex: 12, hand: "L", velocity: 100) }
         let lesson = Lesson(id: 24_001, cat: "test", title: "Memory star", genre: "", tags: [],
-            text: "", division: 16, bars: 1, startBpm: 120, targetBpm: 120, level: 1, src: "test", hits: hits)
+            text: "", division: 16, bars: 4, startBpm: 120, targetBpm: 120, level: 1, src: "test", hits: hits)
         progress.setProgress(LessonProgress(passed: true, mastery: true, currentBpm: 120), for: lesson.id)
         let midi = MIDIInput(settings: settings)
         var time = AVAudioTime.seconds(forHostTime: mach_absolute_time())
@@ -96,7 +96,7 @@ final class PracticeSessionTests: XCTestCase {
         // Loading samples takes real time. Keep the count-in ahead of the audio clock.
         time = AVAudioTime.seconds(forHostTime: mach_absolute_time())
         let firstStart = time + 0.6 + 4 * 60.0 / 120
-        let duration = 240.0 / 120
+        let duration = Double(lesson.bars) * 240.0 / 120
         session.start()
         XCTAssertTrue(session.running)
         let required = StarStreak.requiredRuns(expectedHits: hits.count, isIntro: false)
@@ -137,5 +137,58 @@ final class PracticeSessionTests: XCTestCase {
         XCTAssertNil(session.finishedByStar)
         XCTAssertTrue(session.hitJudgments.isEmpty)
         XCTAssertTrue(session.playedHits.isEmpty)
+    }
+
+    @MainActor
+    func testOneBarLessonPlayedOverOnePassYieldsRepeatedHitsAndOneTempoStep() async throws {
+        let suite = "four-bar-run-\(UUID().uuidString)"
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))
+        defer { defaults.removePersistentDomain(forName: suite) }
+        let settings = SettingsManager(userDefaults: defaults)
+        let file = FileManager.default.temporaryDirectory.appendingPathComponent("\(suite).json")
+        defer { try? FileManager.default.removeItem(at: file) }
+        let progress = ProgressStore(fileURL: file, autoLoad: false)
+        let midi = MIDIInput(settings: settings)
+        let hits = [0, 4, 8, 12].map { LessonHit(step: $0, padIndex: 12, hand: "L", velocity: 100) }
+        let lesson = Lesson(id: 40_001, cat: "starter", title: "One bar run", genre: "", tags: [],
+            text: "", division: 16, bars: 1, startBpm: 60, targetBpm: 120, level: 1, src: "test", hits: hits)
+        var time = AVAudioTime.seconds(forHostTime: mach_absolute_time())
+        let session = PracticeSession(lesson: lesson, settings: settings, progress: progress, midi: midi, clock: { time })
+        session.metronome = false
+        await session.prepare()
+        defer { session.close() }
+        XCTAssertTrue(session.ready, session.errorMessage ?? "Sound preparation failed")
+
+        time = AVAudioTime.seconds(forHostTime: mach_absolute_time())
+        let firstStart = time + 0.6 + 4 * 60.0 / 60.0
+        let repeats = session.repeatsPerRun
+        XCTAssertEqual(repeats, 4)
+        session.start()
+        XCTAssertTrue(session.running)
+        let initialBpm = session.bpm
+
+        // Play all repeats across the single pass
+        for rep in 0..<repeats {
+            for hit in hits {
+                let step = hit.step + rep * lesson.bars * 16
+                time = firstStart + Double(step) * 15.0 / Double(initialBpm)
+                session.tick()
+                midi.onPadEvent?(PadInputEvent(padIndex: hit.padIndex, velocity: 100, isNoteOn: true,
+                    timestamp: AVAudioTime.hostTime(forSeconds: time), deviceID: "test"))
+            }
+        }
+
+        // Advance to end of the pass
+        let passDuration = Double(repeats * lesson.bars) * 240.0 / Double(initialBpm)
+        time = firstStart + passDuration - 0.4
+        session.tick()
+        time = firstStart + passDuration + 0.05
+        session.tick()
+
+        let result = try XCTUnwrap(session.lastResult)
+        XCTAssertEqual(result.expectedHitCount, repeats * hits.count)
+        XCTAssertEqual(result.matchedHitCount, repeats * hits.count)
+        XCTAssertEqual(result.nextBpm, initialBpm + settings.bpmStepEnum.rawValue)
+        XCTAssertEqual(session.summary?.passes ?? 1, 1)
     }
 }

@@ -268,11 +268,19 @@ struct PracticeScreen: View {
             }
             .frame(maxWidth: .infinity, minHeight: 56)
             Spacer(minLength: 0)
-            if let progress = session.starRunProgress {
-                Text(settings.localized("%lld / %lld", progress.count, progress.required))
-                    .font(Theme.meta).foregroundStyle(Theme.secondary)
-                    .accessibilityLabel(settings.localized("Consecutive passes for %@", settings.localized(progress.name)))
-                    .accessibilityValue(settings.localized("%lld / %lld", progress.count, progress.required))
+            HStack(spacing: Theme.Space.regular) {
+                if let repetition = session.repetitionProgress {
+                    Text(repetition)
+                        .font(Theme.meta).foregroundStyle(Theme.secondary)
+                        .accessibilityLabel(settings.localized("Repetition %lld of %lld", session.currentRepetition, session.repeatsPerRun))
+                        .accessibilityValue(repetition)
+                }
+                if let progress = session.starRunProgress {
+                    Text(settings.localized("%lld / %lld", progress.count, progress.required))
+                        .font(Theme.meta).foregroundStyle(Theme.secondary)
+                        .accessibilityLabel(settings.localized("Consecutive passes for %@", settings.localized(progress.name)))
+                        .accessibilityValue(settings.localized("%lld / %lld", progress.count, progress.required))
+                }
             }
         }
     }
