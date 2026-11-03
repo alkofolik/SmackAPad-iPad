@@ -69,6 +69,9 @@ public struct ScoringEngine: Sendable {
     private var lastMatchedTimestampByPad: [Int: UInt64] = [:]
     private var perfectOrGoodHitCount = 0
     private var extraHitCount = 0
+    private var consecutiveExtraHits = 0
+    private var lastEvaluationTimestamp: UInt64?
+    private var currentEvaluationCenterNanoseconds: Double = 0
 
     /// Read-only presentation scales, derived from the actual scoring windows.
     public var maximumTimingMilliseconds: Double { maximumNanoseconds / 1_000_000 }
@@ -121,15 +124,26 @@ public struct ScoringEngine: Sendable {
         // Calibration is the only latency compensation. Audio output latency belongs
         // to the audio scheduler and must never be added to this comparison.
         let calibrated = elapsed - calibrationOffsetNanoseconds
-        let corrected = calibrated - timingCenterNanoseconds
+        if lastEvaluationTimestamp == nil || timestamp != lastEvaluationTimestamp {
+            lastEvaluationTimestamp = timestamp
+            currentEvaluationCenterNanoseconds = timingCenterNanoseconds
+        }
+        let corrected = calibrated - currentEvaluationCenterNanoseconds
         let candidate = expectedHits.filter {
             $0.padIndex == padIndex && !matchedIndices.contains($0.index) &&
             abs(corrected - $0.nanoseconds) <= maximumNanoseconds
         }.min { abs(corrected - $0.nanoseconds) < abs(corrected - $1.nanoseconds) }
         guard let candidate else {
             extraHitCount += 1
+            consecutiveExtraHits += 1
+            if consecutiveExtraHits >= 2 && timingCenterNanoseconds != 0 {
+                timingCenterNanoseconds = 0
+                currentEvaluationCenterNanoseconds = 0
+                timingSamples.removeAll()
+            }
             return HitFeedback(expectedHitIndex: nil, expectedStep: nil, judgment: .wrongPad, timingErrorMilliseconds: nil)
         }
+        consecutiveExtraHits = 0
         let error = corrected - candidate.nanoseconds
         matchedIndices.insert(candidate.index)
         lastMatchedTimestampByPad[padIndex] = timestamp

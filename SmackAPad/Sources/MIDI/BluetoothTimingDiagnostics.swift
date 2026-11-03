@@ -5,7 +5,7 @@ import Foundation
 public final class BluetoothTimingDiagnostics: @unchecked Sendable {
     public static let shared = BluetoothTimingDiagnostics()
 
-    public var enabled = true
+    public var enabled = false
 
     private let fileQueue = DispatchQueue(label: "cz.kju.SmackAPad.BluetoothTimingDiagnostics")
     private var currentFileURL: URL?

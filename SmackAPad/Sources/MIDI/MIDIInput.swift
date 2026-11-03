@@ -247,7 +247,7 @@ public final class MIDIInput {
             var packet = first
             for _ in 0..<list.pointee.numPackets {
                 let rawTimestamp = packet.pointee.timeStamp
-                let timestamp = MIDITimestamp.resolve(rawTimestamp, receivedAt: receipt)
+                let resolved = MIDITimestamp.resolve(rawTimestamp, receivedAt: receipt, deviceID: deviceID)
                 withUnsafePointer(to: packet.pointee.words) { tuple in
                     tuple.withMemoryRebound(to: UInt32.self, capacity: Int(packet.pointee.wordCount)) { words in
                         var index = 0
@@ -266,8 +266,8 @@ public final class MIDIInput {
                                         note: Int((word >> 8) & 0x7F), velocity: velocity,
                                         channel: Int((word >> 16) & 0xF) + 1,
                                         isNoteOn: status == 0x9 && velocity > 0,
-                                        timestamp: timestamp, rawTimestamp: rawTimestamp, receiptTimestamp: receipt,
-                                        usedReceiptTime: timestamp != rawTimestamp, deviceID: deviceID
+                                        timestamp: resolved.timestamp, rawTimestamp: rawTimestamp, receiptTimestamp: receipt,
+                                        usedReceiptTime: resolved.usedReceiptTime, deviceID: deviceID
                                     )))
                                 } else if status == 0xB {
                                     events.append(.cc(MIDIControlMessage(
