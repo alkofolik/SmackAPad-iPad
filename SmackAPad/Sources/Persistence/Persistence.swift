@@ -751,22 +751,67 @@ public final class ProgressStore: @unchecked Sendable {
 
     /// Consuming retired records makes the migration idempotent without a separate marker.
     private func migrateDuplicateIntroProgress() -> Bool {
+        Self.migrateDuplicateIntroProgress(in: &records)
+    }
+
+    /// Shared canonicalization for loaded and imported progress.
+    @discardableResult
+    static func migrateDuplicateIntroProgress(in records: inout [Int: LessonProgress]) -> Bool {
         var changed = false
-        for (retiredID, introID) in Self.duplicateIntroLessonMap {
-            guard let source = records[retiredID] else { continue }
-            var target = records[introID] ?? LessonProgress()
-            target.passed = target.passed || source.passed
-            target.mastery = target.mastery || source.mastery
-            target.memory = target.memory || source.memory
-            target.hasPlayed = target.hasPlayed || source.hasPlayed
-            target.bestScore = max(target.bestScore, source.bestScore)
-            if target.currentBpm <= 0 { target.currentBpm = source.currentBpm }
-            records[introID] = target
-            records.removeValue(forKey: retiredID)
+        for retiredID in duplicateIntroLessonMap.keys.sorted() {
+            guard let introID = duplicateIntroLessonMap[retiredID],
+                  let source = records.removeValue(forKey: retiredID) else { continue }
+            records[introID] = merging(records[introID] ?? LessonProgress(), with: source)
             changed = true
         }
         return changed
     }
+
+    static func merging(_ existing: LessonProgress, with incoming: LessonProgress) -> LessonProgress {
+        var result = existing
+        result.passed = existing.passed || incoming.passed
+        result.mastery = existing.mastery || incoming.mastery
+        result.memory = existing.memory || incoming.memory
+        result.hasPlayed = existing.hasPlayed || incoming.hasPlayed
+        result.bestScore = max(existing.bestScore, incoming.bestScore)
+        if result.currentBpm <= 0 { result.currentBpm = incoming.currentBpm }
+        return result
+    }
+
+    #if DEBUG
+    /// Validation and mapping finish before touching either the backup or stored progress.
+    func importLegacyBackup(_ data: Data) throws -> (lessons: Int, starsAdded: Int) {
+        let imported = try LegacyProgressImport.map(data)
+        lock.lock()
+        defer { lock.unlock() }
+        if let lastLoadError { throw lastLoadError }
+
+        let previous = records
+        let merged = LegacyProgressImport.merge(existing: previous, imported: imported)
+        let starsAdded = merged.reduce(0) { $0 + LibraryStarFilter.stars($1.value) }
+            - previous.reduce(0) { $0 + LibraryStarFilter.stars($1.value) }
+        let manager = FileManager.default
+        try manager.createDirectory(at: fileURL.deletingLastPathComponent(), withIntermediateDirectories: true)
+        let backupURL = fileURL.appendingPathExtension("pre-import")
+        // Keep the first snapshot so a repeated import cannot replace it with imported progress.
+        if !manager.fileExists(atPath: backupURL.path) {
+            if manager.fileExists(atPath: fileURL.path) {
+                try Data(contentsOf: fileURL).write(to: backupURL, options: .atomic)
+            } else {
+                let snapshot = Dictionary(uniqueKeysWithValues: previous.map { (String($0.key), $0.value) })
+                try JSONEncoder().encode(snapshot).write(to: backupURL, options: .atomic)
+            }
+        }
+        records = merged
+        do {
+            try save()
+        } catch {
+            records = previous
+            throw error
+        }
+        return (imported.count, starsAdded)
+    }
+    #endif
 
     /// Atomically saves progress records to `progress.json`.
     public func save() throws {
@@ -950,3 +995,65 @@ public final class ProgressStore: @unchecked Sendable {
         }
     }
 }
+
+#if DEBUG
+/// Only decodes the legacy fields needed for stars and tempo; all other data is ignored.
+enum LegacyProgressImport {
+    enum ImportError: Error { case invalidBackup }
+
+    private struct Backup: Decodable {
+        let app: String
+        let formatVersion: Int
+        let rewards: Rewards
+        let progress: [String: Progress]?
+    }
+    private struct Rewards: Decodable { let stars: [String: Stars] }
+    private struct Stars: Decodable {
+        let passed: Bool?
+        let mastered: Bool?
+        let memory: String?
+    }
+    private struct Progress: Decodable {
+        let bpm: Int?
+        let best: Float?
+    }
+
+    static func map(_ data: Data) throws -> [Int: LessonProgress] {
+        let backup: Backup
+        do {
+            backup = try JSONDecoder().decode(Backup.self, from: data)
+        } catch {
+            throw ImportError.invalidBackup
+        }
+        guard backup.app == "padwork", backup.formatVersion == 1 else {
+            throw ImportError.invalidBackup
+        }
+        var records: [Int: LessonProgress] = [:]
+        for (key, stars) in backup.rewards.stars {
+            guard let id = Int(key), id > 0 else { throw ImportError.invalidBackup }
+            let passed = stars.passed ?? false
+            let mastery = stars.mastered ?? false
+            let memory = stars.memory != nil
+            guard passed || mastery || memory else { continue }
+            let progress = backup.progress?[key]
+            records[id] = LessonProgress(
+                passed: passed, mastery: mastery, memory: memory, hasPlayed: true,
+                currentBpm: max(0, progress?.bpm ?? 0),
+                bestScore: min(1, max(0, (progress?.best ?? 0) / 100))
+            )
+        }
+        ProgressStore.migrateDuplicateIntroProgress(in: &records)
+        return records
+    }
+
+    static func merge(existing: [Int: LessonProgress], imported: [Int: LessonProgress]) -> [Int: LessonProgress] {
+        var result = existing
+        ProgressStore.migrateDuplicateIntroProgress(in: &result)
+        for id in imported.keys.sorted() {
+            guard let incoming = imported[id] else { continue }
+            result[id] = ProgressStore.merging(result[id] ?? LessonProgress(), with: incoming)
+        }
+        return result
+    }
+}
+#endif

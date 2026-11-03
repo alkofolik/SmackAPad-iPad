@@ -8,6 +8,9 @@
 
 import CoreAudioKit
 import SwiftUI
+#if DEBUG
+import UniformTypeIdentifiers
+#endif
 
 @MainActor
 public struct SettingsView: View {
@@ -33,6 +36,9 @@ public struct SettingsView: View {
             Form {
                 Group {
                     PurchasesSection()
+                    #if DEBUG
+                    LegacyProgressImportSection()
+                    #endif
 
                     // MARK: 1. Kit Selection
                     Section {
@@ -535,3 +541,42 @@ struct ControllerMappingSections: View {
                                   signal.number, signal.channel)
     }
 }
+
+#if DEBUG
+@MainActor
+private struct LegacyProgressImportSection: View {
+    @Environment(SettingsManager.self) private var settings
+    @State private var showingImporter = false
+    @State private var message: String?
+    @State private var showingResult = false
+
+    var body: some View {
+        Section {
+            Button(settings.localized("Choose legacy backup JSON")) { showingImporter = true }
+                .font(Theme.control)
+                .frame(minHeight: Theme.Size.touch)
+        } header: {
+            SectionHeader(title: settings.localized("Import from legacy backup"))
+        }
+        .fileImporter(isPresented: $showingImporter, allowedContentTypes: [.json]) { result in
+            do {
+                let url = try result.get()
+                let accessing = url.startAccessingSecurityScopedResource()
+                defer { if accessing { url.stopAccessingSecurityScopedResource() } }
+                let summary = try ProgressStore.shared.importLegacyBackup(Data(contentsOf: url))
+                message = settings.localized("Imported %lld lessons. Added %lld stars.", summary.lessons, summary.starsAdded)
+            } catch LegacyProgressImport.ImportError.invalidBackup {
+                message = settings.localized("Invalid backup. Choose a padwork backup with formatVersion 1 and rewards.stars. Progress was not changed.")
+            } catch {
+                message = settings.localized("Import failed. Progress was not changed. %@", error.localizedDescription)
+            }
+            showingResult = true
+        }
+        .alert(settings.localized("Import from legacy backup"), isPresented: $showingResult) {
+            Button(settings.localized("Done"), role: .cancel) {}
+        } message: {
+            Text(message ?? "")
+        }
+    }
+}
+#endif

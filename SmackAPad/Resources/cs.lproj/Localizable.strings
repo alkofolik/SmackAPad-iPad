@@ -448,3 +448,10 @@
 "Starts Play from memory for the 3rd star" = "Spustí hru z paměti o 3. hvězdu";
 "Band colour" = "Barva pásu";
 "The band gets deeper as the tempo nears the goal. A glow on the right edge: you are rushing; on the left: you are dragging." = "Čím blíž cílovému tempu, tím sytější pás. Záře u pravého okraje: spěcháš, u levého: zpožďuješ se.";
+
+// Debug-only legacy progress import
+"Import from legacy backup" = "Import ze staré zálohy";
+"Choose legacy backup JSON" = "Vybrat starou zálohu JSON";
+"Imported %lld lessons. Added %lld stars." = "Importováno lekcí: %lld. Přidáno hvězd: %lld.";
+"Invalid backup. Choose a padwork backup with formatVersion 1 and rewards.stars. Progress was not changed." = "Neplatná záloha. Vyber zálohu padwork s formatVersion 1 a rewards.stars. Postup se nezměnil.";
+"Import failed. Progress was not changed. %@" = "Import selhal. Postup se nezměnil. %@";

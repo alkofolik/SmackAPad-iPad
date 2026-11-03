@@ -80,3 +80,81 @@ final class IntroProgressMigrationTests: XCTestCase {
         XCTAssertNil(store.lastSaveError)
     }
 }
+
+#if DEBUG
+import XCTest
+@testable import SmackAPad
+
+final class LegacyProgressImportTests: XCTestCase {
+    private func backup(_ body: String, app: String = "padwork", version: Int = 1) -> Data {
+        Data("""
+        {"app":"\(app)","formatVersion":\(version),\(body)}
+        """.utf8)
+    }
+
+    func testMapsRetiredIDAndMemoryOnlyWithoutImportingUnstarredLessons() throws {
+        let mapped = try LegacyProgressImport.map(backup("""
+        "rewards":{"stars":{
+          "1":{"passed":true,"mastered":true},
+          "10002":{"memory":"2026-10-30T12:00:00Z"},
+          "10003":{"passed":false,"mastered":false}
+        }},
+        "progress":{"1":{"bpm":95,"best":87},"10004":{"bpm":120,"best":99}},
+        "unlockedStages":["L1-ghost"]
+        """))
+        XCTAssertEqual(mapped.count, 2)
+        XCTAssertNil(mapped[1])
+        XCTAssertEqual(mapped[10001], LessonProgress(passed: true, mastery: true, hasPlayed: true,
+                                                    currentBpm: 95, bestScore: 0.87))
+        XCTAssertEqual(mapped[10002], LessonProgress(memory: true, hasPlayed: true))
+        XCTAssertNil(mapped[10003])
+        XCTAssertNil(mapped[10004])
+    }
+
+    func testMergeNeverLowersProgressAndIsIdempotent() throws {
+        let imported = try LegacyProgressImport.map(backup("""
+        "rewards":{"stars":{"1":{"passed":true,"memory":"2026-10-30T12:00:00Z"}}},
+        "progress":{"1":{"bpm":120,"best":75}}
+        """))
+        let existing = [10001: LessonProgress(mastery: true, currentBpm: 80, bestScore: 0.95),
+                        10002: LessonProgress(passed: true)]
+        let merged = LegacyProgressImport.merge(existing: existing, imported: imported)
+        XCTAssertEqual(merged[10001], LessonProgress(passed: true, mastery: true, memory: true,
+                                                    hasPlayed: true, currentBpm: 80, bestScore: 0.95))
+        XCTAssertEqual(merged[10002], existing[10002])
+        XCTAssertEqual(LegacyProgressImport.merge(existing: merged, imported: imported), merged)
+    }
+
+    func testRejectsWrongAppVersionAndMissingStars() {
+        for data in [backup("\"rewards\":{\"stars\":{}}", app: "other"),
+                     backup("\"rewards\":{\"stars\":{}}", version: 2),
+                     backup("\"rewards\":{}"), Data("invalid".utf8)] {
+            XCTAssertThrowsError(try LegacyProgressImport.map(data))
+        }
+    }
+
+    func testBackupAndRepeatedImportPreserveOriginalFile() throws {
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let url = directory.appendingPathComponent("progress.json")
+        let store = ProgressStore(fileURL: url, autoLoad: false)
+        store.setProgress(LessonProgress(mastery: true, currentBpm: 90), for: 10001, autoSave: false)
+        try store.save()
+        let original = try Data(contentsOf: url)
+        let data = backup("""
+        "rewards":{"stars":{"1":{"passed":true,"memory":"2026-10-30T12:00:00Z"}}}
+        """)
+        let first = try store.importLegacyBackup(data)
+        XCTAssertEqual(first.lessons, 1)
+        XCTAssertEqual(first.starsAdded, 2)
+        let imported = store.records
+        XCTAssertEqual(try store.importLegacyBackup(data).starsAdded, 0)
+        XCTAssertEqual(store.records, imported)
+        XCTAssertEqual(try Data(contentsOf: url.appendingPathExtension("pre-import")), original)
+        let saved = try Data(contentsOf: url)
+        XCTAssertThrowsError(try store.importLegacyBackup(Data("{}".utf8)))
+        XCTAssertEqual(store.records, imported)
+        XCTAssertEqual(try Data(contentsOf: url), saved)
+    }
+}
+#endif
