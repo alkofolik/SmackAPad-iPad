@@ -78,8 +78,26 @@ struct PatternField: View {
 
     var body: some View {
         GeometryReader { geometry in
-            let contentHeight = max(geometry.size.height,
-                PracticeBandStyle.minimumHeight(rows: rows.count, scale: notationScale))
+            let availableWidth = geometry.size.width
+            let availableHeight = geometry.size.height
+            let isLandscape = availableWidth >= availableHeight
+            let count = min(visibleBars, min(lesson.bars, 4))
+            let columns: Int = {
+                if count <= 1 { return 1 }
+                if count == 2 { return isLandscape ? 2 : 1 }
+                // count == 3 or 4 (e.g. all bars)
+                return 2
+            }()
+            let rowsInGrid = max(1, Int(ceil(Double(count) / Double(columns))))
+            let gap = Theme.Space.regular
+            let targetBarWidth = max(1, (availableWidth - CGFloat(columns - 1) * gap) / CGFloat(columns))
+            let targetBarHeight = max(1, (availableHeight - CGFloat(rowsInGrid - 1) * gap) / CGFloat(rowsInGrid))
+            let unscaledWidth = PracticeBandStyle.barWidth(rows: rows, scale: 1)
+            let unscaledHeight = PracticeBandStyle.minimumHeight(rows: rows.count, scale: 1)
+            let fitScale = max(0.4, min(notationScale, min(targetBarWidth / unscaledWidth, targetBarHeight / unscaledHeight)))
+
+            let contentHeight = max(availableHeight,
+                CGFloat(rowsInGrid) * PracticeBandStyle.minimumHeight(rows: rows.count, scale: fitScale) + CGFloat(rowsInGrid - 1) * gap)
             ScrollView(.vertical) {
                 Group {
                     if scrolling {
@@ -89,17 +107,10 @@ struct PatternField: View {
                                          playedHits: playedHits,
                                          scoring: scoring, missGraceSteps: missGraceSteps, band: band, scale: notationScale)
                     } else {
-                        let minimumWidth = PracticeBandStyle.barWidth(rows: rows, scale: notationScale)
-                        let columns = geometry.size.width >= minimumWidth * 2 + Theme.Space.regular ? 2 : 1
-                        let minimumHeight = PracticeBandStyle.minimumHeight(rows: rows.count, scale: notationScale)
-                        let verticalSlots = max(1, Int((contentHeight + Theme.Space.regular) / (minimumHeight + Theme.Space.regular)))
-                        // Preserve full-size notation; page through fewer bars when more cannot fit.
-                        let count = min(visibleBars, min(lesson.bars, min(4, columns * verticalSlots)))
                         let currentBar = min(lesson.bars - 1, max(0, Int(position) / 16))
                         let first = (currentBar / max(1, count)) * max(1, count)
                         let bars = Array(first..<min(first + count, lesson.bars))
                         let rowCount = Int(ceil(Double(bars.count) / Double(columns)))
-                        let gap = Theme.Space.regular
                         let height = max(1, (contentHeight - CGFloat(rowCount - 1) * gap) / CGFloat(max(1, rowCount)))
                         LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: gap), count: columns), spacing: gap) {
                             ForEach(bars, id: \.self) { bar in
@@ -108,7 +119,7 @@ struct PatternField: View {
                                            hidden: hidden, verdict: verdicts[bar],
                                            feedback: feedback,
                                            playedHits: visiblePlayedHits(steps: (bar * 16)..<((bar + 1) * 16)),
-                                           scoring: scoring, missGraceSteps: missGraceSteps, band: band, scale: notationScale)
+                                           scoring: scoring, missGraceSteps: missGraceSteps, band: band, scale: fitScale)
                                     .frame(height: height)
                             }
                         }
