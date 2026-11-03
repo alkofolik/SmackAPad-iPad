@@ -20,6 +20,14 @@ struct PatternFrame {
     let tapePosition: Double
     let totalSteps: Int
     let bpm: Int
+    let countdown: Int?
+
+    init(tapePosition: Double, totalSteps: Int, bpm: Int, countdown: Int? = nil) {
+        self.tapePosition = tapePosition
+        self.totalSteps = totalSteps
+        self.bpm = bpm
+        self.countdown = countdown
+    }
 
     var pass: Int { Int(floor(tapePosition / Double(totalSteps))) + 1 }
     var position: Double { tapePosition.truncatingRemainder(dividingBy: Double(totalSteps)) }
@@ -250,22 +258,33 @@ final class PracticeSession {
 
     private func tapeFrame(seconds: Double) -> PatternFrame {
         let total = practiceLesson.bars * 16
-        guard running, let current = passes.last(where: { $0.start <= seconds }) else {
-            return PatternFrame(tapePosition: 0, totalSteps: total, bpm: bpm)
+        guard running else {
+            return PatternFrame(tapePosition: 0, totalSteps: total, bpm: bpm, countdown: nil)
         }
-        // Audio scheduling and drawing share native host seconds. A queued tempo
-        // change alters the slope at its start, never the tape's accumulated distance.
-        // Do not clamp at the pass end: a delayed scheduler tick cannot freeze drawing.
-        let distance = Double((current.number - 1) * total)
-            + max(0, seconds - current.start) * Double(current.bpm) / 15
-        return PatternFrame(tapePosition: distance, totalSteps: total, bpm: current.bpm)
+        if let current = passes.last(where: { $0.start <= seconds }) {
+            // Audio scheduling and drawing share native host seconds. A queued tempo
+            // change alters the slope at its start, never the tape's accumulated distance.
+            // Do not clamp at the pass end: a delayed scheduler tick cannot freeze drawing.
+            let distance = Double((current.number - 1) * total)
+                + max(0, seconds - current.start) * Double(current.bpm) / 15
+            return PatternFrame(tapePosition: distance, totalSteps: total, bpm: current.bpm, countdown: nil)
+        }
+        let start = passes.first?.start ?? displayStart
+        guard start > 0 else {
+            return PatternFrame(tapePosition: 0, totalSteps: total, bpm: bpm, countdown: nil)
+        }
+        let remainingBeats = (start - seconds) * Double(bpm) / 60
+        let count = min(4, max(1, Int(ceil(remainingBeats))))
+        return PatternFrame(tapePosition: 0, totalSteps: total, bpm: bpm, countdown: count)
     }
     var position: Double { patternFrame.position }
 
     /// Samples the tape for the frame SwiftUI is about to show, not for the moment
     /// the view body happens to run. Even frame spacing keeps the tape motion smooth.
+    /// Never sample in the past: if a frame was delayed, drawing an outdated moment
+    /// causes the next frame to catch up and visibly speed up across the gap.
     func patternFrame(at date: Date) -> PatternFrame {
-        tapeFrame(seconds: now + min(0.05, max(-0.05, date.timeIntervalSinceNow)))
+        tapeFrame(seconds: now + min(0.05, max(0, date.timeIntervalSinceNow)))
     }
 
     func prepare() async {

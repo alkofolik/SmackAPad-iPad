@@ -27,5 +27,5 @@ Find the cause, then make the playhead move uniformly from the first beat.
 
 ## Acceptance criteria
 
-- [ ] The playhead moves uniformly from the first beat of the run.
-- [ ] Scoring and audio timing are unchanged.
+- [x] The playhead moves uniformly from the first beat of the run.
+- [x] Scoring and audio timing are unchanged.

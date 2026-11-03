@@ -119,17 +119,17 @@ struct PracticeScreen: View {
                 .fixedSize(horizontal: false, vertical: true)
             TimelineView(.animation(minimumInterval: 1.0 / 60, paused: !session.running)) { timeline in
                 let frame = session.patternFrame(at: timeline.date)
-                let scored = session.running && !session.listen && session.countdown == nil
+                let scored = session.running && !session.listen && frame.countdown == nil
                 PatternField(lesson: session.practiceLesson, hits: session.patternHits,
                              position: frame.position, tapePosition: frame.tapePosition,
-                             running: session.running && session.countdown == nil,
+                             running: session.running && frame.countdown == nil,
                              hidden: session.fromMemory && session.running && !session.listen,
                              scrolling: scrolling, visibleBars: [1, 2, 4].contains(visibleBars) ? visibleBars : 4,
                              verdicts: session.barVerdicts,
                              judgments: session.hitJudgments, bpm: frame.bpm,
                              playedHits: session.playedHits, pass: frame.pass,
-                             scoring: session.running && !session.listen && session.countdown == nil,
-                             missGraceSteps: frame.missGraceSteps, countdown: session.countdown,
+                             scoring: session.running && !session.listen && frame.countdown == nil,
+                             missGraceSteps: frame.missGraceSteps, countdown: frame.countdown,
                              band: BandTone.color(listen: session.listen,
                                                   memory: session.fromMemory && !session.listen,
                                                   bpm: session.bpm, startBpm: session.lesson.startBpm,
