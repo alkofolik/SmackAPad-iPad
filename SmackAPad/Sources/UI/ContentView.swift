@@ -148,7 +148,6 @@ struct TouchPad: View {
     let sound: LocalizedStringKey
     let isActive: Bool
     let onPress: (Bool) -> Void
-    @State private var isTouching = false
 
     var body: some View {
         VStack(spacing: Theme.Space.small) {
@@ -167,25 +166,10 @@ struct TouchPad: View {
                 .stroke(isActive ? Theme.orange : Color.clear, lineWidth: Theme.Size.border)
         )
         .contentShape(Rectangle())
-        .gesture(
-            DragGesture(minimumDistance: 0)
-                .onChanged { _ in
-                    guard !isTouching else { return }
-                    isTouching = true
-                    onPress(true)
-                }
-                .onEnded { _ in release() }
-        )
-        .onDisappear { release() }
+        .overlay { PadPressSurface(onPress: onPress).accessibilityHidden(true) }
         .accessibilityElement(children: .combine)
         .accessibilityAddTraits(.isButton)
         .accessibilityAction { onPress(true); onPress(false) }
-    }
-
-    private func release() {
-        guard isTouching else { return }
-        isTouching = false
-        onPress(false)
     }
 }
 

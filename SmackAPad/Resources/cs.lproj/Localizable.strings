@@ -25,6 +25,9 @@
 "Mapped pad" = "Přiřazený pad";
 "This lesson requires 16 pads." = "Tato lekce vyžaduje 16 padů.";
 "Touch pads" = "Dotykové pady";
+"Touch pads in portrait" = "Dotykové pady na výšku";
+"Calibrate touch separately; it differs from a controller." = "Dotykové pady kalibruj zvlášť; jejich odezva se liší od kontroleru.";
+"Used in this lesson" = "Používá se v této lekci";
 "Eight physical slots follow the current lesson. Without a lesson, the base layout is shown." = "Osm fyzických pozic se přiřazuje podle aktuální lekce. Bez lekce se zobrazuje základní rozložení.";
 "Touch pads send the same pad events as MIDI. Sound playback is added by the audio module." = "Dotykové pady posílají stejné události jako MIDI. Přehrávání zvuků doplní zvukový modul.";
 "Language" = "Jazyk";

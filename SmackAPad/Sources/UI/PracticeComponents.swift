@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 
 /// How one pad strike or expected note turned out. Shown as colour only.
 enum HitMark {
@@ -116,6 +117,7 @@ struct TransportControls: View {
     @Environment(\.accessibilityReduceMotion) private var reduced
     let running: Bool
     let enabled: Bool
+    var preferredWidth: CGFloat = Theme.Size.transportWidth
     let start: () -> Void
     let stop: () -> Void
     let restart: () -> Void
@@ -123,7 +125,7 @@ struct TransportControls: View {
     var body: some View {
         ViewThatFits(in: .horizontal) {
             HStack(spacing: Theme.Space.small) { buttons }
-                .frame(minWidth: Theme.Size.transportWidth)
+                .frame(minWidth: preferredWidth)
                 .fixedSize(horizontal: true, vertical: true)
             VStack(alignment: .trailing, spacing: Theme.Space.small) { buttons }
         }
@@ -429,8 +431,7 @@ struct PadVoice {
     }
 }
 
-/// A small layout diagram, not a second performance surface. Full-size touch
-/// pads remain available in the MIDI tools.
+/// The small, non-interactive diagram used in landscape and when touch pads are off.
 struct PadLayoutGrid: View {
     @ScaledMetric(relativeTo: .body) private var width: CGFloat = 176
     let pads: [Int]
@@ -483,6 +484,143 @@ struct PadLayoutGrid: View {
             return "\(base), key \(key)"
         }
         return base
+    }
+}
+
+/// A stable playing deck: only the reading section above it may scroll.
+struct PracticeTouchPadGrid: View {
+    @Environment(SettingsManager.self) private var settings
+    let pads: [Int]
+    let used: Set<Int>
+    let flashes: [Int: PadFlash]
+    let enabled: Bool
+    let onPress: (Int, Bool) -> Void
+
+    var body: some View {
+        GeometryReader { geometry in
+            let cellWidth = max(0, (geometry.size.width - 24) / 4)
+            let cellHeight = max(0, (geometry.size.height - 24) / 4)
+            TimelineView(.animation(minimumInterval: 1.0 / 30, paused: flashes.isEmpty)) { timeline in
+                VStack(spacing: Theme.Space.small) {
+                    ForEach(0..<4, id: \.self) { row in
+                        HStack(spacing: Theme.Space.small) {
+                            ForEach(0..<4, id: \.self) { column in
+                                let pad = pads[row * 4 + column]
+                                cell(pad, size: min(cellWidth, cellHeight), now: timeline.date)
+                                    .frame(width: cellWidth, height: cellHeight)
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    private func cell(_ pad: Int, size: CGFloat, now: Date) -> some View {
+        let flash = flashes[pad]
+        let strength = flash?.strength(at: now) ?? 0
+        let isUsed = used.contains(pad)
+        return Text(PadVoice.abbreviation(pad))
+            .font(Theme.canvasDisplay(min(44, max(24, size * 0.28))))
+            .foregroundStyle(strength > 0.35 ? Theme.white : (isUsed ? Theme.ink : Theme.secondary))
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .background {
+                ZStack {
+                    Theme.surface
+                    (flash?.color ?? Theme.orange).opacity(strength)
+                }
+            }
+            .overlay(Rectangle().strokeBorder(Theme.ink, lineWidth: isUsed ? Theme.Size.border : 0))
+            .overlay {
+                PadPressSurface(enabled: enabled) { onPress(pad, $0) }
+                    .accessibilityHidden(true)
+            }
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel(settings.localized("%@, pad %lld", PadVoice.name(pad, settings: settings), pad + 1))
+            .accessibilityValue(isUsed ? settings.localized("Used in this lesson") : "")
+            .accessibilityAddTraits(.isButton)
+            .accessibilityAction {
+                guard enabled else { return }
+                onPress(pad, true)
+                onPress(pad, false)
+            }
+    }
+}
+
+/// Raw UIKit touches keep each pad independent, without a drag recognizer winning
+/// over other fingers. A touch belongs to its starting pad until it ends.
+struct PadPressSurface: UIViewRepresentable {
+    var enabled = true
+    let onPress: (Bool) -> Void
+
+    func makeUIView(context: Context) -> PadPressView {
+        let view = PadPressView()
+        view.isMultipleTouchEnabled = true
+        view.isExclusiveTouch = false
+        view.backgroundColor = .clear
+        view.isOpaque = false
+        view.onPress = onPress
+        view.inputEnabled = enabled
+        return view
+    }
+
+    func updateUIView(_ view: PadPressView, context: Context) {
+        view.onPress = onPress
+        view.inputEnabled = enabled
+    }
+
+    static func dismantleUIView(_ view: PadPressView, coordinator: ()) {
+        view.release()
+    }
+}
+
+final class PadPressView: UIView {
+    var onPress: (Bool) -> Void = { _ in }
+    var inputEnabled = true {
+        didSet { if !inputEnabled { release() } }
+    }
+    private var trackedTouch: UITouch?
+    private var pressed = false
+
+    override func touchesBegan(_ touches: Set<UITouch>, with event: UIEvent?) {
+        guard inputEnabled, trackedTouch == nil, let touch = touches.first else { return }
+        trackedTouch = touch
+        pressed = true
+        onPress(true)
+    }
+
+    override func touchesMoved(_ touches: Set<UITouch>, with event: UIEvent?) {
+        guard let touch = trackedTouch, touches.contains(touch) else { return }
+        if !bounds.contains(touch.location(in: self)) { release() }
+        // Re-entering this or a neighbouring pad never starts another note.
+    }
+
+    override func touchesEnded(_ touches: Set<UITouch>, with event: UIEvent?) {
+        finish(touches)
+    }
+
+    override func touchesCancelled(_ touches: Set<UITouch>, with event: UIEvent?) {
+        finish(touches)
+    }
+
+    override func didMoveToWindow() {
+        super.didMoveToWindow()
+        if window == nil {
+            release()
+            trackedTouch = nil
+        }
+    }
+
+    private func finish(_ touches: Set<UITouch>) {
+        guard let touch = trackedTouch, touches.contains(touch) else { return }
+        release()
+        trackedTouch = nil
+    }
+
+    func release() {
+        guard pressed else { return }
+        pressed = false
+        onPress(false)
     }
 }
 

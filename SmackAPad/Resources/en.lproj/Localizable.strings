@@ -25,6 +25,9 @@
 "Mapped pad" = "Mapped pad";
 "This lesson requires 16 pads." = "This lesson requires 16 pads.";
 "Touch pads" = "Touch pads";
+"Touch pads in portrait" = "Touch pads in portrait";
+"Calibrate touch separately; it differs from a controller." = "Calibrate touch separately; it differs from a controller.";
+"Used in this lesson" = "Used in this lesson";
 "Eight physical slots follow the current lesson. Without a lesson, the base layout is shown." = "Eight physical slots follow the current lesson. Without a lesson, the base layout is shown.";
 "Touch pads send the same pad events as MIDI. Sound playback is added by the audio module." = "Touch pads send the same pad events as MIDI. Sound playback is added by the audio module.";
 "Language" = "Language";

@@ -28,6 +28,8 @@ struct CalibrationView: View {
                     }
                     .disabled(session.busy)
                     LabeledContent(settings.localized("Saved offset"), value: signed(settings.calibrationOffset(for: session.deviceID)))
+                    Text(settings.localized("Calibrate touch separately; it differs from a controller."))
+                        .font(Theme.meta).foregroundStyle(Theme.secondary)
                     Text(settings.localized("Listen to four clicks, then tap with each of the next ten. Follow the sound, not the screen."))
                         .font(Theme.meta).foregroundStyle(Theme.secondary)
                 } header: { SectionHeader(title: settings.localized("Calibration input")) }

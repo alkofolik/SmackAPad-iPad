@@ -17,6 +17,7 @@ struct PracticeScreen: View {
     @AppStorage("smackapad.practice.scrolling") private var scrolling = false
     @AppStorage("smackapad.practice.visibleBars") private var visibleBars = 4
     @AppStorage("smackapad.practice.showPads") private var showPads = true
+    @AppStorage("smackapad.practice.touchPadsInPortrait") private var touchPadsInPortrait = true
     @State private var showingLegend = false
     @State private var showingTools = false
     @State private var showingTempo = false
@@ -33,6 +34,8 @@ struct PracticeScreen: View {
     var body: some View {
         GeometryReader { geometry in
             let compact = geometry.size.width < 1_000 || dynamicType > .large
+            let portraitPads = geometry.size.height > geometry.size.width
+                && touchPadsInPortrait && midi.padIndices?.count == 16
             VStack(spacing: Theme.Space.regular) {
                 ViewThatFits(in: .vertical) {
                     practiceContent(compact: compact)
@@ -43,8 +46,27 @@ struct PracticeScreen: View {
                     .scrollBounceBehavior(.basedOnSize)
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
-                footer
+                if portraitPads, let pads = midi.padIndices {
+                    VStack(alignment: .trailing, spacing: Theme.Space.small) {
+                        sessionStatus
+                        transport(width: 380)
+                    }
+                    .frame(maxWidth: .infinity, alignment: .trailing)
                     .fixedSize(horizontal: false, vertical: true)
+                    PracticeTouchPadGrid(pads: pads,
+                                         used: Set(session.patternHits.map(\.padIndex)),
+                                         flashes: session.padFlashes,
+                                         enabled: touchPadsReady) { pad, pressed in
+                        // Releases must still reach MIDI when readiness changes mid-touch.
+                        guard !pressed || touchPadsReady else { return }
+                        midi.touch(padIndex: pad, isPressed: pressed)
+                    }
+                    .id(session.lesson.id)
+                    .frame(height: min(624, max(424, (geometry.size.height - 48) * 0.48)))
+                } else {
+                    footer
+                        .fixedSize(horizontal: false, vertical: true)
+                }
             }
             .padding(Theme.Space.page)
             .background(Theme.background.ignoresSafeArea())
@@ -77,6 +99,11 @@ struct PracticeScreen: View {
             MIDISettingsView()
                 .presentationDragIndicator(.visible)
         }
+    }
+
+    private var touchPadsReady: Bool {
+        session.ready && session.available && scenePhase == .active && !showingMIDI
+            && midi.lesson?.id == session.lesson.id && midi.padIndices?.count == 16
     }
 
     private var lessonCategoryTitle: String {
@@ -338,7 +365,12 @@ struct PracticeScreen: View {
     }
 
     private var transport: some View {
+        transport(width: Theme.Size.transportWidth)
+    }
+
+    private func transport(width: CGFloat) -> some View {
         TransportControls(running: session.running, enabled: session.ready && session.available,
+                          preferredWidth: width,
                           start: { showingInfo = false; session.start() },
                           stop: session.stop,
                           restart: { showingInfo = false; session.restart() })
@@ -407,6 +439,11 @@ struct PracticeScreen: View {
                 showKeyboardKeys: midi.isKeyboardConnected && settings.playPadsWithKeyboard && midi.activeProfile.isSixteenPad
             )
         }
+        sessionStatus
+    }
+
+    @ViewBuilder
+    private var sessionStatus: some View {
         if !session.available {
             Text(settings.localized("This lesson requires 16 pads."))
                 .font(Theme.control)

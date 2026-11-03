@@ -1,6 +1,17 @@
 # 40 — Playable on-screen pads in portrait (no controller needed)
 
-Status: ready (2026-11-03), two phases with a stop for Jakub's approval between them. Source: Jakub 2026-11-03 (widen the audience: iPad owners without a pad controller can try the app).
+Status: Phase B implemented (2026-11-03); unsigned iPad build passed, Jakub's iPad acceptance pending. Source: Jakub 2026-11-03 (widen the audience: iPad owners without a pad controller can try the app).
+
+## Phase B implementation — 2026-11-03
+
+Jakub selected Proposal 1, with compact transport approximately 380 × 72 pt, aligned right above the deck. Pads show abbreviations only, without numbers or full names. Phase A proposals remain unchanged.
+
+- Portrait is detected from the window geometry. The 4×4 deck remains below the scrollable reading section; the existing landscape footer remains in use otherwise.
+- Each pad owns an independent UIKit touch surface, shared with the existing Settings touch pads. Leaving the starting pad releases it without triggering its neighbour or retriggering on re-entry. Cancellation, removal and readiness changes also release the note.
+- Practice touches use `midi.touch`, including its fixed velocity, `touch` device ID and existing calibration path. Input is gated by the open lesson, session readiness, active scene and 16-pad layout.
+- The global “Touch pads in portrait” preference defaults to On and persists with AppStorage. EN/CS labels and a separate-touch-calibration hint are included.
+- No scoring, timing, tempo or star rules changed. Multi-touch, sliding, appearance and controller coexistence require Jakub's physical iPad check.
+- Validation: unsigned Debug build for `generic/platform=iOS` passed. The initial sandboxed Simulator build could not run compiler macros; the device build succeeded outside that restriction. No tests were run. Build used the current working tree, including pre-existing changes excluded from this task's commit.
 
 ## Goal
 
