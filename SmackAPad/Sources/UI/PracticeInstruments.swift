@@ -123,7 +123,7 @@ struct TempoTile: View {
                     Text("→ \(targetBpm)").font(Theme.meta).monospacedDigit().foregroundStyle(Theme.secondary)
                 }
                 Image(systemName: "chevron.down")
-                    .font(.system(size: 12, weight: .bold))
+                    .font(Theme.meta)
                     .foregroundStyle(Theme.secondary)
                     .opacity(editable ? 1 : 0)
             }
@@ -216,7 +216,7 @@ struct ResultCard<Action: View>: View {
             Button(action: detail) {
                 PracticeDetailIcon()
                     .stroke(Theme.ink, style: StrokeStyle(lineWidth: 2, lineCap: .round, lineJoin: .round))
-                    .frame(width: 30, height: 30)
+                    .frame(width: 32, height: 32)
                     .frame(width: 56, height: 56)
                     .contentShape(Rectangle())
             }
@@ -253,9 +253,9 @@ struct MemoryChallengeButtonStyle: ButtonStyle {
             .foregroundStyle(Theme.black)
             .lineLimit(1)
             .padding(.horizontal, Theme.Space.regular)
-            .frame(minHeight: 54)
+            .frame(minHeight: Theme.Size.rowLarge)
             .background(PracticeBandStyle.orange.opacity(configuration.isPressed ? 0.8 : 1),
-                        in: RoundedRectangle(cornerRadius: 7))
+                        in: RoundedRectangle(cornerRadius: Theme.Radius.pad))
             .fixedSize(horizontal: true, vertical: false)
     }
 }
@@ -266,10 +266,10 @@ struct PracticeNextButtonStyle: ButtonStyle {
         configuration.label
             .font(Theme.navigation)
             .foregroundStyle(Theme.ink)
-            .padding(.horizontal, 16)
-            .frame(minHeight: 54)
-            .background(Theme.background, in: RoundedRectangle(cornerRadius: 7))
-            .overlay(RoundedRectangle(cornerRadius: 7).strokeBorder(Theme.ink, lineWidth: 1.5))
+            .padding(.horizontal, Theme.Space.regular)
+            .frame(minHeight: Theme.Size.rowLarge)
+            .background(Theme.background, in: RoundedRectangle(cornerRadius: Theme.Radius.pad))
+            .overlay(RoundedRectangle(cornerRadius: Theme.Radius.pad).strokeBorder(Theme.ink, lineWidth: Theme.Size.border))
             .opacity(configuration.isPressed ? 0.65 : 1)
             .fixedSize(horizontal: true, vertical: false)
     }

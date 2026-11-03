@@ -119,7 +119,7 @@ struct PatternField: View {
             .scrollBounceBehavior(.basedOnSize)
         }
         .opacity(countdown == nil ? 1 : 0.22)
-        .padding(.horizontal, 24)
+        .padding(.horizontal, Theme.Space.page)
         .overlay {
             if let countdown {
                 GeometryReader { geometry in
@@ -133,7 +133,7 @@ struct PatternField: View {
         .overlay(alignment: .bottom) {
             if lesson.bars > 1 {
                 PatternPassProgress(position: position, bars: lesson.bars)
-                    .padding(.horizontal, 24).padding(.bottom, 9)
+                    .padding(.horizontal, Theme.Space.page).padding(.bottom, Theme.Space.small)
             }
         }
         .overlay { BandEdgeGlow(tendency: edgeTendency) }
@@ -205,7 +205,7 @@ private func drawBeat(step: Int, x: CGFloat, lanes: PatternLanes, context: inout
         let bar = step.isMultiple(of: 16)
         context.stroke(path, with: .color(Theme.black.opacity(bar ? 0.38 : 0.18)), lineWidth: bar ? 1.2 : 0.65)
         if bar {
-            context.fill(Path(roundedRect: CGRect(x: x - 3, y: 12, width: 6, height: 7), cornerRadius: 2),
+            context.fill(Path(roundedRect: CGRect(x: x - 3, y: 12, width: 6, height: 8), cornerRadius: 2),
                          with: .color(Theme.black.opacity(0.7)))
         }
     } else {

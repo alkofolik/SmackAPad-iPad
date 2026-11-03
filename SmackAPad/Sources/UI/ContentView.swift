@@ -66,7 +66,7 @@ struct MIDILearnView: View {
                                         }
                                     }
                                     .frame(maxWidth: .infinity, minHeight: 64)
-                                    .background(slot == midi.learnedNotes.count ? Theme.orange.opacity(0.3) : Theme.surface,
+                                    .background(slot == midi.learnedNotes.count ? Theme.activeFill : Theme.surface,
                                                 in: RoundedRectangle(cornerRadius: Theme.Size.blockRadius))
                                     .overlay(
                                         RoundedRectangle(cornerRadius: Theme.Size.blockRadius)
@@ -102,7 +102,7 @@ struct MIDILearnView: View {
                             }
                         }
                     } header: {
-                        SectionHeader(title: settings.localized("MIDI LEARN"))
+                        SectionHeader(title: settings.localized("MIDI learn"))
                     } footer: {
                         Text(settings.localized("Press each physical pad once, left to right, starting with the top row. Use the same controller and MIDI channel throughout. In 8-pad mode, positions are slots 1–8; sounds follow the lesson."))
                             .font(Theme.meta)
@@ -156,7 +156,7 @@ struct TouchPad: View {
                 .foregroundStyle(isActive ? Theme.orange : Theme.ink)
         }
         .frame(maxWidth: .infinity, minHeight: 72)
-        .background(isActive ? Theme.orange.opacity(0.3) : Theme.surface,
+        .background(isActive ? Theme.activeFill : Theme.surface,
                     in: RoundedRectangle(cornerRadius: Theme.Size.blockRadius))
         .overlay(
             RoundedRectangle(cornerRadius: Theme.Size.blockRadius)

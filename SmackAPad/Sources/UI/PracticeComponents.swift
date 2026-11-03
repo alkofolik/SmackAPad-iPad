@@ -181,7 +181,7 @@ struct HitTimingBar: View {
             HStack(spacing: Theme.Space.regular) { timingScale; tendency }
             VStack(alignment: .trailing, spacing: Theme.Space.small) { timingScale; tendency }
         }
-        .frame(minHeight: 50)
+        .frame(minHeight: Theme.Size.row)
         .opacity(active ? 1 : 0)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(settings.localized("Hit timing"))
@@ -260,7 +260,7 @@ struct HitTimingPlot: View {
                                                  width: size.width, height: height * good)),
                                      with: .color(Theme.orange.opacity(0.12)))
                         context.fill(Path(CGRect(x: 0, y: size.height / 2, width: size.width, height: 1)),
-                                     with: .color(Theme.secondary.opacity(0.4)))
+                                     with: .color(Theme.hairline))
                         for (index, sample) in history.samples.enumerated() {
                             let x = inset + width * Double(index) / 31
                             let y = inset + height * (sample.normalized + 1) / 2
@@ -345,7 +345,7 @@ struct SummaryStrip: View {
         StarShape()
             .fill(earned ? Theme.ink : Theme.background)
             .overlay(StarShape().stroke(Theme.ink, lineWidth: Theme.Size.border))
-            .frame(width: 23, height: 23)
+            .frame(width: 24, height: 24)
             .accessibilityLabel(label)
             .accessibilityValue(settings.localized(earned ? "earned" : "not earned"))
             .motion(value: earned)

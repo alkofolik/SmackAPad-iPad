@@ -51,7 +51,7 @@ public struct SettingsView: View {
                         }
                         .pickerStyle(.menu)
                     } header: {
-                        SectionHeader(title: settings.localized("SOUND KIT"))
+                        SectionHeader(title: settings.localized("Sound kit"))
                     } footer: {
                         Text(settings.localized("All 8 kits are bundled with the app for practice and playback."))
                             .font(Theme.meta)
@@ -73,7 +73,7 @@ public struct SettingsView: View {
                             value: $settings.patternVolume
                         )
                     } header: {
-                        SectionHeader(title: settings.localized("SOUND"))
+                        SectionHeader(title: settings.localized("Sound"))
                     } footer: {
                         Text(settings.localized("Separate volume for metronome, pads and pattern playback."))
                             .font(Theme.meta)
@@ -85,7 +85,7 @@ public struct SettingsView: View {
                         PlexSegmentedPicker(title: settings.localized("Tempo step"), selection: $settings.bpmStep,
                             options: BpmStep.allCases.map { ($0.rawValue, "+\($0.rawValue) BPM") })
                     } header: {
-                        SectionHeader(title: settings.localized("TEMPO AUTO-STEP (BPM)"))
+                        SectionHeader(title: settings.localized("Tempo auto-step (BPM)"))
                     } footer: {
                         Text(settings.localized("Tempo automatically increases by this step after each clean pass until target tempo."))
                             .font(Theme.meta)
@@ -118,7 +118,7 @@ public struct SettingsView: View {
                         Toggle(settings.localized("Small pad layout"), isOn: $showPads)
                         Toggle(settings.localized("Touch pads in portrait"), isOn: $touchPadsInPortrait)
                     } header: {
-                        SectionHeader(title: settings.localized("PRACTICE SCREEN"))
+                        SectionHeader(title: settings.localized("Practice screen"))
                     } footer: {
                         Text(settings.localized("Shows a small pad layout in the lesson that lights up the pads you hit."))
                             .font(Theme.meta)
@@ -167,7 +167,7 @@ public struct SettingsView: View {
                             .foregroundStyle(Theme.orange)
                         }
                     } header: {
-                        SectionHeader(title: settings.localized("CONTROLLER PROFILES"))
+                        SectionHeader(title: settings.localized("Controller profiles"))
                     } footer: {
                         Text(settings.localized("Akai and Maschine presets use notes 36–51 starting from the bottom left. Use MIDI learn for other banks or mappings."))
                             .font(Theme.meta)
@@ -206,7 +206,7 @@ public struct SettingsView: View {
                         }
                         .padding(.vertical, Theme.Space.tight)
                     } header: {
-                        SectionHeader(title: settings.localized("KEYBOARD"))
+                        SectionHeader(title: settings.localized("Keyboard"))
                     }
 
                     // MARK: 4. Appearance
@@ -214,7 +214,7 @@ public struct SettingsView: View {
                         PlexSegmentedPicker(title: settings.localized("Appearance"), selection: $settings.appearance,
                             options: AppAppearance.allCases.map { ($0, settings.localized($0.title)) })
                     } header: {
-                        SectionHeader(title: settings.localized("APPEARANCE"))
+                        SectionHeader(title: settings.localized("Appearance"))
                     } footer: {
                         Text(settings.localized("Choose light, dark or follow your system appearance."))
                             .font(Theme.meta)
@@ -226,7 +226,7 @@ public struct SettingsView: View {
                         PlexSegmentedPicker(title: settings.localized("App language"), selection: $settings.languagePreference,
                             options: AppLanguage.allCases.map { ($0, $0.displayName) })
                     } header: {
-                        SectionHeader(title: settings.localized("LANGUAGE"))
+                        SectionHeader(title: settings.localized("Language"))
                     } footer: {
                         Text(settings.localized("Choose Czech or English. Your lesson progress and controller mappings remain preserved."))
                             .font(Theme.meta)
@@ -277,7 +277,7 @@ public struct SettingsView: View {
                             .frame(minHeight: Theme.Size.touch)
                         }
                     } header: {
-                        SectionHeader(title: settings.localized("HARDWARE & CALIBRATION"))
+                        SectionHeader(title: settings.localized("Hardware and calibration"))
                     }
 
                     // MARK: 6. Input Monitor
@@ -316,7 +316,7 @@ public struct SettingsView: View {
                                 .font(Theme.meta)
                         }
                     } header: {
-                        SectionHeader(title: settings.localized("INPUT MONITOR"))
+                        SectionHeader(title: settings.localized("Input monitor"))
                     }
 
                     // MARK: 7. Touch Pads
@@ -340,7 +340,7 @@ public struct SettingsView: View {
                                 .font(Theme.meta)
                         }
                     } header: {
-                        SectionHeader(title: settings.localized("TOUCH PADS"))
+                        SectionHeader(title: settings.localized("Touch pads"))
                     } footer: {
                         if midi.activeProfile.isEightPad {
                             Text(settings.localized("Eight physical slots follow the current lesson. Without a lesson, the base layout is shown."))
@@ -451,12 +451,12 @@ private struct ProfileRow: View {
 
     var body: some View {
         ListRow(symbol: isActive ? "checkmark.circle.fill" : "circle",
-                stateTitle: settings.localized(isActive ? "ACTIVE" : "Preset"),
+                stateTitle: settings.localized(isActive ? "Active" : "Preset"),
                 title: profile.profileName, action: onSelect) {
             Text("\(settings.localized(profile.padCount == 8 ? "8 pads" : "16 pads")) · \(settings.localized(isCustom ? "Custom" : "Preset"))")
         } trailing: {
             if isActive {
-                Text(Theme.sentenceCase(settings.localized("ACTIVE"))).font(Theme.meta).foregroundStyle(Theme.orange)
+                Text(Theme.sentenceCase(settings.localized("Active"))).font(Theme.meta).foregroundStyle(Theme.ink)
             }
             if isCustom {
                 Button(role: .destructive, action: onDelete) {

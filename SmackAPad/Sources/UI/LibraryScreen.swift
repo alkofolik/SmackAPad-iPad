@@ -163,7 +163,7 @@ struct LibraryScreen: View {
                             ForEach(groups.filter { $0.stage?.level == level }) { item in
                                 HStack(spacing: 0) {
                                     Rectangle()
-                                        .fill(Theme.secondary.opacity(0.35))
+                                        .fill(Theme.hairline)
                                         .frame(width: 2)
                                         .padding(.leading, 7)
                                         .padding(.trailing, Theme.Space.small)
@@ -205,7 +205,7 @@ struct LibraryScreen: View {
                 AnimatedLock(locked: locked).font(Theme.meta)
                 sidebarLabel(settings.localized(item.title), lessons: item.lessons, selected: selected)
             }
-            .foregroundStyle(selected ? Theme.orange : Theme.ink)
+            .foregroundStyle(Theme.ink)
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain).listRowBackground(selected ? Theme.surface : Theme.background)
@@ -220,7 +220,7 @@ struct LibraryScreen: View {
         let maxStars = lessons.count * 3
 
         let titleLabel = Text(title)
-            .font(isCategory ? Theme.sectionTitle : (selected ? Theme.display(22) : Theme.navigation))
+            .font(isCategory ? Theme.sectionTitle : Theme.navigation)
             .fixedSize(horizontal: false, vertical: true)
         let stars = HStack(spacing: 2) {
             Image(systemName: "star.fill").font(Theme.meta)
@@ -335,9 +335,9 @@ struct LibraryScreen: View {
                     .background(Theme.surface)
                     .overlay(
                         RoundedRectangle(cornerRadius: Theme.Size.blockRadius)
-                            .stroke(Theme.secondary.opacity(0.35), lineWidth: 1)
+                            .stroke(Theme.hairline, lineWidth: 1)
                     )
-                    .accessibilityLabel(settings.localized("Search lessons..."))
+                    .accessibilityLabel(settings.localized("Search"))
 
                     Menu {
                         Picker(settings.localized(mode == .genre ? "Technique" : "Genre"), selection: $cross) {
@@ -350,7 +350,7 @@ struct LibraryScreen: View {
                         }
                     } label: {
                         HStack(spacing: Theme.Space.tight) {
-                            Image(systemName: cross.isEmpty ? "line.3.horizontal.decrease" : "line.3.horizontal.decrease.circle.fill")
+                            Image(systemName: "line.3.horizontal.decrease")
                             Text(crossTitle)
                         }
                         .font(Theme.meta).lineLimit(1)
@@ -359,7 +359,7 @@ struct LibraryScreen: View {
                         .background(cross.isEmpty ? Theme.background : Theme.surface)
                         .overlay(
                             RoundedRectangle(cornerRadius: Theme.Size.blockRadius)
-                                .stroke(cross.isEmpty ? Theme.secondary.opacity(0.35) : Theme.orange, lineWidth: 1)
+                                .stroke(cross.isEmpty ? Theme.hairline : Theme.ink, lineWidth: 1)
                         )
                     }
                     .accessibilityValue(crossTitle)
@@ -388,7 +388,7 @@ struct LibraryScreen: View {
                 .background(Theme.surface)
                 .overlay(
                     RoundedRectangle(cornerRadius: Theme.Size.blockRadius)
-                        .stroke(Theme.secondary.opacity(0.4), lineWidth: 1)
+                        .stroke(Theme.hairline, lineWidth: 1)
                 )
             }
             .buttonStyle(.plain)
@@ -504,13 +504,23 @@ struct LibraryLessonRow: View {
         } trailing: {
             if purchaseLocked {
                 Button(action: onSelect) {
-                    Image(systemName: "lock.fill").font(Theme.meta).foregroundStyle(Theme.orange)
+                    Image(systemName: "lock").font(Theme.meta).foregroundStyle(Theme.secondary)
                         .frame(minWidth: Theme.Size.touch, minHeight: Theme.Size.touch)
                 }
                 .buttonStyle(.plain)
                 .accessibilityLabel(settings.localized("Purchase required"))
             }
-            StarsView(record: record, lesson: lesson)
+            if introGoal == nil {
+                ViewThatFits(in: .horizontal) {
+                    HStack(spacing: Theme.Space.regular) {
+                        LessonPatternStrip(hits: lesson.hits, dimmed: locked)
+                        StarsView(record: record, lesson: lesson)
+                    }
+                    StarsView(record: record, lesson: lesson)
+                }
+            } else {
+                StarsView(record: record, lesson: lesson)
+            }
         }
         .lessonSource(lesson.id)
     }
@@ -521,16 +531,16 @@ struct LibraryLessonRow: View {
 
     @ViewBuilder private var padRequirement: some View {
         if settings.activeProfile().isEightPad && EightPadLayout.slots(for: lesson) == nil {
-            Image(systemName: "square.grid.4x3.fill")
-                .accessibilityLabel(settings.localized("REQUIRES 16 PADS"))
+            Text(settings.localized("16 pads"))
+                .accessibilityLabel(settings.localized("Requires 16 pads"))
         }
     }
 
     private var difficulty: some View {
-        HStack(spacing: 3) {
+        HStack(spacing: Theme.Space.tight) {
             ForEach(1...5, id: \.self) { level in
                 Circle().fill(level <= lesson.level ? Theme.ink : Theme.background)
-                    .overlay(Circle().stroke(Theme.ink, lineWidth: 1)).frame(width: 7, height: 7)
+                    .overlay(Circle().stroke(Theme.ink, lineWidth: 1)).frame(width: 8, height: 8)
             }
         }.accessibilityElement().accessibilityLabel(settings.localized("Level %lld", lesson.level))
     }

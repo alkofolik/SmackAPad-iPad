@@ -44,7 +44,7 @@ struct CalibrationView: View {
                         Text(settings.localized("Tap with the click"))
                             .font(Theme.rowTitle)
                             .frame(maxWidth: .infinity, minHeight: 140)
-                            .background(touching ? Theme.orange.opacity(0.25) : Theme.background)
+                            .background(touching ? Theme.activeFill : Theme.background)
                             .contentShape(Rectangle())
                             .gesture(DragGesture(minimumDistance: 0)
                                 .onChanged { _ in
@@ -65,7 +65,7 @@ struct CalibrationView: View {
                         LabeledContent(settings.localized("Saved offset"), value: signed(result.offsetMilliseconds))
                         LabeledContent(settings.localized("Usable taps"), value: "\(result.usableTaps) / 10")
                         LabeledContent(settings.localized("Timing spread"), value: "\(Int(result.spreadMilliseconds.rounded())) ms")
-                        if result.discardedTaps > 0 { Text(settings.localized("Outlier taps were ignored.")).font(Theme.meta) }
+                        if result.discardedTaps > 0 { Text(settings.localized("Outlier taps were ignored")).font(Theme.meta) }
                         Text(settings.localized("Play a lesson to check the result.")).font(Theme.meta)
                     }
                     if let error = session.audioError { Text(error).font(Theme.meta).foregroundStyle(Theme.secondary) }
@@ -109,7 +109,7 @@ struct CalibrationView: View {
         case .preparing: return settings.localized("Preparing audio…")
         case .countIn: return settings.localized("Listen first · %lld / 4", max(1, session.clickNumber))
         case .measuring: return settings.localized("Tap with the sound · %lld / 10", session.clickNumber)
-        case .completed: return settings.localized("Calibration saved.")
+        case .completed: return settings.localized("Calibration saved")
         case .cancelled: return settings.localized("Calibration cancelled. Previous settings kept.")
         case .failed:
             switch session.failure {

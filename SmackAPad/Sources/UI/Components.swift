@@ -209,7 +209,7 @@ struct ListRow<Meta: View, Trailing: View>: View {
             }
         }
         .padding(.vertical, Theme.Space.small)
-        .frame(minHeight: 60)
+        .frame(minHeight: Theme.Size.listRow)
     }
 
     private var rowButton: some View {
@@ -230,7 +230,7 @@ struct ListRow<Meta: View, Trailing: View>: View {
                 .frame(maxWidth: .infinity, alignment: .leading)
             }
             .foregroundStyle(dimmed ? Theme.secondary : Theme.ink)
-            .frame(minHeight: 60)
+            .frame(minHeight: Theme.Size.listRow)
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
@@ -253,10 +253,10 @@ struct FilterChip: View {
                 .background(selected ? Theme.surface : Theme.background)
                 .overlay(
                     RoundedRectangle(cornerRadius: Theme.Size.blockRadius)
-                        .stroke(selected ? Theme.orange : Theme.secondary.opacity(0.35), lineWidth: 1)
+                        .stroke(selected ? Theme.ink : Theme.hairline, lineWidth: 1)
                 )
         }
-        .buttonStyle(.plain).foregroundStyle(selected ? Theme.orange : Theme.ink)
+        .buttonStyle(.plain).foregroundStyle(Theme.ink)
         .accessibilityAddTraits(selected ? .isSelected : [])
         .motion(value: selected)
     }

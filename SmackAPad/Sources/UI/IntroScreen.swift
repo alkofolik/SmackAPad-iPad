@@ -13,12 +13,12 @@ enum IntroStage: String, CaseIterable, Identifiable {
 
     func title(language: AppLanguage = SettingsManager.shared.languagePreference) -> String {
         switch self {
-        case .pulse: return language.localized("1. PULSE")
-        case .twoHands: return language.localized("2. TWO HANDS")
-        case .eighthNotes: return language.localized("3. EIGHTH NOTES")
-        case .grooveVariations: return language.localized("4. GROOVE VARIATIONS")
-        case .controlAndDetail: return language.localized("5. CONTROL AND DETAIL")
-        case .firstFills: return language.localized("6. FIRST FILLS")
+        case .pulse: return language.localized("1. Pulse")
+        case .twoHands: return language.localized("2. Two hands")
+        case .eighthNotes: return language.localized("3. Eighth notes")
+        case .grooveVariations: return language.localized("4. Groove variations")
+        case .controlAndDetail: return language.localized("5. Control and detail")
+        case .firstFills: return language.localized("6. First fills")
         }
     }
 
@@ -29,11 +29,11 @@ enum IntroStage: String, CaseIterable, Identifiable {
         case .twoHands:
             return language.localized("Hand coordination and alternation · lessons 5–8")
         case .eighthNotes:
-            return language.localized("Eighth-note hi-hat patterns & stability · lessons 9–12")
+            return language.localized("Eighth-note hi-hat patterns and stability · lessons 9–12")
         case .grooveVariations:
-            return language.localized("Syncopations, offbeats & clap · lessons 13–16")
+            return language.localized("Syncopations, offbeats and clap · lessons 13–16")
         case .controlAndDetail:
-            return language.localized("Dynamics, open hi-hat & rests · lessons 17–21")
+            return language.localized("Dynamics, open hi-hat and rests · lessons 17–21")
         case .firstFills:
             return language.localized("Snare and tom fills with clean return · lessons 22–25")
         }
@@ -75,7 +75,7 @@ public struct IntroScreen: View {
                 Button { showingRules = true } label: {
                     Label(settings.localized("Rules"), systemImage: "info.circle")
                         .font(Theme.control)
-                        .frame(minHeight: 48, alignment: .leading)
+                        .frame(minHeight: Theme.Size.touch, alignment: .leading)
                 }
                 .buttonStyle(.plain)
                 .popover(isPresented: $showingRules, arrowEdge: .top) {
@@ -154,7 +154,7 @@ struct IntroRulesCard: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: Theme.Space.small) {
-            SectionHeader(title: settings.localized("INTRO SECTION RULES"))
+            SectionHeader(title: settings.localized("Intro section rules"))
             Text(settings.localized("Intro exercises build foundational motor habits and steady timing. They are always accessible without unlock requirements, but enforce stricter scoring limits than standard lessons:"))
                 .font(Theme.navigation).lineSpacing(7).foregroundStyle(Theme.secondary)
             ViewThatFits(in: .horizontal) {

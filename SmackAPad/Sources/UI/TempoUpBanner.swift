@@ -16,7 +16,7 @@ struct TempoUpBanner: View {
 
     var body: some View {
         Text(label)
-            .font(Theme.display(28))
+            .font(Theme.strong(28))
             .fixedSize(horizontal: false, vertical: true)
             .foregroundStyle(Theme.black)
             .padding(.horizontal, Theme.Space.regular)

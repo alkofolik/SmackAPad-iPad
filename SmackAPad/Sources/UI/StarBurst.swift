@@ -27,7 +27,7 @@ struct StarBurst: View {
                 .scaleEffect(fresh && !reduced ? scale : 1)
             }
         }
-        .padding(.horizontal, 7)
+        .padding(.horizontal, Theme.Space.small)
         .accessibilityHidden(true)
         .transaction { if reduced { $0.animation = nil } }
         .task(id: event?.id) {

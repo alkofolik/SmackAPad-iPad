@@ -15,22 +15,16 @@ enum Theme {
     static let ink = adaptive(light: .black, dark: .white)
     static let secondary = adaptive(light: UIColor(white: 0.35, alpha: 1), dark: UIColor(white: 0.7, alpha: 1))
     static let surface = adaptive(light: UIColor(white: 0.94, alpha: 1), dark: UIColor(white: 0.09, alpha: 1))
+    /// One hairline for every divider and outline in the chrome.
+    static let hairline = ink.opacity(0.15)
+    /// One fill for an active or selected control.
+    static let activeFill = orange.opacity(0.24)
 
     /// Star progression colours: not done grey, 1 star light orange, 2 stars medium orange, 3 stars full orange.
     static func starColor(for stars: Int) -> Color {
         switch stars {
-        case 3:
+        case 1, 2, 3:
             return orange
-        case 2:
-            return adaptive(
-                light: UIColor(red: 1.0, green: 0.58, blue: 0.20, alpha: 1.0),
-                dark: UIColor(red: 0.95, green: 0.52, blue: 0.15, alpha: 1.0)
-            )
-        case 1:
-            return adaptive(
-                light: UIColor(red: 1.0, green: 0.76, blue: 0.45, alpha: 1.0),
-                dark: UIColor(red: 0.80, green: 0.50, blue: 0.25, alpha: 1.0)
-            )
         default:
             return adaptive(
                 light: UIColor(white: 0.82, alpha: 1.0),
@@ -39,14 +33,21 @@ enum Theme {
         }
     }
 
-    static let mainValue = display(44)
+    static let mainValue = strong(44)
     static let screenTitle = display(28)
     static let sectionTitle = display(22)
     static let rowTitle = display(22)
     static let meta = text(16)
     static let control = text(18)
     static let navigation = text(18)
-    static let action = display(24)
+    static let action = strong(22)
+
+    enum Radius {
+        /// Buttons, fields, chips, banners.
+        static let control: CGFloat = 4
+        /// Pads and cells: touch pads, calibration pad, learn slots.
+        static let pad: CGFloat = 8
+    }
 
     enum Space {
         static let tight: CGFloat = 4
@@ -57,12 +58,19 @@ enum Theme {
     }
 
     enum Size {
+        /// Compact row or button.
+        static let row: CGFloat = 48     // same as touch
+        /// Large row or primary button.
+        static let rowLarge: CGFloat = 56
+        /// Two-line list row (lesson rows).
+        static let listRow: CGFloat = 60
+
         static let touch: CGFloat = 48
         static let control: CGFloat = 72
         static let transportWidth: CGFloat = 420
         static let border: CGFloat = 2
         static let bracket: CGFloat = 6
-        static let blockRadius: CGFloat = 3
+        static let blockRadius: CGFloat = 4
         static let panelRadius: CGFloat = 0
         static let title: CGFloat = 32
         static let emphasis: CGFloat = 24
@@ -75,7 +83,13 @@ enum Theme {
 
     static func display(_ size: CGFloat = Size.title) -> Font {
         _ = verifiedFonts
-        return .custom("IBMPlexSans-Bold", size: size, relativeTo: .headline)
+        return .custom("IBMPlexSans-Medium", size: size, relativeTo: .headline)
+    }
+
+    /// The one key figure and the primary action label.
+    static func strong(_ size: CGFloat) -> Font {
+        _ = verifiedFonts
+        return .custom("IBMPlexSans-SemiBold", size: size, relativeTo: .headline)
     }
 
     static func text(_ size: CGFloat = Size.body) -> Font {
@@ -94,7 +108,7 @@ enum Theme {
     }
 
     private static let verifiedFonts: Void = {
-        for name in ["IBMPlexSans-Regular", "IBMPlexSans-Bold"] {
+        for name in ["IBMPlexSans-Regular", "IBMPlexSans-Medium", "IBMPlexSans-SemiBold", "IBMPlexSans-Bold"] {
             precondition(UIFont(name: name, size: 32)?.familyName == "IBM Plex Sans",
                          "Missing bundled IBM Plex Sans face: \(name)")
         }
@@ -137,7 +151,7 @@ extension Theme {
     enum Motion {
         static let fast = Animation.easeOut(duration: 0.15)
         static let standard = Animation.easeOut(duration: 0.25)
-        static let emphasis = Animation.spring(response: 0.4, dampingFraction: 0.8)
+        static let emphasis = Animation.easeOut(duration: 0.4)
         static let rise: CGFloat = 6
         static let starStagger = Duration.milliseconds(80)
 

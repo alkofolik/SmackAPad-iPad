@@ -175,7 +175,7 @@ struct PracticeScreen: View {
                 .buttonStyle(InstrumentButtonStyle())
                 VStack(alignment: .leading, spacing: Theme.Space.tight) {
                     Text(settings.localized(session.lesson.title)).font(Theme.rowTitle).fixedSize(horizontal: false, vertical: true)
-                    Text("\(Theme.sentenceCase(settings.localized(lessonCategoryTitle))) · \(Theme.sentenceCase(settings.localized("LEVEL"))) \(session.lesson.level)")
+                    Text("\(Theme.sentenceCase(settings.localized(lessonCategoryTitle))) · \(Theme.sentenceCase(settings.localized("Level"))) \(session.lesson.level)")
                         .font(Theme.meta).foregroundStyle(Theme.secondary).lineLimit(1)
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
@@ -239,7 +239,7 @@ struct PracticeScreen: View {
     }
 
     private var toolSeparator: some View {
-        Rectangle().fill(Theme.ink.opacity(0.2)).frame(width: 1, height: 28)
+        Rectangle().fill(Theme.hairline).frame(width: 1, height: 28)
             .accessibilityHidden(true)
     }
 
@@ -280,12 +280,12 @@ struct PracticeScreen: View {
     private var handLegend: some View {
         HStack(spacing: Theme.Space.regular) {
             HStack(spacing: Theme.Space.small) {
-                Rectangle().fill(Theme.black).frame(width: 12, height: 18)
+                Rectangle().fill(Theme.black).frame(width: 12, height: 20)
                     .overlay(Rectangle().stroke(Theme.white, lineWidth: 1))
                 Text(settings.localized("left"))
             }
             HStack(spacing: Theme.Space.small) {
-                Rectangle().fill(Theme.white).frame(width: 12, height: 18)
+                Rectangle().fill(Theme.white).frame(width: 12, height: 20)
                     .overlay(Rectangle().stroke(Theme.black, lineWidth: 1))
                 Text(settings.localized("right"))
             }
@@ -300,7 +300,7 @@ struct PracticeScreen: View {
                 HStack(spacing: Theme.Space.small) {
                     Rectangle().fill(BandTone.color(listen: name == "Listen", memory: name == "From memory",
                                                     bpm: 1, startBpm: 0, targetBpm: 1))
-                        .frame(width: 28, height: 18)
+                        .frame(width: 28, height: 20)
                     Text(settings.localized(name)).font(Theme.meta)
                 }
             }
@@ -450,7 +450,7 @@ struct PracticeScreen: View {
         } else if !session.ready {
             Text(settings.localized("Preparing sound…")).font(Theme.control)
         } else if session.fromMemory && !session.running && !session.listen {
-            Text(settings.localized("From memory · notes hide after START"))
+            Text(settings.localized("From memory · notes hide once you start"))
                 .font(Theme.meta)
         }
     }
@@ -550,7 +550,7 @@ struct PracticeScreen: View {
                     let barsText = session.lesson.bars == 1
                         ? settings.localized("1 bar")
                         : settings.localized("%lld bars", session.lesson.bars)
-                    Text("\(Theme.sentenceCase(settings.localized("LEVEL"))) \(session.lesson.level) · \(barsText) · \(session.lesson.startBpm) → \(session.lesson.targetBpm) BPM")
+                    Text("\(Theme.sentenceCase(settings.localized("Level"))) \(session.lesson.level) · \(barsText) · \(session.lesson.startBpm) → \(session.lesson.targetBpm) BPM")
                         .font(Theme.meta)
                         .foregroundStyle(Theme.secondary)
                 }
@@ -657,7 +657,7 @@ struct PracticeScreen: View {
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(.top, Theme.Space.regular)
         .overlay(alignment: .top) {
-            Rectangle().fill(Theme.ink.opacity(0.2)).frame(height: 1)
+            Rectangle().fill(Theme.hairline).frame(height: 1)
         }
     }
 
