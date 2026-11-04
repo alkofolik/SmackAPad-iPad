@@ -164,6 +164,7 @@ public struct HomeScreen: View {
     @Environment(SettingsManager.self) private var settings
     @Environment(ProgressStore.self) private var progress
     @Environment(ProgressionManager.self) private var progression
+    @Environment(BadgeStore.self) private var badgeStore
     @Environment(MIDIInput.self) private var midi
     @Environment(\.colorScheme) private var colorScheme
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
@@ -190,6 +191,7 @@ public struct HomeScreen: View {
     @State private var showingControllerSetup = false
     @State private var showingPurchases = false
     @State private var showingAbout = false
+    @State private var showingBadges = false
 
     private static let cream = Color(red: 242 / 255.0, green: 240 / 255.0, blue: 234 / 255.0)
 
@@ -320,6 +322,9 @@ public struct HomeScreen: View {
         .sheet(isPresented: $showingPurchases) {
             PurchaseSheet()
         }
+        .sheet(isPresented: $showingBadges) {
+            BadgesView()
+        }
     }
 
     // MARK: - 3×3 Grid Content
@@ -346,11 +351,10 @@ public struct HomeScreen: View {
                 edgePad(pad5)
                     .frame(width: cellSize, height: cellSize)
             }
-            // Row 2: [Empty Cell] (6) · Full Version (7) · About (8)
+            // Row 2: Badges (6) · Full Version (7) · About (8)
             HStack(spacing: gap) {
-                Color.clear
+                cornerPad(pad6)
                     .frame(width: cellSize, height: cellSize)
-                    .accessibilityHidden(true)
                 edgePad(pad7)
                     .frame(width: cellSize, height: cellSize)
                 cornerPad(pad8)
@@ -443,6 +447,15 @@ public struct HomeScreen: View {
         let subtitle = midi.sources.first?.name ?? settings.localized("Connect a controller")
         return HomePadView(title: label, subtitle: subtitle, isHero: false) {
             showingControllerSetup = true
+        }
+    }
+
+    private var pad6: some View {
+        let label = settings.localized("Badges").uppercased(with: Locale(identifier: settings.languagePreference.rawValue))
+        let subtitle = "\(badgeStore.earnedCount) / \(badgeStore.totalCount)"
+
+        return HomePadView(title: label, subtitle: subtitle, isHero: false) {
+            showingBadges = true
         }
     }
 

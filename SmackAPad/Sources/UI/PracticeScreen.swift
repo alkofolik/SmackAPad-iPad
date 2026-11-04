@@ -26,6 +26,7 @@ struct PracticeScreen: View {
     @State private var showingMIDI = false
     @State private var showingInfo = false
     @State private var purchaseAccess: String?
+    @State private var midLessonStarMomentActive = false
 
     init(lesson: Lesson, settings: SettingsManager, progress: ProgressStore, midi: MIDIInput) {
         _session = State(initialValue: PracticeSession(lesson: lesson, settings: settings, progress: progress, midi: midi))
@@ -92,6 +93,21 @@ struct PracticeScreen: View {
         .onChange(of: showingMIDI) { _, showing in
             if showing { session.suspend() }
         }
+        .onChange(of: session.starEvent?.id) { _, id in
+            guard let event = session.starEvent, id != nil else { return }
+            if !event.award.shouldStop {
+                let starNumber = (event.award.fresh.firstIndex(of: true) ?? 0) + 1
+                UIAccessibility.post(
+                    notification: .announcement,
+                    argument: settings.localized("Star %lld earned", starNumber)
+                )
+                midLessonStarMomentActive = true
+                Task {
+                    try? await Task.sleep(for: .milliseconds(700))
+                    midLessonStarMomentActive = false
+                }
+            }
+        }
         .sheet(isPresented: Binding(get: { purchaseAccess != nil }, set: { if !$0 { purchaseAccess = nil } })) {
             PurchaseSheet(access: purchaseAccess ?? "full")
         }
@@ -134,7 +150,9 @@ struct PracticeScreen: View {
                                                   memory: session.fromMemory && !session.listen,
                                                   bpm: session.bpm, startBpm: session.lesson.startBpm,
                                                   targetBpm: session.lesson.targetBpm),
-                             edgeTendency: scored ? BandTone.edgeTendency(session.timingHistory, at: timeline.date) : 0)
+                             edgeTendency: scored ? BandTone.edgeTendency(session.timingHistory, at: timeline.date) : 0,
+                             runBars: session.repeatsPerRun * session.practiceLesson.bars,
+                             starMomentBeamActive: midLessonStarMomentActive)
             }
             .frame(minHeight: 160,
                    maxHeight: .infinity)
@@ -268,19 +286,15 @@ struct PracticeScreen: View {
             }
             .frame(maxWidth: .infinity, minHeight: 56)
             Spacer(minLength: 0)
-            HStack(spacing: Theme.Space.regular) {
-                if let repetition = session.repetitionProgress {
-                    Text(repetition)
-                        .font(Theme.meta).foregroundStyle(Theme.secondary)
-                        .accessibilityLabel(settings.localized("Repetition %lld of %lld", session.currentRepetition, session.repeatsPerRun))
-                        .accessibilityValue(repetition)
-                }
-                if let progress = session.starRunProgress {
-                    Text(settings.localized("%lld / %lld", progress.count, progress.required))
-                        .font(Theme.meta).foregroundStyle(Theme.secondary)
-                        .accessibilityLabel(settings.localized("Consecutive passes for %@", settings.localized(progress.name)))
-                        .accessibilityValue(settings.localized("%lld / %lld", progress.count, progress.required))
-                }
+            if let progress = session.starRunProgress {
+                LapVaultView(
+                    progress: progress,
+                    mode: session.practiceMode,
+                    verdict: session.lastVerdict,
+                    starEvent: session.starEvent,
+                    starMomentActive: midLessonStarMomentActive,
+                    settings: settings
+                )
             }
         }
     }
@@ -341,13 +355,26 @@ struct PracticeScreen: View {
         if let summary = session.summary, !session.running {
             ResultCard(summary: summary, saved: session.savedProgress,
                        event: session.starEvent,
-                       announcement: session.starEvent.map(starAnnouncement) ?? "",
+                       announcement: resultAnnouncement,
+                       badgeText: session.badgeSummaryMessage(settings: settings),
                        detail: { showingDetails = true }, rules: { showingStarRules = true }) {
                 resultActions
             }
             .popover(isPresented: $showingDetails) { runDetails(summary) }
             .popover(isPresented: $showingStarRules) { starRules }
         }
+    }
+
+    private var resultAnnouncement: String {
+        var parts: [String] = []
+        if let starEvent = session.starEvent {
+            let stars = starAnnouncement(for: starEvent)
+            if !stars.isEmpty { parts.append(stars) }
+        }
+        if let badgeMessage = session.badgeSummaryMessage(settings: settings) {
+            parts.append(badgeMessage)
+        }
+        return parts.joined(separator: ". ")
     }
 
     @ViewBuilder

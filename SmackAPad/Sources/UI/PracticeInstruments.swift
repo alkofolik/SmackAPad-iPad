@@ -152,6 +152,7 @@ struct ResultCard<Action: View>: View {
     let saved: LessonProgress?
     let event: StarEvent?
     let announcement: String
+    var badgeText: String? = nil
     let detail: () -> Void
     let rules: () -> Void
     @ViewBuilder let nextAction: () -> Action
@@ -162,6 +163,13 @@ struct ResultCard<Action: View>: View {
                 HStack(spacing: Theme.Space.small) {
                     accuracy
                     starControls
+                    if let badgeText {
+                        Text(badgeText)
+                            .font(Theme.meta)
+                            .foregroundStyle(Theme.secondary)
+                            .lineLimit(1)
+                            .padding(.leading, Theme.Space.small)
+                    }
                     Spacer(minLength: 0)
                     nextAction()
                 }
@@ -171,10 +179,21 @@ struct ResultCard<Action: View>: View {
                     HStack(spacing: Theme.Space.small) { accuracy; Spacer(minLength: 0); starControls }
                     VStack(alignment: .leading, spacing: Theme.Space.small) { accuracy; starControls }
                 }
+                if let badgeText {
+                    Text(badgeText)
+                        .font(Theme.meta)
+                        .foregroundStyle(Theme.secondary)
+                        .lineLimit(1)
+                }
                 HStack { Spacer(minLength: 0); nextAction() }
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
+        .task {
+            if event == nil, !announcement.isEmpty {
+                UIAccessibility.post(notification: .announcement, argument: announcement)
+            }
+        }
     }
 
     private var accuracy: some View {
@@ -272,5 +291,164 @@ struct PracticeNextButtonStyle: ButtonStyle {
             .overlay(RoundedRectangle(cornerRadius: Theme.Radius.pad).strokeBorder(Theme.ink, lineWidth: Theme.Size.border))
             .opacity(configuration.isPressed ? 0.65 : 1)
             .fixedSize(horizontal: true, vertical: false)
+    }
+}
+
+/// Compact row of slots replacing the "1 / 3" text in the instrument row.
+/// Shows runs needed for the star being worked on, with verdict flag and notch ticks.
+struct LapVaultView: View {
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    let progress: (count: Int, required: Int, name: String, starIndex: Int)
+    let mode: PracticeMode
+    let verdict: RunVerdict?
+    let starEvent: StarEvent?
+    let starMomentActive: Bool
+    let settings: SettingsManager
+
+    @State private var flagVerdict: Bool? = nil
+    @State private var showNotch = false
+    @State private var recoil = false
+    @State private var starScale: CGFloat = 1.0
+    @State private var starOpacity: Double = 1.0
+
+    private var displayCount: Int {
+        if starMomentActive {
+            return progress.required
+        }
+        return progress.count
+    }
+
+    private var targetStarNumber: Int {
+        min(3, max(1, progress.starIndex + 1))
+    }
+
+    var body: some View {
+        VStack(spacing: 2) {
+            HStack(alignment: .center, spacing: Theme.Space.small) {
+                // Verdict flag next to slots
+                verdictFlagView
+
+                // Slots row with notch space above
+                HStack(spacing: Theme.Space.tight) {
+                    ForEach(0..<progress.required, id: \.self) { index in
+                        vaultSlot(index: index)
+                    }
+                }
+            }
+
+            // Star mark under slots: 1, 2, or 3 filled star marks
+            HStack(spacing: 3) {
+                ForEach(0..<targetStarNumber, id: \.self) { _ in
+                    Image(systemName: "star.fill")
+                        .font(.system(size: 9, weight: .semibold))
+                        .foregroundStyle(starMomentActive ? Theme.orange : Theme.ink)
+                        .scaleEffect(reduceMotion ? 1.0 : starScale)
+                        .opacity(starOpacity)
+                }
+            }
+            .frame(height: 12)
+        }
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(settings.localized("Consecutive passes for %@", settings.localized(progress.name)))
+        .accessibilityValue(settings.localized("%lld of %lld", displayCount, progress.required))
+        .task(id: verdict?.id) {
+            guard let verdict else {
+                flagVerdict = nil
+                showNotch = false
+                recoil = false
+                return
+            }
+            flagVerdict = verdict.passed
+            if mode == .learning && !verdict.passed {
+                showNotch = true
+            }
+            if mode == .challenge && verdict.brokenStreak {
+                if reduceMotion {
+                    withAnimation(.easeInOut(duration: 0.2)) { recoil = true }
+                    try? await Task.sleep(for: .milliseconds(200))
+                    recoil = false
+                } else {
+                    withAnimation(.easeOut(duration: 0.25)) { recoil = true }
+                    try? await Task.sleep(for: .milliseconds(250))
+                    recoil = false
+                }
+            }
+            try? await Task.sleep(for: .milliseconds(1200))
+            flagVerdict = nil
+            showNotch = false
+        }
+        .task(id: starMomentActive) {
+            guard starMomentActive else {
+                starScale = 1.0
+                starOpacity = 1.0
+                return
+            }
+            if reduceMotion {
+                withAnimation(.easeInOut(duration: 0.2)) { starOpacity = 0.5 }
+                try? await Task.sleep(for: .milliseconds(200))
+                withAnimation(.easeInOut(duration: 0.2)) { starOpacity = 1.0 }
+            } else {
+                try? await Task.sleep(for: .milliseconds(450))
+                withAnimation(.easeOut(duration: 0.12)) { starScale = 1.15 }
+                try? await Task.sleep(for: .milliseconds(120))
+                withAnimation(.easeInOut(duration: 0.13)) { starScale = 1.0 }
+            }
+        }
+    }
+
+    private var verdictFlagView: some View {
+        ZStack {
+            if let flagVerdict {
+                if flagVerdict {
+                    RoundedRectangle(cornerRadius: 2)
+                        .fill(Theme.orange)
+                        .frame(width: 6, height: 24)
+                } else {
+                    RoundedRectangle(cornerRadius: 2)
+                        .strokeBorder(Theme.markWrong, lineWidth: 1.5)
+                        .frame(width: 6, height: 24)
+                }
+            } else {
+                RoundedRectangle(cornerRadius: 2)
+                    .strokeBorder(Theme.hairline, lineWidth: 1)
+                    .frame(width: 6, height: 24)
+            }
+        }
+        .frame(width: 6, height: 24)
+    }
+
+    private func vaultSlot(index: Int) -> some View {
+        let isFilled = index < displayCount
+        let isNextFree = (index == progress.count)
+        return VStack(spacing: 2) {
+            // Quiet notch mark for uncredited run in Learning mode
+            ZStack {
+                if showNotch && isNextFree && mode == .learning {
+                    Rectangle()
+                        .fill(Theme.ink)
+                        .frame(width: 1.5, height: 4)
+                }
+            }
+            .frame(width: 24, height: 4)
+
+            // Slot square
+            ZStack {
+                RoundedRectangle(cornerRadius: Theme.Radius.control)
+                    .fill(Theme.surface)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: Theme.Radius.control)
+                            .strokeBorder(Theme.hairline, lineWidth: 1)
+                    )
+
+                if isFilled && !recoil {
+                    RoundedRectangle(cornerRadius: Theme.Radius.control)
+                        .fill(starMomentActive ? Theme.orange : Theme.ink)
+                        .padding(2)
+                        .transition(reduceMotion ? .opacity : .scale)
+                }
+            }
+            .frame(width: 24, height: 24)
+        }
+        .frame(width: 24, height: 30)
     }
 }

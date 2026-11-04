@@ -1,0 +1,371 @@
+[
+  {
+    "id": "first-groove",
+    "name": "First groove",
+    "condition": "Pass your first lesson.",
+    "metric": "passed",
+    "goal": 1,
+    "tier": 1,
+    "group": "passed"
+  },
+  {
+    "id": "groove-builder",
+    "name": "Groove builder",
+    "condition": "Pass ten different lessons.",
+    "metric": "passed",
+    "goal": 10,
+    "tier": 2,
+    "group": "passed"
+  },
+  {
+    "id": "groove-veteran",
+    "name": "Groove veteran",
+    "condition": "Pass fifty different lessons.",
+    "metric": "passed",
+    "goal": 50,
+    "tier": 3,
+    "group": "passed"
+  },
+  {
+    "id": "hundred-grooves",
+    "name": "Hundred grooves",
+    "condition": "Pass 100 different lessons.",
+    "metric": "passed",
+    "goal": 100,
+    "tier": 3,
+    "group": "passed"
+  },
+  {
+    "id": "two-fifty-grooves",
+    "name": "Two hundred fifty",
+    "condition": "Pass 250 different lessons.",
+    "metric": "passed",
+    "goal": 250,
+    "tier": 3,
+    "group": "passed"
+  },
+  {
+    "id": "almost-all",
+    "name": "Almost everything",
+    "condition": "Pass 500 different lessons.",
+    "metric": "passed",
+    "goal": 500,
+    "tier": 3,
+    "group": "passed"
+  },
+  {
+    "id": "every-lesson",
+    "name": "Every lesson",
+    "condition": "Pass every lesson in this edition.",
+    "metric": "passed",
+    "goal": "catalogue",
+    "tier": 3,
+    "group": "passed"
+  },
+  {
+    "id": "goal-tempo",
+    "name": "Goal tempo",
+    "condition": "Master your first lesson at goal tempo.",
+    "metric": "mastered",
+    "goal": 1,
+    "tier": 1,
+    "group": "mastered"
+  },
+  {
+    "id": "ten",
+    "name": "Ten down",
+    "condition": "Master ten lessons at goal tempo.",
+    "metric": "mastered",
+    "goal": 10,
+    "tier": 2,
+    "group": "mastered"
+  },
+  {
+    "id": "quarter-hundred-tempo",
+    "name": "Twenty-five at tempo",
+    "condition": "Master 25 lessons at goal tempo.",
+    "metric": "mastered",
+    "goal": 25,
+    "tier": 2,
+    "group": "mastered"
+  },
+  {
+    "id": "fifty",
+    "name": "Fifty down",
+    "condition": "Master fifty lessons at goal tempo.",
+    "metric": "mastered",
+    "goal": 50,
+    "tier": 3,
+    "group": "mastered"
+  },
+  {
+    "id": "hundred-tempo",
+    "name": "Hundred at tempo",
+    "condition": "Master 100 lessons at goal tempo.",
+    "metric": "mastered",
+    "goal": 100,
+    "tier": 3,
+    "group": "mastered"
+  },
+  {
+    "id": "two-fifty-tempo",
+    "name": "Two-fifty at tempo",
+    "condition": "Master 250 lessons at goal tempo.",
+    "metric": "mastered",
+    "goal": 250,
+    "tier": 3,
+    "group": "mastered"
+  },
+  {
+    "id": "all-at-tempo",
+    "name": "All at tempo",
+    "condition": "Master every lesson in this edition at goal tempo.",
+    "metric": "mastered",
+    "goal": "catalogue",
+    "tier": 3,
+    "group": "mastered"
+  },
+  {
+    "id": "by-heart",
+    "name": "By heart",
+    "condition": "Earn your first memory star.",
+    "metric": "memory",
+    "goal": 1,
+    "tier": 1,
+    "group": "memory"
+  },
+  {
+    "id": "memory-player",
+    "name": "Memory player",
+    "condition": "Earn memory stars in five different lessons.",
+    "metric": "memory",
+    "goal": 5,
+    "tier": 2,
+    "group": "memory"
+  },
+  {
+    "id": "memory-master",
+    "name": "Memory master",
+    "condition": "Earn memory stars in twenty different lessons.",
+    "metric": "memory",
+    "goal": 20,
+    "tier": 3,
+    "group": "memory"
+  },
+  {
+    "id": "memory-fifty",
+    "name": "Fifty by heart",
+    "condition": "Earn memory stars in 50 different lessons.",
+    "metric": "memory",
+    "goal": 50,
+    "tier": 3,
+    "group": "memory"
+  },
+  {
+    "id": "memory-hundred",
+    "name": "Hundred by heart",
+    "condition": "Earn memory stars in 100 different lessons.",
+    "metric": "memory",
+    "goal": 100,
+    "tier": 3,
+    "group": "memory"
+  },
+  {
+    "id": "course-done",
+    "name": "Stage complete",
+    "condition": "Master every lesson in one Path stage.",
+    "metric": "courses",
+    "goal": 1,
+    "tier": 1,
+    "group": "courses"
+  },
+  {
+    "id": "course-collector",
+    "name": "Stage collector",
+    "condition": "Master every lesson in three Path stages.",
+    "metric": "courses",
+    "goal": 3,
+    "tier": 2,
+    "group": "courses"
+  },
+  {
+    "id": "course-master",
+    "name": "Stage master",
+    "condition": "Master every lesson in five Path stages.",
+    "metric": "courses",
+    "goal": 5,
+    "tier": 3,
+    "group": "courses"
+  },
+  {
+    "id": "half-of-courses",
+    "name": "Half the stages",
+    "condition": "Master every lesson in 12 Path stages.",
+    "metric": "courses",
+    "goal": 12,
+    "tier": 3,
+    "group": "courses"
+  },
+  {
+    "id": "all-courses",
+    "name": "All stages",
+    "condition": "Master every lesson in 23 Path stages.",
+    "metric": "courses",
+    "goal": 23,
+    "tier": 3,
+    "group": "courses"
+  },
+  {
+    "id": "level-1-done",
+    "name": "Level 1 done",
+    "condition": "Pass every level 1 lesson in this edition.",
+    "metric": "level-1",
+    "goal": "group",
+    "tier": 2,
+    "group": "levels"
+  },
+  {
+    "id": "level-2-done",
+    "name": "Level 2 done",
+    "condition": "Pass every level 2 lesson in this edition.",
+    "metric": "level-2",
+    "goal": "group",
+    "tier": 2,
+    "group": "levels"
+  },
+  {
+    "id": "level-3-done",
+    "name": "Level 3 done",
+    "condition": "Pass every level 3 lesson in this edition.",
+    "metric": "level-3",
+    "goal": "group",
+    "tier": 2,
+    "group": "levels"
+  },
+  {
+    "id": "level-4-done",
+    "name": "Level 4 done",
+    "condition": "Pass every level 4 lesson in this edition.",
+    "metric": "level-4",
+    "goal": "group",
+    "tier": 2,
+    "group": "levels"
+  },
+  {
+    "id": "level-5-done",
+    "name": "Level 5 done",
+    "condition": "Pass every level 5 lesson in this edition.",
+    "metric": "level-5",
+    "goal": "group",
+    "tier": 2,
+    "group": "levels"
+  },
+  {
+    "id": "genre-rock",
+    "name": "Rock and punk done",
+    "condition": "Pass every lesson in the Rock and punk group.",
+    "metric": "genre-rock",
+    "goal": "group",
+    "tier": 2,
+    "group": "genres"
+  },
+  {
+    "id": "genre-funk",
+    "name": "Funk, soul, blues done",
+    "condition": "Pass every lesson in the Funk, soul, blues group.",
+    "metric": "genre-funk",
+    "goal": "group",
+    "tier": 2,
+    "group": "genres"
+  },
+  {
+    "id": "genre-jazz",
+    "name": "Jazz and New Orleans done",
+    "condition": "Pass every lesson in the Jazz and New Orleans group.",
+    "metric": "genre-jazz",
+    "goal": "group",
+    "tier": 2,
+    "group": "genres"
+  },
+  {
+    "id": "genre-hiphop",
+    "name": "Hip hop and trap done",
+    "condition": "Pass every lesson in the Hip hop and trap group.",
+    "metric": "genre-hiphop",
+    "goal": "group",
+    "tier": 2,
+    "group": "genres"
+  },
+  {
+    "id": "genre-world",
+    "name": "Latin and world done",
+    "condition": "Pass every lesson in the Latin and world group.",
+    "metric": "genre-world",
+    "goal": "group",
+    "tier": 2,
+    "group": "genres"
+  },
+  {
+    "id": "genre-electronic",
+    "name": "Electronic done",
+    "condition": "Pass every lesson in the Electronic group.",
+    "metric": "genre-electronic",
+    "goal": "group",
+    "tier": 2,
+    "group": "genres"
+  },
+  {
+    "id": "genre-pop",
+    "name": "Pop and country done",
+    "condition": "Pass every lesson in the Pop and country group.",
+    "metric": "genre-pop",
+    "goal": "group",
+    "tier": 2,
+    "group": "genres"
+  },
+  {
+    "id": "tech-basic",
+    "name": "Basic groove done",
+    "condition": "Pass every lesson in the Basic groove technique.",
+    "metric": "tech-groove",
+    "goal": "group",
+    "tier": 2,
+    "group": "techniques"
+  },
+  {
+    "id": "tech-sixteenths",
+    "name": "Sixteenths done",
+    "condition": "Pass every lesson in the Sixteenths technique.",
+    "metric": "tech-sixteenths",
+    "goal": "group",
+    "tier": 2,
+    "group": "techniques"
+  },
+  {
+    "id": "tech-ghost",
+    "name": "Ghost notes done",
+    "condition": "Pass every lesson in the Ghost notes technique.",
+    "metric": "tech-ghost",
+    "goal": "group",
+    "tier": 2,
+    "group": "techniques"
+  },
+  {
+    "id": "tech-swing",
+    "name": "Swing and shuffle done",
+    "condition": "Pass every lesson in the Swing and shuffle technique.",
+    "metric": "tech-swing",
+    "goal": "group",
+    "tier": 2,
+    "group": "techniques"
+  },
+  {
+    "id": "tech-fills",
+    "name": "Fills and toms done",
+    "condition": "Pass every lesson in the Fills and toms technique.",
+    "metric": "tech-fills",
+    "goal": "group",
+    "tier": 2,
+    "group": "techniques"
+  }
+]

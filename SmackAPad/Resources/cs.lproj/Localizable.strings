@@ -2,6 +2,9 @@
 "MIDI controller" = "MIDI kontrolér";
 "%lld / %lld" = "%lld / %lld";
 "Consecutive passes for %@" = "Úspěšné průchody pro %@";
+"Run progress" = "Průběh kola";
+"bar %lld of %lld" = "takt %lld z %lld";
+"Star %lld earned" = "Získána %lld. hvězda";
 "Input" = "Vstup";
 "All connected controllers" = "Všechny připojené kontroléry";
 "Connect a USB controller or pair a Bluetooth MIDI controller." = "Připoj USB kontrolér nebo spáruj Bluetooth MIDI kontrolér.";
@@ -486,3 +489,107 @@
 // Controller and calibration (ticket 62)
 "Controller and calibration" = "Ovladač a kalibrace";
 "Not connected" = "Nepřipojeno";
+
+// Badges (ticket 63)
+"Badges" = "Odznaky";
+"Badges %lld / %lld" = "Odznaky %lld / %lld";
+"New badge: %@" = "Nový odznak: %@";
+"Earned %lld new badges" = "Získány %lld nové odznaky";
+"Earned: %@" = "Získáno: %@";
+"Progress: %lld / %lld" = "Postup: %lld / %lld";
+"Not earned yet" = "Zatím nezískáno";
+"Passed lessons" = "Splněné lekce";
+"Goal tempo" = "Cílové tempo";
+"Memory practice" = "Hraní zpaměti";
+"Completed stages" = "Hotové etapy";
+"Levels" = "Úrovně";
+"Genres" = "Žánry";
+"Techniques" = "Techniky";
+
+"First groove" = "První groove";
+"Pass your first lesson." = "Splň první lekci.";
+"Groove builder" = "Stavitel groovu";
+"Pass ten different lessons." = "Splň deset různých lekcí.";
+"Groove veteran" = "Veterán groovu";
+"Pass fifty different lessons." = "Splň padesát různých lekcí.";
+"Hundred grooves" = "Stovka groovů";
+"Pass 100 different lessons." = "Splň 100 různých lekcí.";
+"Two hundred fifty" = "Dvě stě padesát";
+"Pass 250 different lessons." = "Splň 250 různých lekcí.";
+"Almost everything" = "Skoro všechno";
+"Pass 500 different lessons." = "Splň 500 různých lekcí.";
+"Every lesson" = "Každá lekce";
+"Pass every lesson in this edition." = "Splň všechny lekce této edice.";
+
+"Ten down" = "Desítka";
+"Master your first lesson at goal tempo." = "Zvládni první lekci v cílovém tempu.";
+"Master ten lessons at goal tempo." = "Zvládni deset lekcí v cílovém tempu.";
+"Twenty-five at tempo" = "Čtvrtstovka v tempu";
+"Master 25 lessons at goal tempo." = "Zvládni 25 lekcí v cílovém tempu.";
+"Fifty down" = "Padesátka";
+"Master fifty lessons at goal tempo." = "Zvládni padesát lekcí v cílovém tempu.";
+"Hundred at tempo" = "Stovka v tempu";
+"Master 100 lessons at goal tempo." = "Zvládni 100 lekcí v cílovém tempu.";
+"Two-fifty at tempo" = "Dvě stě padesát v tempu";
+"Master 250 lessons at goal tempo." = "Zvládni 250 lekcí v cílovém tempu.";
+"All at tempo" = "Vše v cílovém tempu";
+"Master every lesson in this edition at goal tempo." = "Zvládni všechny lekce této edice v cílovém tempu.";
+
+"By heart" = "Zpaměti";
+"Earn your first memory star." = "Získej první hvězdu za hraní zpaměti.";
+"Memory player" = "Hráč zpaměti";
+"Earn memory stars in five different lessons." = "Získej hvězdu za hraní zpaměti v pěti různých lekcích.";
+"Memory master" = "Mistr paměti";
+"Earn memory stars in twenty different lessons." = "Získej hvězdu za hraní zpaměti ve dvaceti různých lekcích.";
+"Fifty by heart" = "Padesát zpaměti";
+"Earn memory stars in 50 different lessons." = "Získej hvězdu za hraní zpaměti v 50 různých lekcích.";
+"Hundred by heart" = "Sto zpaměti";
+"Earn memory stars in 100 different lessons." = "Získej hvězdu za hraní zpaměti v 100 různých lekcích.";
+
+"Stage complete" = "Etapa hotová";
+"Master every lesson in one Path stage." = "Zvládni všechny lekce jedné etapy Cesty v cílovém tempu.";
+"Stage collector" = "Sběratel etap";
+"Master every lesson in three Path stages." = "Zvládni všechny lekce tří etap Cesty v cílovém tempu.";
+"Stage master" = "Mistr etap";
+"Master every lesson in five Path stages." = "Zvládni všechny lekce pěti etap Cesty v cílovém tempu.";
+"Half the stages" = "Půlka etap";
+"Master every lesson in 12 Path stages." = "Zvládni všechny lekce 12 etap Cesty v cílovém tempu.";
+"All stages" = "Všechny etapy";
+"Master every lesson in 23 Path stages." = "Zvládni všechny lekce 23 etap Cesty v cílovém tempu.";
+
+"Level 1 done" = "Úroveň 1 hotová";
+"Pass every level 1 lesson in this edition." = "Splň všechny lekce úrovně 1 v této edici.";
+"Level 2 done" = "Úroveň 2 hotová";
+"Pass every level 2 lesson in this edition." = "Splň všechny lekce úrovně 2 v této edici.";
+"Level 3 done" = "Úroveň 3 hotová";
+"Pass every level 3 lesson in this edition." = "Splň všechny lekce úrovně 3 v této edici.";
+"Level 4 done" = "Úroveň 4 hotová";
+"Pass every level 4 lesson in this edition." = "Splň všechny lekce úrovně 4 v této edici.";
+"Level 5 done" = "Úroveň 5 hotová";
+"Pass every level 5 lesson in this edition." = "Splň všechny lekce úrovně 5 v této edici.";
+
+"Rock and punk done" = "Rock a punk – hotovo";
+"Pass every lesson in the Rock and punk group." = "Splň všechny lekce skupiny Rock a punk.";
+"Funk, soul, blues done" = "Funk, soul, blues – hotovo";
+"Pass every lesson in the Funk, soul, blues group." = "Splň všechny lekce skupiny Funk, soul, blues.";
+"Jazz and New Orleans done" = "Jazz a New Orleans – hotovo";
+"Pass every lesson in the Jazz and New Orleans group." = "Splň všechny lekce skupiny Jazz a New Orleans.";
+"Hip hop and trap done" = "Hip hop a trap – hotovo";
+"Pass every lesson in the Hip hop and trap group." = "Splň všechny lekce skupiny Hip hop a trap.";
+"Latin and world done" = "Latin a svět – hotovo";
+"Pass every lesson in the Latin and world group." = "Splň všechny lekce skupiny Latin a svět.";
+"Electronic done" = "Elektronika – hotovo";
+"Pass every lesson in the Electronic group." = "Splň všechny lekce skupiny Elektronika.";
+"Pop and country done" = "Pop a country – hotovo";
+"Pass every lesson in the Pop and country group." = "Splň všechny lekce skupiny Pop a country.";
+
+"Basic groove done" = "Základní groove – hotovo";
+"Pass every lesson in the Basic groove technique." = "Splň všechny lekce techniky Základní groove.";
+"Sixteenths done" = "Šestnáctiny – hotovo";
+"Pass every lesson in the Sixteenths technique." = "Splň všechny lekce techniky Šestnáctiny.";
+"Ghost notes done" = "Ghost noty – hotovo";
+"Pass every lesson in the Ghost notes technique." = "Splň všechny lekce techniky Ghost noty.";
+"Swing and shuffle done" = "Swing a shuffle – hotovo";
+"Pass every lesson in the Swing and shuffle technique." = "Splň všechny lekce techniky Swing a shuffle.";
+"Fills and toms done" = "Přechody a tomy – hotovo";
+"Pass every lesson in the Fills and toms technique." = "Splň všechny lekce techniky Přechody a tomy.";

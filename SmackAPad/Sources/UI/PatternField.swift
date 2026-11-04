@@ -56,6 +56,8 @@ struct PatternField: View {
     let countdown: Int?
     var band: Color = PracticeBandStyle.orange
     var edgeTendency: Double = 0
+    var runBars: Int = 4
+    var starMomentBeamActive: Bool = false
 
     private var rows: [Int] {
         let used = Set(hits.map(\.padIndex))
@@ -145,6 +147,15 @@ struct PatternField: View {
             if lesson.bars > 1 {
                 PatternPassProgress(position: position, bars: lesson.bars)
                     .padding(.horizontal, Theme.Space.page).padding(.bottom, Theme.Space.small)
+            }
+        }
+        .overlay(alignment: .top) {
+            if scoring && countdown == nil {
+                BandTopSpineRuler(
+                    bars: runBars,
+                    tapePosition: tapePosition,
+                    starMomentBeamActive: starMomentBeamActive
+                )
             }
         }
         .overlay { BandEdgeGlow(tendency: edgeTendency) }
@@ -467,5 +478,154 @@ private struct PatternPassProgress: View {
         .accessibilityLabel(settings.localized("Position in the current pass"))
         .accessibilityValue(settings.localized("Bar %lld / %lld, %lld percent",
             min(count, Int(position) / 16 + 1), count, Int(fraction * 100)))
+    }
+}
+
+/// A thin ruler (8 pt high) along the top edge of the orange band, spanning the band width.
+/// Divided into one sector per bar of the current run, filling along with the playhead.
+struct BandTopSpineRuler: View {
+    @Environment(SettingsManager.self) private var settings
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    let bars: Int
+    let tapePosition: Double
+    let starMomentBeamActive: Bool
+
+    @State private var beamOffset: CGFloat = -0.25
+
+    private var totalRunSteps: Double {
+        Double(max(1, bars) * 16)
+    }
+
+    private var runStep: Double {
+        totalRunSteps > 0 ? tapePosition.truncatingRemainder(dividingBy: totalRunSteps) : 0
+    }
+
+    private var currentBarIndex: Int {
+        min(max(0, bars - 1), Int(runStep / 16))
+    }
+
+    private var barStep: Double {
+        runStep - Double(currentBarIndex * 16)
+    }
+
+    private var barFraction: Double {
+        min(1, max(0, barStep / 16))
+    }
+
+    private var isWarningLit: Bool {
+        bars >= 2 && currentBarIndex == bars - 2 && barFraction >= 0.75
+    }
+
+    var body: some View {
+        GeometryReader { geometry in
+            let width = geometry.size.width
+            let sectorCount = max(1, bars)
+            let sectorWidth = width / CGFloat(sectorCount)
+
+            ZStack(alignment: .topLeading) {
+                // Background track & dividers
+                HStack(spacing: 0) {
+                    ForEach(0..<sectorCount, id: \.self) { index in
+                        ZStack(alignment: .leading) {
+                            if index == sectorCount - 1 {
+                                // Last sector distinct background
+                                LastSectorTrackBackground()
+                            } else {
+                                Color.white.opacity(0.18)
+                            }
+
+                            // Progress fill for this sector
+                            let fillFraction: CGFloat = {
+                                if index < currentBarIndex { return 1.0 }
+                                if index == currentBarIndex { return CGFloat(barFraction) }
+                                return 0.0
+                            }()
+                            if fillFraction > 0 {
+                                Color.white.opacity(0.95)
+                                    .frame(width: sectorWidth * fillFraction)
+                            }
+                        }
+                        .frame(width: sectorWidth, height: 8)
+                        .clipped()
+                        .overlay(alignment: .trailing) {
+                            if index < sectorCount - 1 {
+                                Rectangle()
+                                    .fill(Color.black.opacity(0.35))
+                                    .frame(width: 1, height: 8)
+                            }
+                        }
+                    }
+                }
+
+                // Warning tooth on leading edge of the last sector
+                if sectorCount >= 2 {
+                    let toothX = CGFloat(sectorCount - 1) * sectorWidth
+                    WarningToothShape()
+                        .fill(isWarningLit ? Color.white : Color.black.opacity(0.5))
+                        .overlay {
+                            if !isWarningLit {
+                                WarningToothShape()
+                                    .stroke(Color.white.opacity(0.7), lineWidth: 0.75)
+                            }
+                        }
+                        .frame(width: 8, height: 8)
+                        .offset(x: toothX)
+                }
+
+                // Star moment laser beam sweep (0.45 s)
+                if starMomentBeamActive && !reduceMotion {
+                    LinearGradient(
+                        colors: [.clear, .white, .white, .clear],
+                        startPoint: .leading,
+                        endPoint: .trailing
+                    )
+                    .frame(width: width * 0.20, height: 8)
+                    .offset(x: width * beamOffset)
+                }
+            }
+            .frame(width: width, height: 8)
+        }
+        .frame(height: 8)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(settings.localized("Run progress"))
+        .accessibilityValue(settings.localized("bar %lld of %lld", min(bars, currentBarIndex + 1), bars))
+        .task(id: starMomentBeamActive) {
+            guard starMomentBeamActive, !reduceMotion else {
+                beamOffset = -0.25
+                return
+            }
+            beamOffset = -0.25
+            withAnimation(.easeOut(duration: 0.45)) {
+                beamOffset = 1.05
+            }
+        }
+    }
+}
+
+/// Subtle hatched pattern for the final bar's ruler sector.
+private struct LastSectorTrackBackground: View {
+    var body: some View {
+        Canvas { context, size in
+            context.fill(Path(CGRect(origin: .zero, size: size)), with: .color(Color.white.opacity(0.12)))
+            var path = Path()
+            let step: CGFloat = 6
+            for x in stride(from: -size.height, to: size.width + size.height, by: step) {
+                path.move(to: CGPoint(x: x, y: size.height))
+                path.addLine(to: CGPoint(x: x + size.height, y: 0))
+            }
+            context.stroke(path, with: .color(Color.black.opacity(0.20)), lineWidth: 1.5)
+        }
+    }
+}
+
+/// A notched/bevelled tooth pointing into the final bar.
+struct WarningToothShape: Shape {
+    func path(in rect: CGRect) -> Path {
+        var path = Path()
+        path.move(to: CGPoint(x: rect.minX, y: rect.minY))
+        path.addLine(to: CGPoint(x: rect.maxX, y: rect.midY))
+        path.addLine(to: CGPoint(x: rect.minX, y: rect.maxY))
+        path.closeSubpath()
+        return path
     }
 }

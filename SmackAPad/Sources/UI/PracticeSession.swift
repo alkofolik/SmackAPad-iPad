@@ -15,6 +15,13 @@ struct TempoUpEvent: Identifiable {
     let to: Int
 }
 
+/// Published after a run finishes scoring to signal qualification for the current star.
+struct RunVerdict: Identifiable, Equatable, Sendable {
+    let id = UUID()
+    let passed: Bool
+    let brokenStreak: Bool
+}
+
 /// One display sample: tape position and repeat identity always share one clock read.
 struct PatternFrame {
     let tapePosition: Double
@@ -49,6 +56,8 @@ final class PracticeSession {
     private(set) var lastResult: ScoringResult?
     private(set) var summary: RunSummary?
     private(set) var starEvent: StarEvent?
+    private(set) var lastVerdict: RunVerdict?
+    private(set) var earnedBadgesInRun: [BadgeDefinition] = []
     private(set) var tempoUpEvent: TempoUpEvent?
     private(set) var errorMessage: String?
     private(set) var barVerdicts: [Int: BarVerdict] = [:]
@@ -80,6 +89,7 @@ final class PracticeSession {
 
     @ObservationIgnored private let settings: SettingsManager
     @ObservationIgnored private let progress: ProgressStore
+    @ObservationIgnored private let badgeStore = BadgeStore.shared
     @ObservationIgnored private let midi: MIDIInput
     @ObservationIgnored private let clock: () -> Double
     @ObservationIgnored private let audio = AudioEngine()
@@ -204,10 +214,6 @@ final class PracticeSession {
         guard !listen, !isSectionLoop else { return 1 }
         return max(1, Int((4.0 / Double(lesson.bars)).rounded()))
     }
-    var repetitionProgress: String? {
-        guard running, !listen, repeatsPerRun > 1, countdown == nil else { return nil }
-        return "\(currentRepetition)/\(repeatsPerRun)"
-    }
     var practiceLesson: Lesson {
         guard isSectionLoop else { return lesson }
         func slice(_ hits: [LessonHit]) -> [LessonHit] {
@@ -275,16 +281,15 @@ final class PracticeSession {
         return denominator > 0 ? Double(matches) / Double(denominator) : nil
     }
     var patternHits: [LessonHit] { practiceLesson.hits(forPadCount: midi.activeProfile.padCount) }
-    var starRunProgress: (count: Int, required: Int, name: String)? {
-        guard running, !listen, !isSectionLoop else { return nil }
+    var starRunProgress: (count: Int, required: Int, name: String, starIndex: Int)? {
+        guard !listen, !isSectionLoop else { return nil }
         let hitsCount = scoredLesson.hits(forPadCount: midi.activeProfile.padCount).count
         let required = StarStreak.requiredRuns(expectedHits: hitsCount, isIntro: lesson.cat == "intro")
         let passedRequired = StarStreak.requiredRuns(expectedHits: hitsCount)
         let saved = progress.progress(for: lesson.id)
-        if saved?.passed != true { return passedRequired > 1 ? (starStreak.passedRuns, passedRequired, "Passed") : nil }
-        guard required > 1 else { return nil }
-        if fromMemory, saved?.memory != true { return (starStreak.memoryRuns, required, "From memory") }
-        if saved?.mastery != true { return (starStreak.masteryRuns, required, "Goal tempo") }
+        if saved?.passed != true { return (starStreak.passedRuns, passedRequired, "Passed", 0) }
+        if fromMemory, saved?.memory != true { return (starStreak.memoryRuns, required, "From memory", 2) }
+        if saved?.mastery != true { return (starStreak.masteryRuns, required, "Goal tempo", 1) }
         return nil
     }
     var available: Bool { midi.padIndices != nil }
@@ -374,6 +379,7 @@ final class PracticeSession {
             summary = nil
             lastResult = nil
             starEvent = nil
+            lastVerdict = nil
             tempoUpEvent = nil
             stopAfterStar = false
             finishedByStar = nil
@@ -381,6 +387,7 @@ final class PracticeSession {
             runPadCount = midi.activeProfile.padCount
             starStreak = practiceMode == .learning
                 ? progress.learningCredit(lessonId: lesson.id, padCount: midi.activeProfile.padCount) : StarStreak()
+            earnedBadgesInRun = []
             pendingScore = nil; pendingBpm = 0; pendingCredit = false
             tempo.reset()
             barVerdicts = [:]
@@ -443,6 +450,7 @@ final class PracticeSession {
         if practiceMode == .challenge { starStreak.reset() }
         currentRepetition = 1
         tempoUpEvent = nil
+        lastVerdict = nil
         playedHits = []
         judgmentsByPass = [:]
         judgmentVersion += 1
@@ -460,6 +468,7 @@ final class PracticeSession {
                                  passed: false, mastery: false, memory: false)
         }
         saveTempo()
+        evaluateBadges()
     }
 
     func restart() { stop(); start() }
@@ -618,10 +627,25 @@ final class PracticeSession {
                 let passed = result.passed || (practiceMode == .learning && StarStreak.learningPassed(
                     score: result.score, perfectOrGoodHits: result.perfectOrGoodHitCount,
                     expectedHits: result.expectedHitCount, errors: result.errorCount))
+                let saved = progress.progress(for: lesson.id)
+                let runPassed: Bool = {
+                    if saved?.passed != true { return passed }
+                    if fromMemory, saved?.memory != true { return memory }
+                    if saved?.mastery != true { return result.mastery }
+                    return result.passed
+                }()
+                let streakWasReset: Bool = {
+                    guard practiceMode == .challenge && !runPassed else { return false }
+                    if saved?.passed != true { return starStreak.passedRuns > 0 }
+                    if fromMemory, saved?.memory != true { return starStreak.memoryRuns > 0 }
+                    if saved?.mastery != true { return starStreak.masteryRuns > 0 }
+                    return false
+                }()
                 let stars = starStreak.record(passed: passed, mastery: result.mastery,
                                               memory: memory, requiredRuns: required,
                                               passedRequired: StarStreak.requiredRuns(expectedHits: result.expectedHitCount),
                                               mode: practiceMode)
+                lastVerdict = RunVerdict(passed: runPassed, brokenStreak: streakWasReset)
                 if practiceMode == .learning { pendingCredit = true }
                 earnedPass = earnedPass || stars.passed
                 earnedMastery = earnedMastery || stars.mastery
@@ -639,9 +663,12 @@ final class PracticeSession {
                         pendingCredit = false
                     }
                     starEvent = StarEvent(award: award)
+                    evaluateBadges()
                 }
                 stopAfterStar = award.shouldStop
                 if award.shouldStop { finishedByStar = award.fresh[2] ? 3 : 2 }
+            } else {
+                lastVerdict = RunVerdict(passed: result.passed, brokenStreak: false)
             }
             // The tempo preference is saved once at STOP, not at every pass.
             if let error = progress.lastSaveError { errorMessage = error.localizedDescription }
@@ -752,5 +779,27 @@ final class PracticeSession {
         var record = progress.progress(for: lesson.id) ?? LessonProgress()
         record.currentBpm = bpm
         progress.setProgress(record, for: lesson.id)
+    }
+
+    private func evaluateBadges() {
+        let newly = badgeStore.evaluate(
+            progress: progress.records,
+            catalog: ProgressionManager.shared.catalog
+        )
+        for badge in newly {
+            if !earnedBadgesInRun.contains(where: { $0.id == badge.id }) {
+                earnedBadgesInRun.append(badge)
+            }
+        }
+    }
+
+    func badgeSummaryMessage(settings: SettingsManager) -> String? {
+        guard !earnedBadgesInRun.isEmpty else { return nil }
+        if earnedBadgesInRun.count == 1 {
+            let name = settings.localized(earnedBadgesInRun[0].name)
+            return settings.localized("New badge: %@", name)
+        } else {
+            return settings.localized("Earned %lld new badges", earnedBadgesInRun.count)
+        }
     }
 }

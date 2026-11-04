@@ -818,6 +818,7 @@ public final class ProgressStore: @unchecked Sendable {
         records = merged
         do {
             try save()
+            BadgeStore.shared.awardSilently(progress: merged, catalog: LessonStore.shared.libraryCatalog)
         } catch {
             records = previous
             throw error

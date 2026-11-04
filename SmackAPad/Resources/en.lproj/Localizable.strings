@@ -2,6 +2,9 @@
 "MIDI controller" = "MIDI controller";
 "%lld / %lld" = "%lld / %lld";
 "Consecutive passes for %@" = "Qualifying passes for %@";
+"Run progress" = "Run progress";
+"bar %lld of %lld" = "bar %lld of %lld";
+"Star %lld earned" = "Star %lld earned";
 "Input" = "Input";
 "All connected controllers" = "All connected controllers";
 "Connect a USB controller or pair a Bluetooth MIDI controller." = "Connect a USB controller or pair a Bluetooth MIDI controller.";
@@ -483,3 +486,107 @@
 // Controller and calibration (ticket 62)
 "Controller and calibration" = "Controller and calibration";
 "Not connected" = "Not connected";
+
+// Badges (ticket 63)
+"Badges" = "Badges";
+"Badges %lld / %lld" = "Badges %lld / %lld";
+"New badge: %@" = "New badge: %@";
+"Earned %lld new badges" = "Earned %lld new badges";
+"Earned: %@" = "Earned: %@";
+"Progress: %lld / %lld" = "Progress: %lld / %lld";
+"Not earned yet" = "Not earned yet";
+"Passed lessons" = "Passed lessons";
+"Goal tempo" = "Goal tempo";
+"Memory practice" = "Memory practice";
+"Completed stages" = "Completed stages";
+"Levels" = "Levels";
+"Genres" = "Genres";
+"Techniques" = "Techniques";
+
+"First groove" = "First groove";
+"Pass your first lesson." = "Pass your first lesson.";
+"Groove builder" = "Groove builder";
+"Pass ten different lessons." = "Pass ten different lessons.";
+"Groove veteran" = "Groove veteran";
+"Pass fifty different lessons." = "Pass fifty different lessons.";
+"Hundred grooves" = "Hundred grooves";
+"Pass 100 different lessons." = "Pass 100 different lessons.";
+"Two hundred fifty" = "Two hundred fifty";
+"Pass 250 different lessons." = "Pass 250 different lessons.";
+"Almost everything" = "Almost everything";
+"Pass 500 different lessons." = "Pass 500 different lessons.";
+"Every lesson" = "Every lesson";
+"Pass every lesson in this edition." = "Pass every lesson in this edition.";
+
+"Ten down" = "Ten down";
+"Master your first lesson at goal tempo." = "Master your first lesson at goal tempo.";
+"Master ten lessons at goal tempo." = "Master ten lessons at goal tempo.";
+"Twenty-five at tempo" = "Twenty-five at tempo";
+"Master 25 lessons at goal tempo." = "Master 25 lessons at goal tempo.";
+"Fifty down" = "Fifty down";
+"Master fifty lessons at goal tempo." = "Master fifty lessons at goal tempo.";
+"Hundred at tempo" = "Hundred at tempo";
+"Master 100 lessons at goal tempo." = "Master 100 lessons at goal tempo.";
+"Two-fifty at tempo" = "Two-fifty at tempo";
+"Master 250 lessons at goal tempo." = "Master 250 lessons at goal tempo.";
+"All at tempo" = "All at tempo";
+"Master every lesson in this edition at goal tempo." = "Master every lesson in this edition at goal tempo.";
+
+"By heart" = "By heart";
+"Earn your first memory star." = "Earn your first memory star.";
+"Memory player" = "Memory player";
+"Earn memory stars in five different lessons." = "Earn memory stars in five different lessons.";
+"Memory master" = "Memory master";
+"Earn memory stars in twenty different lessons." = "Earn memory stars in twenty different lessons.";
+"Fifty by heart" = "Fifty by heart";
+"Earn memory stars in 50 different lessons." = "Earn memory stars in 50 different lessons.";
+"Hundred by heart" = "Hundred by heart";
+"Earn memory stars in 100 different lessons." = "Earn memory stars in 100 different lessons.";
+
+"Stage complete" = "Stage complete";
+"Master every lesson in one Path stage." = "Master every lesson in one Path stage.";
+"Stage collector" = "Stage collector";
+"Master every lesson in three Path stages." = "Master every lesson in three Path stages.";
+"Stage master" = "Stage master";
+"Master every lesson in five Path stages." = "Master every lesson in five Path stages.";
+"Half the stages" = "Half the stages";
+"Master every lesson in 12 Path stages." = "Master every lesson in 12 Path stages.";
+"All stages" = "All stages";
+"Master every lesson in 23 Path stages." = "Master every lesson in 23 Path stages.";
+
+"Level 1 done" = "Level 1 done";
+"Pass every level 1 lesson in this edition." = "Pass every level 1 lesson in this edition.";
+"Level 2 done" = "Level 2 done";
+"Pass every level 2 lesson in this edition." = "Pass every level 2 lesson in this edition.";
+"Level 3 done" = "Level 3 done";
+"Pass every level 3 lesson in this edition." = "Pass every level 3 lesson in this edition.";
+"Level 4 done" = "Level 4 done";
+"Pass every level 4 lesson in this edition." = "Pass every level 4 lesson in this edition.";
+"Level 5 done" = "Level 5 done";
+"Pass every level 5 lesson in this edition." = "Pass every level 5 lesson in this edition.";
+
+"Rock and punk done" = "Rock and punk done";
+"Pass every lesson in the Rock and punk group." = "Pass every lesson in the Rock and punk group.";
+"Funk, soul, blues done" = "Funk, soul, blues done";
+"Pass every lesson in the Funk, soul, blues group." = "Pass every lesson in the Funk, soul, blues group.";
+"Jazz and New Orleans done" = "Jazz and New Orleans done";
+"Pass every lesson in the Jazz and New Orleans group." = "Pass every lesson in the Jazz and New Orleans group.";
+"Hip hop and trap done" = "Hip hop and trap done";
+"Pass every lesson in the Hip hop and trap group." = "Pass every lesson in the Hip hop and trap group.";
+"Latin and world done" = "Latin and world done";
+"Pass every lesson in the Latin and world group." = "Pass every lesson in the Latin and world group.";
+"Electronic done" = "Electronic done";
+"Pass every lesson in the Electronic group." = "Pass every lesson in the Electronic group.";
+"Pop and country done" = "Pop and country done";
+"Pass every lesson in the Pop and country group." = "Pass every lesson in the Pop and country group.";
+
+"Basic groove done" = "Basic groove done";
+"Pass every lesson in the Basic groove technique." = "Pass every lesson in the Basic groove technique.";
+"Sixteenths done" = "Sixteenths done";
+"Pass every lesson in the Sixteenths technique." = "Pass every lesson in the Sixteenths technique.";
+"Ghost notes done" = "Ghost notes done";
+"Pass every lesson in the Ghost notes technique." = "Pass every lesson in the Ghost notes technique.";
+"Swing and shuffle done" = "Swing and shuffle done";
+"Pass every lesson in the Swing and shuffle technique." = "Pass every lesson in the Swing and shuffle technique.";
+"Fills and toms done" = "Fills and toms done";
+"Pass every lesson in the Fills and toms technique." = "Pass every lesson in the Fills and toms technique.";
