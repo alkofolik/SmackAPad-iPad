@@ -1,6 +1,6 @@
 # 60 — Home screen: design proposals (no app code)
 
-Status: ready. Source: Jakub, 2026-11-03. Follow-up: ticket 61 (implementation) is written **after** Jakub chooses a proposal.
+Status: done — Jakub chose proposal A (changed to a 3×3 pad grid, app colours); implementation is ticket 61. Source: Jakub, 2026-11-03.
 
 ## Problem
 
