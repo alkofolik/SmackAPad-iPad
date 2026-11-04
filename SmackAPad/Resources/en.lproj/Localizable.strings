@@ -465,3 +465,16 @@
 "Row 2" = "Row 2";
 "Row 3" = "Row 3";
 "Row 4 (bottom)" = "Row 4 (bottom)";
+
+// Home screen (ticket 61)
+"Home" = "Home";
+"Continue" = "Continue";
+"Unlocked" = "Unlocked";
+"Not measured" = "Not measured";
+"Connect a controller" = "Connect a controller";
+"Controller" = "Controller";
+"Calibration" = "Calibration";
+"Full version" = "Full version";
+"About" = "About";
+"Font IBM Plex Sans, SIL OFL 1.1" = "Font IBM Plex Sans, SIL OFL 1.1";
+"Version %@" = "Version %@";

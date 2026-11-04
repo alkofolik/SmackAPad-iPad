@@ -1,8 +1,18 @@
 import SwiftUI
 
+/// Launch parameter determining how the Library screen is initially focused.
+public enum LibraryLaunchTarget: Equatable, Sendable {
+    case none
+    case intro
+    case lesson(Lesson)
+}
+
 /// Three projections of the same catalogue, sharing stage access and saved progress.
 @MainActor
 struct LibraryScreen: View {
+    let launchTarget: LibraryLaunchTarget
+    let onHome: () -> Void
+
     @Environment(StoreManager.self) private var store
     @Environment(SettingsManager.self) private var settings
     @Environment(ProgressStore.self) private var progress
@@ -26,6 +36,17 @@ struct LibraryScreen: View {
     @State private var purchaseAccess: String?
     @State private var bannerPulse = 0
     @State private var columnVisibility: NavigationSplitViewVisibility = .all
+
+    init(launchTarget: LibraryLaunchTarget = .none, onHome: @escaping () -> Void = {}) {
+        self.launchTarget = launchTarget
+        self.onHome = onHome
+        _showingIntro = State(initialValue: launchTarget == .intro)
+        if case .lesson(let lesson) = launchTarget {
+            _selectedLesson = State(initialValue: lesson)
+        } else {
+            _selectedLesson = State(initialValue: nil)
+        }
+    }
 
     private var mode: LibraryViewMode { LibraryViewMode(rawValue: settings.libraryView) ?? .path }
     private var catalog: LibraryCatalog { progression.catalog }
@@ -189,6 +210,13 @@ struct LibraryScreen: View {
         .listRowInsets(EdgeInsets(top: 0, leading: Theme.Space.regular, bottom: 0, trailing: Theme.Space.regular))
         .listStyle(.sidebar).scrollContentBackground(.hidden).background(Theme.background)
         .toolbar {
+            ToolbarItem(placement: .topBarLeading) {
+                Button(action: onHome) {
+                    Text(settings.localized("Home"))
+                        .font(Theme.control)
+                        .frame(minHeight: Theme.Size.touch)
+                }
+            }
             ToolbarItem(placement: .principal) { ScreenHeader(title: settings.localized("Library")) }
         }
     }

@@ -3,6 +3,16 @@
     {
       "filename" : "LaunchWordmark.svg",
       "idiom" : "universal"
+    },
+    {
+      "appearances" : [
+        {
+          "appearance" : "luminosity",
+          "value" : "dark"
+        }
+      ],
+      "filename" : "LaunchWordmarkDark.svg",
+      "idiom" : "universal"
     }
   ],
   "info" : {

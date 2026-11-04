@@ -417,7 +417,7 @@
 "Play a steady groove at %lld BPM." = "Zahraj rovnoměrný rytmus při %lld BPM.";
 "Follow the pattern and keep the left and right hands steady." = "Hraj podle patternu a udržuj rovnoměrné údery levé i pravé ruky.";
 "Listen to the pattern first. Start slowly, then work towards the goal tempo." = "Nejdřív si pattern poslechni. Začni pomalu a postupně se přibližuj cílovému tempu.";
-"Start" = "Start";
+"Start" = "Začít";
 "Stop" = "Stop";
 
 // Practice indicators (ticket 35).
@@ -468,3 +468,16 @@
 "Row 2" = "Řada 2";
 "Row 3" = "Řada 3";
 "Row 4 (bottom)" = "Řada 4 (dole)";
+
+// Home screen (ticket 61)
+"Home" = "Domů";
+"Continue" = "Pokračovat";
+"Unlocked" = "Odemčeno";
+"Not measured" = "Nezměřeno";
+"Connect a controller" = "Připoj ovladač";
+"Controller" = "Ovladač";
+"Calibration" = "Kalibrace";
+"Full version" = "Plná verze";
+"About" = "O aplikaci";
+"Font IBM Plex Sans, SIL OFL 1.1" = "Písmo IBM Plex Sans, SIL OFL 1.1";
+"Version %@" = "Verze %@";
