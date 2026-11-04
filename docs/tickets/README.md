@@ -89,3 +89,15 @@ Source: Jakub's iPad test. Bluetooth MIDI breaks timing; cable works.
 | 57 | App icon from the existing logo (Part 1 of 46, split off) | Gemini 3.8 Flash, high | any time, independent |
 | 58 | Result card: always "Next lesson"; "Start" becomes "Again" | Gemini 3.8 Flash, high | before 59 |
 | 59 | A scored run lasts about four bars, as in the original tool | Gemini 3.8 Pro, high (fallback Codex GPT-6.1 Sol, high) | after 58 |
+
+## App Store release track (2026-11-04) — PARKED, not in the build order
+
+Source: Claude's pre-release audit. Checklist with the full chronological list: `docs/2026-11-04-app-store-release-checklist.md`. Run when functional tickets are frozen for 1.0.
+
+| Ticket | Topic | Agent / thinking | Order |
+|---|---|---|---|
+| 79 | Privacy manifest, export-compliance key, Release-build hygiene | Gemini 3.8 Flash, high | 1st |
+| 81 | Public support + privacy policy pages (EN/CS); Jakub chooses hosting first | Gemini 3.8 Flash, medium | parallel with 79 |
+| 80 | Settings → About: version, support/privacy links, sound and font credits | Gemini 3.8 Flash, high | after 81 (needs URLs) |
+| 83 | App Store listing texts and review notes (EN/CS) | Claude (Opus), medium | any time |
+| 82 | App Store screenshots 13" iPad via UI test | Codex GPT-6.1 Sol, high | last, when UI is frozen |
