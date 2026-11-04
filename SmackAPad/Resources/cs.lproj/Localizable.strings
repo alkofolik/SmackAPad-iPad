@@ -494,6 +494,7 @@
 // Badges (ticket 63)
 "Badges" = "Odznaky";
 "Badges %lld / %lld" = "Odznaky %lld / %lld";
+"New badge" = "Nový odznak";
 "New badge: %@" = "Nový odznak: %@";
 "Earned %lld new badges" = "Získány %lld nové odznaky";
 "Earned: %@" = "Získáno: %@";

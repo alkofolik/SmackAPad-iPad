@@ -491,6 +491,7 @@
 // Badges (ticket 63)
 "Badges" = "Badges";
 "Badges %lld / %lld" = "Badges %lld / %lld";
+"New badge" = "New badge";
 "New badge: %@" = "New badge: %@";
 "Earned %lld new badges" = "Earned %lld new badges";
 "Earned: %@" = "Earned: %@";

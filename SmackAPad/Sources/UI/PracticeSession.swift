@@ -15,6 +15,12 @@ struct TempoUpEvent: Identifiable {
     let to: Int
 }
 
+/// Published when one or more badges are earned during a run.
+struct BadgeBannerEvent: Identifiable, Equatable {
+    let id = UUID()
+    let badges: [BadgeDefinition]
+}
+
 /// Published after a run finishes scoring to signal qualification for the current star.
 struct RunVerdict: Identifiable, Equatable, Sendable {
     let id = UUID()
@@ -75,6 +81,7 @@ final class PracticeSession {
     private(set) var runResults: [PracticeRunResult] = []
     private(set) var earnedBadgesInRun: [BadgeDefinition] = []
     private(set) var tempoUpEvent: TempoUpEvent?
+    private(set) var badgeBannerEvent: BadgeBannerEvent?
     private(set) var errorMessage: String?
     private(set) var barVerdicts: [Int: BarVerdict] = [:]
     @ObservationIgnored private var judgmentsByPass: [Int: [LessonHit: HitJudgment]] = [:]
@@ -816,11 +823,21 @@ final class PracticeSession {
             progress: progress.records,
             catalog: ProgressionManager.shared.catalog
         )
+        guard !newly.isEmpty else { return }
+        var fresh: [BadgeDefinition] = []
         for badge in newly {
             if !earnedBadgesInRun.contains(where: { $0.id == badge.id }) {
                 earnedBadgesInRun.append(badge)
+                fresh.append(badge)
             }
         }
+        if !fresh.isEmpty {
+            badgeBannerEvent = BadgeBannerEvent(badges: fresh)
+        }
+    }
+
+    func clearBadgeBannerEvent() {
+        badgeBannerEvent = nil
     }
 
     func badgeSummaryMessage(settings: SettingsManager) -> String? {

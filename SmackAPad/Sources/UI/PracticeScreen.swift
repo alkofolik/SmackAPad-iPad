@@ -326,6 +326,15 @@ struct PracticeScreen: View {
                     }
                 }
             }
+            .overlay(alignment: .top) {
+                if let event = session.badgeBannerEvent {
+                    BadgeBanner(event: event) {
+                        session.clearBadgeBannerEvent()
+                    }
+                    .id(event.id)
+                    .padding(.top, Theme.Space.small)
+                }
+            }
         }
     }
 
@@ -592,9 +601,6 @@ struct PracticeScreen: View {
         if let starEvent = session.starEvent {
             let stars = starAnnouncement(for: starEvent)
             if !stars.isEmpty { parts.append(stars) }
-        }
-        if let badgeMessage = session.badgeSummaryMessage(settings: settings) {
-            parts.append(badgeMessage)
         }
         return parts.joined(separator: ". ")
     }
