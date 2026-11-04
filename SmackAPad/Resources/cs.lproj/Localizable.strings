@@ -268,6 +268,9 @@
 "%lld of %lld lessons" = "%lld z %lld lekcí";
 "Earn 2 stars in %lld lessons in %@ to open this" = "Pro odemčení získej 2 hvězdy v %lld lekcích ve stupni %@";
 "Next lesson from" = "Další lekce z";
+"Hide completed lessons" = "Skrýt hotové lekce";
+"All lessons completed" = "Všechny lekce jsou hotové";
+"Show completed" = "Zobrazit hotové";
 "Locked" = "Zamčeno";
 "Up next" = "Na řadě";
 

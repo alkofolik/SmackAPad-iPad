@@ -147,6 +147,7 @@ public struct SettingsView: View {
                     }
 
                     Section {
+                        Toggle(settings.localized("Hide completed lessons"), isOn: $settings.hideCompletedLessons)
                         Picker(settings.localized("Next lesson from"), selection: $settings.nextLessonSource) {
                             ForEach(NextLessonSource.allCases) { source in
                                 Text(settings.localized(source.title)).tag(source.id)
@@ -154,7 +155,7 @@ public struct SettingsView: View {
                         }
                         .frame(minHeight: Theme.Size.touch)
                     } header: {
-                        SectionHeader(title: settings.localized("Next lesson from"))
+                        SectionHeader(title: settings.localized("Library"))
                     }
 
                     // MARK: Keyboard

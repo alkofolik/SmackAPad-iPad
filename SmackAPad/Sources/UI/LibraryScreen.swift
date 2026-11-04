@@ -279,8 +279,15 @@ struct LibraryScreen: View {
     }
 
     private func detail(_ group: LibraryGroup) -> some View {
+        let isSearching = !query.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        let isGroupAllCompleted = !group.lessons.isEmpty && group.lessons.allSatisfy { progress.isCompleted(lessonId: $0.id) }
         let matching = catalog.matching(group.lessons, view: mode, query: query, cross: cross, language: settings.languagePreference)
-        let filtered = matching.filter { settings.libraryStarFilters.contains(LibraryStarFilter.classify(progress.progress(for: $0.id)).id) }
+        let filtered = matching.filter { lesson in
+            if !isSearching && settings.hideCompletedLessons && progress.isCompleted(lessonId: lesson.id) {
+                return false
+            }
+            return settings.libraryStarFilters.contains(LibraryStarFilter.classify(progress.progress(for: lesson.id)).id)
+        }
         let nextID = next?.id
         return VStack(alignment: .leading, spacing: Theme.Space.small) {
             if let error = lessonStore.lastLoadError {
@@ -302,28 +309,59 @@ struct LibraryScreen: View {
                 stageBanner(stage).id("stage-lock").transition(motion.transition)
             }
             List {
-                if filtered.isEmpty {
+                if isGroupAllCompleted && settings.hideCompletedLessons && !isSearching {
+                    allCompletedRow
+                } else if filtered.isEmpty {
                     Text(settings.localized("No matching lessons")).font(Theme.control)
                         .listRowBackground(Theme.background)
-                }
-                ForEach(filtered) { lesson in
-                    LibraryLessonRow(lesson: lesson, settings: settings, progress: progress,
-                                     number: (group.lessons.firstIndex { $0.id == lesson.id } ?? 0) + 1,
-                                     showTechnique: mode == .genre,
-                                     locked: !progression.isLessonOpen(lesson), purchaseLocked: !store.isUnlocked(lesson), isNext: lesson.id == nextID) {
-                        open(lesson)
+                } else {
+                    ForEach(filtered) { lesson in
+                        LibraryLessonRow(lesson: lesson, settings: settings, progress: progress,
+                                         number: (group.lessons.firstIndex { $0.id == lesson.id } ?? 0) + 1,
+                                         showTechnique: mode == .genre,
+                                         locked: !progression.isLessonOpen(lesson), purchaseLocked: !store.isUnlocked(lesson), isNext: lesson.id == nextID) {
+                            open(lesson)
+                        }
+                        .listRowInsets(EdgeInsets())
+                        .listRowBackground(Theme.background)
                     }
-                    .listRowInsets(EdgeInsets())
-                    .listRowBackground(Theme.background)
                 }
             }
             .environment(\.defaultMinListRowHeight, 60)
             .listStyle(.plain).scrollContentBackground(.hidden)
             .contentMargins(.vertical, 0, for: .scrollContent)
+            .motion(Theme.Motion.standard, value: filtered.map(\.id))
         }
         .padding(.horizontal, Theme.Space.page).padding(.top, Theme.Space.small)
         .background(Theme.background)
         .motion(Theme.Motion.standard, value: group.stage.map { progression.isStageOpen($0) })
+    }
+
+    private var allCompletedRow: some View {
+        HStack(spacing: Theme.Space.regular) {
+            Text(settings.localized("All lessons completed"))
+                .font(Theme.meta)
+                .foregroundStyle(Theme.secondary)
+            Button {
+                settings.hideCompletedLessons = false
+            } label: {
+                Text(settings.localized("Show completed"))
+                    .font(Theme.meta)
+                    .foregroundStyle(Theme.ink)
+                    .padding(.horizontal, Theme.Space.small)
+                    .frame(minHeight: Theme.Size.touch)
+                    .background(Theme.surface)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: Theme.Size.blockRadius)
+                            .stroke(Theme.hairline, lineWidth: 1)
+                    )
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel(settings.localized("Show completed"))
+        }
+        .padding(.vertical, Theme.Space.small)
+        .listRowInsets(EdgeInsets())
+        .listRowBackground(Theme.background)
     }
 
     private func courseProgressIndicator(group: LibraryGroup, shown: Int, total: Int) -> some View {

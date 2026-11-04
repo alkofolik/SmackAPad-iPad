@@ -270,6 +270,9 @@ public final class SettingsManager: @unchecked Sendable {
     public var playPadsWithKeyboard: Bool {
         didSet { userDefaults.set(playPadsWithKeyboard, forKey: SettingsKey.playPadsWithKeyboard.rawValue) }
     }
+    public var hideCompletedLessons: Bool {
+        didSet { userDefaults.set(hideCompletedLessons, forKey: "smackapad.library.hideCompleted") }
+    }
 
     // MARK: - Memory Star Hint
 
@@ -418,6 +421,7 @@ public final class SettingsManager: @unchecked Sendable {
         }
 
         self.playPadsWithKeyboard = userDefaults.object(forKey: SettingsKey.playPadsWithKeyboard.rawValue) as? Bool ?? true
+        self.hideCompletedLessons = userDefaults.object(forKey: "smackapad.library.hideCompleted") as? Bool ?? true
     }
 
     // MARK: Persistence Helpers
@@ -605,6 +609,8 @@ public final class SettingsManager: @unchecked Sendable {
         self.padsVolume = Self.defaultPadsVolume
         self.patternVolume = Self.defaultPatternVolume
         self.playPadsWithKeyboard = true
+        userDefaults.removeObject(forKey: "smackapad.library.hideCompleted")
+        self.hideCompletedLessons = true
     }
 }
 

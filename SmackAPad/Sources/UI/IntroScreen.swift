@@ -47,6 +47,8 @@ public struct IntroScreen: View {
     @Environment(StoreManager.self) private var purchases
     @Environment(SettingsManager.self) private var settings
     @Environment(ProgressStore.self) private var progress
+    @Environment(\.accessibilityReduceMotion) private var reduced
+    private var motion: Theme.Motion.Policy { .init(reduced: reduced) }
     @State private var store = LessonStore.shared
     @State private var showingRules = false
 
@@ -59,6 +61,19 @@ public struct IntroScreen: View {
 
     private var introLessons: [Lesson] {
         store.libraryCatalog.introLessons
+    }
+
+    private var isAllIntroCompleted: Bool {
+        !introLessons.isEmpty && introLessons.allSatisfy { progress.isCompleted(lessonId: $0.id) }
+    }
+
+    private var visibleLessonIDs: [Int] {
+        introLessons.compactMap { lesson in
+            if settings.hideCompletedLessons && progress.isCompleted(lessonId: lesson.id) {
+                return nil
+            }
+            return lesson.id
+        }
     }
 
     private var passedCount: Int {
@@ -100,25 +115,33 @@ public struct IntroScreen: View {
                 .listRowSeparator(.hidden)
                 .listRowBackground(Theme.background)
             }
-            ForEach(IntroStage.allCases) { stage in
-                let stageLessons = introLessons.filter { $0.intro?.stage == stage.rawValue }
-                if !stageLessons.isEmpty {
-                    Section {
-                        ForEach(stageLessons) { exerciseRow($0) }
-                    } header: {
-                        SectionHeader(title: stage.title(language: settings.languagePreference),
-                                      subtitle: stage.subtitle(language: settings.languagePreference))
-                            .padding(.top, Theme.Space.small)
+            if isAllIntroCompleted && settings.hideCompletedLessons {
+                Section {
+                    allCompletedRow
+                }
+            } else {
+                ForEach(IntroStage.allCases) { stage in
+                    let stageLessons = introLessons.filter { $0.intro?.stage == stage.rawValue }
+                    let visibleStageLessons = stageLessons.filter { !settings.hideCompletedLessons || !progress.isCompleted(lessonId: $0.id) }
+                    if !visibleStageLessons.isEmpty {
+                        Section {
+                            ForEach(visibleStageLessons) { exerciseRow($0) }
+                        } header: {
+                            SectionHeader(title: stage.title(language: settings.languagePreference),
+                                          subtitle: stage.subtitle(language: settings.languagePreference))
+                                .padding(.top, Theme.Space.small)
+                        }
                     }
                 }
-            }
-            let remaining = introLessons.filter { lesson in
-                !IntroStage.allCases.contains { $0.rawValue == lesson.intro?.stage }
-            }
-            if !remaining.isEmpty {
-                Section {
-                    ForEach(remaining) { exerciseRow($0) }
-                } header: { SectionHeader(title: settings.localized("Other Intro Exercises")) }
+                let remaining = introLessons.filter { lesson in
+                    !IntroStage.allCases.contains { $0.rawValue == lesson.intro?.stage }
+                }
+                let visibleRemaining = remaining.filter { !settings.hideCompletedLessons || !progress.isCompleted(lessonId: $0.id) }
+                if !visibleRemaining.isEmpty {
+                    Section {
+                        ForEach(visibleRemaining) { exerciseRow($0) }
+                    } header: { SectionHeader(title: settings.localized("Other Intro Exercises")) }
+                }
             }
         }
         .listStyle(.plain)
@@ -131,6 +154,34 @@ public struct IntroScreen: View {
         .toolbar {
             ToolbarItem(placement: .principal) { ScreenHeader(title: settings.localized("Intro Exercises")) }
         }
+        .motion(Theme.Motion.standard, value: visibleLessonIDs)
+    }
+
+    private var allCompletedRow: some View {
+        HStack(spacing: Theme.Space.regular) {
+            Text(settings.localized("All lessons completed"))
+                .font(Theme.meta)
+                .foregroundStyle(Theme.secondary)
+            Button {
+                settings.hideCompletedLessons = false
+            } label: {
+                Text(settings.localized("Show completed"))
+                    .font(Theme.meta)
+                    .foregroundStyle(Theme.ink)
+                    .padding(.horizontal, Theme.Space.small)
+                    .frame(minHeight: Theme.Size.touch)
+                    .background(Theme.surface)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: Theme.Size.blockRadius)
+                            .stroke(Theme.hairline, lineWidth: 1)
+                    )
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel(settings.localized("Show completed"))
+        }
+        .padding(.vertical, Theme.Space.small)
+        .listRowInsets(EdgeInsets(top: 0, leading: Theme.Space.page, bottom: 0, trailing: Theme.Space.page))
+        .listRowBackground(Theme.background)
     }
 
     private func exerciseRow(_ lesson: Lesson) -> some View {

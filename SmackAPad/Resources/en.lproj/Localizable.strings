@@ -269,6 +269,9 @@
 "%lld of %lld lessons" = "%lld of %lld lessons";
 "Earn 2 stars in %lld lessons in %@ to open this" = "Earn 2 stars in %lld lessons in %@ to open this";
 "Next lesson from" = "Next lesson from";
+"Hide completed lessons" = "Hide completed lessons";
+"All lessons completed" = "All lessons completed";
+"Show completed" = "Show completed";
 "Locked" = "Locked";
 "Up next" = "Up next";
 
