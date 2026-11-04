@@ -144,11 +144,87 @@ enum InstrumentTile {
     static let height: CGFloat = 80
 }
 
+/// A small chip showing the result of one finished run.
+struct RunResultChip: View {
+    let run: PracticeRunResult
+
+    var body: some View {
+        HStack(spacing: Theme.Space.small) {
+            verdictMark
+            VStack(alignment: .leading, spacing: 1) {
+                Text("\(Int((run.score * 100).rounded()))\u{00a0}%")
+                    .font(Theme.strong(16))
+                    .monospacedDigit()
+                    .lineLimit(1)
+                Text("\(run.bpm)\u{00a0}BPM")
+                    .font(Theme.meta)
+                    .foregroundStyle(Theme.secondary)
+                    .monospacedDigit()
+                    .lineLimit(1)
+            }
+        }
+        .padding(.horizontal, Theme.Space.small)
+        .frame(height: 48)
+        .background(Theme.surface, in: RoundedRectangle(cornerRadius: Theme.Radius.control))
+        .overlay(
+            RoundedRectangle(cornerRadius: Theme.Radius.control)
+                .strokeBorder(Theme.hairline, lineWidth: 1)
+        )
+    }
+
+    private var verdictMark: some View {
+        ZStack {
+            if run.passed {
+                RoundedRectangle(cornerRadius: 2)
+                    .fill(Theme.orange)
+                    .frame(width: 5, height: 24)
+            } else {
+                RoundedRectangle(cornerRadius: 2)
+                    .strokeBorder(Theme.markWrong, lineWidth: 1.5)
+                    .frame(width: 5, height: 24)
+            }
+        }
+        .frame(width: 5, height: 24)
+    }
+}
+
+/// A single row of chips showing recent runs while playing.
+struct RunLogRow: View {
+    @Environment(\.accessibilityReduceMotion) private var reduced
+    @Environment(SettingsManager.self) private var settings
+    let runs: [PracticeRunResult]
+
+    var body: some View {
+        HStack(spacing: Theme.Space.small) {
+            ForEach(runs) { run in
+                RunResultChip(run: run)
+                    .transition(
+                        reduced
+                            ? .opacity
+                            : .asymmetric(
+                                insertion: .opacity,
+                                removal: .move(edge: .leading).combined(with: .opacity)
+                            )
+                    )
+            }
+            Spacer(minLength: 0)
+        }
+        .frame(height: 48, alignment: .leading)
+        .clipped()
+        .animation(reduced ? nil : Theme.Motion.standard, value: runs.map(\.id))
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(settings.localized("Run results"))
+        .accessibilityValue(runs.map { $0.accessibilityDescription(settings: settings) }.joined(separator: ". "))
+        .accessibilityHidden(runs.isEmpty)
+    }
+}
+
 /// Shown only after a run ends. The next action is supplied by the screen's existing eligibility rules.
 struct ResultCard<Action: View>: View {
     @Environment(SettingsManager.self) private var settings
     @Environment(\.dynamicTypeSize) private var dynamicType
     let summary: RunSummary
+    var runs: [PracticeRunResult] { summary.runs }
     let saved: LessonProgress?
     let event: StarEvent?
     let announcement: String
@@ -158,6 +234,33 @@ struct ResultCard<Action: View>: View {
     @ViewBuilder let nextAction: () -> Action
 
     var body: some View {
+        VStack(alignment: .leading, spacing: Theme.Space.regular) {
+            if !runs.isEmpty {
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: Theme.Space.small) {
+                        ForEach(runs) { run in
+                            RunResultChip(run: run)
+                        }
+                    }
+                    .padding(.vertical, 2)
+                }
+                .scrollBounceBehavior(.basedOnSize)
+                .accessibilityElement(children: .ignore)
+                .accessibilityLabel(settings.localized("Run results"))
+                .accessibilityValue(runs.map { $0.accessibilityDescription(settings: settings) }.joined(separator: ". "))
+            }
+
+            summaryContent
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .task {
+            if event == nil, !announcement.isEmpty {
+                UIAccessibility.post(notification: .announcement, argument: announcement)
+            }
+        }
+    }
+
+    private var summaryContent: some View {
         ViewThatFits(in: .horizontal) {
             if !dynamicType.isAccessibilitySize {
                 HStack(spacing: Theme.Space.small) {
@@ -186,12 +289,6 @@ struct ResultCard<Action: View>: View {
                         .lineLimit(1)
                 }
                 HStack { Spacer(minLength: 0); nextAction() }
-            }
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .task {
-            if event == nil, !announcement.isEmpty {
-                UIAccessibility.post(notification: .announcement, argument: announcement)
             }
         }
     }

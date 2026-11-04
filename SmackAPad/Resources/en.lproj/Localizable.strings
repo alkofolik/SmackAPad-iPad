@@ -275,6 +275,7 @@
 "Hide completed lessons" = "Hide completed lessons";
 "All lessons completed" = "All lessons completed";
 "Show completed" = "Show completed";
+"Hide completed" = "Hide completed";
 "Locked" = "Locked";
 "Up next" = "Up next";
 
@@ -590,3 +591,15 @@
 "Pass every lesson in the Swing and shuffle technique." = "Pass every lesson in the Swing and shuffle technique.";
 "Fills and toms done" = "Fills and toms done";
 "Pass every lesson in the Fills and toms technique." = "Pass every lesson in the Fills and toms technique.";
+
+"Run results" = "Run results";
+"Run %lld: %lld percent, %lld BPM, %@" = "Run %lld: %lld percent, %lld BPM, %@";
+"passed" = "passed";
+"not passed" = "not passed";
+
+"Hide category" = "Hide category";
+"Show category" = "Show category";
+"Hide “%@”? You can show it again at the bottom of the list." = "Hide “%@”? You can show it again at the bottom of the list.";
+"Hide" = "Hide";
+"Show" = "Show";
+"Hidden categories (%lld)" = "Hidden categories (%lld)";

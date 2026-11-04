@@ -185,4 +185,36 @@ public struct ScoringEngine: Sendable {
             perfectOrGoodHitCount: perfectOrGoodHitCount
         )
     }
+
+    /// Evaluates the pattern attempt as known so far at the given host timestamp.
+    /// Notes whose matching window has closed or which were already matched are evaluated;
+    /// unhit notes still inside their window are left out of this decision.
+    public func earlyResult(at timestamp: UInt64) -> ScoringResult {
+        let elapsed = timestamp >= startTimestamp
+            ? Double(timestamp - startTimestamp) * nanosecondsPerTick
+            : -Double(startTimestamp - timestamp) * nanosecondsPerTick
+        let calibrated = elapsed - calibrationOffsetNanoseconds
+        let corrected = calibrated - timingCenterNanoseconds
+        let evaluatedHits = expectedHits.filter {
+            corrected >= $0.nanoseconds + maximumNanoseconds || matchedIndices.contains($0.index)
+        }
+        let matches = evaluatedHits.filter { matchedIndices.contains($0.index) }.count
+        let misses = evaluatedHits.count - matches
+        let denominator = evaluatedHits.count + extraHitCount
+        let score = denominator > 0 ? Double(matches) / Double(denominator) : 0
+        let allowedErrors = isIntro || expectedHits.count <= 15 ? 0 : expectedHits.count <= 32 ? 1 : 2
+        let clean = !evaluatedHits.isEmpty && misses + extraHitCount <= allowedErrors
+        return ScoringResult(
+            expectedHitCount: evaluatedHits.count,
+            matchedHitCount: matches,
+            extraHitCount: extraHitCount,
+            score: score,
+            passed: !evaluatedHits.isEmpty && score >= (isIntro ? 0.8 : 0.7),
+            isCleanRun: clean,
+            mastery: clean && bpm >= targetBpm,
+            bpm: bpm,
+            nextBpm: clean && bpm < targetBpm ? bpm + min(bpmStep.rawValue, targetBpm - bpm) : bpm,
+            perfectOrGoodHitCount: perfectOrGoodHitCount
+        )
+    }
 }

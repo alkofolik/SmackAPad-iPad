@@ -273,6 +273,39 @@ public final class SettingsManager: @unchecked Sendable {
     public var hideCompletedLessons: Bool {
         didSet { userDefaults.set(hideCompletedLessons, forKey: "smackapad.library.hideCompleted") }
     }
+    public var hiddenCategoryIDsByMode: [String: Set<String>] {
+        didSet {
+            persistHiddenCategories()
+        }
+    }
+
+    public func hiddenCategories(for mode: String) -> Set<String> {
+        lock.lock()
+        defer { lock.unlock() }
+        return hiddenCategoryIDsByMode[mode] ?? []
+    }
+
+    public func hideCategory(_ id: String, in mode: String) {
+        lock.lock()
+        defer { lock.unlock() }
+        var current = hiddenCategoryIDsByMode[mode] ?? []
+        current.insert(id)
+        hiddenCategoryIDsByMode[mode] = current
+    }
+
+    public func unhideCategory(_ id: String, in mode: String) {
+        lock.lock()
+        defer { lock.unlock() }
+        var current = hiddenCategoryIDsByMode[mode] ?? []
+        current.remove(id)
+        hiddenCategoryIDsByMode[mode] = current
+    }
+
+    public func isCategoryHidden(_ id: String, in mode: String) -> Bool {
+        lock.lock()
+        defer { lock.unlock() }
+        return hiddenCategoryIDsByMode[mode]?.contains(id) ?? false
+    }
 
     // MARK: - Memory Star Hint
 
@@ -422,6 +455,14 @@ public final class SettingsManager: @unchecked Sendable {
 
         self.playPadsWithKeyboard = userDefaults.object(forKey: SettingsKey.playPadsWithKeyboard.rawValue) as? Bool ?? true
         self.hideCompletedLessons = userDefaults.object(forKey: "smackapad.library.hideCompleted") as? Bool ?? true
+
+        var loadedHidden: [String: Set<String>] = [:]
+        for mode in ["path", "genre", "technique"] {
+            if let arr = userDefaults.stringArray(forKey: "smackapad.library.hiddenCategories.\(mode)") {
+                loadedHidden[mode] = Set(arr)
+            }
+        }
+        self.hiddenCategoryIDsByMode = loadedHidden
     }
 
     // MARK: Persistence Helpers
@@ -482,6 +523,15 @@ public final class SettingsManager: @unchecked Sendable {
         defer { lock.unlock() }
         if let data = try? JSONEncoder().encode(customProfiles) {
             userDefaults.set(data, forKey: SettingsKey.customProfiles.rawValue)
+        }
+    }
+
+    private func persistHiddenCategories() {
+        lock.lock()
+        defer { lock.unlock() }
+        for mode in ["path", "genre", "technique"] {
+            let ids = Array(hiddenCategoryIDsByMode[mode] ?? []).sorted()
+            userDefaults.set(ids, forKey: "smackapad.library.hiddenCategories.\(mode)")
         }
     }
 
@@ -611,6 +661,10 @@ public final class SettingsManager: @unchecked Sendable {
         self.playPadsWithKeyboard = true
         userDefaults.removeObject(forKey: "smackapad.library.hideCompleted")
         self.hideCompletedLessons = true
+        for mode in ["path", "genre", "technique"] {
+            userDefaults.removeObject(forKey: "smackapad.library.hiddenCategories.\(mode)")
+        }
+        self.hiddenCategoryIDsByMode = [:]
     }
 }
 

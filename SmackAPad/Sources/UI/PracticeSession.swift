@@ -22,6 +22,21 @@ struct RunVerdict: Identifiable, Equatable, Sendable {
     let brokenStreak: Bool
 }
 
+/// Summary of one completed run within a practice session.
+struct PracticeRunResult: Identifiable, Equatable, Sendable {
+    let id = UUID()
+    let runNumber: Int
+    let score: Double
+    let bpm: Int
+    let passed: Bool
+
+    func accessibilityDescription(settings: SettingsManager) -> String {
+        let passedText = settings.localized(passed ? "passed" : "not passed")
+        let percent = Int((score * 100).rounded())
+        return settings.localized("Run %lld: %lld percent, %lld BPM, %@", runNumber, percent, bpm, passedText)
+    }
+}
+
 /// One display sample: tape position and repeat identity always share one clock read.
 struct PatternFrame {
     let tapePosition: Double
@@ -57,6 +72,7 @@ final class PracticeSession {
     private(set) var summary: RunSummary?
     private(set) var starEvent: StarEvent?
     private(set) var lastVerdict: RunVerdict?
+    private(set) var runResults: [PracticeRunResult] = []
     private(set) var earnedBadgesInRun: [BadgeDefinition] = []
     private(set) var tempoUpEvent: TempoUpEvent?
     private(set) var errorMessage: String?
@@ -383,6 +399,7 @@ final class PracticeSession {
             tempoUpEvent = nil
             stopAfterStar = false
             finishedByStar = nil
+            runResults = []
             practiceMode = settings.practiceMode
             runPadCount = midi.activeProfile.padCount
             starStreak = practiceMode == .learning
@@ -462,10 +479,11 @@ final class PracticeSession {
         if let result = lastResult, !listen {
             summary = RunSummary(score: result.score, bpm: result.bpm, passes: completedPasses,
                                  passed: earnedPass, mastery: earnedMastery, memory: earnedMemory,
-                                 finishedByStar: finishedByStar)
+                                 finishedByStar: finishedByStar, runs: runResults)
         } else if !listen, let accuracy {
             summary = RunSummary(score: accuracy, bpm: bpm, passes: 0,
-                                 passed: false, mastery: false, memory: false)
+                                 passed: false, mastery: false, memory: false,
+                                 runs: runResults)
         }
         saveTempo()
         evaluateBadges()
@@ -540,9 +558,16 @@ final class PracticeSession {
             return
         }
         let horizon = time + 0.5
-        // Results arrive after the next pass has been queued. Advance from the
-        // last queued tempo, never from an earlier pass's slower clock.
+        // Decide the next BPM from the run's result as known so far. Notes whose
+        // matching window has closed count as usual; notes still inside their window
+        // are left out of that decision.
         if let last = passes.last, last.start + last.duration <= horizon {
+            if let scorer = last.scorer {
+                let early = scorer.earlyResult(at: AVAudioTime.hostTime(forSeconds: time))
+                tempo.completed(nextBpm: early.nextBpm)
+            } else if let lastResult, last.number == completedPasses {
+                tempo.completed(nextBpm: lastResult.nextBpm)
+            }
             let nextBpm = tempo.queue(after: last.bpm, targetBpm: lesson.targetBpm,
                                       listenBpm: listen ? bpm : nil)
             let nextPass = makePass(number: last.number + 1, start: last.start + last.duration,
@@ -619,8 +644,8 @@ final class PracticeSession {
             completedMatches += result.matchedHitCount
             completedExpected += result.expectedHitCount
             completedExtras += result.extraHitCount
-            tempo.completed(nextBpm: result.nextBpm)
             completedPasses += 1
+            let runPassed: Bool
             if !isSectionLoop {
                 let memory = fromMemory && result.bpm >= lesson.targetBpm && result.score >= 0.8
                 let required = StarStreak.requiredRuns(expectedHits: result.expectedHitCount, isIntro: lesson.cat == "intro")
@@ -628,7 +653,7 @@ final class PracticeSession {
                     score: result.score, perfectOrGoodHits: result.perfectOrGoodHitCount,
                     expectedHits: result.expectedHitCount, errors: result.errorCount))
                 let saved = progress.progress(for: lesson.id)
-                let runPassed: Bool = {
+                runPassed = {
                     if saved?.passed != true { return passed }
                     if fromMemory, saved?.memory != true { return memory }
                     if saved?.mastery != true { return result.mastery }
@@ -668,8 +693,13 @@ final class PracticeSession {
                 stopAfterStar = award.shouldStop
                 if award.shouldStop { finishedByStar = award.fresh[2] ? 3 : 2 }
             } else {
+                runPassed = result.passed
                 lastVerdict = RunVerdict(passed: result.passed, brokenStreak: false)
             }
+            runResults.append(PracticeRunResult(runNumber: runResults.count + 1,
+                                                score: result.score,
+                                                bpm: result.bpm,
+                                                passed: runPassed))
             // The tempo preference is saved once at STOP, not at every pass.
             if let error = progress.lastSaveError { errorMessage = error.localizedDescription }
             if stopAfterStar { return }

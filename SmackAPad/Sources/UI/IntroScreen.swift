@@ -76,6 +76,10 @@ public struct IntroScreen: View {
         }
     }
 
+    private var hasAnyCompletedLesson: Bool {
+        introLessons.contains { progress.isCompleted(lessonId: $0.id) }
+    }
+
     private var passedCount: Int {
         introLessons.filter { progress.isPassed(lessonId: $0.id) }.count
     }
@@ -153,6 +157,21 @@ public struct IntroScreen: View {
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItem(placement: .principal) { ScreenHeader(title: settings.localized("Intro Exercises")) }
+            if hasAnyCompletedLesson {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button {
+                        settings.hideCompletedLessons.toggle()
+                    } label: {
+                        Label(
+                            settings.localized(settings.hideCompletedLessons ? "Show completed" : "Hide completed"),
+                            systemImage: settings.hideCompletedLessons ? "eye" : "eye.slash"
+                        )
+                        .font(Theme.control)
+                        .frame(minHeight: Theme.Size.touch)
+                    }
+                    .accessibilityLabel(settings.localized(settings.hideCompletedLessons ? "Show completed" : "Hide completed"))
+                }
+            }
         }
         .motion(Theme.Motion.standard, value: visibleLessonIDs)
     }

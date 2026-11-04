@@ -255,4 +255,31 @@ final class ScoringEngineTests: XCTestCase {
         let empty = ScoringEngine(lesson: lesson(count: 0), bpm: 100, startTimestamp: start, bpmStep: .ten)
         XCTAssertEqual(empty.finish().nextBpm, 100)
     }
+
+    func testEarlyResultExcludesNotesWhoseMatchingWindowHasNotClosed() {
+        // At 100 BPM: step 0 is at 0 ms, step 8 is at 1200 ms. Target is 120 BPM.
+        let pattern = [
+            LessonHit(step: 0, padIndex: 12, hand: "L", velocity: 100),
+            LessonHit(step: 8, padIndex: 12, hand: "L", velocity: 100)
+        ]
+        var engine = ScoringEngine(lesson: lesson(hits: pattern), bpm: 100, startTimestamp: start, bpmStep: .five)
+        _ = engine.receive(padIndex: 12, at: timestamp(0))
+
+        // At 500 ms: hit 1 window (200 ms) has closed and was matched.
+        // Hit 2 is at 1200 ms; its window has not closed and it is left out.
+        let early = engine.earlyResult(at: timestamp(500))
+        XCTAssertEqual(early.expectedHitCount, 1)
+        XCTAssertEqual(early.matchedHitCount, 1)
+        XCTAssertEqual(early.missedHitCount, 0)
+        XCTAssertTrue(early.isCleanRun)
+        XCTAssertEqual(early.nextBpm, 105, "Early result should raise tempo when notes so far are clean")
+
+        // Final result without playing hit 2 counts hit 2 as a miss
+        let finalResult = engine.finish()
+        XCTAssertEqual(finalResult.expectedHitCount, 2)
+        XCTAssertEqual(finalResult.matchedHitCount, 1)
+        XCTAssertEqual(finalResult.missedHitCount, 1)
+        XCTAssertFalse(finalResult.isCleanRun)
+        XCTAssertEqual(finalResult.nextBpm, 100, "Final result without hit 2 is not clean")
+    }
 }

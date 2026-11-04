@@ -298,6 +298,7 @@ struct RunSummary: Identifiable {
     let mastery: Bool
     let memory: Bool
     var finishedByStar: Int? = nil
+    var runs: [PracticeRunResult] = []
 }
 
 struct SummaryStrip: View {

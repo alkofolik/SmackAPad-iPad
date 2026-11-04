@@ -19,6 +19,8 @@ struct TactilePadButtonStyle: ButtonStyle {
 struct HomePadView: View {
     let title: String
     let subtitle: String?
+    var secondarySubtitle: String? = nil
+    var accessibilityText: String? = nil
     let isHero: Bool
     let action: () -> Void
 
@@ -41,6 +43,15 @@ struct HomePadView: View {
                         .lineLimit(2)
                         .minimumScaleFactor(0.8)
                 }
+
+                if let secondarySubtitle, !secondarySubtitle.isEmpty {
+                    Text(secondarySubtitle)
+                        .font(Theme.meta)
+                        .foregroundStyle(Theme.secondary.opacity(0.8))
+                        .multilineTextAlignment(.center)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.8)
+                }
                 Spacer(minLength: 0)
             }
             .padding(.horizontal, Theme.Space.small)
@@ -56,6 +67,18 @@ struct HomePadView: View {
             .contentShape(RoundedRectangle(cornerRadius: Theme.Radius.pad))
         }
         .buttonStyle(TactilePadButtonStyle())
+        .accessibilityLabel(accessibilityText ?? defaultAccessibilityText)
+    }
+
+    private var defaultAccessibilityText: String {
+        var parts: [String] = [title]
+        if let subtitle, !subtitle.isEmpty {
+            parts.append(subtitle)
+        }
+        if let secondarySubtitle, !secondarySubtitle.isEmpty {
+            parts.append(secondarySubtitle)
+        }
+        return parts.joined(separator: ", ")
     }
 }
 
@@ -444,8 +467,55 @@ public struct HomeScreen: View {
 
     private var pad5: some View {
         let label = settings.localized("Controller").uppercased(with: Locale(identifier: settings.languagePreference.rawValue))
-        let subtitle = midi.sources.first?.name ?? settings.localized("Connect a controller")
-        return HomePadView(title: label, subtitle: subtitle, isHero: false) {
+        let profileName = settings.activeProfile().profileName
+        let instrumentName: String = {
+            if settings.selectedKitId == SoundKitResolver.automaticKitId {
+                return settings.localized("Automatic")
+            }
+            if let kit = SoundKitResolver.bundledKits[settings.selectedKitId] {
+                return kit.name
+            }
+            return settings.selectedKitId
+        }()
+
+        let fullSubtitle = "\(profileName) · \(instrumentName)"
+        let subtitle: String = {
+            let width: CGFloat = 194
+            let font = UIFont(name: "IBMPlexSans-Regular", size: 16 * 0.8) ?? UIFont.systemFont(ofSize: 16 * 0.8)
+            let style = NSMutableParagraphStyle()
+            style.lineBreakMode = .byWordWrapping
+            let rect = (fullSubtitle as NSString).boundingRect(
+                with: CGSize(width: width, height: CGFloat.greatestFiniteMagnitude),
+                options: [.usesLineFragmentOrigin, .usesFontLeading],
+                attributes: [.font: font, .paragraphStyle: style],
+                context: nil
+            )
+            let maxAllowedHeight = font.lineHeight * 2 + 1.0
+            if rect.height <= maxAllowedHeight {
+                return fullSubtitle
+            } else {
+                return profileName
+            }
+        }()
+
+        let isConnected = !midi.sources.isEmpty
+        let notConnectedText = isConnected ? nil : settings.localized("Not connected")
+
+        let voiceOverText: String = {
+            var parts = [label, subtitle]
+            if let notConnectedText {
+                parts.append(notConnectedText)
+            }
+            return parts.joined(separator: ", ")
+        }()
+
+        return HomePadView(
+            title: label,
+            subtitle: subtitle,
+            secondarySubtitle: notConnectedText,
+            accessibilityText: voiceOverText,
+            isHero: false
+        ) {
             showingControllerSetup = true
         }
     }

@@ -82,24 +82,16 @@ struct PatternField: View {
         GeometryReader { geometry in
             let availableWidth = geometry.size.width
             let availableHeight = geometry.size.height
-            let isLandscape = availableWidth >= availableHeight
             let count = min(visibleBars, min(lesson.bars, 4))
-            let columns: Int = {
-                if count <= 1 { return 1 }
-                if count == 2 { return isLandscape ? 2 : 1 }
-                // count == 3 or 4 (e.g. all bars)
-                return 2
-            }()
-            let rowsInGrid = max(1, Int(ceil(Double(count) / Double(columns))))
-            let gap = Theme.Space.regular
-            let targetBarWidth = max(1, (availableWidth - CGFloat(columns - 1) * gap) / CGFloat(columns))
-            let targetBarHeight = max(1, (availableHeight - CGFloat(rowsInGrid - 1) * gap) / CGFloat(rowsInGrid))
+            let targetBarWidth = availableWidth / CGFloat(max(1, count))
+            let targetBarHeight = availableHeight
             let unscaledWidth = PracticeBandStyle.barWidth(rows: rows, scale: 1)
             let unscaledHeight = PracticeBandStyle.minimumHeight(rows: rows.count, scale: 1)
-            let fitScale = max(0.4, min(notationScale, min(targetBarWidth / unscaledWidth, targetBarHeight / unscaledHeight)))
+            let minScale: CGFloat = count <= 1 ? 0.4 : 0.35
+            let fitScale = max(minScale, min(notationScale, min(targetBarWidth / unscaledWidth, targetBarHeight / unscaledHeight)))
 
             let contentHeight = max(availableHeight,
-                CGFloat(rowsInGrid) * PracticeBandStyle.minimumHeight(rows: rows.count, scale: fitScale) + CGFloat(rowsInGrid - 1) * gap)
+                PracticeBandStyle.minimumHeight(rows: rows.count, scale: fitScale))
             ScrollView(.vertical) {
                 Group {
                     if scrolling {
@@ -108,23 +100,27 @@ struct PatternField: View {
                                          judgments: judgments, pass: pass,
                                          playedHits: playedHits,
                                          scoring: scoring, missGraceSteps: missGraceSteps, band: band, scale: notationScale)
+                    } else if count <= 1 {
+                        let currentBar = min(lesson.bars - 1, max(0, Int(position) / 16))
+                        PatternBar(bar: currentBar, hits: hits.filter { $0.step / 16 == currentBar }, rows: rows,
+                                   position: position - Double(currentBar * 16), active: running,
+                                   hidden: hidden, verdict: verdicts[currentBar],
+                                   feedback: feedback,
+                                   playedHits: visiblePlayedHits(steps: (currentBar * 16)..<((currentBar + 1) * 16)),
+                                   scoring: scoring, missGraceSteps: missGraceSteps, band: band, scale: fitScale)
+                            .frame(height: contentHeight)
                     } else {
                         let currentBar = min(lesson.bars - 1, max(0, Int(position) / 16))
                         let first = (currentBar / max(1, count)) * max(1, count)
                         let bars = Array(first..<min(first + count, lesson.bars))
-                        let rowCount = Int(ceil(Double(bars.count) / Double(columns)))
-                        let height = max(1, (contentHeight - CGFloat(rowCount - 1) * gap) / CGFloat(max(1, rowCount)))
-                        LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: gap), count: columns), spacing: gap) {
-                            ForEach(bars, id: \.self) { bar in
-                                PatternBar(bar: bar, hits: hits.filter { $0.step / 16 == bar }, rows: rows,
-                                           position: position - Double(bar * 16), active: running && bar == currentBar,
-                                           hidden: hidden, verdict: verdicts[bar],
-                                           feedback: feedback,
-                                           playedHits: visiblePlayedHits(steps: (bar * 16)..<((bar + 1) * 16)),
-                                           scoring: scoring, missGraceSteps: missGraceSteps, band: band, scale: fitScale)
-                                    .frame(height: height)
-                            }
-                        }
+                        let startStep = first * 16
+                        let endStep = min(first + count, lesson.bars) * 16
+                        StaticPattern(lesson: lesson, hits: hits, rows: rows, bars: bars, firstBar: first,
+                                      position: position, running: running, hidden: hidden,
+                                      verdicts: verdicts, feedback: feedback,
+                                      playedHits: visiblePlayedHits(steps: startStep..<endStep),
+                                      scoring: scoring, missGraceSteps: missGraceSteps, band: band, scale: fitScale)
+                            .frame(height: contentHeight)
                     }
                 }
                 .frame(height: contentHeight)
@@ -233,6 +229,103 @@ private func drawBeat(step: Int, x: CGFloat, lanes: PatternLanes, context: inout
     } else {
         context.fill(Path(ellipseIn: CGRect(x: x - 2.1, y: lanes.countY - 2.1, width: 4.2, height: 4.2)),
                      with: .color(Theme.black.opacity(0.5)))
+    }
+}
+
+private struct StaticPattern: View {
+    let lesson: Lesson
+    let hits: [LessonHit]
+    let rows: [Int]
+    let bars: [Int]
+    let firstBar: Int
+    let position: Double
+    let running: Bool
+    let hidden: Bool
+    let verdicts: [Int: BarVerdict]
+    let feedback: PatternFeedback
+    let playedHits: [PlayedHit]
+    let scoring: Bool
+    let missGraceSteps: Double
+    let band: Color
+    let scale: CGFloat
+
+    var body: some View {
+        Canvas { context, size in
+            let gutter: CGFloat = PracticeBandStyle.showPadLabels ? 96 * scale : 0
+            let barCount = max(1, bars.count)
+            let totalSteps = barCount * 16
+            let cellWidth = max(1, (size.width - gutter) / CGFloat(totalSteps))
+            let lanes = PatternLanes(size: size, rows: rows, scale: scale)
+            lanes.drawRows(context: &context)
+
+            // Beat division marks and numbers for each bar
+            for (barIndex, _) in bars.enumerated() {
+                let barOffsetSteps = barIndex * 16
+                for step in 0..<16 {
+                    let visibleStep = barOffsetSteps + step
+                    let x = gutter + (CGFloat(visibleStep) + 0.5) * cellWidth
+                    drawBeat(step: step, x: x, lanes: lanes, context: &context)
+                }
+            }
+
+            // Hairline bar separator line between bars (takes no layout width)
+            for barIndex in 1..<barCount {
+                let sepX = gutter + CGFloat(barIndex * 16) * cellWidth
+                var path = Path()
+                path.move(to: CGPoint(x: sepX, y: lanes.top - 20))
+                path.addLine(to: CGPoint(x: sepX, y: lanes.bottom))
+                context.stroke(path, with: .color(Theme.black.opacity(0.35)), lineWidth: 1)
+            }
+
+            let startStep = firstBar * 16
+            let endStep = (firstBar + barCount) * 16
+
+            for (row, pad) in rows.enumerated() {
+                if !hidden {
+                    for hit in hits where hit.padIndex == pad && hit.step >= startStep && hit.step < endStep {
+                        let visibleStep = hit.step - startStep
+                        let x = gutter + (CGFloat(visibleStep) + 0.5) * cellWidth
+                        let rect = lanes.tile(x: x, width: cellWidth, row: row)
+                        let tail = feedback.position < Double(hit.step) ? feedback.strength(offset: -1, step: Double(hit.step)) : 0
+                        let mark = hitMark(hit, judgments: feedback.judgments[feedback.pass + (tail > 0 ? -1 : 0)] ?? [:],
+                                           scoring: scoring, elapsedSteps: tail > 0 ? Double(feedback.totalSteps) : position - Double(hit.step),
+                                           grace: missGraceSteps)
+                        drawHit(hit, in: rect, mark: mark, strength: tail > 0 ? tail : 1,
+                                fontSize: lanes.fontSize, context: &context)
+                    }
+                } else {
+                    var playedContext = context
+                    let visiblePosition = position - Double(startStep)
+                    let markerX = gutter + (CGFloat(visiblePosition) + 0.5) * cellWidth
+                    let behindMarker = min(size.width, max(0, markerX))
+                    playedContext.clip(to: Path(CGRect(x: 0, y: 0, width: behindMarker, height: size.height)))
+
+                    let barPlayedHits = playedHits.filter {
+                        $0.padIndex == pad && $0.step >= Double(startStep) && $0.step < Double(endStep)
+                    }
+                    for hit in barPlayedHits {
+                        let visibleStep = hit.step - Double(startStep)
+                        let x = gutter + (CGFloat(visibleStep) + 0.5) * cellWidth
+                        let rect = lanes.tile(x: x, width: cellWidth, row: row)
+                        var hitContext = hit.pass == feedback.pass ? playedContext : context
+                        if hit.pass != feedback.pass {
+                            hitContext.opacity = feedback.strength(offset: -1, step: hit.step)
+                        }
+                        drawPlayedHit(hit, in: rect, fontSize: lanes.fontSize, context: &hitContext)
+                    }
+                }
+            }
+
+            // Smooth playhead moving across bar boundaries at constant speed
+            let visiblePosition = position - Double(startStep)
+            if running && visiblePosition >= -0.5 && visiblePosition <= Double(totalSteps) {
+                let markerX = gutter + (CGFloat(visiblePosition) + 0.5) * cellWidth
+                drawMarker(x: markerX, top: lanes.top - 4 * scale, bottom: lanes.bottom + 4, context: &context)
+            }
+
+            // Pad labels appear once, on the left of the whole row of bars
+            lanes.drawLabels(band: band, context: &context)
+        }
     }
 }
 
@@ -418,21 +511,26 @@ private func drawHit(_ hit: LessonHit, in rect: CGRect, mark: HitMark?, strength
         }
         return
     }
-    context.fill(Path(roundedRect: rect, cornerRadius: 7), with: .color(Theme.white))
+    let cornerRadius = min(7, rect.width * 0.25)
+    let innerRadius = max(1, cornerRadius - 1)
+    context.fill(Path(roundedRect: rect, cornerRadius: cornerRadius), with: .color(Theme.white))
     if let mark {
-        context.fill(Path(roundedRect: rect.insetBy(dx: 1.5, dy: 1.5), cornerRadius: 6),
+        context.fill(Path(roundedRect: rect.insetBy(dx: 1.5, dy: 1.5), cornerRadius: innerRadius),
                      with: .color(PracticeBandStyle.hitColor(mark)))
         var accent = Path()
+        let padInset = min(4, rect.width * 0.25)
+        let vPad = min(5, rect.height * 0.2)
         if mark == .wrong {
-            accent.move(to: CGPoint(x: rect.minX + 4, y: rect.minY + 5))
-            accent.addLine(to: CGPoint(x: rect.minX + 4, y: rect.maxY - 5))
+            accent.move(to: CGPoint(x: rect.minX + padInset, y: rect.minY + vPad))
+            accent.addLine(to: CGPoint(x: rect.minX + padInset, y: rect.maxY - vPad))
         } else if mark == .off {
-            accent.move(to: CGPoint(x: rect.minX + 4, y: rect.maxY - 5))
-            accent.addLine(to: CGPoint(x: rect.maxX - 4, y: rect.maxY - 5))
+            accent.move(to: CGPoint(x: rect.minX + padInset, y: rect.maxY - vPad))
+            accent.addLine(to: CGPoint(x: rect.maxX - padInset, y: rect.maxY - vPad))
         }
         context.stroke(accent, with: .color(Theme.black), lineWidth: 1.4)
     }
-    context.draw(Text(PadVoice.abbreviation(hit.padIndex)).font(Theme.canvasDisplay(fontSize))
+    let hitFontSize = min(fontSize, max(7, rect.width * 0.65))
+    context.draw(Text(PadVoice.abbreviation(hit.padIndex)).font(Theme.canvasDisplay(hitFontSize))
         .foregroundColor(Theme.black), at: CGPoint(x: rect.midX, y: rect.midY))
 }
 

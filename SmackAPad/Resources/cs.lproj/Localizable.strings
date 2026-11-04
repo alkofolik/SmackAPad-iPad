@@ -274,6 +274,7 @@
 "Hide completed lessons" = "Skrýt hotové lekce";
 "All lessons completed" = "Všechny lekce jsou hotové";
 "Show completed" = "Zobrazit hotové";
+"Hide completed" = "Skrýt hotové";
 "Locked" = "Zamčeno";
 "Up next" = "Na řadě";
 
@@ -593,3 +594,15 @@
 "Pass every lesson in the Swing and shuffle technique." = "Splň všechny lekce techniky Swing a shuffle.";
 "Fills and toms done" = "Přechody a tomy – hotovo";
 "Pass every lesson in the Fills and toms technique." = "Splň všechny lekce techniky Přechody a tomy.";
+
+"Run results" = "Výsledky kol";
+"Run %lld: %lld percent, %lld BPM, %@" = "Kolo %lld: %lld procent, %lld BPM, %@";
+"passed" = "splněno";
+"not passed" = "nesplněno";
+
+"Hide category" = "Skrýt kategorii";
+"Show category" = "Zobrazit kategorii";
+"Hide “%@”? You can show it again at the bottom of the list." = "Skrýt „%@“? Znovu ji zobrazíš dole v seznamu.";
+"Hide" = "Skrýt";
+"Show" = "Zobrazit";
+"Hidden categories (%lld)" = "Skryté kategorie (%lld)";

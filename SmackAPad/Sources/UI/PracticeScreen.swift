@@ -362,6 +362,9 @@ struct PracticeScreen: View {
             }
             .popover(isPresented: $showingDetails) { runDetails(summary) }
             .popover(isPresented: $showingStarRules) { starRules }
+        } else if session.running && !session.listen {
+            RunLogRow(runs: Array(session.runResults.suffix(6)))
+                .frame(height: 48)
         }
     }
 

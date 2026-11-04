@@ -191,4 +191,129 @@ final class PracticeSessionTests: XCTestCase {
         XCTAssertEqual(result.nextBpm, initialBpm + settings.bpmStepEnum.rawValue)
         XCTAssertEqual(session.summary?.passes ?? 1, 1)
     }
+
+    @MainActor
+    func testPassedRunProducesHigherBpmOnRunNPlusOneNotNPlusTwo() async throws {
+        let suite = "tempo-step-early-\(UUID().uuidString)"
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))
+        defer { defaults.removePersistentDomain(forName: suite) }
+        let settings = SettingsManager(userDefaults: defaults)
+        let file = FileManager.default.temporaryDirectory.appendingPathComponent("\(suite).json")
+        defer { try? FileManager.default.removeItem(at: file) }
+        let progress = ProgressStore(fileURL: file, autoLoad: false)
+        let midi = MIDIInput(settings: settings)
+        let hits = [0, 4, 8, 12].map { LessonHit(step: $0, padIndex: 12, hand: "L", velocity: 100) }
+        let lesson = Lesson(id: 40_002, cat: "starter", title: "Early tempo step", genre: "", tags: [],
+            text: "", division: 16, bars: 1, startBpm: 60, targetBpm: 120, level: 1, src: "test", hits: hits)
+        var time = AVAudioTime.seconds(forHostTime: mach_absolute_time())
+        let session = PracticeSession(lesson: lesson, settings: settings, progress: progress, midi: midi, clock: { time })
+        session.metronome = false
+        await session.prepare()
+        defer { session.close() }
+        XCTAssertTrue(session.ready, session.errorMessage ?? "Sound preparation failed")
+
+        time = AVAudioTime.seconds(forHostTime: mach_absolute_time())
+        let firstStart = time + 0.6 + 4 * 60.0 / 60.0
+        let repeats = session.repeatsPerRun
+        XCTAssertEqual(repeats, 4)
+        session.start()
+        XCTAssertTrue(session.running)
+        let initialBpm = session.bpm
+
+        // Play all repeats across the first pass cleanly
+        for rep in 0..<repeats {
+            for hit in hits {
+                let step = hit.step + rep * lesson.bars * 16
+                time = firstStart + Double(step) * 15.0 / Double(initialBpm)
+                session.tick()
+                midi.onPadEvent?(PadInputEvent(padIndex: hit.padIndex, velocity: 100, isNoteOn: true,
+                    timestamp: AVAudioTime.hostTime(forSeconds: time), deviceID: "test"))
+            }
+        }
+
+        // Advance to queue horizon: next pass is queued about 0.5s before end
+        let passDuration = Double(repeats * lesson.bars) * 240.0 / Double(initialBpm)
+        time = firstStart + passDuration - 0.4
+        session.tick()
+
+        // Advance to the exact boundary when Pass 2 starts
+        time = firstStart + passDuration + 0.001
+        session.tick()
+
+        let expectedNextBpm = initialBpm + settings.bpmStepEnum.rawValue
+        XCTAssertEqual(session.passNumber, 2, "Session should now be on pass 2 (run N + 1)")
+        XCTAssertEqual(session.bpm, expectedNextBpm, "Session BPM on run N + 1 must be higher, not on run N + 2")
+        XCTAssertEqual(session.patternFrame.bpm, expectedNextBpm)
+        XCTAssertEqual(session.tempoUpEvent?.from, initialBpm)
+        XCTAssertEqual(session.tempoUpEvent?.to, expectedNextBpm)
+    }
+
+    @MainActor
+    func testRunWhoseLastNoteIsMissedAfterEarlyDecisionDoesNotChangeAlreadyQueuedTempo() async throws {
+        let suite = "late-miss-tempo-\(UUID().uuidString)"
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))
+        defer { defaults.removePersistentDomain(forName: suite) }
+        let settings = SettingsManager(userDefaults: defaults)
+        let file = FileManager.default.temporaryDirectory.appendingPathComponent("\(suite).json")
+        defer { try? FileManager.default.removeItem(at: file) }
+        let progress = ProgressStore(fileURL: file, autoLoad: false)
+        let midi = MIDIInput(settings: settings)
+        // 4 bars at 60 BPM = 16 seconds. Repeats = 1.
+        // Hit 2 is at step 62 (15.5s), with timing window closing at 15.7s.
+        let hits = [
+            LessonHit(step: 0, padIndex: 12, hand: "L", velocity: 100),
+            LessonHit(step: 62, padIndex: 12, hand: "L", velocity: 100)
+        ]
+        let lesson = Lesson(id: 40_003, cat: "starter", title: "Late miss test", genre: "", tags: [],
+            text: "", division: 16, bars: 4, startBpm: 60, targetBpm: 120, level: 1, src: "test", hits: hits)
+        var time = AVAudioTime.seconds(forHostTime: mach_absolute_time())
+        let session = PracticeSession(lesson: lesson, settings: settings, progress: progress, midi: midi, clock: { time })
+        session.metronome = false
+        await session.prepare()
+        defer { session.close() }
+        XCTAssertTrue(session.ready, session.errorMessage ?? "Sound preparation failed")
+
+        time = AVAudioTime.seconds(forHostTime: mach_absolute_time())
+        let firstStart = time + 0.6 + 4 * 60.0 / 60.0
+        session.start()
+        XCTAssertTrue(session.running)
+        let initialBpm = session.bpm
+
+        // Play the first hit cleanly
+        let firstHit = hits[0]
+        time = firstStart + Double(firstHit.step) * 15.0 / Double(initialBpm)
+        session.tick()
+        midi.onPadEvent?(PadInputEvent(padIndex: firstHit.padIndex, velocity: 100, isNoteOn: true,
+            timestamp: AVAudioTime.hostTime(forSeconds: time), deviceID: "test"))
+
+        // Advance to queue time: 15.55s (0.45s before pass end).
+        // Hit 2 is at 15.50s, window ends at 15.70s. Hit 2 window has not closed.
+        let passDuration = Double(lesson.bars) * 240.0 / Double(initialBpm) // 16.0s
+        time = firstStart + 15.55
+        session.tick()
+
+        let expectedNextBpm = initialBpm + settings.bpmStepEnum.rawValue
+
+        // Advance past Hit 4 without playing it (late miss) to the boundary of Pass 2
+        time = firstStart + passDuration + 0.001
+        session.tick()
+
+        XCTAssertEqual(session.passNumber, 2)
+        XCTAssertEqual(session.bpm, expectedNextBpm, "Pass 2 must start at the higher BPM")
+        XCTAssertEqual(session.patternFrame.bpm, expectedNextBpm)
+
+        // Advance past pass 1 finalTime so finishCompleted runs for pass 1
+        time = firstStart + passDuration + 0.25
+        session.tick()
+
+        // Pass 1 finished as failed due to the missed last note
+        let pass1Result = try XCTUnwrap(session.lastResult)
+        XCTAssertFalse(pass1Result.isCleanRun, "Full result must record the late miss")
+        XCTAssertFalse(pass1Result.passed, "Full result must fail due to the missed note")
+        XCTAssertEqual(session.lastVerdict?.passed, false)
+
+        // But Pass 2's queued BPM must NOT be reverted; pass continues at 65 BPM
+        XCTAssertEqual(session.bpm, expectedNextBpm, "Queued tempo must not revert inside a running pass")
+        XCTAssertEqual(session.patternFrame.bpm, expectedNextBpm)
+    }
 }

@@ -36,6 +36,21 @@ struct LibraryScreen: View {
     @State private var purchaseAccess: String?
     @State private var bannerPulse = 0
     @State private var columnVisibility: NavigationSplitViewVisibility = .all
+    @State private var pendingCategoryToHide: PendingHideTarget?
+    @State private var isHiddenExpanded = false
+
+    private struct PendingHideTarget: Identifiable {
+        let id: String
+        let title: String
+    }
+
+    private struct HiddenCategoryItem: Identifiable {
+        let id: String
+        let title: String
+        let lessons: [Lesson]
+        let isCategory: Bool
+        let stage: LibraryStage?
+    }
 
     init(launchTarget: LibraryLaunchTarget = .none, onHome: @escaping () -> Void = {}) {
         self.launchTarget = launchTarget
@@ -51,7 +66,92 @@ struct LibraryScreen: View {
     private var mode: LibraryViewMode { LibraryViewMode(rawValue: settings.libraryView) ?? .path }
     private var catalog: LibraryCatalog { progression.catalog }
     private var groups: [LibraryGroup] { catalog.groups(in: mode) }
-    private var group: LibraryGroup? { groups.first { $0.id == selections[mode.id] } ?? groups.first }
+
+    private func isGroupHidden(_ item: LibraryGroup) -> Bool {
+        if settings.isCategoryHidden(item.id, in: mode.id) {
+            return true
+        }
+        if mode == .path, let lvl = item.stage?.level, settings.isCategoryHidden("level-\(lvl)", in: mode.id) {
+            return true
+        }
+        return false
+    }
+
+    private var visibleGroups: [LibraryGroup] {
+        groups.filter { !isGroupHidden($0) }
+    }
+
+    private var group: LibraryGroup? {
+        if let selectedID = selections[mode.id],
+           let match = visibleGroups.first(where: { $0.id == selectedID }) {
+            return match
+        }
+        return visibleGroups.first
+    }
+
+    private var hiddenItems: [HiddenCategoryItem] {
+        let hiddenIDs = settings.hiddenCategories(for: mode.id)
+        guard !hiddenIDs.isEmpty else { return [] }
+
+        var items: [HiddenCategoryItem] = []
+        if mode == .path {
+            for level in 1...5 {
+                let levelID = "level-\(level)"
+                if hiddenIDs.contains(levelID) {
+                    items.append(HiddenCategoryItem(
+                        id: levelID,
+                        title: settings.localized("Level %lld", level),
+                        lessons: catalog.path.filter { $0.level == level },
+                        isCategory: true,
+                        stage: nil
+                    ))
+                }
+                for group in groups.filter({ $0.stage?.level == level }) {
+                    if hiddenIDs.contains(group.id) {
+                        let title = group.stage.map {
+                            settings.localized("Level %lld · %@", $0.level, settings.localized(group.title))
+                        } ?? settings.localized(group.title)
+                        items.append(HiddenCategoryItem(
+                            id: group.id,
+                            title: title,
+                            lessons: group.lessons,
+                            isCategory: false,
+                            stage: group.stage
+                        ))
+                    }
+                }
+            }
+            for group in groups.filter(\.isExtension) {
+                if hiddenIDs.contains(group.id) {
+                    items.append(HiddenCategoryItem(
+                        id: group.id,
+                        title: settings.localized(group.title),
+                        lessons: group.lessons,
+                        isCategory: false,
+                        stage: nil
+                    ))
+                }
+            }
+        } else {
+            for group in groups {
+                if hiddenIDs.contains(group.id) {
+                    items.append(HiddenCategoryItem(
+                        id: group.id,
+                        title: settings.localized(group.title),
+                        lessons: group.lessons,
+                        isCategory: false,
+                        stage: group.stage
+                    ))
+                }
+            }
+        }
+        return items
+    }
+
+    private var detailHasAnyCompletedLesson: Bool {
+        guard let group else { return false }
+        return group.lessons.contains { progress.isCompleted(lessonId: $0.id) }
+    }
     private var next: Lesson? {
         progression.nextLesson(after: lessonStore.lesson(for: settings.lastLessonID),
                                source: NextLessonSource(rawValue: settings.nextLessonSource) ?? .path)
@@ -69,6 +169,21 @@ struct LibraryScreen: View {
             }
             .motion(Theme.Motion.standard, value: showingIntro ? "intro" : mode.id + (group?.id ?? ""))
             .toolbar {
+                if !showingIntro && detailHasAnyCompletedLesson {
+                    ToolbarItem(placement: .topBarTrailing) {
+                        Button {
+                            settings.hideCompletedLessons.toggle()
+                        } label: {
+                            Label(
+                                settings.localized(settings.hideCompletedLessons ? "Show completed" : "Hide completed"),
+                                systemImage: settings.hideCompletedLessons ? "eye" : "eye.slash"
+                            )
+                            .font(Theme.control)
+                            .frame(minHeight: Theme.Size.touch)
+                        }
+                        .accessibilityLabel(settings.localized(settings.hideCompletedLessons ? "Show completed" : "Hide completed"))
+                    }
+                }
                 ToolbarItem(placement: .topBarTrailing) {
                     Button(settings.localized("Settings")) { showingSettings = true }
                         .font(Theme.control).frame(minHeight: Theme.Size.touch)
@@ -104,6 +219,8 @@ struct LibraryScreen: View {
         }
         .onChange(of: settings.libraryView) { _, _ in
             query = ""; cross = ""; showingIntro = false; progression.cancelStageAccessChange()
+            isHiddenExpanded = false
+            pendingCategoryToHide = nil
         }
         .onChange(of: group?.id) { _, _ in progression.cancelStageAccessChange() }
         .onChange(of: showingIntro) { _, _ in progression.cancelStageAccessChange() }
@@ -148,63 +265,33 @@ struct LibraryScreen: View {
                 overallCourseProgress
             }
             Section {
-                Button { showingIntro = true } label: {
-                    VStack(alignment: .leading, spacing: 0) {
-                        sidebarLabel(settings.localized("Intro exercises"), lessons: introLessons, isCategory: true)
-                        Text(settings.localized("%lld exercises · always open", introLessons.count))
-                            .font(Theme.meta).foregroundStyle(Theme.secondary).fixedSize(horizontal: false, vertical: true)
-                    }
-                }
-                .buttonStyle(.plain)
-                .listRowBackground(showingIntro ? Theme.surface : Theme.background)
+                introSectionRow
             }
-            Section {
-                PlexSegmentedPicker(title: settings.localized("Organise by"), selection: Binding(
-                    get: { settings.libraryView }, set: { settings.libraryView = $0 }
-                ), options: LibraryViewMode.allCases.map { ($0.id, settings.localized($0.title)) }, fitsColumn: true)
-                if mode == .path {
-                    ForEach(1...5, id: \.self) { level in
-                        Button {
-                            if expandedLevels.contains(level) { expandedLevels.remove(level) }
-                            else { expandedLevels.insert(level) }
-                        } label: {
-                            HStack(spacing: Theme.Space.small) {
-                                Image(systemName: "chevron.right")
-                                    .rotationEffect(motion.angle(expandedLevels.contains(level) ? 90 : 0))
-                                    .font(Theme.meta).frame(width: 16)
-                                sidebarLabel(settings.localized("Level %lld", level),
-                                             lessons: catalog.path.filter { $0.level == level },
-                                             isCategory: true)
-                            }
-                        }
-                        .buttonStyle(.plain)
-                        .accessibilityValue(settings.localized(expandedLevels.contains(level) ? "Expanded" : "Collapsed"))
-                        .listRowBackground(Theme.background)
-                        if expandedLevels.contains(level) {
-                            ForEach(groups.filter { $0.stage?.level == level }) { item in
-                                HStack(spacing: 0) {
-                                    Rectangle()
-                                        .fill(Theme.hairline)
-                                        .frame(width: 2)
-                                        .padding(.leading, 7)
-                                        .padding(.trailing, Theme.Space.small)
-                                    sidebarRow(item)
-                                }
-                                .padding(.leading, Theme.Space.small)
-                            }
-                        }
-                    }
-                } else {
-                    ForEach(groups.filter { !$0.isExtension }) { sidebarRow($0) }
+            organiseSection
+            extensionsSection
+            hiddenCategoriesSection
+        }
+        .motion(Theme.Motion.standard, value: (settings.hiddenCategoryIDsByMode[mode.id] ?? []).hashValue ^ expandedLevels.hashValue ^ (isHiddenExpanded ? 1 : 0))
+        .confirmationDialog(
+            pendingCategoryToHide.map {
+                settings.localized("Hide “%@”? You can show it again at the bottom of the list.", $0.title)
+            } ?? "",
+            isPresented: Binding(
+                get: { pendingCategoryToHide != nil },
+                set: { if !$0 { pendingCategoryToHide = nil } }
+            ),
+            titleVisibility: .visible
+        ) {
+            Button(settings.localized("Hide"), role: .destructive) {
+                if let target = pendingCategoryToHide {
+                    hide(target: target)
+                    pendingCategoryToHide = nil
                 }
-            } header: { SectionHeader(title: settings.localized("Organise by")) }
-            if groups.contains(where: \.isExtension) {
-                Section {
-                    ForEach(groups.filter(\.isExtension)) { sidebarRow($0) }
-                } header: { SectionHeader(title: settings.localized("Extensions · outside the Path")) }
+            }
+            Button(settings.localized("Cancel"), role: .cancel) {
+                pendingCategoryToHide = nil
             }
         }
-        .motion(Theme.Motion.standard, value: expandedLevels)
         .font(Theme.control)
         .environment(\.defaultMinListRowHeight, Theme.Size.touch)
         .listRowInsets(EdgeInsets(top: 0, leading: Theme.Space.regular, bottom: 0, trailing: Theme.Space.regular))
@@ -221,9 +308,124 @@ struct LibraryScreen: View {
         }
     }
 
+    private var introSectionRow: some View {
+        Button { showingIntro = true } label: {
+            VStack(alignment: .leading, spacing: 0) {
+                sidebarLabel(settings.localized("Intro exercises"), lessons: introLessons, isCategory: true)
+                Text(settings.localized("%lld exercises · always open", introLessons.count))
+                    .font(Theme.meta).foregroundStyle(Theme.secondary).fixedSize(horizontal: false, vertical: true)
+            }
+        }
+        .buttonStyle(.plain)
+        .listRowBackground(showingIntro ? Theme.surface : Theme.background)
+    }
+
+    private var organiseSection: some View {
+        Section {
+            PlexSegmentedPicker(title: settings.localized("Organise by"), selection: Binding(
+                get: { settings.libraryView }, set: { settings.libraryView = $0 }
+            ), options: LibraryViewMode.allCases.map { ($0.id, settings.localized($0.title)) }, fitsColumn: true)
+            if mode == .path {
+                pathLevelsList
+            } else {
+                ForEach(groups.filter { !$0.isExtension && !settings.isCategoryHidden($0.id, in: mode.id) }) { sidebarRow($0) }
+            }
+        } header: { SectionHeader(title: settings.localized("Organise by")) }
+    }
+
+    private var pathLevelsList: some View {
+        ForEach((1...5).filter { !settings.isCategoryHidden("level-\($0)", in: mode.id) }, id: \.self) { level in
+            let levelID = "level-\(level)"
+            let levelTitle = settings.localized("Level %lld", level)
+            Button {
+                if expandedLevels.contains(level) { expandedLevels.remove(level) }
+                else { expandedLevels.insert(level) }
+            } label: {
+                HStack(spacing: Theme.Space.small) {
+                    Image(systemName: "chevron.right")
+                        .rotationEffect(motion.angle(expandedLevels.contains(level) ? 90 : 0))
+                        .font(Theme.meta).frame(width: 16)
+                    sidebarLabel(levelTitle,
+                                 lessons: catalog.path.filter { $0.level == level },
+                                 isCategory: true)
+                }
+            }
+            .buttonStyle(.plain)
+            .accessibilityValue(settings.localized(expandedLevels.contains(level) ? "Expanded" : "Collapsed"))
+            .listRowBackground(Theme.background)
+            .contextMenu {
+                Button {
+                    pendingCategoryToHide = PendingHideTarget(id: levelID, title: levelTitle)
+                } label: {
+                    Label(settings.localized("Hide category"), systemImage: "eye.slash")
+                }
+            }
+            .accessibilityAction(named: settings.localized("Hide category")) {
+                pendingCategoryToHide = PendingHideTarget(id: levelID, title: levelTitle)
+            }
+            if expandedLevels.contains(level) {
+                ForEach(groups.filter { $0.stage?.level == level && !settings.isCategoryHidden($0.id, in: mode.id) }) { item in
+                    HStack(spacing: 0) {
+                        Rectangle()
+                            .fill(Theme.hairline)
+                            .frame(width: 2)
+                            .padding(.leading, 7)
+                            .padding(.trailing, Theme.Space.small)
+                        sidebarRow(item)
+                    }
+                    .padding(.leading, Theme.Space.small)
+                }
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var extensionsSection: some View {
+        let visibleExtensions = groups.filter { $0.isExtension && !settings.isCategoryHidden($0.id, in: mode.id) }
+        if !visibleExtensions.isEmpty {
+            Section {
+                ForEach(visibleExtensions) { sidebarRow($0) }
+            } header: { SectionHeader(title: settings.localized("Extensions · outside the Path")) }
+        }
+    }
+
+    @ViewBuilder
+    private var hiddenCategoriesSection: some View {
+        if !hiddenItems.isEmpty {
+            Section {
+                Button {
+                    withAnimation(motion.animation(Theme.Motion.standard)) {
+                        isHiddenExpanded.toggle()
+                    }
+                } label: {
+                    HStack(spacing: Theme.Space.small) {
+                        Image(systemName: "chevron.right")
+                            .rotationEffect(motion.angle(isHiddenExpanded ? 90 : 0))
+                            .font(Theme.meta).frame(width: 16)
+                        Text(settings.localized("Hidden categories (%lld)", hiddenItems.count))
+                            .font(Theme.sectionTitle)
+                            .foregroundStyle(Theme.secondary)
+                    }
+                    .frame(minHeight: Theme.Size.touch)
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .accessibilityValue(settings.localized(isHiddenExpanded ? "Expanded" : "Collapsed"))
+                .listRowBackground(Theme.background)
+
+                if isHiddenExpanded {
+                    ForEach(hiddenItems) { item in
+                        hiddenCategoryRow(item)
+                    }
+                }
+            }
+        }
+    }
+
     private func sidebarRow(_ item: LibraryGroup) -> some View {
         let selected = !showingIntro && group?.id == item.id
         let locked = item.stage.map { !progression.isStageOpen($0) } ?? false
+        let title = settings.localized(item.title)
         return Button {
             showingIntro = false
             selections[mode.id] = item.id
@@ -231,13 +433,85 @@ struct LibraryScreen: View {
         } label: {
             HStack(spacing: Theme.Space.small) {
                 AnimatedLock(locked: locked).font(Theme.meta)
-                sidebarLabel(settings.localized(item.title), lessons: item.lessons, selected: selected)
+                sidebarLabel(title, lessons: item.lessons, selected: selected)
             }
             .foregroundStyle(Theme.ink)
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain).listRowBackground(selected ? Theme.surface : Theme.background)
         .accessibilityAddTraits(selected ? .isSelected : [])
+        .contextMenu {
+            Button {
+                pendingCategoryToHide = PendingHideTarget(id: item.id, title: title)
+            } label: {
+                Label(settings.localized("Hide category"), systemImage: "eye.slash")
+            }
+        }
+        .accessibilityAction(named: settings.localized("Hide category")) {
+            pendingCategoryToHide = PendingHideTarget(id: item.id, title: title)
+        }
+    }
+
+    private func hide(target: PendingHideTarget) {
+        withAnimation(motion.animation(Theme.Motion.standard)) {
+            settings.hideCategory(target.id, in: mode.id)
+            if let current = group, isGroupHidden(current) {
+                if let first = visibleGroups.first {
+                    selections[mode.id] = first.id
+                    if let lvl = first.stage?.level {
+                        expandedLevels.insert(lvl)
+                    }
+                }
+            }
+        }
+    }
+
+    private func unhideCategory(_ id: String) {
+        withAnimation(motion.animation(Theme.Motion.standard)) {
+            settings.unhideCategory(id, in: mode.id)
+        }
+    }
+
+    private func hiddenCategoryRow(_ item: HiddenCategoryItem) -> some View {
+        let locked = item.stage.map { !progression.isStageOpen($0) } ?? false
+        return HStack(spacing: Theme.Space.small) {
+            if item.isCategory {
+                sidebarLabel(item.title, lessons: item.lessons, isCategory: true)
+            } else {
+                AnimatedLock(locked: locked).font(Theme.meta)
+                sidebarLabel(item.title, lessons: item.lessons)
+            }
+            Spacer(minLength: Theme.Space.tight)
+            Button {
+                unhideCategory(item.id)
+            } label: {
+                Text(settings.localized("Show"))
+                    .font(Theme.meta)
+                    .foregroundStyle(Theme.ink)
+                    .padding(.horizontal, Theme.Space.small)
+                    .frame(minHeight: Theme.Size.touch)
+                    .background(Theme.surface)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: Theme.Size.blockRadius)
+                            .stroke(Theme.hairline, lineWidth: 1)
+                    )
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel(settings.localized("Show category"))
+        }
+        .foregroundStyle(Theme.secondary)
+        .opacity(0.7)
+        .listRowBackground(Theme.background)
+        .contextMenu {
+            Button {
+                unhideCategory(item.id)
+            } label: {
+                Label(settings.localized("Show category"), systemImage: "eye")
+            }
+        }
+        .accessibilityAction(named: settings.localized("Show category")) {
+            unhideCategory(item.id)
+        }
     }
 
     private func sidebarLabel(_ title: String, lessons: [Lesson], isCategory: Bool = false, selected: Bool = false) -> some View {
