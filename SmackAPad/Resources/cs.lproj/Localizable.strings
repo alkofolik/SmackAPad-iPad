@@ -606,3 +606,13 @@
 "Hide" = "Skrýt";
 "Show" = "Zobrazit";
 "Hidden categories (%lld)" = "Skryté kategorie (%lld)";
+
+"Difficulty %lld of 5, %@" = "Obtížnost %lld z 5, %@";
+"Tempo %lld BPM, goal %lld" = "Tempo %lld BPM, cíl %lld";
+"Again" = "Znovu";
+"Session results" = "Výsledky sezení";
+"Shows all runs" = "Zobrazí všechny běhy";
+"Run %lld" = "Běh %lld";
+"Last run %lld percent, %lld BPM, %@" = "Poslední běh %lld procent, %lld BPM, %@";
+"Result %lld percent, %lld of 3 stars, %@" = "Výsledek %lld procent, %lld ze 3 hvězd, %@";
+

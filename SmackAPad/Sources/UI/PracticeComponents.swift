@@ -63,13 +63,15 @@ struct InstrumentButtonStyle: ButtonStyle {
     var filled = false
     var selected = false
     var main = false
+    var customHeight: CGFloat? = nil
 
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
             .font(main || selected ? Theme.action : Theme.control)
             .foregroundStyle(filled || selected ? Theme.background : Theme.ink)
             .padding(.horizontal, Theme.Space.regular)
-            .frame(minHeight: main ? Theme.Size.control : Theme.Size.touch)
+            .frame(height: customHeight)
+            .frame(minHeight: customHeight == nil ? (main ? Theme.Size.control : Theme.Size.touch) : nil)
             .background(filled || selected ? Theme.ink : Theme.background)
             .overlay(Rectangle().stroke(Theme.ink, lineWidth: Theme.Size.border))
             .opacity(configuration.isPressed ? 0.65 : 1)
@@ -119,24 +121,107 @@ struct TransportControls: View {
     let enabled: Bool
     var showsResult: Bool = false
     var preferredWidth: CGFloat = Theme.Size.transportWidth
+    var squareSize: CGFloat? = nil
+    var secondAction: AnyView? = nil
     let start: () -> Void
     let stop: () -> Void
     let restart: () -> Void
 
     var body: some View {
-        ViewThatFits(in: .horizontal) {
-            HStack(spacing: Theme.Space.small) { buttons }
-                .frame(minWidth: preferredWidth)
-                .fixedSize(horizontal: true, vertical: true)
-            VStack(alignment: .trailing, spacing: Theme.Space.small) { buttons }
+        if let s = squareSize {
+            squareBody(s: s)
+        } else {
+            ViewThatFits(in: .horizontal) {
+                HStack(spacing: Theme.Space.small) { buttons }
+                    .frame(minWidth: preferredWidth)
+                    .fixedSize(horizontal: true, vertical: true)
+                VStack(alignment: .trailing, spacing: Theme.Space.small) { buttons }
+            }
+            .fixedSize(horizontal: false, vertical: true)
+            .motion(Theme.Motion.standard, value: running)
+            .transaction { if Theme.Motion.Policy(reduced: reduced).opacityOnly { $0.animation = nil } }
         }
-        .fixedSize(horizontal: false, vertical: true)
-        .motion(Theme.Motion.standard, value: running)
-        .transaction { if Theme.Motion.Policy(reduced: reduced).opacityOnly { $0.animation = nil } }
     }
 
     private var actionTitle: String {
         running ? "Stop" : (showsResult ? "Again" : "Start")
+    }
+
+    @ViewBuilder
+    private func squareBody(s: CGFloat) -> some View {
+        let buttonHeight = max(0, (s - Theme.Space.small) / 2)
+        if showsResult {
+            if let secondAction {
+                VStack(spacing: Theme.Space.small) {
+                    Button(action: start) {
+                        HStack(spacing: Theme.Space.small) {
+                            Text(settings.localized("Again"))
+                                .lineLimit(1)
+                                .fixedSize()
+                        }
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    }
+                    .buttonStyle(InstrumentButtonStyle(filled: true, main: true, customHeight: buttonHeight))
+                    .disabled(!enabled)
+                    .opacity(enabled ? 1 : 0.5)
+                    .frame(width: s, height: buttonHeight)
+
+                    secondAction
+                        .frame(width: s, height: buttonHeight)
+                }
+                .frame(width: s, height: s)
+            } else {
+                Button(action: start) {
+                    HStack(spacing: Theme.Space.small) {
+                        Text(settings.localized("Again"))
+                            .lineLimit(1)
+                            .fixedSize()
+                    }
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                }
+                .buttonStyle(InstrumentButtonStyle(filled: true, main: true, customHeight: s))
+                .disabled(!enabled)
+                .opacity(enabled ? 1 : 0.5)
+                .frame(width: s, height: s)
+            }
+        } else {
+            VStack(spacing: Theme.Space.small) {
+                Button(action: running ? stop : start) {
+                    HStack(spacing: Theme.Space.small) {
+                        if running {
+                            Rectangle().frame(width: 14, height: 14).transition(.opacity)
+                        }
+                        Text(settings.localized(running ? "Stop" : "Start"))
+                            .lineLimit(1)
+                            .fixedSize()
+                            .id(running ? "Stop" : "Start")
+                            .transition(.opacity)
+                    }
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                }
+                .buttonStyle(InstrumentButtonStyle(filled: true, main: true, customHeight: buttonHeight))
+                .disabled(!running && !enabled)
+                .opacity(running || enabled ? 1 : 0.5)
+                .frame(width: s, height: buttonHeight)
+
+                Button(action: restart) {
+                    HStack(spacing: Theme.Space.small) {
+                        PracticeGlyph(kind: .restart).frame(width: 18, height: 18)
+                        Text(settings.localized("Restart"))
+                            .lineLimit(1)
+                            .fixedSize()
+                    }
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                }
+                .buttonStyle(InstrumentButtonStyle(main: true, customHeight: buttonHeight))
+                .disabled(!enabled)
+                .opacity(enabled ? 1 : 0.5)
+                .frame(width: s, height: buttonHeight)
+            }
+            .frame(width: s, height: s)
+            .motion(Theme.Motion.standard, value: running)
+            .transaction { if Theme.Motion.Policy(reduced: reduced).opacityOnly { $0.animation = nil } }
+        }
     }
 
     @ViewBuilder private var buttons: some View {
@@ -183,10 +268,20 @@ struct HitTimingBar: View {
 
     var body: some View {
         ViewThatFits(in: .horizontal) {
-            HStack(spacing: Theme.Space.regular) { timingScale; tendency }
-            VStack(alignment: .trailing, spacing: Theme.Space.small) { timingScale; tendency }
+            HStack(spacing: Theme.Space.regular) {
+                timingScale
+                    .frame(maxWidth: .infinity)
+                tendency
+            }
+            .frame(maxWidth: .infinity)
+            VStack(alignment: .trailing, spacing: Theme.Space.small) {
+                timingScale
+                    .frame(maxWidth: .infinity)
+                tendency
+            }
+            .frame(maxWidth: .infinity)
         }
-        .frame(minHeight: Theme.Size.row)
+        .frame(maxWidth: .infinity, minHeight: Theme.Size.row)
         .opacity(active ? 1 : 0)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(settings.localized("Hit timing"))
@@ -440,6 +535,7 @@ struct PadVoice {
 /// The small, non-interactive diagram used in landscape and when touch pads are off.
 struct PadLayoutGrid: View {
     @ScaledMetric(relativeTo: .body) private var width: CGFloat = 176
+    var side: CGFloat? = nil
     let pads: [Int]
     let used: Set<Int>
     var flashes: [Int: PadFlash] = [:]
@@ -447,16 +543,34 @@ struct PadLayoutGrid: View {
 
     var body: some View {
         TimelineView(.animation(minimumInterval: 1.0 / 30, paused: flashes.isEmpty)) { timeline in
-            LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: Theme.Space.tight), count: 4), spacing: Theme.Space.tight) {
-                ForEach(Array(pads.enumerated()), id: \.offset) { _, pad in
-                    cell(pad, now: timeline.date)
+            if let side {
+                let spacing = Theme.Space.tight
+                let cellSize = max(0, (side - 3 * spacing) / 4)
+                VStack(spacing: spacing) {
+                    ForEach(0..<4, id: \.self) { row in
+                        HStack(spacing: spacing) {
+                            ForEach(0..<4, id: \.self) { col in
+                                let index = row * 4 + col
+                                if pads.indices.contains(index) {
+                                    cell(pads[index], cellSize: cellSize, now: timeline.date)
+                                }
+                            }
+                        }
+                    }
                 }
+                .frame(width: side, height: side)
+            } else {
+                LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: Theme.Space.tight), count: 4), spacing: Theme.Space.tight) {
+                    ForEach(Array(pads.enumerated()), id: \.offset) { _, pad in
+                        cell(pad, cellSize: nil, now: timeline.date)
+                    }
+                }
+                .frame(width: width)
             }
         }
-        .frame(width: width)
     }
 
-    private func cell(_ pad: Int, now: Date) -> some View {
+    private func cell(_ pad: Int, cellSize: CGFloat?, now: Date) -> some View {
         let flash = flashes[pad]
         let strength = flash?.strength(at: now) ?? 0
         let isUsed = used.contains(pad)
@@ -468,11 +582,20 @@ struct PadLayoutGrid: View {
             }
             return abbr
         }()
+        let font: Font = {
+            if let cellSize {
+                return showKeyboardKeys
+                    ? Theme.text(min(11, cellSize * 0.3))
+                    : Theme.canvasDisplay(min(18, max(12, cellSize * 0.4)))
+            }
+            return Theme.text(showKeyboardKeys ? 12 : Theme.Size.dense)
+        }()
         return Text(label)
-            .font(Theme.text(showKeyboardKeys ? 12 : Theme.Size.dense))
+            .font(font)
             .lineLimit(1)
-            .minimumScaleFactor(0.7)
-            .frame(maxWidth: .infinity, minHeight: 24)
+            .minimumScaleFactor(0.6)
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .frame(width: cellSize, height: cellSize)
             .foregroundStyle(strength > 0.35 ? Theme.white : (isUsed ? Theme.ink : Theme.secondary))
             .background {
                 ZStack {

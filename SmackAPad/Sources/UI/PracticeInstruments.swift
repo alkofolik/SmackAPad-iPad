@@ -162,9 +162,10 @@ struct RunResultChip: View {
                     .monospacedDigit()
                     .lineLimit(1)
             }
+            Spacer(minLength: 0)
         }
         .padding(.horizontal, Theme.Space.small)
-        .frame(height: 48)
+        .frame(width: 96, height: 48)
         .background(Theme.surface, in: RoundedRectangle(cornerRadius: Theme.Radius.control))
         .overlay(
             RoundedRectangle(cornerRadius: Theme.Radius.control)
@@ -188,71 +189,126 @@ struct RunResultChip: View {
     }
 }
 
-/// A single row of chips showing recent runs while playing.
-struct RunLogRow: View {
+/// A single chip showing only the last finished run while playing.
+struct PlayingLastRunChip: View {
     @Environment(\.accessibilityReduceMotion) private var reduced
     @Environment(SettingsManager.self) private var settings
-    let runs: [PracticeRunResult]
+    let lastRun: PracticeRunResult?
 
     var body: some View {
-        HStack(spacing: Theme.Space.small) {
-            ForEach(runs) { run in
-                RunResultChip(run: run)
-                    .transition(
-                        reduced
-                            ? .opacity
-                            : .asymmetric(
-                                insertion: .opacity,
-                                removal: .move(edge: .leading).combined(with: .opacity)
-                            )
-                    )
+        ZStack {
+            if let lastRun {
+                RunResultChip(run: lastRun)
+                    .id(lastRun.id)
+                    .transition(reduced ? .identity : .opacity)
+                    .accessibilityElement(children: .ignore)
+                    .accessibilityLabel(settings.localized(
+                        "Last run %lld percent, %lld BPM, %@",
+                        Int((lastRun.score * 100).rounded()),
+                        lastRun.bpm,
+                        settings.localized(lastRun.passed ? "passed" : "not passed")
+                    ))
             }
-            Spacer(minLength: 0)
         }
-        .frame(height: 48, alignment: .leading)
-        .clipped()
-        .animation(reduced ? nil : Theme.Motion.standard, value: runs.map(\.id))
-        .accessibilityElement(children: .ignore)
-        .accessibilityLabel(settings.localized("Run results"))
-        .accessibilityValue(runs.map { $0.accessibilityDescription(settings: settings) }.joined(separator: ". "))
-        .accessibilityHidden(runs.isEmpty)
+        .frame(width: 96, height: 48)
+        .animation(reduced ? nil : .easeInOut(duration: 0.3), value: lastRun?.id)
     }
 }
 
-/// Shown only after a run ends. The next action is supplied by the screen's existing eligibility rules.
-struct ResultCard<Action: View>: View {
+/// Result card taking the left two thirds of the bottom zone after STOP.
+struct ResultCard: View {
     @Environment(SettingsManager.self) private var settings
-    @Environment(\.dynamicTypeSize) private var dynamicType
     let summary: RunSummary
-    var runs: [PracticeRunResult] { summary.runs }
+    let runs: [PracticeRunResult]
     let saved: LessonProgress?
     let event: StarEvent?
     let announcement: String
     var badgeText: String? = nil
-    let detail: () -> Void
-    let rules: () -> Void
-    @ViewBuilder let nextAction: () -> Action
+    let cardWidth: CGFloat
+    let cardHeight: CGFloat
+    let openRules: () -> Void
+    let openSessionResults: () -> Void
+
+    private var scorePercent: Int {
+        Int((summary.score * 100).rounded())
+    }
+
+    private var bestPercent: Int {
+        let bestScore = runs.map(\.score).max() ?? summary.score
+        return Int((bestScore * 100).rounded())
+    }
+
+    private var starCount: Int {
+        [saved?.passed == true, saved?.mastery == true, saved?.memory == true].filter { $0 }.count
+    }
+
+    private var runSummaryText: String {
+        let count = runs.count
+        if settings.languagePreference == .czech {
+            let runsWord: String
+            if count == 1 {
+                runsWord = "1 běh"
+            } else if count >= 2 && count <= 4 {
+                runsWord = "\(count) běhy"
+            } else {
+                runsWord = "\(count) běhů"
+            }
+            return "\(runsWord) · nejlepší \(bestPercent)\u{00a0}%"
+        } else {
+            let runsWord = count == 1 ? "1 run" : "\(count) runs"
+            return "\(runsWord) · best \(bestPercent)%"
+        }
+    }
+
+    private var voiceOverLabel: String {
+        let count = runs.count
+        let runPart: String
+        if settings.languagePreference == .czech {
+            let runsWord: String
+            if count == 1 {
+                runsWord = "1 běh"
+            } else if count >= 2 && count <= 4 {
+                runsWord = "\(count) běhy"
+            } else {
+                runsWord = "\(count) běhů"
+            }
+            runPart = "\(runsWord), nejlepší \(bestPercent) procent"
+            return "Výsledek \(scorePercent) procent, \(starCount) ze 3 hvězd, \(runPart)"
+        } else {
+            let runsWord = count == 1 ? "1 run" : "\(count) runs"
+            runPart = "\(runsWord), best \(bestPercent) percent"
+            return "Result \(scorePercent) percent, \(starCount) of 3 stars, \(runPart)"
+        }
+    }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: Theme.Space.regular) {
-            if !runs.isEmpty {
-                ScrollView(.horizontal, showsIndicators: false) {
-                    HStack(spacing: Theme.Space.small) {
-                        ForEach(runs) { run in
-                            RunResultChip(run: run)
-                        }
-                    }
-                    .padding(.vertical, 2)
-                }
-                .scrollBounceBehavior(.basedOnSize)
-                .accessibilityElement(children: .ignore)
-                .accessibilityLabel(settings.localized("Run results"))
-                .accessibilityValue(runs.map { $0.accessibilityDescription(settings: settings) }.joined(separator: ". "))
-            }
+        HStack(spacing: Theme.Space.regular) {
+            scoreColumn
 
-            summaryContent
+            Spacer(minLength: 0)
+
+            starsColumn
+
+            Spacer(minLength: 0)
+
+            runSummaryColumn
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.horizontal, Theme.Space.regular)
+        .frame(width: cardWidth, height: cardHeight)
+        .background(Theme.background)
+        .overlay(
+            Rectangle().strokeBorder(Theme.ink, lineWidth: Theme.Size.border)
+        )
+        .contentShape(Rectangle())
+        .onTapGesture {
+            openSessionResults()
+        }
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(voiceOverLabel)
+        .accessibilityHint(settings.localized("Shows all runs"))
+        .accessibilityAction(named: settings.localized("Star requirements")) {
+            openRules()
+        }
         .task {
             if event == nil, !announcement.isEmpty {
                 UIAccessibility.post(notification: .announcement, argument: announcement)
@@ -260,119 +316,70 @@ struct ResultCard<Action: View>: View {
         }
     }
 
-    private var summaryContent: some View {
-        ViewThatFits(in: .horizontal) {
-            if !dynamicType.isAccessibilitySize {
-                HStack(spacing: Theme.Space.small) {
-                    accuracy
-                    starControls
-                    if let badgeText {
-                        Text(badgeText)
-                            .font(Theme.meta)
-                            .foregroundStyle(Theme.secondary)
-                            .lineLimit(1)
-                            .padding(.leading, Theme.Space.small)
-                    }
-                    Spacer(minLength: 0)
-                    nextAction()
-                }
-            }
-            VStack(alignment: .leading, spacing: Theme.Space.small) {
-                ViewThatFits(in: .horizontal) {
-                    HStack(spacing: Theme.Space.small) { accuracy; Spacer(minLength: 0); starControls }
-                    VStack(alignment: .leading, spacing: Theme.Space.small) { accuracy; starControls }
-                }
-                if let badgeText {
-                    Text(badgeText)
-                        .font(Theme.meta)
-                        .foregroundStyle(Theme.secondary)
-                        .lineLimit(1)
-                }
-                HStack { Spacer(minLength: 0); nextAction() }
-            }
-        }
-    }
-
-    private var accuracy: some View {
-        VStack(alignment: .leading, spacing: 2) {
-            // Measure the widest value using the same face and size as the real value.
-            // The entire percentage is a single, indivisible string.
-            Text("100\u{00a0}%")
-                .hidden()
-                .overlay(alignment: .leading) {
-                    Text("\(Int((summary.score * 100).rounded()))\u{00a0}%")
-                        .accessibilityLabel(settings.localized("Last run"))
-                        .accessibilityValue("\(Int((summary.score * 100).rounded())) %")
-                }
-                .font(Theme.mainValue)
+    private var scoreColumn: some View {
+        VStack(spacing: 2) {
+            Text("\(scorePercent)\u{00a0}%")
+                .font(Theme.display(min(56, cardHeight * 0.36)))
+                .fontWeight(.bold)
                 .monospacedDigit()
                 .lineLimit(1)
-                .fixedSize(horizontal: true, vertical: false)
+                .minimumScaleFactor(0.7)
             Text(settings.localized("Last run"))
                 .font(Theme.meta)
+                .foregroundStyle(Theme.secondary)
                 .lineLimit(1)
-                .fixedSize(horizontal: true, vertical: false)
         }
-        .fixedSize(horizontal: true, vertical: true)
     }
 
-    private var starControls: some View {
-        HStack(spacing: Theme.Space.small) {
-            Button(action: rules) {
-                StarBurst(earned: [saved?.passed == true, saved?.mastery == true, saved?.memory == true],
-                          event: event, announcement: announcement)
-                    .contentShape(Rectangle())
+    private var starsColumn: some View {
+        VStack(spacing: 2) {
+            Button(action: openRules) {
+                StarBurst(
+                    earned: [saved?.passed == true, saved?.mastery == true, saved?.memory == true],
+                    event: event,
+                    announcement: announcement
+                )
+                .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
-            .accessibilityElement(children: .ignore)
-            .accessibilityLabel(settings.localized("Lesson stars"))
-            .accessibilityValue(settings.localized("%lld of 3 stars", starCount))
-            .accessibilityHint(settings.localized("Star requirements"))
-            .highPriorityGesture(LongPressGesture(minimumDuration: 0.5).onEnded { _ in rules() })
-            Button(action: detail) {
-                PracticeDetailIcon()
-                    .stroke(Theme.ink, style: StrokeStyle(lineWidth: 2, lineCap: .round, lineJoin: .round))
-                    .frame(width: 32, height: 32)
-                    .frame(width: 56, height: 56)
-                    .contentShape(Rectangle())
+
+            if let badgeText {
+                Text(badgeText)
+                    .font(Theme.meta)
+                    .foregroundStyle(Theme.secondary)
+                    .lineLimit(1)
             }
-            .buttonStyle(.plain)
-            .accessibilityLabel(settings.localized("Detail"))
         }
-        .fixedSize(horizontal: true, vertical: false)
     }
 
-    private var starCount: Int {
-        [saved?.passed == true, saved?.mastery == true, saved?.memory == true].filter { $0 }.count
-    }
-}
-
-/// The 30-point line icon from the approved source, with an exact two-point stroke.
-private struct PracticeDetailIcon: Shape {
-    func path(in rect: CGRect) -> Path {
-        var path = Path()
-        path.move(to: CGPoint(x: rect.minX, y: rect.minY))
-        path.addLines([CGPoint(x: rect.minX, y: rect.maxY), CGPoint(x: rect.maxX, y: rect.maxY)])
-        path.move(to: CGPoint(x: rect.minX + 5, y: rect.minY + 21))
-        path.addLines([CGPoint(x: rect.minX + 12, y: rect.minY + 13),
-                       CGPoint(x: rect.minX + 19, y: rect.minY + 17),
-                       CGPoint(x: rect.minX + 28, y: rect.minY + 3)])
-        return path
+    private var runSummaryColumn: some View {
+        HStack(spacing: Theme.Space.tight) {
+            Text(runSummaryText)
+                .font(Theme.meta)
+                .foregroundStyle(Theme.secondary)
+                .lineLimit(1)
+            Image(systemName: "chevron.right")
+                .font(Theme.meta)
+                .foregroundStyle(Theme.secondary)
+        }
     }
 }
 
 /// Offered after the 2nd star while the 3rd is missing: one tap starts Play from memory.
 struct MemoryChallengeButtonStyle: ButtonStyle {
+    var customHeight: CGFloat? = nil
+
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
             .font(Theme.action)
             .foregroundStyle(Theme.black)
             .lineLimit(1)
-            .padding(.horizontal, Theme.Space.regular)
-            .frame(minHeight: Theme.Size.rowLarge)
+            .padding(.horizontal, Theme.Space.small)
+            .frame(height: customHeight)
+            .frame(minHeight: customHeight == nil ? Theme.Size.rowLarge : nil)
             .background(PracticeBandStyle.orange.opacity(configuration.isPressed ? 0.8 : 1),
                         in: RoundedRectangle(cornerRadius: Theme.Radius.pad))
-            .fixedSize(horizontal: true, vertical: false)
+            .fixedSize(horizontal: false, vertical: true)
     }
 }
 

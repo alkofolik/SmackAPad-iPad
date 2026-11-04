@@ -40,7 +40,8 @@ struct HomePadView: View {
                         .font(Theme.meta)
                         .foregroundStyle(isHero ? Theme.black.opacity(0.8) : Theme.secondary)
                         .multilineTextAlignment(.center)
-                        .lineLimit(2)
+                        .lineLimit(secondarySubtitle != nil ? 1 : 2)
+                        .truncationMode(.tail)
                         .minimumScaleFactor(0.8)
                 }
 
@@ -50,6 +51,7 @@ struct HomePadView: View {
                         .foregroundStyle(Theme.secondary.opacity(0.8))
                         .multilineTextAlignment(.center)
                         .lineLimit(1)
+                        .truncationMode(.tail)
                         .minimumScaleFactor(0.8)
                 }
                 Spacer(minLength: 0)
@@ -468,51 +470,23 @@ public struct HomeScreen: View {
     private var pad5: some View {
         let label = settings.localized("Controller").uppercased(with: Locale(identifier: settings.languagePreference.rawValue))
         let profileName = settings.activeProfile().profileName
-        let instrumentName: String = {
-            if settings.selectedKitId == SoundKitResolver.automaticKitId {
-                return settings.localized("Automatic")
-            }
-            if let kit = SoundKitResolver.bundledKits[settings.selectedKitId] {
-                return kit.name
-            }
-            return settings.selectedKitId
-        }()
 
-        let fullSubtitle = "\(profileName) · \(instrumentName)"
-        let subtitle: String = {
-            let width: CGFloat = 194
-            let font = UIFont(name: "IBMPlexSans-Regular", size: 16 * 0.8) ?? UIFont.systemFont(ofSize: 16 * 0.8)
-            let style = NSMutableParagraphStyle()
-            style.lineBreakMode = .byWordWrapping
-            let rect = (fullSubtitle as NSString).boundingRect(
-                with: CGSize(width: width, height: CGFloat.greatestFiniteMagnitude),
-                options: [.usesLineFragmentOrigin, .usesFontLeading],
-                attributes: [.font: font, .paragraphStyle: style],
-                context: nil
-            )
-            let maxAllowedHeight = font.lineHeight * 2 + 1.0
-            if rect.height <= maxAllowedHeight {
-                return fullSubtitle
+        let inputName: String = {
+            if let selectedID = midi.selectedSourceID {
+                return midi.sources.first(where: { $0.id == selectedID })?.name ?? settings.localized("Not connected")
+            } else if let firstSource = midi.sources.first {
+                return firstSource.name
             } else {
-                return profileName
+                return settings.localized("Not connected")
             }
         }()
 
-        let isConnected = !midi.sources.isEmpty
-        let notConnectedText = isConnected ? nil : settings.localized("Not connected")
-
-        let voiceOverText: String = {
-            var parts = [label, subtitle]
-            if let notConnectedText {
-                parts.append(notConnectedText)
-            }
-            return parts.joined(separator: ", ")
-        }()
+        let voiceOverText = "\(label), \(inputName), \(profileName)"
 
         return HomePadView(
             title: label,
-            subtitle: subtitle,
-            secondarySubtitle: notConnectedText,
+            subtitle: inputName,
+            secondarySubtitle: profileName,
             accessibilityText: voiceOverText,
             isHero: false
         ) {

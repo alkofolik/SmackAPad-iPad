@@ -603,3 +603,13 @@
 "Hide" = "Hide";
 "Show" = "Show";
 "Hidden categories (%lld)" = "Hidden categories (%lld)";
+
+"Difficulty %lld of 5, %@" = "Difficulty %lld of 5, %@";
+"Tempo %lld BPM, goal %lld" = "Tempo %lld BPM, goal %lld";
+"Again" = "Again";
+"Session results" = "Session results";
+"Shows all runs" = "Shows all runs";
+"Run %lld" = "Run %lld";
+"Last run %lld percent, %lld BPM, %@" = "Last run %lld percent, %lld BPM, %@";
+"Result %lld percent, %lld of 3 stars, %@" = "Result %lld percent, %lld of 3 stars, %@";
+

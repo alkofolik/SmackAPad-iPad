@@ -89,11 +89,24 @@ struct LibraryScreen: View {
         return visibleGroups.first
     }
 
+    private var isIntroHidden: Bool {
+        settings.isCategoryHidden("intro", in: mode.id)
+    }
+
     private var hiddenItems: [HiddenCategoryItem] {
         let hiddenIDs = settings.hiddenCategories(for: mode.id)
         guard !hiddenIDs.isEmpty else { return [] }
 
         var items: [HiddenCategoryItem] = []
+        if hiddenIDs.contains("intro") {
+            items.append(HiddenCategoryItem(
+                id: "intro",
+                title: settings.localized("Intro exercises"),
+                lessons: introLessons,
+                isCategory: true,
+                stage: nil
+            ))
+        }
         if mode == .path {
             for level in 1...5 {
                 let levelID = "level-\(level)"
@@ -148,10 +161,6 @@ struct LibraryScreen: View {
         return items
     }
 
-    private var detailHasAnyCompletedLesson: Bool {
-        guard let group else { return false }
-        return group.lessons.contains { progress.isCompleted(lessonId: $0.id) }
-    }
     private var next: Lesson? {
         progression.nextLesson(after: lessonStore.lesson(for: settings.lastLessonID),
                                source: NextLessonSource(rawValue: settings.nextLessonSource) ?? .path)
@@ -169,21 +178,6 @@ struct LibraryScreen: View {
             }
             .motion(Theme.Motion.standard, value: showingIntro ? "intro" : mode.id + (group?.id ?? ""))
             .toolbar {
-                if !showingIntro && detailHasAnyCompletedLesson {
-                    ToolbarItem(placement: .topBarTrailing) {
-                        Button {
-                            settings.hideCompletedLessons.toggle()
-                        } label: {
-                            Label(
-                                settings.localized(settings.hideCompletedLessons ? "Show completed" : "Hide completed"),
-                                systemImage: settings.hideCompletedLessons ? "eye" : "eye.slash"
-                            )
-                            .font(Theme.control)
-                            .frame(minHeight: Theme.Size.touch)
-                        }
-                        .accessibilityLabel(settings.localized(settings.hideCompletedLessons ? "Show completed" : "Hide completed"))
-                    }
-                }
                 ToolbarItem(placement: .topBarTrailing) {
                     Button(settings.localized("Settings")) { showingSettings = true }
                         .font(Theme.control).frame(minHeight: Theme.Size.touch)
@@ -264,8 +258,10 @@ struct LibraryScreen: View {
             Section {
                 overallCourseProgress
             }
-            Section {
-                introSectionRow
+            if !isIntroHidden {
+                Section {
+                    introSectionRow
+                }
             }
             organiseSection
             extensionsSection
@@ -309,15 +305,26 @@ struct LibraryScreen: View {
     }
 
     private var introSectionRow: some View {
-        Button { showingIntro = true } label: {
+        let title = settings.localized("Intro exercises")
+        return Button { showingIntro = true } label: {
             VStack(alignment: .leading, spacing: 0) {
-                sidebarLabel(settings.localized("Intro exercises"), lessons: introLessons, isCategory: true)
+                sidebarLabel(title, lessons: introLessons, isCategory: true)
                 Text(settings.localized("%lld exercises · always open", introLessons.count))
                     .font(Theme.meta).foregroundStyle(Theme.secondary).fixedSize(horizontal: false, vertical: true)
             }
         }
         .buttonStyle(.plain)
         .listRowBackground(showingIntro ? Theme.surface : Theme.background)
+        .contextMenu {
+            Button {
+                pendingCategoryToHide = PendingHideTarget(id: "intro", title: title)
+            } label: {
+                Label(settings.localized("Hide category"), systemImage: "eye.slash")
+            }
+        }
+        .accessibilityAction(named: settings.localized("Hide category")) {
+            pendingCategoryToHide = PendingHideTarget(id: "intro", title: title)
+        }
     }
 
     private var organiseSection: some View {
@@ -455,6 +462,9 @@ struct LibraryScreen: View {
     private func hide(target: PendingHideTarget) {
         withAnimation(motion.animation(Theme.Motion.standard)) {
             settings.hideCategory(target.id, in: mode.id)
+            if target.id == "intro" && showingIntro {
+                showingIntro = false
+            }
             if let current = group, isGroupHidden(current) {
                 if let first = visibleGroups.first {
                     selections[mode.id] = first.id
