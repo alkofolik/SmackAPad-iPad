@@ -99,7 +99,6 @@
 "Delete \"%@\"?" = "Delete profile \"%@\"?";
 "This custom profile will be permanently deleted." = "This custom profile will be permanently deleted.";
 "Learn new profile (MIDI learn)" = "Learn new profile (MIDI learn)";
-"Hardware & Calibration" = "Hardware & Calibration";
 "Library" = "Library";
 "Intro" = "Intro";
 "Progression categories" = "Progression categories";
@@ -191,7 +190,6 @@
 "Shows a small pad layout in the lesson that lights up the pads you hit." = "Shows a small pad layout in the lesson that lights up the pads you hit.";
 "Akai and Maschine presets use notes 36–51 starting from the bottom left. Use MIDI learn for other banks or mappings." = "Akai and Maschine presets use notes 36–51 starting from the bottom left. Use MIDI learn for other banks or mappings.";
 "Choose Czech or English. Your lesson progress and controller mappings remain preserved." = "Choose Czech or English. Your lesson progress and controller mappings remain preserved.";
-"Hardware and calibration" = "Hardware and calibration";
 "Touch pads send the same pad events as MIDI." = "Touch pads send the same pad events as MIDI.";
 "Custom" = "Custom";
 "Preset" = "Preset";
@@ -478,3 +476,7 @@
 "About" = "About";
 "Font IBM Plex Sans, SIL OFL 1.1" = "Font IBM Plex Sans, SIL OFL 1.1";
 "Version %@" = "Version %@";
+
+// Controller and calibration (ticket 62)
+"Controller and calibration" = "Controller and calibration";
+"Not connected" = "Not connected";

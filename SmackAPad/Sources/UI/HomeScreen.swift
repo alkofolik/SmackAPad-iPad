@@ -187,7 +187,7 @@ public struct HomeScreen: View {
 
     // Sheet / Popover presentation states
     @State private var showingSettings = false
-    @State private var showingCalibration = false
+    @State private var showingControllerSetup = false
     @State private var showingPurchases = false
     @State private var showingAbout = false
 
@@ -310,19 +310,12 @@ public struct HomeScreen: View {
         .sheet(isPresented: $showingSettings) {
             SettingsView()
         }
-        .sheet(isPresented: $showingCalibration) {
+        .sheet(isPresented: $showingControllerSetup) {
             NavigationStack {
-                CalibrationView(settings: settings, midi: midi)
-                    .toolbar {
-                        ToolbarItem(placement: .confirmationAction) {
-                            Button(settings.localized("Done")) {
-                                showingCalibration = false
-                            }
-                            .font(Theme.control)
-                            .frame(minHeight: Theme.Size.touch)
-                        }
-                    }
+                ControllerSetupView(showsDoneButton: true)
             }
+            .environment(settings)
+            .environment(midi)
         }
         .sheet(isPresented: $showingPurchases) {
             PurchaseSheet()
@@ -353,10 +346,11 @@ public struct HomeScreen: View {
                 edgePad(pad5)
                     .frame(width: cellSize, height: cellSize)
             }
-            // Row 2: Calibration (6) · Full Version (7) · About (8)
+            // Row 2: [Empty Cell] (6) · Full Version (7) · About (8)
             HStack(spacing: gap) {
-                cornerPad(pad6)
+                Color.clear
                     .frame(width: cellSize, height: cellSize)
+                    .accessibilityHidden(true)
                 edgePad(pad7)
                     .frame(width: cellSize, height: cellSize)
                 cornerPad(pad8)
@@ -448,25 +442,7 @@ public struct HomeScreen: View {
         let label = settings.localized("Controller").uppercased(with: Locale(identifier: settings.languagePreference.rawValue))
         let subtitle = midi.sources.first?.name ?? settings.localized("Connect a controller")
         return HomePadView(title: label, subtitle: subtitle, isHero: false) {
-            showingSettings = true
-        }
-    }
-
-    private var pad6: some View {
-        let label = settings.localized("Calibration").uppercased(with: Locale(identifier: settings.languagePreference.rawValue))
-        let offset: Double? = {
-            if let source = midi.sources.first, let off = settings.calibrationOffsets[source.id] {
-                return off
-            }
-            if let touchOff = settings.calibrationOffsets["touch"] {
-                return touchOff
-            }
-            return settings.calibrationOffsets.values.first
-        }()
-        let subtitle = offset.map { String(format: "%+.0f ms", $0) } ?? settings.localized("Not measured")
-
-        return HomePadView(title: label, subtitle: subtitle, isHero: false) {
-            showingCalibration = true
+            showingControllerSetup = true
         }
     }
 

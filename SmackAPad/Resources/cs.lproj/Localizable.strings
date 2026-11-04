@@ -99,7 +99,6 @@
 "Delete \"%@\"?" = "Smazat profil „%@“?";
 "This custom profile will be permanently deleted." = "Tento vlastní profil bude trvale smazán.";
 "Learn new profile (MIDI learn)" = "Naučit nový profil (MIDI learn)";
-"Hardware & Calibration" = "Hardware a kalibrace";
 "Library" = "Knihovna";
 "Intro" = "Úvodní cvičení";
 "Progression categories" = "Kategorie postupu";
@@ -190,7 +189,6 @@
 "Shows a small pad layout in the lesson that lights up the pads you hit." = "Zobrazí v lekci malé rozložení padů, na kterém se rozsvěcují stisknuté pady.";
 "Akai and Maschine presets use notes 36–51 starting from the bottom left. Use MIDI learn for other banks or mappings." = "Profily Akai a Maschine používají noty 36–51 (od levého dolního padu). Pro jiné kontroléry nebo banky použij MIDI learn.";
 "Choose Czech or English. Your lesson progress and controller mappings remain preserved." = "Zvol češtinu nebo angličtinu. Postup v lekcích i nastavení kontroléru zůstanou zachovány.";
-"Hardware and calibration" = "Hardware a kalibrace";
 "Touch pads send the same pad events as MIDI." = "Dotykové pady posílají stejné události jako MIDI.";
 "Custom" = "Vlastní";
 "Preset" = "Výchozí";
@@ -481,3 +479,7 @@
 "About" = "O aplikaci";
 "Font IBM Plex Sans, SIL OFL 1.1" = "Písmo IBM Plex Sans, SIL OFL 1.1";
 "Version %@" = "Verze %@";
+
+// Controller and calibration (ticket 62)
+"Controller and calibration" = "Ovladač a kalibrace";
+"Not connected" = "Nepřipojeno";
