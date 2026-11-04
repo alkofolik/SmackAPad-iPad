@@ -59,7 +59,7 @@ final class CalibrationSession {
 
     func start() {
         guard attached, !busy,
-              deviceID == "touch" || (deviceID == "keyboard" && midi.isKeyboardConnected) || midi.sources.contains(where: { $0.id == deviceID }) else { return }
+              deviceID == "touch" || (deviceID == "keyboard" && midi.isKeyboardConnected) || midi.sources.contains(where: { $0.id == self.deviceID }) else { return }
         let id = UUID()
         runID = id
         measurement = CalibrationMeasurement()
@@ -88,7 +88,7 @@ final class CalibrationSession {
                 while !Task.isCancelled, runID == id, busy {
                     let snapshot = audio.calibrationSnapshot()
                     guard !snapshot.clockChanged else { fail(.audioClockChanged); return }
-                    guard deviceID == "touch" || (deviceID == "keyboard" && midi.isKeyboardConnected) || midi.sources.contains(where: { $0.id == deviceID }) else {
+                    guard deviceID == "touch" || (deviceID == "keyboard" && midi.isKeyboardConnected) || midi.sources.contains(where: { $0.id == self.deviceID }) else {
                         cancel()
                         return
                     }

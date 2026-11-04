@@ -435,14 +435,14 @@ public final class MIDIInput {
             keyboardConnectObserver = NotificationCenter.default.addObserver(
                 forName: .GCKeyboardDidConnect, object: nil, queue: .main
             ) { [weak self] _ in
-                self?.updateKeyboardConnection()
+                MainActor.assumeIsolated { self?.updateKeyboardConnection() }
             }
         }
         if keyboardDisconnectObserver == nil {
             keyboardDisconnectObserver = NotificationCenter.default.addObserver(
                 forName: .GCKeyboardDidDisconnect, object: nil, queue: .main
             ) { [weak self] _ in
-                self?.updateKeyboardConnection()
+                MainActor.assumeIsolated { self?.updateKeyboardConnection() }
             }
         }
     }

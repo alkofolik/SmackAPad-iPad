@@ -565,9 +565,10 @@ struct LibraryScreen: View {
         let nextID = next?.id
         return VStack(alignment: .leading, spacing: Theme.Space.small) {
             if let error = lessonStore.lastLoadError {
-                InfoBanner(text: error.localizedDescription, actionTitle: settings.localized("Reload")) {
+                InfoBanner(text: error.localizedDescription, actionTitle: settings.localized("Reload"),
+                           action: {
                     try? lessonStore.reload()
-                }
+                })
             }
             filters(matching: matching)
             ScreenHeader(title: group.stage.map {
