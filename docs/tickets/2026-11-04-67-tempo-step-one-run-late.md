@@ -36,7 +36,7 @@ The tempo step decided by run N must start with run N + 1, at the ruler's restar
 
 ## Agent assignment
 
-- **Agent**: Codex GPT-6.1 Sol, **high**: audio timing in the tick loop. Fallback: Gemini 3.8 Flash, high.
+- **Agent**: Gemini 3.8 Flash, **high**: audio timing in the tick loop. Fallback: Codex GPT-6.1 Sol, high (if the tempo still lands late after one fix).
 
 ## Done rule
 
