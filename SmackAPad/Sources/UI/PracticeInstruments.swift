@@ -5,7 +5,6 @@ import UIKit
 /// Kept local to practice so the library and settings retain their own styling.
 enum PracticeBandStyle {
     static let showPadLabels = true
-    static let radius: CGFloat = 28
     static let rowGap: CGFloat = 8
     static let orange = Color(red: 1, green: 120.0 / 255, blue: 0)
 
@@ -17,9 +16,37 @@ enum PracticeBandStyle {
         }
     }
 
-    /// Rows may shrink to 44 points; smaller viewports scroll inside the band.
+    static let minRowHeight: CGFloat = 36
+    static let maxRowHeight: CGFloat = 74
+    static let baseRowHeight: CGFloat = 44
+
+    static func unscaledHeight(rows: Int) -> CGFloat {
+        80 + CGFloat(max(1, rows)) * baseRowHeight + CGFloat(max(0, rows - 1)) * rowGap
+    }
+
+    /// Computes the proportional row height for a given lane count and available vertical space.
+    static func rowHeight(rows: Int, availableHeight: CGFloat, minMargin: CGFloat = 40) -> CGFloat {
+        let maxBandHeight = max(160, availableHeight - 2 * minMargin)
+        let unscaled = unscaledHeight(rows: rows)
+        let fitHeight = maxBandHeight * (baseRowHeight / unscaled)
+        return min(maxRowHeight, max(minRowHeight, fitHeight))
+    }
+
+    /// Computes the vertical scale factor (rowHeight / baseRowHeight).
+    static func scale(rows: Int, availableHeight: CGFloat, minMargin: CGFloat = 40) -> CGFloat {
+        rowHeight(rows: rows, availableHeight: availableHeight, minMargin: minMargin) / baseRowHeight
+    }
+
+    /// Band height computed from the lane count and the available vertical space.
+    static func bandHeight(rows: Int, availableHeight: CGFloat, minMargin: CGFloat = 40) -> CGFloat {
+        let s = scale(rows: rows, availableHeight: availableHeight, minMargin: minMargin)
+        let height = unscaledHeight(rows: rows) * s
+        return min(height, availableHeight)
+    }
+
+    /// Minimum height of the band at a given scale.
     static func minimumHeight(rows: Int, scale: CGFloat = 1) -> CGFloat {
-        max(160, 80 + CGFloat(max(1, rows)) * 44 + CGFloat(max(0, rows - 1)) * rowGap) * scale
+        unscaledHeight(rows: rows) * scale
     }
 
     private static let padWidths: [Int: CGFloat] = {
@@ -166,9 +193,9 @@ struct RunResultChip: View {
         }
         .padding(.horizontal, Theme.Space.small)
         .frame(width: 96, height: 48)
-        .background(Theme.surface, in: RoundedRectangle(cornerRadius: Theme.Radius.control))
+        .background(Theme.surface, in: Rectangle())
         .overlay(
-            RoundedRectangle(cornerRadius: Theme.Radius.control)
+            Rectangle()
                 .strokeBorder(Theme.hairline, lineWidth: 1)
         )
     }
@@ -176,11 +203,11 @@ struct RunResultChip: View {
     private var verdictMark: some View {
         ZStack {
             if run.passed {
-                RoundedRectangle(cornerRadius: 2)
+                Rectangle()
                     .fill(Theme.orange)
                     .frame(width: 5, height: 24)
             } else {
-                RoundedRectangle(cornerRadius: 2)
+                Rectangle()
                     .strokeBorder(Theme.markWrong, lineWidth: 1.5)
                     .frame(width: 5, height: 24)
             }
@@ -399,8 +426,8 @@ struct PracticeNextButtonStyle: ButtonStyle {
             .foregroundStyle(Theme.ink)
             .padding(.horizontal, Theme.Space.regular)
             .frame(minHeight: Theme.Size.rowLarge)
-            .background(Theme.background, in: RoundedRectangle(cornerRadius: Theme.Radius.pad))
-            .overlay(RoundedRectangle(cornerRadius: Theme.Radius.pad).strokeBorder(Theme.ink, lineWidth: Theme.Size.border))
+            .background(Theme.background, in: Rectangle())
+            .overlay(Rectangle().strokeBorder(Theme.ink, lineWidth: Theme.Size.border))
             .opacity(configuration.isPressed ? 0.65 : 1)
             .fixedSize(horizontal: true, vertical: false)
     }
@@ -512,16 +539,16 @@ struct LapVaultView: View {
         ZStack {
             if let flagVerdict {
                 if flagVerdict {
-                    RoundedRectangle(cornerRadius: 2)
+                    Rectangle()
                         .fill(Theme.orange)
                         .frame(width: 6, height: 24)
                 } else {
-                    RoundedRectangle(cornerRadius: 2)
+                    Rectangle()
                         .strokeBorder(Theme.markWrong, lineWidth: 1.5)
                         .frame(width: 6, height: 24)
                 }
             } else {
-                RoundedRectangle(cornerRadius: 2)
+                Rectangle()
                     .strokeBorder(Theme.hairline, lineWidth: 1)
                     .frame(width: 6, height: 24)
             }
@@ -545,15 +572,15 @@ struct LapVaultView: View {
 
             // Slot square
             ZStack {
-                RoundedRectangle(cornerRadius: Theme.Radius.control)
+                Rectangle()
                     .fill(Theme.surface)
                     .overlay(
-                        RoundedRectangle(cornerRadius: Theme.Radius.control)
+                        Rectangle()
                             .strokeBorder(Theme.hairline, lineWidth: 1)
                     )
 
                 if isFilled && !recoil {
-                    RoundedRectangle(cornerRadius: Theme.Radius.control)
+                    Rectangle()
                         .fill(starMomentActive ? Theme.orange : Theme.ink)
                         .padding(2)
                         .transition(reduceMotion ? .opacity : .scale)

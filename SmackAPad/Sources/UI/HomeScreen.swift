@@ -6,7 +6,7 @@ struct TactilePadButtonStyle: ButtonStyle {
         configuration.label
             .overlay {
                 if configuration.isPressed {
-                    RoundedRectangle(cornerRadius: Theme.Radius.pad)
+                    Rectangle()
                         .fill(Theme.black.opacity(0.12))
                 }
             }
@@ -59,14 +59,14 @@ struct HomePadView: View {
             .padding(.horizontal, Theme.Space.small)
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .background(
-                RoundedRectangle(cornerRadius: Theme.Radius.pad)
+                Rectangle()
                     .fill(isHero ? Theme.orange : Theme.surface)
             )
             .overlay(
-                RoundedRectangle(cornerRadius: Theme.Radius.pad)
-                    .stroke(isHero ? Color.clear : Theme.hairline, lineWidth: 1)
+                Rectangle()
+                    .stroke(Theme.hairline, lineWidth: 1)
             )
-            .contentShape(RoundedRectangle(cornerRadius: Theme.Radius.pad))
+            .contentShape(Rectangle())
         }
         .buttonStyle(TactilePadButtonStyle())
         .accessibilityLabel(accessibilityText ?? defaultAccessibilityText)
@@ -84,7 +84,7 @@ struct HomePadView: View {
     }
 }
 
-/// The centre logo mark (three pads + rotated orange pad at 12°).
+/// The centre logo mark (three pads + rotated orange pad at 8°, optically centred).
 struct HomeLogoMarkView: View {
     let size: CGFloat
     let darkAppearance: Bool
@@ -115,7 +115,7 @@ struct HomeLogoMarkView: View {
                     .frame(width: padDimension, height: padDimension)
                     .scaleEffect(reduceMotion ? 1.0 : (pad1Popped ? 1.0 : 0.4))
                     .opacity(reduceMotion ? 1.0 : (pad1Popped ? 1.0 : 0.0))
-                    .position(x: 30 * unit, y: 34 * unit)
+                    .position(x: 28.4086 * unit, y: 32.5914 * unit)
 
                 // Bottom-left
                 RoundedRectangle(cornerRadius: cornerRadius)
@@ -123,7 +123,7 @@ struct HomeLogoMarkView: View {
                     .frame(width: padDimension, height: padDimension)
                     .scaleEffect(reduceMotion ? 1.0 : (pad2Popped ? 1.0 : 0.4))
                     .opacity(reduceMotion ? 1.0 : (pad2Popped ? 1.0 : 0.0))
-                    .position(x: 30 * unit, y: 74 * unit)
+                    .position(x: 28.4086 * unit, y: 72.5914 * unit)
 
                 // Bottom-right
                 RoundedRectangle(cornerRadius: cornerRadius)
@@ -131,7 +131,7 @@ struct HomeLogoMarkView: View {
                     .frame(width: padDimension, height: padDimension)
                     .scaleEffect(reduceMotion ? 1.0 : (pad3Popped ? 1.0 : 0.4))
                     .opacity(reduceMotion ? 1.0 : (pad3Popped ? 1.0 : 0.0))
-                    .position(x: 70 * unit, y: 74 * unit)
+                    .position(x: 68.4086 * unit, y: 72.5914 * unit)
             }
             .frame(width: size, height: size)
             .offset(y: reduceMotion ? 0 : blackBounce)
@@ -141,10 +141,10 @@ struct HomeLogoMarkView: View {
                 .fill(Self.orangePad)
                 .frame(width: padDimension, height: padDimension)
                 .scaleEffect(reduceMotion ? 1.0 : (orangeLanded ? 1.0 : 1.35))
-                .rotationEffect(.degrees(reduceMotion ? 12.0 : (orangeLanded ? 12.0 : 0.0)))
+                .rotationEffect(.degrees(reduceMotion ? 8.0 : (orangeLanded ? 8.0 : 0.0)))
                 .offset(y: reduceMotion ? 0 : (orangeLanded ? 0 : -36 * unit))
                 .opacity(reduceMotion ? 1.0 : (orangeVisible ? 1.0 : 0.0))
-                .position(x: 73 * unit, y: 27 * unit)
+                .position(x: 69.9086 * unit, y: 29.0914 * unit)
         }
         .frame(width: size, height: size)
         .accessibilityElement(children: .ignore)
@@ -160,6 +160,7 @@ struct HomeWordmarkView: View {
     var reduceMotion: Bool = false
     var isVisible: Bool = true
 
+    private static let aspectRatio: CGFloat = 490.455 / 73.8
     private static let blackPad = Color(red: 17 / 255.0, green: 17 / 255.0, blue: 17 / 255.0)
     private static let creamPad = Color(red: 242 / 255.0, green: 240 / 255.0, blue: 234 / 255.0)
 
@@ -169,7 +170,7 @@ struct HomeWordmarkView: View {
             .resizable()
             .scaledToFit()
             .foregroundStyle(darkAppearance ? Self.creamPad : Self.blackPad)
-            .frame(width: width)
+            .frame(width: width, height: width / Self.aspectRatio)
             .offset(y: reduceMotion ? 0 : (isVisible ? 0 : 8))
             .opacity(reduceMotion ? 1.0 : (isVisible ? 1.0 : 0.0))
             .accessibilityElement(children: .ignore)
@@ -249,20 +250,23 @@ public struct HomeScreen: View {
             let shorterSide = min(containerW, containerH)
 
             let gap = Theme.Space.regular // 16
-            let margin = Theme.Space.wide // 32
+            let minMargin: CGFloat = 20
 
-            let availableW = max(0, containerW - 2 * margin)
-            let availableH = max(0, containerH - 2 * margin)
+            let availableW = max(0, containerW - 2 * minMargin)
+            let availableH = max(0, containerH - 2 * minMargin)
 
             let aspectRatio: CGFloat = 490.455 / 73.8
             let settledWordmarkW = min(availableW * 0.55, 360)
             let settledWordmarkH = settledWordmarkW / aspectRatio
             let wordmarkSpacing: CGFloat = 28
 
+            let maxGridWidth: CGFloat = 680
+            let maxCellSize: CGFloat = (maxGridWidth - 2 * gap) / 3
+
             let availableGridH = max(0, availableH - (settledWordmarkH + wordmarkSpacing))
             let maxCellW = (availableW - 2 * gap) / 3
             let maxCellH = (availableGridH - 2 * gap) / 3
-            let cellSize = max(0, floor(min(maxCellW, maxCellH)))
+            let cellSize = max(0, floor(min(maxCellW, maxCellH, maxCellSize)))
             let gridSize = 3 * cellSize + 2 * gap
 
             let totalH = settledWordmarkH + wordmarkSpacing + gridSize
@@ -329,6 +333,7 @@ public struct HomeScreen: View {
                 }
             }
         }
+        .ignoresSafeArea()
         .task {
             if isColdStart && !animationFinished {
                 startAnimation()

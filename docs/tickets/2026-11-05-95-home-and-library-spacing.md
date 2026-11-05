@@ -1,6 +1,6 @@
 # 95 — Home grid centred and larger; Library header spacing even
 
-Status: ready. Source: Jakub, 2026-11-05 (agreed with Claude's review).
+Status: resolved. Source: Jakub, 2026-11-05 (agreed with Claude's review).
 
 ## Rule
 
@@ -14,9 +14,9 @@ Status: ready. Source: Jakub, 2026-11-05 (agreed with Claude's review).
 
 ## Acceptance criteria
 
-- [ ] Home: equal space above and below the group on portrait and landscape.
-- [ ] Library: equal gaps and heights in the filter row.
-- [ ] Build passes; do not run tests.
+- [x] Home: equal space above and below the group on portrait and landscape.
+- [x] Library: equal gaps and heights in the filter row.
+- [x] Build passes; do not run tests.
 
 ## Agent assignment
 

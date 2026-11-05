@@ -1,6 +1,6 @@
 # 96 — Logo: optically centred mark (icon, Home screen, wordmark)
 
-Status: ready. Source: Jakub, 2026-11-05: the logo feels off-centre; wants it more symmetric everywhere (app icon, Home screen) without redesigning it.
+Status: resolved. Source: Jakub, 2026-11-05: the logo feels off-centre; wants it more symmetric everywhere (app icon, Home screen) without redesigning it.
 
 ## Problem
 
@@ -22,10 +22,10 @@ In `docs/design/2026-11-03-logo-source/smack-a-pad-icon.svg` (viewBox 100×100) 
 
 ## Acceptance criteria
 
-- [ ] Left/right and top/bottom margins of the mark are equal (state the measured numbers in the report).
-- [ ] Icon PNG: 1024×1024, `hasAlpha: no`.
-- [ ] Home centre tile shows the same geometry, centred in its tile; pop animation unchanged.
-- [ ] Build passes; do not run tests.
+- [x] Left/right and top/bottom margins of the mark are equal (state the measured numbers in the report).
+- [x] Icon PNG: 1024×1024, `hasAlpha: no`.
+- [x] Home centre tile shows the same geometry, centred in its tile; pop animation unchanged.
+- [x] Build passes; do not run tests.
 
 ## Agent assignment
 

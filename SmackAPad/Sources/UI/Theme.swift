@@ -49,12 +49,6 @@ enum Theme {
     static let navigation = text(18)
     static let action = strong(22)
 
-    enum Radius {
-        /// Buttons, fields, chips, banners.
-        static let control: CGFloat = 4
-        /// Pads and cells: touch pads, calibration pad, learn slots.
-        static let pad: CGFloat = 8
-    }
 
     enum Space {
         static let tight: CGFloat = 4
@@ -77,8 +71,6 @@ enum Theme {
         static let transportWidth: CGFloat = 420
         static let border: CGFloat = 2
         static let bracket: CGFloat = 6
-        static let blockRadius: CGFloat = 4
-        static let panelRadius: CGFloat = 0
         static let title: CGFloat = 32
         static let emphasis: CGFloat = 24
         static let listTitle: CGFloat = 28

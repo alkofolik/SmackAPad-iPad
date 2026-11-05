@@ -49,10 +49,19 @@ let black = CGColor(
 )
 context.setFillColor(black)
 
+// Mark geometry (ticket 96):
+// Three pads on a 2x2 grid (size 32x32, gap 8).
+// Orange pad softened: offset (+1.5, -3.5) from grid slot (54, 18) -> (55.5, 14.5), rotated 8° about (71.5, 30.5).
+// Centred by real bounds inside 100x100:
+// Bounding box of all 4 shapes: x in [14.0, 89.1827], y in [12.8173, 90.0]
+// Margins: L/R = 12.4086, T/B = 11.4086 -> shift (dx, dy) = (-1.5914, -1.4086)
+let dx: CGFloat = -1.5914
+let dy: CGFloat = -1.4086
+
 let blackPads = [
-    CGRect(x: 14, y: 18, width: 32, height: 32),
-    CGRect(x: 14, y: 58, width: 32, height: 32),
-    CGRect(x: 54, y: 58, width: 32, height: 32)
+    CGRect(x: 14 + dx, y: 18 + dy, width: 32, height: 32),
+    CGRect(x: 14 + dx, y: 58 + dy, width: 32, height: 32),
+    CGRect(x: 54 + dx, y: 58 + dy, width: 32, height: 32)
 ]
 
 for pad in blackPads {
@@ -61,21 +70,24 @@ for pad in blackPads {
     context.fillPath()
 }
 
-// Orange pad: #FF5B1F, 32x32, radius 3, rotated 12° about (73, 27)
+// Orange pad: #FF5B1F, 32x32, radius 3, rotated 8° about center
 let orange = CGColor(
     srgbRed: CGFloat(0xFF) / 255.0,
     green: CGFloat(0x5B) / 255.0,
     blue: CGFloat(0x1F) / 255.0,
     alpha: 1.0
 )
+let orangeCenterX = 71.5 + dx
+let orangeCenterY = 30.5 + dy
+
 context.saveGState()
-context.translateBy(x: 73, y: 27)
-context.rotate(by: 12.0 * .pi / 180.0)
-context.translateBy(x: -73, y: -27)
+context.translateBy(x: orangeCenterX, y: orangeCenterY)
+context.rotate(by: 8.0 * .pi / 180.0)
+context.translateBy(x: -orangeCenterX, y: -orangeCenterY)
 
 context.setFillColor(orange)
 let orangePath = CGPath(
-    roundedRect: CGRect(x: 57, y: 11, width: 32, height: 32),
+    roundedRect: CGRect(x: 55.5 + dx, y: 14.5 + dy, width: 32, height: 32),
     cornerWidth: 3,
     cornerHeight: 3,
     transform: nil

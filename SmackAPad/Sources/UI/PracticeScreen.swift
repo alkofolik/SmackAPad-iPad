@@ -299,18 +299,14 @@ struct PracticeScreen: View {
                 let used = Set(session.patternHits.map(\.padIndex))
                 return PadVoice.rowOrder.filter { used.contains($0) }
             }()
-            let naturalBandHeight = PracticeBandStyle.minimumHeight(rows: rows.count, scale: 1)
-            let timingBarHeight: CGFloat = Theme.Size.row
-            let spacing: CGFloat = Theme.Space.regular
             let availableHeight = middleGeo.size.height
-            let bandHeight = max(140, min(naturalBandHeight, availableHeight - timingBarHeight - spacing))
-            let leftover = max(0, availableHeight - bandHeight - timingBarHeight - spacing)
-            let topEmpty = leftover / 2
-            let bottomEmpty = leftover / 2
+            let bandHeight = PracticeBandStyle.bandHeight(rows: rows.count, availableHeight: availableHeight)
+            let verticalMargin = max(0, (availableHeight - bandHeight) / 2)
 
-            VStack(spacing: 0) {
-                Color.clear.frame(height: topEmpty)
-                VStack(spacing: spacing) {
+            ZStack {
+                VStack(spacing: 0) {
+                    Color.clear.frame(height: verticalMargin)
+
                     TimelineView(.animation(minimumInterval: 1.0 / 60, paused: !session.running)) { timeline in
                         let frame = session.patternFrame(at: timeline.date)
                         let scored = session.running && !session.listen && frame.countdown == nil
@@ -335,12 +331,20 @@ struct PracticeScreen: View {
                     .frame(height: bandHeight)
                     .frame(maxWidth: .infinity)
 
-                    HitTimingBar(history: session.timingHistory, windows: session.timingWindows,
-                                 active: session.running && !session.listen && session.countdown == nil)
-                        .frame(maxWidth: .infinity)
-                        .fixedSize(horizontal: false, vertical: true)
+                    Color.clear.frame(height: verticalMargin)
                 }
-                Color.clear.frame(height: bottomEmpty)
+
+                if session.running && !session.listen && session.countdown == nil {
+                    VStack(spacing: 0) {
+                        Color.clear.frame(height: verticalMargin + bandHeight + Theme.Space.small)
+                        HitTimingBar(history: session.timingHistory, windows: session.timingWindows,
+                                     active: true)
+                            .frame(maxWidth: .infinity)
+                            .fixedSize(horizontal: false, vertical: true)
+                        Spacer(minLength: 0)
+                    }
+                    .transition(.opacity)
+                }
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .overlay(alignment: .topTrailing) {
@@ -740,11 +744,11 @@ struct PracticeScreen: View {
                             HStack(spacing: Theme.Space.small) {
                                 ZStack {
                                     if run.passed {
-                                        RoundedRectangle(cornerRadius: 2)
+                                        Rectangle()
                                             .fill(Theme.orange)
                                             .frame(width: 5, height: 20)
                                     } else {
-                                        RoundedRectangle(cornerRadius: 2)
+                                        Rectangle()
                                             .strokeBorder(Theme.markWrong, lineWidth: 1.5)
                                             .frame(width: 5, height: 20)
                                     }
@@ -768,9 +772,9 @@ struct PracticeScreen: View {
                             }
                             .padding(.vertical, 4)
                             .padding(.horizontal, Theme.Space.small)
-                            .background(Theme.surface, in: RoundedRectangle(cornerRadius: Theme.Radius.control))
+                            .background(Theme.surface, in: Rectangle())
                             .overlay(
-                                RoundedRectangle(cornerRadius: Theme.Radius.control)
+                                Rectangle()
                                     .strokeBorder(Theme.hairline, lineWidth: 1)
                             )
                             .accessibilityElement(children: .ignore)

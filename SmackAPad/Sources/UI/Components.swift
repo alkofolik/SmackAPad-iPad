@@ -252,7 +252,7 @@ struct FilterChip: View {
                 .frame(minHeight: Theme.Size.touch)
                 .background(selected ? Theme.surface : Theme.background)
                 .overlay(
-                    RoundedRectangle(cornerRadius: Theme.Size.blockRadius)
+                    Rectangle()
                         .stroke(selected ? Theme.ink : Theme.hairline, lineWidth: 1)
                 )
         }

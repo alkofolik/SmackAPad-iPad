@@ -83,16 +83,12 @@ struct PatternField: View {
             let availableWidth = geometry.size.width
             let availableHeight = geometry.size.height
             let count = min(visibleBars, min(lesson.bars, 4))
-            let targetBarWidth = availableWidth / CGFloat(max(1, count))
-            let targetBarHeight = availableHeight
-            let unscaledWidth = PracticeBandStyle.barWidth(rows: rows, scale: 1)
-            let unscaledHeight = PracticeBandStyle.minimumHeight(rows: rows.count, scale: 1)
-            let minScale: CGFloat = count <= 1 ? 0.4 : 0.35
-            let fitScale = max(minScale, min(notationScale, min(targetBarWidth / unscaledWidth, targetBarHeight / unscaledHeight)))
+            let unscaledHeight = PracticeBandStyle.unscaledHeight(rows: rows.count)
+            let bandScale = max(PracticeBandStyle.minRowHeight / PracticeBandStyle.baseRowHeight,
+                                availableHeight / unscaledHeight)
 
-            let contentHeight = max(availableHeight,
-                PracticeBandStyle.minimumHeight(rows: rows.count, scale: fitScale))
-            let gutter: CGFloat = scrolling ? 0 : (PracticeBandStyle.showPadLabels ? 96 * fitScale : 0)
+            let contentHeight = max(availableHeight, unscaledHeight * bandScale)
+            let gutter: CGFloat = scrolling ? 0 : (PracticeBandStyle.showPadLabels ? 96 * bandScale : 0)
 
             ZStack {
                 ScrollView(.vertical) {
@@ -102,7 +98,7 @@ struct PatternField: View {
                                              running: running, hidden: hidden, verdicts: verdicts,
                                              judgments: judgments, pass: pass,
                                              playedHits: playedHits,
-                                             scoring: scoring, missGraceSteps: missGraceSteps, band: band, scale: notationScale)
+                                             scoring: scoring, missGraceSteps: missGraceSteps, band: band, scale: bandScale)
                         } else if count <= 1 {
                             let currentBar = min(lesson.bars - 1, max(0, Int(position) / 16))
                             let barHits = hits.filter { $0.step / 16 == currentBar }
@@ -114,7 +110,7 @@ struct PatternField: View {
                                        hidden: hidden, verdict: barVerdict,
                                        feedback: feedback,
                                        playedHits: barPlayed,
-                                       scoring: scoring, missGraceSteps: missGraceSteps, band: band, scale: fitScale)
+                                       scoring: scoring, missGraceSteps: missGraceSteps, band: band, scale: bandScale)
                                 .frame(height: contentHeight)
                         } else {
                             let currentBar = min(lesson.bars - 1, max(0, Int(position) / 16))
@@ -127,7 +123,7 @@ struct PatternField: View {
                                           position: position, running: running, hidden: hidden,
                                           verdicts: verdicts, feedback: feedback,
                                           playedHits: staticPlayed,
-                                          scoring: scoring, missGraceSteps: missGraceSteps, band: band, scale: fitScale)
+                                          scoring: scoring, missGraceSteps: missGraceSteps, band: band, scale: bandScale)
                                 .frame(height: contentHeight)
                         }
                     }
@@ -171,7 +167,7 @@ struct PatternField: View {
             }
             .animation(reduceMotion ? nil : .easeInOut(duration: 1.2), value: band)
         }
-        .clipShape(RoundedRectangle(cornerRadius: PracticeBandStyle.radius))
+        .clipShape(Rectangle())
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(settings.localized("Rhythm pattern"))
         .accessibilityValue(countdown.map { String($0) } ?? (hidden ? settings.localized("From memory, notes hidden") :

@@ -324,9 +324,9 @@ struct LibraryScreen: View {
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
-        .clipShape(RoundedRectangle(cornerRadius: Theme.Size.blockRadius))
+        .clipShape(Rectangle())
         .overlay(
-            RoundedRectangle(cornerRadius: Theme.Size.blockRadius)
+            Rectangle()
                 .stroke(Theme.hairline, lineWidth: 1)
         )
         .listRowInsets(EdgeInsets(top: Theme.Space.tight, leading: Theme.Space.regular, bottom: Theme.Space.tight, trailing: Theme.Space.regular))
@@ -436,9 +436,9 @@ struct LibraryScreen: View {
                 .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
-            .clipShape(RoundedRectangle(cornerRadius: Theme.Size.blockRadius))
+            .clipShape(Rectangle())
             .overlay(
-                RoundedRectangle(cornerRadius: Theme.Size.blockRadius)
+                Rectangle()
                     .stroke(Theme.hairline, lineWidth: 1)
             )
             .accessibilityValue(settings.localized("Collapsed"))
@@ -470,9 +470,9 @@ struct LibraryScreen: View {
             }
         }
         .background(Theme.background)
-        .clipShape(RoundedRectangle(cornerRadius: Theme.Size.blockRadius))
+        .clipShape(Rectangle())
         .overlay(
-            RoundedRectangle(cornerRadius: Theme.Size.blockRadius)
+            Rectangle()
                 .stroke(Theme.hairline, lineWidth: 1)
         )
     }
@@ -599,7 +599,7 @@ struct LibraryScreen: View {
                     .frame(minHeight: Theme.Size.touch)
                     .background(Theme.surface)
                     .overlay(
-                        RoundedRectangle(cornerRadius: Theme.Size.blockRadius)
+                        Rectangle()
                             .stroke(Theme.hairline, lineWidth: 1)
                     )
             }
@@ -746,7 +746,7 @@ struct LibraryScreen: View {
                     .frame(minHeight: Theme.Size.touch)
                     .background(Theme.surface)
                     .overlay(
-                        RoundedRectangle(cornerRadius: Theme.Size.blockRadius)
+                        Rectangle()
                             .stroke(Theme.hairline, lineWidth: 1)
                     )
             }
@@ -782,81 +782,80 @@ struct LibraryScreen: View {
     }
 
     private func filters(matching: [Lesson]) -> some View {
-        HStack(spacing: Theme.Space.small) {
-            ScrollView(.horizontal) {
-                HStack(spacing: Theme.Space.small) {
-                    HStack(spacing: Theme.Space.tight) {
-                        Image(systemName: "magnifyingglass").font(Theme.meta).foregroundStyle(Theme.secondary)
-                        TextField(settings.localized("Search"), text: $query)
-                            .textFieldStyle(.plain).font(Theme.meta)
-                    }
-                    .padding(.horizontal, Theme.Space.small)
-                    .frame(minWidth: 100, idealWidth: 140, maxWidth: 170, minHeight: Theme.Size.touch)
-                    .background(Theme.surface)
-                    .overlay(
-                        RoundedRectangle(cornerRadius: Theme.Size.blockRadius)
-                            .stroke(Theme.hairline, lineWidth: 1)
-                    )
-                    .accessibilityLabel(settings.localized("Search"))
-
-                    Menu {
-                        Picker(settings.localized(mode == .genre ? "Technique" : "Genre"), selection: $cross) {
-                            Text(settings.localized("All")).tag("")
-                            if mode == .genre {
-                                ForEach(LessonTechnique.allCases) { Text(settings.localized($0.title)).tag($0.id) }
-                            } else {
-                                ForEach(LessonGenre.allCases) { Text(settings.localized($0.title)).tag($0.id) }
-                            }
-                        }
-                    } label: {
-                        HStack(spacing: Theme.Space.tight) {
-                            Image(systemName: "line.3.horizontal.decrease")
-                            Text(crossTitle)
-                        }
-                        .font(Theme.meta).lineLimit(1)
-                        .padding(.horizontal, Theme.Space.small)
-                        .frame(minHeight: Theme.Size.touch)
-                        .background(cross.isEmpty ? Theme.background : Theme.surface)
-                        .overlay(
-                            RoundedRectangle(cornerRadius: Theme.Size.blockRadius)
-                                .stroke(cross.isEmpty ? Theme.hairline : Theme.ink, lineWidth: 1)
-                        )
-                    }
-                    .accessibilityValue(crossTitle)
-
-                    ForEach(LibraryStarFilter.allCases) { filter in
-                        let count = matching.filter { LibraryStarFilter.classify(progress.progress(for: $0.id)) == filter }.count
-                        let selected = settings.libraryStarFilters.contains(filter.id)
-                        FilterChip(title: "\(settings.localized(filter.title)) (\(count))", selected: selected) {
-                            if selected { settings.libraryStarFilters.removeAll { $0 == filter.id } }
-                            else { settings.libraryStarFilters.append(filter.id) }
-                        }
-                    }
-                }
-                .fixedSize(horizontal: true, vertical: false)
-            }
-            Button {
-                query = ""; cross = ""
-                settings.libraryStarFilters = LibraryStarFilter.allCases.map(\.id)
-            } label: {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: Theme.Space.small) {
                 HStack(spacing: Theme.Space.tight) {
-                    Image(systemName: "xmark").font(Theme.meta)
-                    Text(settings.localized("Clear filters")).font(Theme.meta).fixedSize()
+                    Image(systemName: "magnifyingglass").font(Theme.meta).foregroundStyle(Theme.secondary)
+                    TextField(settings.localized("Search"), text: $query)
+                        .textFieldStyle(.plain).font(Theme.meta)
                 }
                 .padding(.horizontal, Theme.Space.small)
-                .frame(minHeight: Theme.Size.touch)
+                .frame(minWidth: 100, idealWidth: 140, maxWidth: 170)
+                .frame(height: Theme.Size.touch)
                 .background(Theme.surface)
                 .overlay(
-                    RoundedRectangle(cornerRadius: Theme.Size.blockRadius)
+                    Rectangle()
                         .stroke(Theme.hairline, lineWidth: 1)
                 )
+                .accessibilityLabel(settings.localized("Search"))
+
+                Menu {
+                    Picker(settings.localized(mode == .genre ? "Technique" : "Genre"), selection: $cross) {
+                        Text(settings.localized("All")).tag("")
+                        if mode == .genre {
+                            ForEach(LessonTechnique.allCases) { Text(settings.localized($0.title)).tag($0.id) }
+                        } else {
+                            ForEach(LessonGenre.allCases) { Text(settings.localized($0.title)).tag($0.id) }
+                        }
+                    }
+                } label: {
+                    HStack(spacing: Theme.Space.tight) {
+                        Image(systemName: "line.3.horizontal.decrease")
+                        Text(crossTitle)
+                    }
+                    .font(Theme.meta).lineLimit(1)
+                    .padding(.horizontal, Theme.Space.small)
+                    .frame(height: Theme.Size.touch)
+                    .background(cross.isEmpty ? Theme.background : Theme.surface)
+                    .overlay(
+                        Rectangle()
+                            .stroke(cross.isEmpty ? Theme.hairline : Theme.ink, lineWidth: 1)
+                    )
+                }
+                .accessibilityValue(crossTitle)
+
+                ForEach(LibraryStarFilter.allCases) { filter in
+                    let count = matching.filter { LibraryStarFilter.classify(progress.progress(for: $0.id)) == filter }.count
+                    let selected = settings.libraryStarFilters.contains(filter.id)
+                    FilterChip(title: "\(settings.localized(filter.title)) (\(count))", selected: selected) {
+                        if selected { settings.libraryStarFilters.removeAll { $0 == filter.id } }
+                        else { settings.libraryStarFilters.append(filter.id) }
+                    }
+                    .frame(height: Theme.Size.touch)
+                }
+
+                Button {
+                    query = ""; cross = ""
+                    settings.libraryStarFilters = LibraryStarFilter.allCases.map(\.id)
+                } label: {
+                    HStack(spacing: Theme.Space.tight) {
+                        Image(systemName: "xmark").font(Theme.meta)
+                        Text(settings.localized("Clear filters")).font(Theme.meta).fixedSize()
+                    }
+                    .padding(.horizontal, Theme.Space.small)
+                    .frame(height: Theme.Size.touch)
+                    .background(Theme.surface)
+                    .overlay(
+                        Rectangle()
+                            .stroke(Theme.hairline, lineWidth: 1)
+                    )
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel(settings.localized("Clear filters"))
             }
-            .buttonStyle(.plain)
-            .accessibilityLabel(settings.localized("Clear filters"))
         }
-        .fixedSize(horizontal: false, vertical: true)
         .scrollBounceBehavior(.basedOnSize)
-        .frame(minHeight: Theme.Size.touch)
+        .frame(height: Theme.Size.touch)
     }
 
     private var crossTitle: String {
@@ -984,11 +983,11 @@ struct LibraryLessonRow: View {
         }
         .padding(.horizontal, Theme.Space.regular)
         .background(
-            RoundedRectangle(cornerRadius: Theme.Size.blockRadius)
+            Rectangle()
                 .fill(Theme.surface)
         )
         .overlay(
-            RoundedRectangle(cornerRadius: Theme.Size.blockRadius)
+            Rectangle()
                 .stroke(Theme.hairline, lineWidth: 1)
         )
         .lessonSource(lesson.id)

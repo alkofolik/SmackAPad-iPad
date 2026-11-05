@@ -191,7 +191,7 @@ public struct IntroScreen: View {
                     .frame(minHeight: Theme.Size.touch)
                     .background(Theme.surface)
                     .overlay(
-                        RoundedRectangle(cornerRadius: Theme.Size.blockRadius)
+                        Rectangle()
                             .stroke(Theme.hairline, lineWidth: 1)
                     )
             }

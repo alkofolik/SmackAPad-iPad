@@ -48,9 +48,9 @@ struct BadgeBanner: View {
         }
         .padding(.horizontal, Theme.Space.regular)
         .padding(.vertical, Theme.Space.small)
-        .background(Theme.white, in: RoundedRectangle(cornerRadius: Theme.Size.blockRadius))
+        .background(Theme.white, in: Rectangle())
         .overlay {
-            RoundedRectangle(cornerRadius: Theme.Size.blockRadius)
+            Rectangle()
                 .strokeBorder(Theme.black, lineWidth: Theme.Size.border)
         }
         .offset(y: visible ? 0 : motion.offset(-16))

@@ -35,9 +35,9 @@ struct PatternBlock: View {
             .foregroundStyle(hand == "R" ? Theme.black : Theme.white)
             .frame(minWidth: Theme.Size.touch, minHeight: Theme.Size.touch)
             .background(hand == "R" ? Theme.white : Theme.black,
-                        in: RoundedRectangle(cornerRadius: Theme.Size.blockRadius))
+                        in: Rectangle())
             .overlay {
-                RoundedRectangle(cornerRadius: Theme.Size.blockRadius)
+                Rectangle()
                     .stroke(hand == "R" ? Theme.black : Theme.white,
                             lineWidth: outlined ? Theme.Size.border : 0)
                     .padding(-Theme.Space.tight)
@@ -631,20 +631,28 @@ struct PadLayoutGrid: View {
             }
             return Theme.text(showKeyboardKeys ? 12 : Theme.Size.dense)
         }()
+        let textStyle: Color = {
+            if strength > 0.35 { return Theme.white }
+            if isUsed { return Theme.ink }
+            return Theme.ink.opacity(0.75)
+        }()
+        let outlineColor: Color = isUsed ? Theme.ink : Theme.ink.opacity(0.50)
+        let outlineWidth: CGFloat = isUsed ? Theme.Size.border : 1.0
+
         return Text(label)
             .font(font)
             .lineLimit(1)
             .minimumScaleFactor(0.6)
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .frame(width: cellSize, height: cellSize)
-            .foregroundStyle(strength > 0.35 ? Theme.white : (isUsed ? Theme.ink : Theme.secondary))
+            .foregroundStyle(textStyle)
             .background {
                 ZStack {
                     Theme.surface
                     tint
                 }
             }
-            .overlay(Rectangle().stroke(Theme.ink, lineWidth: isUsed ? Theme.Size.border : 0))
+            .overlay(Rectangle().stroke(outlineColor, lineWidth: outlineWidth))
             .accessibilityLabel(accessibilityLabel(for: pad))
     }
 

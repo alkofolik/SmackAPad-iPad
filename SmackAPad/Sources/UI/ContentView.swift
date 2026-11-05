@@ -67,10 +67,11 @@ struct MIDILearnView: View {
                                     }
                                     .frame(maxWidth: .infinity, minHeight: 64)
                                     .background(slot == midi.learnedNotes.count ? Theme.activeFill : Theme.surface,
-                                                in: RoundedRectangle(cornerRadius: Theme.Size.blockRadius))
+                                                in: Rectangle())
                                     .overlay(
-                                        RoundedRectangle(cornerRadius: Theme.Size.blockRadius)
-                                            .stroke(slot == midi.learnedNotes.count ? Theme.orange : Color.clear, lineWidth: Theme.Size.border)
+                                        Rectangle()
+                                            .stroke(slot == midi.learnedNotes.count ? Theme.orange : Theme.hairline,
+                                                    lineWidth: slot == midi.learnedNotes.count ? Theme.Size.border : 1)
                                     )
                                     .accessibilityAddTraits(slot == midi.learnedNotes.count ? .isSelected : [])
                                 }
@@ -157,10 +158,11 @@ struct TouchPad: View {
         }
         .frame(maxWidth: .infinity, minHeight: 72)
         .background(isActive ? Theme.activeFill : Theme.surface,
-                    in: RoundedRectangle(cornerRadius: Theme.Size.blockRadius))
+                    in: Rectangle())
         .overlay(
-            RoundedRectangle(cornerRadius: Theme.Size.blockRadius)
-                .stroke(isActive ? Theme.orange : Color.clear, lineWidth: Theme.Size.border)
+            Rectangle()
+                .stroke(isActive ? Theme.orange : Theme.hairline,
+                        lineWidth: isActive ? Theme.Size.border : 1)
         )
         .contentShape(Rectangle())
         .overlay { PadPressSurface(onPress: onPress).accessibilityHidden(true) }

@@ -21,9 +21,9 @@ struct TempoUpBanner: View {
             .foregroundStyle(Theme.black)
             .padding(.horizontal, Theme.Space.regular)
             .padding(.vertical, Theme.Space.small)
-            .background(Theme.orange, in: RoundedRectangle(cornerRadius: Theme.Size.blockRadius))
+            .background(Theme.orange, in: Rectangle())
             .overlay {
-                RoundedRectangle(cornerRadius: Theme.Size.blockRadius)
+                Rectangle()
                     .strokeBorder(Theme.black, lineWidth: Theme.Size.border)
             }
             .scaleEffect(motion.scale(pulse ? 1.08 : 1))

@@ -1,6 +1,6 @@
 # 94 — One shape language: same corners and same edge everywhere
 
-Status: ready. Source: Jakub, 2026-11-05 (agreed with Claude's review): the app mixes rounded tiles without outline, square buttons with a black outline and a strongly rounded pattern band. It should look like one system.
+Status: resolved. Source: Jakub, 2026-11-05 (agreed with Claude's review): the app mixes rounded tiles without outline, square buttons with a black outline and a strongly rounded pattern band. It should look like one system.
 
 ## Rule
 
@@ -16,10 +16,10 @@ Status: ready. Source: Jakub, 2026-11-05 (agreed with Claude's review): the app 
 
 ## Acceptance criteria
 
-- [ ] No rounded corners on chrome in Home, Library, Practice, Settings, popovers.
-- [ ] Tiles and buttons share one border style.
-- [ ] Light and dark; portrait and landscape.
-- [ ] Build passes; do not run tests.
+- [x] No rounded corners on chrome in Home, Library, Practice, Settings, popovers.
+- [x] Tiles and buttons share one border style.
+- [x] Light and dark; portrait and landscape.
+- [x] Build passes; do not run tests.
 
 ## Agent assignment
 
