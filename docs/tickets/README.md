@@ -114,3 +114,5 @@ Source: Jakub's iPad test, photos 1–6.
 | 86 | Star rules / session results popovers squashed below the card | Gemini 3.8 Flash, high | after 85 (same file) |
 | 88 | Appearance change applies at once | Gemini 3.8 Flash, high | any time, parallel |
 | 89 | Library: framed levels, categories, lesson cards; top-left overlap | Gemini 3.8 Flash, high | any time, parallel |
+| 90 | Static view: remove the extra vertical bar line | Gemini 3.8 Flash, medium (fallback Codex Sol, medium) | any time (same file as 84/87) |
+| 91 | Transport buttons equal size; Czech "Znovu" | Gemini 3.8 Flash, medium (fallback Codex Sol, medium) | any time |

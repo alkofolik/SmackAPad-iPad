@@ -29,11 +29,24 @@ Also, on the photo the playhead is already well past the first notes of bar 2 al
 
 ## Acceptance criteria
 
-- [ ] No beat number is covered by the downbeat mark, at any scale (1, 2, 4 bars shown; landscape and portrait).
-- [ ] In the static 2-bar view the playhead and the progress line(s) agree at every bar line; no jump at the bar line or at the loop wrap.
-- [ ] Single-bar and scrolling view unchanged except for the downbeat mark.
-- [ ] Build passes; do not run tests.
+- [x] No beat number is covered by the downbeat mark, at any scale (1, 2, 4 bars shown; landscape and portrait).
+- [x] In the static 2-bar view the playhead and the progress line(s) agree at every bar line; no jump at the bar line or at the loop wrap.
+- [x] Single-bar and scrolling view unchanged except for the downbeat mark.
+- [x] Build passes; do not run tests.
 - [ ] **iPad test (Jakub)**: a 2-bar lesson (e.g. Rock 1) in the static view, several loops.
+
+## Comments
+
+### Investigation: what jumped and why
+1. **Playhead (`drawMarker`)**: was positioned at `gutter + (visiblePosition + 0.5) * cellWidth`. This caused it to cross the bar line half a step early (at step 15.5 instead of 16.0), and be already 0.5 cells past the bar line when bar 2 notes sounded (step 16.0). At the end of the loop, it reached the right edge at step 31.5, ran off-screen from 31.5 to 32.0, and on wrap jumped back from 32.5 to 0.5 (a visible jump of 0.5 steps / half a cell).
+2. **Bottom progress (`PatternPassProgress`)**: had redundant `.padding(.horizontal, Theme.Space.page)` making it 48 pt too narrow, and mapped across full width rather than starting after the pad label gutter. For a 2-bar lesson, its bar notch was at width / 2 instead of `(width + gutter) / 2` (about 20 pt behind the actual bar separator line).
+3. **Top spine ruler (`BandTopSpineRuler`)**: used 1 pt full-height black hairline dividers across the 4 run sectors. At 50%, this black divider sat ~20 pt away from the visible bar line (at ~52.5%), creating the false appearance of a misaligned bar line.
+
+### Implemented solutions
+- **Downbeat mark**: scaled from `lanes.countY`, placed directly under the number "1" (`lanes.countY + 12 * scale`, width `max(4, 6 * scale)`, height `max(2.5, 4 * scale)`). Line top and separator line also scale with `lanes.countY + 14 * scale`. Never touches or overlaps the number at any scale (1, 2, 4 bars; portrait and landscape).
+- **Playhead**: in `StaticPattern`, removed the `+ 0.5 * cellWidth` offset. The playhead now starts at `gutter` at step 0.0, crosses the bar line at step 16.0, reaches `size.width` at step 32.0, and wraps smoothly back to `gutter` at constant speed without any half-step jump or off-screen clipping.
+- **Bottom progress line**: removed the duplicate horizontal padding and passed `gutter` to `PatternPassProgress`. Notches and progress now start at `gutter` and match the cell area (`gutter + trackWidth * bar / count`), so the bar notch sits exactly under the bar line and the progress fill reaches it at step 16.0 in sync with the playhead.
+- **Top spine ruler**: removed the black hairline dividers and styled the sectors as distinct segments with a 2 pt transparent gap (`HStack(spacing: 2)`) and rounded corners (`cornerRadius: 1.5`). It now clearly reads as a segmented run track at the top edge, with zero expectation of aligning with pattern bar lines below.
 
 ## Agent assignment
 

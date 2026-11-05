@@ -19,12 +19,12 @@ Status: ready. Blocked by: 84 (same file `PatternField.swift`). Source: Jakub, 2
 
 ## Acceptance criteria
 
-- [ ] 4-bar lesson: taps cycle 1, 2, 3, 4, 1. 2-bar lesson: 1, 2, 1. 1-bar lesson: no change.
-- [ ] Count is visible on the button; toolbar does not shift.
-- [ ] Settings pickers show the same value.
-- [ ] Works while a run is playing (no restart of the run).
-- [ ] cs and en; landscape and portrait.
-- [ ] Build passes; do not run tests.
+- [x] 4-bar lesson: taps cycle 1, 2, 3, 4, 1. 2-bar lesson: 1, 2, 1. 1-bar lesson: no change.
+- [x] Count is visible on the button; toolbar does not shift.
+- [x] Settings pickers show the same value.
+- [x] Works while a run is playing (no restart of the run).
+- [x] cs and en; landscape and portrait.
+- [x] Build passes; do not run tests.
 - [ ] **iPad test (Jakub)**: a 3-bar and a 2-bar lesson.
 
 ## Agent assignment
