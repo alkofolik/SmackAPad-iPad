@@ -7,7 +7,7 @@ struct TactilePadButtonStyle: ButtonStyle {
             .overlay {
                 if configuration.isPressed {
                     RoundedRectangle(cornerRadius: Theme.Radius.pad)
-                        .fill(Color.black.opacity(0.12))
+                        .fill(Theme.black.opacity(0.12))
                 }
             }
             .scaleEffect(configuration.isPressed ? 0.97 : 1.0)

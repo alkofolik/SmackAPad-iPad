@@ -4,17 +4,24 @@ import UIKit
 /// Orange carries the score; black and white carry hand and hierarchy.
 /// IBM Plex Sans is bundled under the SIL Open Font License 1.1.
 enum Theme {
+    /// Base palette: cream white (#F4EFE6) and warm soft black (#1F1D1A).
+    /// Adjust creamHex (or softBlackHex) here to tune warm/cool tone across the app.
+    static let creamHex: UInt32 = 0xF4EFE6
+    static let softBlackHex: UInt32 = 0x1F1D1A
+    private static let creamWhite = UIColor(hex: creamHex)
+    private static let softBlack = UIColor(hex: softBlackHex)
+
     static let orange = Color(red: 1, green: 107.0 / 255, blue: 0)
-    static let black = Color.black
+    static let black = Color(uiColor: softBlack)
     /// Result marks on the orange band: correct, off the beat, wrong or missed.
     static let markCorrect = Color(red: 0.04, green: 0.34, blue: 0.15)
     static let markOff = Color(red: 0.36, green: 0.26, blue: 0)
     static let markWrong = Color(red: 0.62, green: 0.06, blue: 0.10)
-    static let white = Color.white
-    static let background = adaptive(light: .white, dark: .black)
-    static let ink = adaptive(light: .black, dark: .white)
-    static let secondary = adaptive(light: UIColor(white: 0.35, alpha: 1), dark: UIColor(white: 0.7, alpha: 1))
-    static let surface = adaptive(light: UIColor(white: 0.94, alpha: 1), dark: UIColor(white: 0.09, alpha: 1))
+    static let white = Color(uiColor: creamWhite)
+    static let background = adaptive(light: creamWhite, dark: softBlack)
+    static let ink = adaptive(light: softBlack, dark: creamWhite)
+    static let secondary = adaptive(light: UIColor(hex: 0x5E5950), dark: UIColor(hex: 0xB3ADA2))
+    static let surface = adaptive(light: UIColor(hex: 0xEBE5DA), dark: UIColor(hex: 0x2A2824))
     /// One hairline for every divider and outline in the chrome.
     static let hairline = ink.opacity(0.15)
     /// One fill for an active or selected control.
@@ -27,8 +34,8 @@ enum Theme {
             return orange
         default:
             return adaptive(
-                light: UIColor(white: 0.82, alpha: 1.0),
-                dark: UIColor(white: 0.25, alpha: 1.0)
+                light: UIColor(hex: 0xD6D0C4),
+                dark: UIColor(hex: 0x3E3B36)
             )
         }
     }
@@ -134,6 +141,22 @@ enum Theme {
 
     private static func adaptive(light: UIColor, dark: UIColor) -> Color {
         Color(uiColor: UIColor { $0.userInterfaceStyle == .dark ? dark : light })
+    }
+}
+
+private extension UIColor {
+    convenience init(hex: UInt32, alpha: CGFloat = 1.0) {
+        let r = CGFloat((hex >> 16) & 0xFF) / 255.0
+        let g = CGFloat((hex >> 8) & 0xFF) / 255.0
+        let b = CGFloat(hex & 0xFF) / 255.0
+        self.init(red: r, green: g, blue: b, alpha: alpha)
+    }
+
+    convenience init(hex string: String, alpha: CGFloat = 1.0) {
+        let clean = string.trimmingCharacters(in: CharacterSet.alphanumerics.inverted)
+        var int: UInt64 = 0
+        Scanner(string: clean).scanHexInt64(&int)
+        self.init(hex: UInt32(int), alpha: alpha)
     }
 }
 

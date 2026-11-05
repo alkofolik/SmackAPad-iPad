@@ -638,7 +638,7 @@ struct BandTopSpineRuler: View {
                                 // Last sector distinct background
                                 LastSectorTrackBackground()
                             } else {
-                                Color.white.opacity(0.18)
+                                Theme.white.opacity(0.18)
                             }
 
                             // Progress fill for this sector
@@ -648,7 +648,7 @@ struct BandTopSpineRuler: View {
                                 return 0.0
                             }()
                             if fillFraction > 0 {
-                                Color.white.opacity(0.95)
+                                Theme.white.opacity(0.95)
                                     .frame(width: sectorWidth * fillFraction)
                             }
                         }
@@ -661,11 +661,11 @@ struct BandTopSpineRuler: View {
                 if sectorCount >= 2 {
                     let toothX = CGFloat(sectorCount - 1) * (sectorWidth + gap)
                     WarningToothShape()
-                        .fill(isWarningLit ? Color.white : Color.black.opacity(0.5))
+                        .fill(isWarningLit ? Theme.white : Theme.black.opacity(0.5))
                         .overlay {
                             if !isWarningLit {
                                 WarningToothShape()
-                                    .stroke(Color.white.opacity(0.7), lineWidth: 0.75)
+                                    .stroke(Theme.white.opacity(0.7), lineWidth: 0.75)
                             }
                         }
                         .frame(width: 8, height: 8)
@@ -675,7 +675,7 @@ struct BandTopSpineRuler: View {
                 // Star moment laser beam sweep (0.45 s)
                 if starMomentBeamActive && !reduceMotion {
                     LinearGradient(
-                        colors: [.clear, .white, .white, .clear],
+                        colors: [.clear, Theme.white, Theme.white, .clear],
                         startPoint: .leading,
                         endPoint: .trailing
                     )
@@ -706,14 +706,14 @@ struct BandTopSpineRuler: View {
 private struct LastSectorTrackBackground: View {
     var body: some View {
         Canvas { context, size in
-            context.fill(Path(CGRect(origin: .zero, size: size)), with: .color(Color.white.opacity(0.12)))
+            context.fill(Path(CGRect(origin: .zero, size: size)), with: .color(Theme.white.opacity(0.12)))
             var path = Path()
             let step: CGFloat = 6
             for x in stride(from: -size.height, to: size.width + size.height, by: step) {
                 path.move(to: CGPoint(x: x, y: size.height))
                 path.addLine(to: CGPoint(x: x + size.height, y: 0))
             }
-            context.stroke(path, with: .color(Color.black.opacity(0.20)), lineWidth: 1.5)
+            context.stroke(path, with: .color(Theme.black.opacity(0.20)), lineWidth: 1.5)
         }
     }
 }

@@ -1,6 +1,6 @@
 # 92 — Palette: soften pure white and pure black (cream white, warm soft black)
 
-Status: ready. Source: Jakub, 2026-11-05: likes the simple palette, but pure white feels too harsh and pure black too black. Wants white slightly creamy and black softened.
+Status: resolved. Source: Jakub, 2026-11-05: likes the simple palette, but pure white feels too harsh and pure black too black. Wants white slightly creamy and black softened.
 
 ## Problem
 
@@ -31,11 +31,12 @@ Change the values **only in `Theme.swift`** (the one central place). No view fil
 
 ## Acceptance criteria
 
-- [ ] No pure #FFFFFF / #000000 left on screen in light or dark mode.
-- [ ] Text contrast stays at least 7:1 (ink on background is about 14:1).
-- [ ] Orange text/labels, result marks, pad flashes and the playhead stay clearly visible.
-- [ ] Light and dark; landscape and portrait.
-- [ ] Build passes; do not run tests.
+- [x] No pure #FFFFFF / #000000 left on screen in light or dark mode.
+- [x] Text contrast stays at least 7:1 (ink on background is about 14:1).
+- [x] Orange text/labels, result marks, pad flashes and the playhead stay clearly visible.
+- [x] Light and dark; landscape and portrait.
+- [x] Build passes; do not run tests.
+- [x] **iPad test (Jakub)**: tested on iPad and approved.
 
 ## Agent assignment
 
