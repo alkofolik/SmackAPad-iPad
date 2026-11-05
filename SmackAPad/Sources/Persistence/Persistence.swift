@@ -727,16 +727,19 @@ public struct LessonProgress: Codable, Equatable, Hashable, Sendable {
     public var reviewStep: Int?
     public var reviewDueDay: String?
     public var settled: Bool?
+    public var lastReviewedDay: String?
     var learningCreditByPadCount: [String: StarStreak] = [:]
 
     public var reviewSchedule: ReviewScheduler.ScheduleState {
         get {
-            ReviewScheduler.ScheduleState(reviewStep: reviewStep, reviewDueDay: reviewDueDay, settled: settled)
+            ReviewScheduler.ScheduleState(reviewStep: reviewStep, reviewDueDay: reviewDueDay, settled: settled,
+                                          lastReviewedDay: lastReviewedDay)
         }
         set {
             self.reviewStep = newValue.reviewStep
             self.reviewDueDay = newValue.reviewDueDay
             self.settled = newValue.settled
+            self.lastReviewedDay = newValue.lastReviewedDay
         }
     }
 
@@ -751,7 +754,8 @@ public struct LessonProgress: Codable, Equatable, Hashable, Sendable {
         masteryDay: String? = nil,
         reviewStep: Int? = nil,
         reviewDueDay: String? = nil,
-        settled: Bool? = nil
+        settled: Bool? = nil,
+        lastReviewedDay: String? = nil
     ) {
         self.hasPlayed = hasPlayed || passed || mastery || memory
         self.passed = passed
@@ -764,11 +768,12 @@ public struct LessonProgress: Codable, Equatable, Hashable, Sendable {
         self.reviewStep = reviewStep
         self.reviewDueDay = reviewDueDay
         self.settled = settled
+        self.lastReviewedDay = lastReviewedDay
     }
 
     private enum CodingKeys: String, CodingKey {
         case hasPlayed, passed, mastery, memory, currentBpm, bestScore, masteryDay, lastPlayedDay, learningCreditByPadCount
-        case reviewStep, reviewDueDay, settled
+        case reviewStep, reviewDueDay, settled, lastReviewedDay
     }
 
     /// Existing progress files predate the memory star and review schedule.
@@ -785,6 +790,7 @@ public struct LessonProgress: Codable, Equatable, Hashable, Sendable {
         reviewStep = try values.decodeIfPresent(Int.self, forKey: .reviewStep)
         reviewDueDay = try values.decodeIfPresent(String.self, forKey: .reviewDueDay)
         settled = try values.decodeIfPresent(Bool.self, forKey: .settled)
+        lastReviewedDay = try values.decodeIfPresent(String.self, forKey: .lastReviewedDay)
         // Old records did not distinguish a saved tempo from an interrupted attempt.
         hasPlayed = try values.decodeIfPresent(Bool.self, forKey: .hasPlayed) ?? (passed || mastery || memory || currentBpm > 0 || bestScore > 0)
     }
@@ -952,9 +958,7 @@ public final class ProgressStore: @unchecked Sendable {
         }
         result.lastPlayedDay = [existing.lastPlayedDay, incoming.lastPlayedDay].compactMap { $0 }.max()
         let mergedSchedule = ReviewScheduler.merge(existing.reviewSchedule, incoming.reviewSchedule)
-        result.reviewStep = mergedSchedule.reviewStep
-        result.reviewDueDay = mergedSchedule.reviewDueDay
-        result.settled = mergedSchedule.settled
+        result.reviewSchedule = mergedSchedule
         return result
     }
 
@@ -1187,6 +1191,19 @@ public final class ProgressStore: @unchecked Sendable {
         if autoSave {
             try? save()
         }
+    }
+
+    /// Records a full review attempt, including warm-up passes that do not advance the schedule.
+    public func markReviewPlayed(for lessonId: Int, today: String) {
+        guard var schedule = progress(for: lessonId)?.reviewSchedule else { return }
+        schedule.lastReviewedDay = today
+        updateReviewSchedule(schedule, for: lessonId)
+    }
+
+    public func postponeReview(for lessonId: Int, today: String) {
+        guard let schedule = progress(for: lessonId)?.reviewSchedule else { return }
+        let postponed = ReviewScheduler.postpone(schedule, today: today)
+        if postponed != schedule { updateReviewSchedule(postponed, for: lessonId) }
     }
 
     /// Number of lessons currently due for spaced review.

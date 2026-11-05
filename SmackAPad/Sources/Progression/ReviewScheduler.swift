@@ -22,15 +22,18 @@ public struct ReviewScheduler: Sendable {
         public var reviewStep: Int?
         public var reviewDueDay: String?
         public var settled: Bool?
+        public var lastReviewedDay: String?
 
         public init(
             reviewStep: Int? = nil,
             reviewDueDay: String? = nil,
-            settled: Bool? = nil
+            settled: Bool? = nil,
+            lastReviewedDay: String? = nil
         ) {
             self.reviewStep = reviewStep
             self.reviewDueDay = reviewDueDay
             self.settled = settled
+            self.lastReviewedDay = lastReviewedDay
         }
 
         public var isSettled: Bool {
@@ -44,7 +47,7 @@ public struct ReviewScheduler: Sendable {
     }
 
     /// Feedback to present on the result card or announcement.
-    public enum ReviewFeedback: Equatable, Hashable, Sendable {
+    public enum ReviewFeedback: Codable, Equatable, Hashable, Sendable {
         case passed(nextStep: Int, gapDays: Int)
         case settled
         case failed(newStep: Int)
@@ -116,11 +119,12 @@ public struct ReviewScheduler: Sendable {
         guard isFullRun else {
             return Outcome(newSchedule: schedule, feedback: nil)
         }
-
         // When notes fade out over the first passes in From memory, passes 1–2 do not count as reviews
         if fadeNotes && pass < 3 {
             return Outcome(newSchedule: schedule, feedback: nil)
         }
+        var schedule = schedule
+        schedule.lastReviewedDay = today
 
         let atGoalTempo = bpm >= targetBpm
         if !fromMemory || !atGoalTempo {
@@ -132,21 +136,29 @@ public struct ReviewScheduler: Sendable {
 
         if passed {
             if currentStep >= 3 {
-                let newSched = ScheduleState(reviewStep: 3, reviewDueDay: nil, settled: true)
+                let newSched = ScheduleState(reviewStep: 3, reviewDueDay: nil, settled: true, lastReviewedDay: today)
                 return Outcome(newSchedule: newSched, feedback: .settled)
             } else {
                 let nextStep = currentStep + 1
                 let gapDays = gaps[nextStep]
                 let nextDueDay = AppCalendar.addingDays(gapDays, to: today) ?? today
-                let newSched = ScheduleState(reviewStep: nextStep, reviewDueDay: nextDueDay, settled: false)
+                let newSched = ScheduleState(reviewStep: nextStep, reviewDueDay: nextDueDay, settled: false, lastReviewedDay: today)
                 return Outcome(newSchedule: newSched, feedback: .passed(nextStep: nextStep, gapDays: gapDays))
             }
         } else {
             let newStep = max(0, currentStep - 1)
             let tomorrow = AppCalendar.addingDays(1, to: today) ?? today
-            let newSched = ScheduleState(reviewStep: newStep, reviewDueDay: tomorrow, settled: false)
+            let newSched = ScheduleState(reviewStep: newStep, reviewDueDay: tomorrow, settled: false, lastReviewedDay: today)
             return Outcome(newSchedule: newSched, feedback: .failed(newStep: newStep))
         }
+    }
+
+    /// Defers an unplayed due review without changing its progress.
+    public static func postpone(_ schedule: ScheduleState, today: String) -> ScheduleState {
+        guard schedule.isDue(on: today), schedule.lastReviewedDay != today else { return schedule }
+        var postponed = schedule
+        postponed.reviewDueDay = AppCalendar.addingDays(1, to: today) ?? today
+        return postponed
     }
 
     /// Initial schedule when star 2 is first earned: scheduled for masteryDay + 1.
@@ -163,6 +175,12 @@ public struct ReviewScheduler: Sendable {
 
     /// Merges two schedules keeping the further-progressed schedule.
     public static func merge(_ a: ScheduleState, _ b: ScheduleState) -> ScheduleState {
+        var result = mergedSchedule(a, b)
+        result.lastReviewedDay = [a.lastReviewedDay, b.lastReviewedDay].compactMap { $0 }.max()
+        return result
+    }
+
+    private static func mergedSchedule(_ a: ScheduleState, _ b: ScheduleState) -> ScheduleState {
         if a.isSettled || b.isSettled {
             let maxStep = max(a.reviewStep ?? 0, b.reviewStep ?? 0)
             return ScheduleState(reviewStep: maxStep, reviewDueDay: nil, settled: true)

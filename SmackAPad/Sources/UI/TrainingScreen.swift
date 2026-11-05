@@ -220,7 +220,10 @@ public struct TrainingScreen: View {
                 padCount: midi.activeProfile.padCount, openLessonIDs: openMixLessonIDs,
                 day: today, draw: seed).map(\.id)
         }
-        var chosen = draw(newDraw ? UInt64.random(in: 1...1_000_000) : 0)
+        var chosen = newDraw ? draw(UInt64.random(in: 1...1_000_000))
+            : TrainingMix.dailySelection(lessons: progression.catalog.lessons, progress: progress.records,
+                padCount: midi.activeProfile.padCount, openLessonIDs: openMixLessonIDs,
+                day: today, savedJSON: dailyMixes).map(\.id)
         if newDraw, Set(chosen) == Set(mixLessonIDs) {
             // Prefer different members where possible; otherwise change the order.
             for seed in 1...50 {

@@ -2,6 +2,21 @@ import Foundation
 
 /// Pure daily selection. Access is supplied by the owning screen, including edition access.
 enum TrainingMix {
+    /// Shares Training's saved draw with any entry point that needs today's Mix.
+    static func dailySelection(lessons: [Lesson], progress: [Int: LessonProgress], padCount: Int,
+                               openLessonIDs: Set<Int>, day: String, savedJSON: String) -> [Lesson] {
+        let pool = candidates(lessons: lessons, progress: progress, padCount: padCount,
+                              openLessonIDs: openLessonIDs)
+        let saved = (try? JSONDecoder().decode([String: [Int]].self, from: Data(savedJSON.utf8))) ?? [:]
+        if let ids = saved["\(day):\(padCount)"], ids.count >= 2,
+           Set(ids).count == ids.count {
+            let cached = ids.compactMap { id in pool.first { $0.id == id } }
+            if cached.count == ids.count { return cached }
+        }
+        return select(lessons: lessons, progress: progress, padCount: padCount,
+                      openLessonIDs: openLessonIDs, day: day)
+    }
+
     static func candidates(lessons: [Lesson], progress: [Int: LessonProgress], padCount: Int,
                            openLessonIDs: Set<Int>) -> [Lesson] {
         var seen: Set<Int> = []

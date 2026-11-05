@@ -663,3 +663,20 @@
 "Best response" = "Nejlepší odpověď";
 "Learn a lesson to play after me." = "Nejdřív splň alespoň jednu lekci.";
 "Shows or hides keyboard keys" = "Zobrazí nebo skryje klávesy klávesnice";
+
+/* Ticket 103: daily Today session. */
+"Today" = "Dnes";
+"1 review · then new lesson" = "1 opakování · pak nová lekce";
+"%lld reviews · then new lesson" = "%lld opakování · pak nová lekce";
+"1 review" = "1 opakování";
+"%lld reviews" = "%lld opakování";
+"Next: %@ (review %lld of %lld)" = "Další: %@ (opakování %lld ze %lld)";
+"Next: %@" = "Další: %@";
+"Skip" = "Přeskočit";
+"Done for today" = "Konec na dnes";
+"Not played" = "Nezahráno";
+"That's enough for today" = "Dnes stačí";
+"Reviews passed: %lld of %lld" = "Splněná opakování: %lld ze %lld";
+"New lesson: %@" = "Nová lekce: %@";
+"Best score: %lld %%" = "Nejlepší skóre: %lld %%";
+"Does not count · finish a hidden pass" = "Nepočítá se · dokonči průchod bez nápovědy";

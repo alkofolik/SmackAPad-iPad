@@ -660,3 +660,20 @@
 "Best response" = "Best response";
 "Learn a lesson to play after me." = "Learn a lesson to play after me.";
 "Shows or hides keyboard keys" = "Shows or hides keyboard keys";
+
+/* Ticket 103: daily Today session. */
+"Today" = "Today";
+"1 review · then new lesson" = "1 review · then new lesson";
+"%lld reviews · then new lesson" = "%lld reviews · then new lesson";
+"1 review" = "1 review";
+"%lld reviews" = "%lld reviews";
+"Next: %@ (review %lld of %lld)" = "Next: %@ (review %lld of %lld)";
+"Next: %@" = "Next: %@";
+"Skip" = "Skip";
+"Done for today" = "Done for today";
+"Not played" = "Not played";
+"That's enough for today" = "That's enough for today";
+"Reviews passed: %lld of %lld" = "Reviews passed: %lld of %lld";
+"New lesson: %@" = "New lesson: %@";
+"Best score: %lld %%" = "Best score: %lld %%";
+"Does not count · finish a hidden pass" = "Does not count · finish a hidden pass";

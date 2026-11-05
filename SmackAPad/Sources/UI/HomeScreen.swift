@@ -195,6 +195,12 @@ public struct HomeScreen: View {
     @Environment(MIDIInput.self) private var midi
     @Environment(\.colorScheme) private var colorScheme
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.scenePhase) private var scenePhase
+    @AppStorage("smackapad.training.today") private var savedTodayPlan = ""
+    @AppStorage("smackapad.training.dailyMixes") private var dailyMixes = "{}"
+    @State private var calendarDay = AppCalendar.today()
+    @State private var showingToday = false
+    @State private var activeTodayPlan: TodayPlan?
 
     @State private var lessonStore = LessonStore.shared
     @State private var containerOpacity: Double = 1.0
@@ -357,6 +363,17 @@ public struct HomeScreen: View {
         .sheet(isPresented: $showingBadges) {
             BadgesView()
         }
+        .onChange(of: scenePhase) { _, phase in
+            if phase == .active { calendarDay = AppCalendar.today() }
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .NSCalendarDayChanged)) { _ in
+            calendarDay = AppCalendar.today()
+        }
+        .fullScreenCover(isPresented: $showingToday) {
+            if let plan = activeTodayPlan {
+                TodaySessionScreen(plan: plan) { showingToday = false }
+            }
+        }
     }
 
     // MARK: - 3×3 Grid Content
@@ -413,7 +430,50 @@ public struct HomeScreen: View {
 
     // MARK: - Pad Definitions
 
+    private var todayPlan: TodayPlan? {
+        if let saved = TodayPlan.decode(savedTodayPlan, today: calendarDay) {
+            return saved.finished ? nil : saved
+        }
+        let source = NextLessonSource(rawValue: settings.nextLessonSource) ?? .path
+        let next = progression.nextLesson(after: lessonStore.lesson(for: settings.lastLessonID), source: source)
+        let openIDs = Set(progression.catalog.lessons.filter {
+            store.isUnlocked($0) && progression.isLessonOpen($0)
+        }.map(\.id))
+        let mix = TrainingMix.dailySelection(lessons: progression.catalog.lessons, progress: progress.records,
+            padCount: midi.activeProfile.padCount, openLessonIDs: openIDs, day: calendarDay, savedJSON: dailyMixes)
+        return TodayPlan.make(day: calendarDay,
+            dueLessonIDs: progress.dueLessonIds(today: calendarDay).filter { lessonStore.lesson(for: $0) != nil },
+            nextLessonID: next?.id, mixLessonIDs: mix.map(\.id))
+    }
+
+    private func todaySubtitle(_ plan: TodayPlan) -> String {
+        let count = plan.reviewCount
+        let key: String
+        if count == 1 {
+            key = plan.hasNewLesson ? "1 review · then new lesson" : "1 review"
+            return settings.localized(key)
+        }
+        key = plan.hasNewLesson ? "%lld reviews · then new lesson" : "%lld reviews"
+        return settings.localized(key, count)
+    }
+
     private var pad1: some View {
+        if let plan = todayPlan {
+            return AnyView(HomePadView(title: settings.localized("Today").uppercased(with: Locale(identifier: settings.languagePreference.rawValue)),
+                                      subtitle: todaySubtitle(plan), isHero: true) {
+                activeTodayPlan = plan
+                // Keep the same Mix visible on Training even if reviews change recency first.
+                if let mix = plan.steps.first(where: { $0.kind == .mix }) {
+                    var saved = (try? JSONDecoder().decode([String: [Int]].self, from: Data(dailyMixes.utf8))) ?? [:]
+                    saved = saved.filter { $0.key.hasPrefix(calendarDay + ":") }
+                    saved["\(calendarDay):\(midi.activeProfile.padCount)"] = mix.lessonIDs
+                    if let data = try? JSONEncoder().encode(saved), let json = String(data: data, encoding: .utf8) {
+                        dailyMixes = json
+                    }
+                }
+                showingToday = true
+            })
+        }
         let isFirstRun = settings.lastLessonID == 0
         let label = settings.localized(isFirstRun ? "Start" : "Continue").uppercased(with: Locale(identifier: settings.languagePreference.rawValue))
 
@@ -436,13 +496,13 @@ public struct HomeScreen: View {
             return title
         }()
 
-        return HomePadView(title: label, subtitle: subtitle, isHero: true) {
+        return AnyView(HomePadView(title: label, subtitle: subtitle, isHero: true) {
             if let targetLesson {
                 onNavigateToLibrary(.lesson(targetLesson))
             } else {
                 onNavigateToLibrary(.none)
             }
-        }
+        })
     }
 
     private var pad2: some View {

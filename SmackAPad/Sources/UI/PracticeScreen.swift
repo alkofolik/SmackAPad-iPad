@@ -28,9 +28,12 @@ struct PracticeScreen: View {
     @State private var showingInfo = false
     @State private var purchaseAccess: String?
     @State private var midLessonStarMomentActive = false
+    private let onStepResult: ((PracticeStepOutcome) -> Void)?
 
     init(lesson: Lesson, settings: SettingsManager, progress: ProgressStore, midi: MIDIInput,
-         initialFromMemory: Bool = false, initialBpm: Int? = nil, mixLessons: [Lesson] = [], initialAfterMe: Bool = false) {
+         initialFromMemory: Bool = false, initialBpm: Int? = nil, mixLessons: [Lesson] = [], initialAfterMe: Bool = false,
+         onStepResult: ((PracticeStepOutcome) -> Void)? = nil) {
+        self.onStepResult = onStepResult
         _session = State(initialValue: PracticeSession(
             lesson: lesson,
             settings: settings,
@@ -73,7 +76,10 @@ struct PracticeScreen: View {
         }
         .onDisappear {
             session.close()
+            reportStepResult()
         }
+        .onChange(of: session.runResults) { _, _ in reportStepResult() }
+        .onChange(of: session.reviewFeedback) { _, _ in reportStepResult() }
         .onChange(of: scenePhase) { _, phase in
             if phase == .active { session.resume() } else { session.suspend() }
         }
@@ -121,6 +127,16 @@ struct PracticeScreen: View {
             && midi.lesson?.id == session.lesson.id && midi.padIndices?.count == 16
     }
 
+    private func reportStepResult() {
+        guard !session.isSectionLoop, !session.afterMe, !session.listen,
+              let best = session.runResults.map(\.score).max() else { return }
+        if !session.isMix, let schedule = progress.progress(for: session.lesson.id)?.reviewSchedule,
+           schedule.reviewStep != nil, schedule.lastReviewedDay != AppCalendar.today() {
+            progress.markReviewPlayed(for: session.lesson.id, today: AppCalendar.today())
+        }
+        onStepResult?(PracticeStepOutcome(bestScore: best, reviewFeedback: session.reviewFeedback))
+    }
+
     @ViewBuilder
     private func topZone(isPortrait: Bool) -> some View {
         if isPortrait {
@@ -153,9 +169,10 @@ struct PracticeScreen: View {
     private var libraryButton: some View {
         Button {
             session.stop()
+            reportStepResult()
             if let dismissLesson { dismissLesson() } else { dismiss() }
         } label: {
-            Label(settings.localized(session.isMix ? "Training" : "Library"), systemImage: "square.grid.2x2")
+            Label(settings.localized(onStepResult != nil ? "Today" : (session.isMix ? "Training" : "Library")), systemImage: "square.grid.2x2")
                 .lineLimit(1)
                 .fixedSize(horizontal: true, vertical: false)
         }
@@ -685,7 +702,14 @@ struct PracticeScreen: View {
     @ViewBuilder
     private func transportSecondAction(s: CGFloat) -> some View {
         let buttonHeight = max(0, (s - Theme.Space.small) / 2)
-        if showsMemoryChallenge {
+        if onStepResult != nil {
+            Button(settings.localized("Continue")) {
+                session.stop()
+                reportStepResult()
+                if let dismissLesson { dismissLesson() } else { dismiss() }
+            }
+            .buttonStyle(InstrumentButtonStyle(main: true, customHeight: buttonHeight))
+        } else if showsMemoryChallenge {
             Menu {
                 Button(action: startMemoryChallenge) {
                     Label(settings.localized("From memory for ★3"), systemImage: "eye.slash")
@@ -833,7 +857,8 @@ struct PracticeScreen: View {
     }
 
     private var nextLesson: Lesson? {
-        progression.nextLesson(after: session.lesson,
+        guard onStepResult == nil else { return nil }
+        return progression.nextLesson(after: session.lesson,
                                source: NextLessonSource(rawValue: settings.nextLessonSource) ?? .path)
     }
 
