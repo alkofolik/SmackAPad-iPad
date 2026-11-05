@@ -776,6 +776,7 @@ public struct LessonProgress: Codable, Equatable, Hashable, Sendable {
     public var reviewDueDay: String?
     public var settled: Bool?
     public var lastReviewedDay: String?
+    public var lastReviewFailDay: String?
     var learningCreditByPadCount: [String: StarStreak] = [:]
 
     public var reviewSchedule: ReviewScheduler.ScheduleState {
@@ -803,7 +804,8 @@ public struct LessonProgress: Codable, Equatable, Hashable, Sendable {
         reviewStep: Int? = nil,
         reviewDueDay: String? = nil,
         settled: Bool? = nil,
-        lastReviewedDay: String? = nil
+        lastReviewedDay: String? = nil,
+        lastReviewFailDay: String? = nil
     ) {
         self.hasPlayed = hasPlayed || passed || mastery || memory
         self.passed = passed
@@ -817,11 +819,12 @@ public struct LessonProgress: Codable, Equatable, Hashable, Sendable {
         self.reviewDueDay = reviewDueDay
         self.settled = settled
         self.lastReviewedDay = lastReviewedDay
+        self.lastReviewFailDay = lastReviewFailDay
     }
 
     private enum CodingKeys: String, CodingKey {
         case hasPlayed, passed, mastery, memory, currentBpm, bestScore, masteryDay, lastPlayedDay, learningCreditByPadCount
-        case reviewStep, reviewDueDay, settled, lastReviewedDay
+        case reviewStep, reviewDueDay, settled, lastReviewedDay, lastReviewFailDay
     }
 
     /// Existing progress files predate the memory star and review schedule.
@@ -839,8 +842,132 @@ public struct LessonProgress: Codable, Equatable, Hashable, Sendable {
         reviewDueDay = try values.decodeIfPresent(String.self, forKey: .reviewDueDay)
         settled = try values.decodeIfPresent(Bool.self, forKey: .settled)
         lastReviewedDay = try values.decodeIfPresent(String.self, forKey: .lastReviewedDay)
+        lastReviewFailDay = try values.decodeIfPresent(String.self, forKey: .lastReviewFailDay)
         // Old records did not distinguish a saved tempo from an interrupted attempt.
         hasPlayed = try values.decodeIfPresent(Bool.self, forKey: .hasPlayed) ?? (passed || mastery || memory || currentBpm > 0 || bestScore > 0)
+    }
+}
+
+// MARK: - TrainingLog & ProgressRoot
+
+/// Cumulative training counts and session sets persisted in the progress file.
+public struct TrainingLog: Codable, Equatable, Hashable, Sendable {
+    public var reviewsPassed: Int
+    public var bounceBacks: Int
+    public var mixRounds: Int
+    public var mixMemoryRounds: Int
+    public var afterMeLessons: Set<Int>
+    public var trainingDays: Set<String>
+
+    public init(
+        reviewsPassed: Int = 0,
+        bounceBacks: Int = 0,
+        mixRounds: Int = 0,
+        mixMemoryRounds: Int = 0,
+        afterMeLessons: Set<Int> = [],
+        trainingDays: Set<String> = []
+    ) {
+        self.reviewsPassed = reviewsPassed
+        self.bounceBacks = bounceBacks
+        self.mixRounds = mixRounds
+        self.mixMemoryRounds = mixMemoryRounds
+        self.afterMeLessons = afterMeLessons
+        self.trainingDays = trainingDays
+    }
+
+    public static func merging(_ existing: TrainingLog, with incoming: TrainingLog) -> TrainingLog {
+        TrainingLog(
+            reviewsPassed: max(existing.reviewsPassed, incoming.reviewsPassed),
+            bounceBacks: max(existing.bounceBacks, incoming.bounceBacks),
+            mixRounds: max(existing.mixRounds, incoming.mixRounds),
+            mixMemoryRounds: max(existing.mixMemoryRounds, incoming.mixMemoryRounds),
+            afterMeLessons: existing.afterMeLessons.union(incoming.afterMeLessons),
+            trainingDays: existing.trainingDays.union(incoming.trainingDays)
+        )
+    }
+}
+
+/// Root structure of the progress JSON file.
+/// Decodes both legacy flat dictionary format (`[String: LessonProgress]`) and the structured format.
+public struct ProgressRoot: Codable, Equatable, Sendable {
+    public var lessons: [Int: LessonProgress]
+    public var trainingLog: TrainingLog
+
+    public init(lessons: [Int: LessonProgress] = [:], trainingLog: TrainingLog = TrainingLog()) {
+        self.lessons = lessons
+        self.trainingLog = trainingLog
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case lessons
+        case trainingLog
+        case reviewsPassed
+        case bounceBacks
+        case mixRounds
+        case mixMemoryRounds
+        case afterMeLessons
+        case trainingDays
+    }
+
+    public init(from decoder: Decoder) throws {
+        if let container = try? decoder.container(keyedBy: CodingKeys.self),
+           container.contains(.lessons) {
+            let stringLessons = try container.decode([String: LessonProgress].self, forKey: .lessons)
+            var convertedLessons: [Int: LessonProgress] = [:]
+            for (k, v) in stringLessons {
+                if let id = Int(k) { convertedLessons[id] = v }
+            }
+            self.lessons = convertedLessons
+
+            if let nested = try? container.decodeIfPresent(TrainingLog.self, forKey: .trainingLog) {
+                self.trainingLog = nested
+            } else {
+                let reviews = try container.decodeIfPresent(Int.self, forKey: .reviewsPassed) ?? 0
+                let bounce = try container.decodeIfPresent(Int.self, forKey: .bounceBacks) ?? 0
+                let rounds = try container.decodeIfPresent(Int.self, forKey: .mixRounds) ?? 0
+                let memRounds = try container.decodeIfPresent(Int.self, forKey: .mixMemoryRounds) ?? 0
+                let afterMe = try container.decodeIfPresent(Set<Int>.self, forKey: .afterMeLessons) ?? []
+                let days = try container.decodeIfPresent(Set<String>.self, forKey: .trainingDays) ?? []
+                self.trainingLog = TrainingLog(
+                    reviewsPassed: reviews,
+                    bounceBacks: bounce,
+                    mixRounds: rounds,
+                    mixMemoryRounds: memRounds,
+                    afterMeLessons: afterMe,
+                    trainingDays: days
+                )
+            }
+        } else {
+            let container = try decoder.singleValueContainer()
+            let stringLessons = try container.decode([String: LessonProgress].self)
+            var convertedLessons: [Int: LessonProgress] = [:]
+            for (k, v) in stringLessons {
+                if let id = Int(k) { convertedLessons[id] = v }
+            }
+            self.lessons = convertedLessons
+            self.trainingLog = TrainingLog()
+        }
+
+        // Old progress: reviewsPassed starts at least at the passes implied by the schedule
+        let impliedPasses = self.lessons.values.reduce(0) { sum, record in
+            sum + (record.settled == true ? 4 : (record.reviewStep ?? 0))
+        }
+        self.trainingLog.reviewsPassed = max(self.trainingLog.reviewsPassed, impliedPasses)
+    }
+
+    public func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        var stringLessons: [String: LessonProgress] = [:]
+        for (id, record) in lessons {
+            stringLessons[String(id)] = record
+        }
+        try container.encode(stringLessons, forKey: .lessons)
+        try container.encode(trainingLog.reviewsPassed, forKey: .reviewsPassed)
+        try container.encode(trainingLog.bounceBacks, forKey: .bounceBacks)
+        try container.encode(trainingLog.mixRounds, forKey: .mixRounds)
+        try container.encode(trainingLog.mixMemoryRounds, forKey: .mixMemoryRounds)
+        try container.encode(Array(trainingLog.afterMeLessons).sorted(), forKey: .afterMeLessons)
+        try container.encode(Array(trainingLog.trainingDays).sorted(), forKey: .trainingDays)
     }
 }
 
@@ -858,6 +985,7 @@ public final class ProgressStore: @unchecked Sendable {
     ]
 
     public private(set) var records: [Int: LessonProgress] = [:]
+    public private(set) var trainingLog: TrainingLog = TrainingLog()
     public private(set) var lastSaveError: Error?
     public private(set) var lastLoadError: Error?
 
@@ -919,20 +1047,16 @@ public final class ProgressStore: @unchecked Sendable {
 
         guard FileManager.default.fileExists(atPath: fileURL.path) else {
             self.records = [:]
+            self.trainingLog = TrainingLog()
             self.lastLoadError = nil
             return
         }
 
         do {
             let data = try Data(contentsOf: fileURL)
-            let stringKeyed = try JSONDecoder().decode([String: LessonProgress].self, from: data)
-            var converted: [Int: LessonProgress] = [:]
-            for (key, record) in stringKeyed {
-                if let id = Int(key) {
-                    converted[id] = record
-                }
-            }
-            self.records = converted
+            let root = try JSONDecoder().decode(ProgressRoot.self, from: data)
+            self.records = root.lessons
+            self.trainingLog = root.trainingLog
             self.lastLoadError = nil
             var didMigrate = migrateDuplicateIntroProgress()
             if migrateLegacyMasteredReviewSchedule() {
@@ -947,6 +1071,7 @@ public final class ProgressStore: @unchecked Sendable {
             // Graceful handling of corrupt or malformed file: start fresh without crashing.
             print("SmackAPad.ProgressStore: Warning - failed to decode progress from \(fileURL.path): \(error). Starting fresh.")
             self.records = [:]
+            self.trainingLog = TrainingLog()
             self.lastLoadError = error
         }
     }
@@ -1005,9 +1130,18 @@ public final class ProgressStore: @unchecked Sendable {
             result.masteryDay = existing.masteryDay ?? incoming.masteryDay
         }
         result.lastPlayedDay = [existing.lastPlayedDay, incoming.lastPlayedDay].compactMap { $0 }.max()
+        if let d1 = existing.lastReviewFailDay, let d2 = incoming.lastReviewFailDay {
+            result.lastReviewFailDay = max(d1, d2)
+        } else {
+            result.lastReviewFailDay = existing.lastReviewFailDay ?? incoming.lastReviewFailDay
+        }
         let mergedSchedule = ReviewScheduler.merge(existing.reviewSchedule, incoming.reviewSchedule)
         result.reviewSchedule = mergedSchedule
         return result
+    }
+
+    public static func merging(_ existing: TrainingLog, with incoming: TrainingLog) -> TrainingLog {
+        TrainingLog.merging(existing, with: incoming)
     }
 
     #if DEBUG
@@ -1056,15 +1190,12 @@ public final class ProgressStore: @unchecked Sendable {
             try FileManager.default.createDirectory(at: parentDir, withIntermediateDirectories: true)
         }
 
-        var stringKeyed: [String: LessonProgress] = [:]
-        for (id, record) in records {
-            stringKeyed[String(id)] = record
-        }
+        let root = ProgressRoot(lessons: records, trainingLog: trainingLog)
 
         do {
             let encoder = JSONEncoder()
             encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
-            let data = try encoder.encode(stringKeyed)
+            let data = try encoder.encode(root)
             try data.write(to: fileURL, options: .atomic)
             self.lastSaveError = nil
         } catch {
@@ -1295,10 +1426,77 @@ public final class ProgressStore: @unchecked Sendable {
         return records.values.contains { $0.mastery }
     }
 
+    /// Records a spaced review run (pass or fail), updating training log and bounce-back state.
+    public func recordReviewRun(
+        lessonId: Int,
+        passed: Bool,
+        today: String = AppCalendar.today(),
+        autoSave: Bool = true
+    ) {
+        lock.lock()
+        var record = records[lessonId] ?? LessonProgress()
+        trainingLog.trainingDays.insert(today)
+        if passed {
+            trainingLog.reviewsPassed += 1
+            if let failDay = record.lastReviewFailDay,
+               AppCalendar.addingDays(1, to: failDay) == today {
+                trainingLog.bounceBacks += 1
+            }
+            record.lastReviewFailDay = nil
+        } else {
+            record.lastReviewFailDay = today
+        }
+        records[lessonId] = record
+        lock.unlock()
+
+        if autoSave {
+            try? save()
+        }
+    }
+
+    /// Records completion of a full Mix round (each lesson of the set played one full run).
+    public func recordFinishedMixRound(
+        isMemoryRound: Bool,
+        today: String = AppCalendar.today(),
+        autoSave: Bool = true
+    ) {
+        lock.lock()
+        trainingLog.mixRounds += 1
+        if isMemoryRound {
+            trainingLog.mixMemoryRounds += 1
+        }
+        trainingLog.trainingDays.insert(today)
+        lock.unlock()
+
+        if autoSave {
+            try? save()
+        }
+    }
+
+    /// Records a Play after me response attempt.
+    public func recordAfterMeResponse(
+        lessonId: Int,
+        score: Double,
+        today: String = AppCalendar.today(),
+        autoSave: Bool = true
+    ) {
+        lock.lock()
+        trainingLog.trainingDays.insert(today)
+        if score >= 0.80 {
+            trainingLog.afterMeLessons.insert(lessonId)
+        }
+        lock.unlock()
+
+        if autoSave {
+            try? save()
+        }
+    }
+
     /// Clears all progress records in memory and resets or deletes the file.
     public func resetAll(deleteFile: Bool = false) throws {
         lock.lock()
         records.removeAll()
+        trainingLog = TrainingLog()
         lock.unlock()
 
         if deleteFile {

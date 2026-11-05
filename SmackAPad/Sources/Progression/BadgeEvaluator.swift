@@ -9,6 +9,13 @@ struct BadgeProgressStats: Equatable, Sendable {
     let totalLessons: Int
     let groupTotals: [String: Int]
     let groupProgress: [String: Int]
+    let settled: Int
+    let reviewsPassed: Int
+    let bounceBacks: Int
+    let mixRounds: Int
+    let mixMemoryRounds: Int
+    let afterMeLessons: Int
+    let trainingDays: Int
 
     init(
         passed: Int = 0,
@@ -17,7 +24,14 @@ struct BadgeProgressStats: Equatable, Sendable {
         courses: Int = 0,
         totalLessons: Int = 0,
         groupTotals: [String: Int] = [:],
-        groupProgress: [String: Int] = [:]
+        groupProgress: [String: Int] = [:],
+        settled: Int = 0,
+        reviewsPassed: Int = 0,
+        bounceBacks: Int = 0,
+        mixRounds: Int = 0,
+        mixMemoryRounds: Int = 0,
+        afterMeLessons: Int = 0,
+        trainingDays: Int = 0
     ) {
         self.passed = passed
         self.mastered = mastered
@@ -26,6 +40,13 @@ struct BadgeProgressStats: Equatable, Sendable {
         self.totalLessons = totalLessons
         self.groupTotals = groupTotals
         self.groupProgress = groupProgress
+        self.settled = settled
+        self.reviewsPassed = reviewsPassed
+        self.bounceBacks = bounceBacks
+        self.mixRounds = mixRounds
+        self.mixMemoryRounds = mixMemoryRounds
+        self.afterMeLessons = afterMeLessons
+        self.trainingDays = trainingDays
     }
 }
 
@@ -64,7 +85,8 @@ enum BadgeEvaluator {
         progress: [Int: LessonProgress],
         catalog: LibraryCatalog,
         definitions: [BadgeDefinition],
-        currentlyEarned: Set<String>
+        currentlyEarned: Set<String>,
+        trainingLog: TrainingLog = TrainingLog()
     ) -> BadgeEvaluationResult {
         var passedCount = 0
         var masteredCount = 0
@@ -124,6 +146,8 @@ enum BadgeEvaluator {
             !stage.lessons.isEmpty && stage.lessons.allSatisfy { progress[$0.id]?.mastery == true }
         }.count
 
+        let settledCount = progress.values.filter { $0.settled == true }.count
+
         let stats = BadgeProgressStats(
             passed: passedCount,
             mastered: masteredCount,
@@ -131,7 +155,14 @@ enum BadgeEvaluator {
             courses: completedStages,
             totalLessons: catalog.lessons.count,
             groupTotals: groupTotals,
-            groupProgress: groupProgress
+            groupProgress: groupProgress,
+            settled: settledCount,
+            reviewsPassed: trainingLog.reviewsPassed,
+            bounceBacks: trainingLog.bounceBacks,
+            mixRounds: trainingLog.mixRounds,
+            mixMemoryRounds: trainingLog.mixMemoryRounds,
+            afterMeLessons: trainingLog.afterMeLessons.count,
+            trainingDays: trainingLog.trainingDays.count
         )
 
         var newlyEarned: [String] = []
@@ -168,6 +199,20 @@ enum BadgeEvaluator {
             return stats.memory
         case "courses":
             return stats.courses
+        case "settled":
+            return stats.settled
+        case "reviewsPassed":
+            return stats.reviewsPassed
+        case "bounceBacks":
+            return stats.bounceBacks
+        case "mixRounds":
+            return stats.mixRounds
+        case "mixMemoryRounds":
+            return stats.mixMemoryRounds
+        case "afterMeLessons":
+            return stats.afterMeLessons
+        case "trainingDays":
+            return stats.trainingDays
         default:
             return stats.groupProgress[badge.metric] ?? 0
         }

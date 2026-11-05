@@ -172,6 +172,7 @@ final class PracticeSession {
     @ObservationIgnored private var pendingScore: Float?
     @ObservationIgnored private var pendingBpm = 0
     @ObservationIgnored private var pendingCredit = false
+    @ObservationIgnored private var currentMixRoundMemory = true
     @ObservationIgnored private var prepared = false
     @ObservationIgnored private var active = false
 
@@ -542,6 +543,7 @@ final class PracticeSession {
                 mixAppearances = [:]
                 mixStreaks = [:]
                 mixNeedsAdvance = false
+                currentMixRoundMemory = true
                 mixBarVerdicts = [:]
                 mixResults = mixLessons.map {
                     MixLessonResult(id: $0.id, title: $0.title, score: nil,
@@ -886,6 +888,8 @@ final class PracticeSession {
                 lastVerdict = RunVerdict(passed: result.passed, brokenStreak: false)
                 runResults.append(PracticeRunResult(runNumber: runResults.count + 1, score: result.score,
                                                     bpm: result.bpm, passed: result.passed))
+                progress.recordAfterMeResponse(lessonId: lesson.id, score: result.score, today: currentDay(), autoSave: true)
+                evaluateBadges(onlyGroup: .training)
                 continue
             }
             let runPassed: Bool
@@ -912,6 +916,15 @@ final class PracticeSession {
                     if let feedback = outcome.feedback {
                         self.reviewFeedback = feedback
                         progress.updateReviewSchedule(outcome.newSchedule, for: lesson.id, autoSave: false)
+                        switch feedback {
+                        case .passed, .settled:
+                            progress.recordReviewRun(lessonId: lesson.id, passed: true, today: currentDay(), autoSave: false)
+                        case .failed:
+                            progress.recordReviewRun(lessonId: lesson.id, passed: false, today: currentDay(), autoSave: false)
+                        case .doesNotCount:
+                            break
+                        }
+                        evaluateBadges()
                     }
                 }
 
@@ -991,6 +1004,15 @@ final class PracticeSession {
                     mixResults[index].score = result.score
                     mixResults[index].barCounts = Dictionary(grouping: mixBarVerdicts.values, by: \.rawValue).mapValues(\.count)
                     mixResults[index].unmeasuredBars = max(0, scoredLesson.bars - mixBarVerdicts.count)
+                }
+                let isHiddenPass = !fromMemory || !settings.fadeMemoryNotes || pass.number >= 3
+                let runMemoryPass = fromMemory && isHiddenPass && result.score >= 0.80
+                if !runMemoryPass {
+                    currentMixRoundMemory = false
+                }
+                if mixIndex == mixLessons.count - 1 {
+                    progress.recordFinishedMixRound(isMemoryRound: currentMixRoundMemory, today: currentDay(), autoSave: false)
+                    currentMixRoundMemory = true
                 }
                 try? progress.save()
                 evaluateBadges()
@@ -1113,10 +1135,12 @@ final class PracticeSession {
         progress.setProgress(record, for: lesson.id)
     }
 
-    private func evaluateBadges() {
+    private func evaluateBadges(onlyGroup: BadgeGroup? = nil) {
         let newly = badgeStore.evaluate(
             progress: progress.records,
-            catalog: ProgressionManager.shared.catalog
+            catalog: ProgressionManager.shared.catalog,
+            trainingLog: progress.trainingLog,
+            onlyGroup: onlyGroup
         )
         guard !newly.isEmpty else { return }
         var fresh: [BadgeDefinition] = []

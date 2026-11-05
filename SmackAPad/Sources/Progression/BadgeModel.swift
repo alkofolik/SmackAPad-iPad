@@ -45,6 +45,7 @@ enum BadgeGroup: String, CaseIterable, Identifiable, Codable, Sendable {
     case levels = "levels"
     case genres = "genres"
     case techniques = "techniques"
+    case training = "training"
 
     var id: String { rawValue }
 
@@ -57,6 +58,7 @@ enum BadgeGroup: String, CaseIterable, Identifiable, Codable, Sendable {
         case .levels: return "Levels"
         case .genres: return "Genres"
         case .techniques: return "Techniques"
+        case .training: return "Training"
         }
     }
 }

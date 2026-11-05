@@ -367,5 +367,131 @@
     "goal": "group",
     "tier": 2,
     "group": "techniques"
+  },
+  {
+    "id": "review-first",
+    "name": "Comeback",
+    "condition": "Pass your first review.",
+    "metric": "reviewsPassed",
+    "goal": 1,
+    "tier": 1,
+    "group": "training"
+  },
+  {
+    "id": "review-ten",
+    "name": "Regular",
+    "condition": "Pass 10 reviews.",
+    "metric": "reviewsPassed",
+    "goal": 10,
+    "tier": 2,
+    "group": "training"
+  },
+  {
+    "id": "review-fifty",
+    "name": "Long memory",
+    "condition": "Pass 50 reviews.",
+    "metric": "reviewsPassed",
+    "goal": 50,
+    "tier": 3,
+    "group": "training"
+  },
+  {
+    "id": "settled-first",
+    "name": "Settled",
+    "condition": "Settle your first lesson.",
+    "metric": "settled",
+    "goal": 1,
+    "tier": 1,
+    "group": "training"
+  },
+  {
+    "id": "settled-ten",
+    "name": "Solid ground",
+    "condition": "Settle 10 lessons.",
+    "metric": "settled",
+    "goal": 10,
+    "tier": 2,
+    "group": "training"
+  },
+  {
+    "id": "settled-fifty",
+    "name": "In the hands",
+    "condition": "Settle 50 lessons.",
+    "metric": "settled",
+    "goal": 50,
+    "tier": 3,
+    "group": "training"
+  },
+  {
+    "id": "bounce-back",
+    "name": "Bounce back",
+    "condition": "Pass a review the day after a failed one.",
+    "metric": "bounceBacks",
+    "goal": 1,
+    "tier": 1,
+    "group": "training"
+  },
+  {
+    "id": "mix-first",
+    "name": "Shuffle",
+    "condition": "Finish a full Mix round.",
+    "metric": "mixRounds",
+    "goal": 1,
+    "tier": 1,
+    "group": "training"
+  },
+  {
+    "id": "mix-memory",
+    "name": "Blind mix",
+    "condition": "Finish a Mix round from memory, every run at least 80 %.",
+    "metric": "mixMemoryRounds",
+    "goal": 1,
+    "tier": 2,
+    "group": "training"
+  },
+  {
+    "id": "mix-twenty",
+    "name": "Juggler",
+    "condition": "Finish 20 Mix rounds.",
+    "metric": "mixRounds",
+    "goal": 20,
+    "tier": 3,
+    "group": "training"
+  },
+  {
+    "id": "after-me-first",
+    "name": "Echo",
+    "condition": "Score at least 80 % in Play after me.",
+    "metric": "afterMeLessons",
+    "goal": 1,
+    "tier": 1,
+    "group": "training"
+  },
+  {
+    "id": "after-me-ten",
+    "name": "Good ear",
+    "condition": "Score at least 80 % in Play after me on 10 lessons.",
+    "metric": "afterMeLessons",
+    "goal": 10,
+    "tier": 2,
+    "group": "training"
+  },
+  {
+    "id": "training-days-10",
+    "name": "Ten sessions",
+    "condition": "Train on 10 different days.",
+    "metric": "trainingDays",
+    "goal": 10,
+    "tier": 2,
+    "group": "training"
+  },
+  {
+    "id": "training-days-50",
+    "name": "Fifty sessions",
+    "condition": "Train on 50 different days.",
+    "metric": "trainingDays",
+    "goal": 50,
+    "tier": 3,
+    "group": "training"
   }
 ]

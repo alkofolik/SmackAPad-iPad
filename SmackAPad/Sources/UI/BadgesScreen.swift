@@ -13,7 +13,8 @@ struct BadgesView: View {
             progress: progressStore.records,
             catalog: progression.catalog,
             definitions: badgeStore.definitions,
-            currentlyEarned: Set(badgeStore.records.keys)
+            currentlyEarned: Set(badgeStore.records.keys),
+            trainingLog: progressStore.trainingLog
         ).stats
     }
 

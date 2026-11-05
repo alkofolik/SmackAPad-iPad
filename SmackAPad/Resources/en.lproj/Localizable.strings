@@ -247,6 +247,7 @@
 "Path" = "Path";
 "Genres" = "Genres";
 "Techniques" = "Techniques";
+"Training" = "Training";
 "Basic groove" = "Basic groove";
 "Sixteenths" = "Sixteenths";
 "Ghost notes" = "Ghost notes";
@@ -508,6 +509,7 @@
 "Levels" = "Levels";
 "Genres" = "Genres";
 "Techniques" = "Techniques";
+"Training" = "Training";
 
 "First groove" = "First groove";
 "Pass your first lesson." = "Pass your first lesson.";
@@ -596,6 +598,35 @@
 "Pass every lesson in the Swing and shuffle technique." = "Pass every lesson in the Swing and shuffle technique.";
 "Fills and toms done" = "Fills and toms done";
 "Pass every lesson in the Fills and toms technique." = "Pass every lesson in the Fills and toms technique.";
+
+"Comeback" = "Comeback";
+"Pass your first review." = "Pass your first review.";
+"Regular" = "Regular";
+"Pass 10 reviews." = "Pass 10 reviews.";
+"Long memory" = "Long memory";
+"Pass 50 reviews." = "Pass 50 reviews.";
+"Settled" = "Settled";
+"Settle your first lesson." = "Settle your first lesson.";
+"Solid ground" = "Solid ground";
+"Settle 10 lessons." = "Settle 10 lessons.";
+"In the hands" = "In the hands";
+"Settle 50 lessons." = "Settle 50 lessons.";
+"Bounce back" = "Bounce back";
+"Pass a review the day after a failed one." = "Pass a review the day after a failed one.";
+"Shuffle" = "Shuffle";
+"Finish a full Mix round." = "Finish a full Mix round.";
+"Blind mix" = "Blind mix";
+"Finish a Mix round from memory, every run at least 80 %." = "Finish a Mix round from memory, every run at least 80 %.";
+"Juggler" = "Juggler";
+"Finish 20 Mix rounds." = "Finish 20 Mix rounds.";
+"Echo" = "Echo";
+"Score at least 80 % in Play after me." = "Score at least 80 % in Play after me.";
+"Good ear" = "Good ear";
+"Score at least 80 % in Play after me on 10 lessons." = "Score at least 80 % in Play after me on 10 lessons.";
+"Ten sessions" = "Ten sessions";
+"Train on 10 different days." = "Train on 10 different days.";
+"Fifty sessions" = "Fifty sessions";
+"Train on 50 different days." = "Train on 50 different days.";
 
 "Run results" = "Run results";
 "Run %lld: %lld percent, %lld BPM, %@" = "Run %lld: %lld percent, %lld BPM, %@";

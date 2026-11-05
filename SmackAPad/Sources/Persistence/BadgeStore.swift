@@ -95,6 +95,7 @@ final class BadgeStore: @unchecked Sendable {
     func awardSilently(
         progress: [Int: LessonProgress],
         catalog: LibraryCatalog,
+        trainingLog: TrainingLog = TrainingLog(),
         at date: Date = Date()
     ) -> [String] {
         lock.lock()
@@ -105,7 +106,8 @@ final class BadgeStore: @unchecked Sendable {
             progress: progress,
             catalog: catalog,
             definitions: definitions,
-            currentlyEarned: currentKeys
+            currentlyEarned: currentKeys,
+            trainingLog: trainingLog
         )
 
         if !result.newlyEarnedBadgeIds.isEmpty {
@@ -126,17 +128,27 @@ final class BadgeStore: @unchecked Sendable {
     func evaluate(
         progress: [Int: LessonProgress],
         catalog: LibraryCatalog,
+        trainingLog: TrainingLog = TrainingLog(),
+        onlyGroup: BadgeGroup? = nil,
         at date: Date = Date()
     ) -> [BadgeDefinition] {
         lock.lock()
         let currentKeys = Set(records.keys)
         lock.unlock()
 
+        let defsToEvaluate: [BadgeDefinition]
+        if let onlyGroup {
+            defsToEvaluate = definitions.filter { $0.group == onlyGroup }
+        } else {
+            defsToEvaluate = definitions
+        }
+
         let result = BadgeEvaluator.evaluate(
             progress: progress,
             catalog: catalog,
-            definitions: definitions,
-            currentlyEarned: currentKeys
+            definitions: defsToEvaluate,
+            currentlyEarned: currentKeys,
+            trainingLog: trainingLog
         )
 
         guard !result.newlyEarnedBadgeIds.isEmpty else { return [] }

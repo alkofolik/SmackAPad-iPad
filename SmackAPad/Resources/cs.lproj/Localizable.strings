@@ -246,6 +246,7 @@
 "Path" = "Cesta";
 "Genres" = "Žánry";
 "Techniques" = "Techniky";
+"Training" = "Trénink";
 "Basic groove" = "Základní groove";
 "Sixteenths" = "Šestnáctiny";
 "Ghost notes" = "Ghost noty";
@@ -511,6 +512,7 @@
 "Levels" = "Úrovně";
 "Genres" = "Žánry";
 "Techniques" = "Techniky";
+"Training" = "Trénink";
 
 "First groove" = "První groove";
 "Pass your first lesson." = "Splň první lekci.";
@@ -599,6 +601,35 @@
 "Pass every lesson in the Swing and shuffle technique." = "Splň všechny lekce techniky Swing a shuffle.";
 "Fills and toms done" = "Přechody a tomy – hotovo";
 "Pass every lesson in the Fills and toms technique." = "Splň všechny lekce techniky Přechody a tomy.";
+
+"Comeback" = "Návrat";
+"Pass your first review." = "Projdi první opakování.";
+"Regular" = "Pravidelně";
+"Pass 10 reviews." = "Projdi 10 opakování.";
+"Long memory" = "Dlouhá paměť";
+"Pass 50 reviews." = "Projdi 50 opakování.";
+"Settled" = "Upevněno";
+"Settle your first lesson." = "Upevni první lekci.";
+"Solid ground" = "Pevná půda";
+"Settle 10 lessons." = "Upevni 10 lekcí.";
+"In the hands" = "V rukou";
+"Settle 50 lessons." = "Upevni 50 lekcí.";
+"Bounce back" = "Zpátky na nohy";
+"Pass a review the day after a failed one." = "Projdi opakování den po nesplněném.";
+"Shuffle" = "Zamíchej";
+"Finish a full Mix round." = "Dokonči celé kolo Mixu.";
+"Blind mix" = "Mix naslepo";
+"Finish a Mix round from memory, every run at least 80 %." = "Dokonči kolo Mixu zpaměti, každý běh aspoň 80 %.";
+"Juggler" = "Žonglér";
+"Finish 20 Mix rounds." = "Dokonči 20 kol Mixu.";
+"Echo" = "Ozvěna";
+"Score at least 80 % in Play after me." = "Získej aspoň 80 % v Zahraj po mně.";
+"Good ear" = "Dobré ucho";
+"Score at least 80 % in Play after me on 10 lessons." = "Získej aspoň 80 % v Zahraj po mně u 10 lekcí.";
+"Ten sessions" = "Deset tréninků";
+"Train on 10 different days." = "Trénuj v 10 různých dnech.";
+"Fifty sessions" = "Padesát tréninků";
+"Train on 50 different days." = "Trénuj v 50 různých dnech.";
 
 "Run results" = "Výsledky kol";
 "Run %lld: %lld percent, %lld BPM, %@" = "Kolo %lld: %lld procent, %lld BPM, %@";
