@@ -161,6 +161,8 @@ Visual design, styling, and UI polish are explicitly out of scope for this decis
 
 ## v2+ ideas (not in v1)
 
+- Training follow-ups (songs, chaining, groove + break phrases, results by part): see `docs/2026-11-05-post-v1-plan.md`.
+
 - Haptic feedback on pad strikes.
 - iCloud sync of progress across devices.
 - Practice statistics (session history, time spent, most-played lessons).

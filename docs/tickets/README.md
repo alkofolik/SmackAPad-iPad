@@ -121,3 +121,15 @@ Source: Jakub's iPad test, photos 1–6.
 | 94 | One shape language (square corners, one border style) | Gemini 3.8 Flash, high (fallback Codex Sol, medium) | after 91, 92 |
 | 95 | Home grid centred/larger; Library filter row spacing | Gemini 3.8 Flash, medium (fallback Codex Sol, medium) | after 92 |
 | 96 | Logo optically centred (icon, Home tile, wordmark SVGs) | Gemini 3.8 Flash, high (fallback Codex Sol, medium) | after 95 |
+
+## Training (2026-11-05)
+
+Source: Jakub, retention and memory discussion; legacy "Trénink" concept 2026-10-06. Home: pad 3 becomes Training, pad 8 becomes Settings, About moves into Settings. Later ideas: `docs/2026-11-05-post-v1-plan.md`.
+
+| Ticket | Topic | Agent / thinking | Order |
+|---|---|---|---|
+| 97 | Memory star only on a later day than the goal-tempo star | Gemini 3.8 Flash, high (fallback Codex Sol, high) | 1st |
+| 98 | Home pad Training, Training screen, spaced review (Due) | Gemini 3.8 Flash, high (fallback Codex Sol, high) | after 97 |
+| 99 | From memory: notes fade out over the first passes | Gemini 3.8 Flash, high (fallback Codex Sol, high) | after 98 |
+| 100 | Training: Mix of learned lessons | Codex GPT-6.1 Sol, high (fallback Gemini 3.8 Pro, high) | after 98 |
+| 101 | Play after me (call and response) | Codex GPT-6.1 Sol, high (fallback Gemini 3.8 Pro, high) | after 100 (same session file) |
