@@ -116,3 +116,4 @@ Source: Jakub's iPad test, photos 1–6.
 | 89 | Library: framed levels, categories, lesson cards; top-left overlap | Gemini 3.8 Flash, high | any time, parallel |
 | 90 | Static view: remove the extra vertical bar line | Gemini 3.8 Flash, medium (fallback Codex Sol, medium) | any time (same file as 84/87) |
 | 91 | Transport buttons equal size; Czech "Znovu" | Gemini 3.8 Flash, medium (fallback Codex Sol, medium) | any time |
+| 92 | Palette: cream white and soft warm black (Theme.swift only) | Gemini 3.8 Flash, medium (fallback Codex Sol, medium) | any time (after 88, same Theme file) |
