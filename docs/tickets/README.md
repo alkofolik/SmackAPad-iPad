@@ -117,3 +117,6 @@ Source: Jakub's iPad test, photos 1–6.
 | 90 | Static view: remove the extra vertical bar line | Gemini 3.8 Flash, medium (fallback Codex Sol, medium) | any time (same file as 84/87) |
 | 91 | Transport buttons equal size; Czech "Znovu" | Gemini 3.8 Flash, medium (fallback Codex Sol, medium) | any time |
 | 92 | Palette: cream white and soft warm black (Theme.swift only) | Gemini 3.8 Flash, medium (fallback Codex Sol, medium) | any time (after 88, same Theme file) |
+| 93 | Practice: orange band larger and centred; pad map contrast | Codex GPT-6.1 Sol, high (fallback Gemini Flash, high) | after 92 |
+| 94 | One shape language (square corners, one border style) | Gemini 3.8 Flash, high (fallback Codex Sol, medium) | after 91, 92 |
+| 95 | Home grid centred/larger; Library filter row spacing | Gemini 3.8 Flash, medium (fallback Codex Sol, medium) | after 92 |
