@@ -47,6 +47,18 @@ public struct AppCalendar: Sendable {
               let nextDate = calendar.date(byAdding: .day, value: days, to: date) else { return nil }
         return dayString(from: nextDate, timeZone: timeZone)
     }
+
+    public static func daysBetween(_ startDay: String, _ endDay: String, timeZone: TimeZone = .current) -> Int? {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = timeZone
+        let startParts = startDay.split(separator: "-").compactMap { Int($0) }
+        let endParts = endDay.split(separator: "-").compactMap { Int($0) }
+        guard startParts.count == 3, endParts.count == 3 else { return nil }
+        var c1 = DateComponents(); c1.year = startParts[0]; c1.month = startParts[1]; c1.day = startParts[2]
+        var c2 = DateComponents(); c2.year = endParts[0]; c2.month = endParts[1]; c2.day = endParts[2]
+        guard let d1 = calendar.date(from: c1), let d2 = calendar.date(from: c2) else { return nil }
+        return calendar.dateComponents([.day], from: d1, to: d2).day
+    }
 }
 
 // MARK: - Settings Keys & Types

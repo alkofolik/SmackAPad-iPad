@@ -26,6 +26,8 @@ enum Theme {
     static let hairline = ink.opacity(0.15)
     /// One fill for an active or selected control.
     static let activeFill = orange.opacity(0.24)
+    /// Inactive LED / off segment colour.
+    static let ledOff = starColor(for: 0)
 
     /// Star progression colours: not done grey, 1 star light orange, 2 stars medium orange, 3 stars full orange.
     static func starColor(for stars: Int) -> Color {

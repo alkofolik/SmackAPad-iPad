@@ -1,6 +1,6 @@
 # 107 — New Training page
 
-Status: ready-for-agent. Depends on: 103 (daily session), 105 (`ReviewForecast`), 106 (Training badges). Source: Jakub, 2026-11-05, `docs/2026-11-05-training-push-proposal.md` §5. **Mockup (approved direction): `docs/design/2026-11-05-training-page/training-page.html`, frame 1** (open it in a browser; example data only).
+Status: ready-for-test. Depends on: 103 (daily session), 105 (`ReviewForecast`), 106 (Training badges). Source: Jakub, 2026-11-05, `docs/2026-11-05-training-push-proposal.md` §5. **Mockup (approved direction): `docs/design/2026-11-05-training-page/training-page.html`, frame 1** (open it in a browser; example data only).
 
 ## Goal
 
@@ -39,12 +39,12 @@ Replace today's list of three plain cards with a page that says "this is today's
 
 ## Acceptance criteria
 
-- [ ] The page matches the mockup's structure in landscape and portrait, light and dark.
-- [ ] START runs the daily session; Not today postpones; the finished state shows "That's enough for today".
-- [ ] Memory meter columns are aligned with one-line labels; counts match the progress data.
-- [ ] Next 7 days matches the forecast; Due rows show lateness.
-- [ ] Mix and Play after me work as before.
-- [ ] Build succeeds.
+- [x] The page matches the mockup's structure in landscape and portrait, light and dark.
+- [x] START runs the daily session; Not today postpones; the finished state shows "That's enough for today".
+- [x] Memory meter columns are aligned with one-line labels; counts match the progress data.
+- [x] Next 7 days matches the forecast; Due rows show lateness.
+- [x] Mix and Play after me work as before.
+- [x] Build succeeds.
 - [ ] **iPad test (Jakub)**: compare the page with the mockup; run START once; check portrait.
 
 ## Agent assignment
