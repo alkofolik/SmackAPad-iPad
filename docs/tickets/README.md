@@ -133,3 +133,4 @@ Source: Jakub, retention and memory discussion; legacy "Trénink" concept 2026-1
 | 99 | From memory: notes fade out over the first passes | Gemini 3.8 Flash, high (fallback Codex Sol, high) | after 98 |
 | 100 | Training: Mix of learned lessons | Codex GPT-6.1 Sol, high (fallback Gemini 3.8 Pro, high) | after 98 |
 | 101 | Play after me (call and response) | Codex GPT-6.1 Sol, high (fallback Gemini 3.8 Pro, high) | after 100 (same session file) |
+| 102 | Fix three outdated unit tests after 97–100 | Gemini 3.8 Flash, medium (fallback Codex Sol, medium) | any time |

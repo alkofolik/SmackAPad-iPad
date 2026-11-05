@@ -78,13 +78,15 @@ final class PracticeSessionTests: XCTestCase {
         let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))
         defer { defaults.removePersistentDomain(forName: suite) }
         let settings = SettingsManager(userDefaults: defaults)
+        settings.fadeMemoryNotes = false
         let file = FileManager.default.temporaryDirectory.appendingPathComponent("\(suite).json")
         defer { try? FileManager.default.removeItem(at: file) }
         let progress = ProgressStore(fileURL: file, autoLoad: false)
         let hits = [0, 3, 6, 9, 12].map { LessonHit(step: $0, padIndex: 12, hand: "L", velocity: 100) }
         let lesson = Lesson(id: 24_001, cat: "test", title: "Memory star", genre: "", tags: [],
             text: "", division: 16, bars: 4, startBpm: 120, targetBpm: 120, level: 1, src: "test", hits: hits)
-        progress.setProgress(LessonProgress(passed: true, mastery: true, currentBpm: 120), for: lesson.id)
+        let yesterday = AppCalendar.addingDays(-1, to: AppCalendar.today()) ?? "2026-11-01"
+        progress.setProgress(LessonProgress(passed: true, mastery: true, currentBpm: 120, masteryDay: yesterday), for: lesson.id)
         let midi = MIDIInput(settings: settings)
         var time = AVAudioTime.seconds(forHostTime: mach_absolute_time())
         let session = PracticeSession(lesson: lesson, settings: settings, progress: progress, midi: midi, clock: { time })

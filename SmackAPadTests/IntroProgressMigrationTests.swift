@@ -15,6 +15,7 @@ final class IntroProgressMigrationTests: XCTestCase {
     func testEveryRemovedRecordMovesToItsSpecifiedIntroLessonAndKeepsLessonSix() throws {
         let expectedMap = [1: 10001, 2: 10015, 3: 10008, 4: 10010, 5: 10011, 7: 10016, 8: 10013, 9: 10014]
         XCTAssertEqual(ProgressStore.duplicateIntroLessonMap, expectedMap)
+        let schedule = ReviewScheduler.migrationSchedule(today: AppCalendar.today())
         var original = Dictionary(uniqueKeysWithValues: expectedMap.keys.map { id in
             (id, LessonProgress(passed: true, mastery: true, memory: true, currentBpm: 60 + id, bestScore: 0.9))
         })
@@ -23,9 +24,17 @@ final class IntroProgressMigrationTests: XCTestCase {
         let store = ProgressStore(fileURL: url)
         for (removed, intro) in expectedMap {
             XCTAssertNil(store.progress(for: removed))
-            XCTAssertEqual(store.progress(for: intro), original[removed])
+            var expected = original[removed]
+            expected?.reviewStep = schedule.reviewStep
+            expected?.reviewDueDay = schedule.reviewDueDay
+            expected?.settled = schedule.settled
+            XCTAssertEqual(store.progress(for: intro), expected)
         }
-        XCTAssertEqual(store.progress(for: 6), original[6])
+        var expectedSix = original[6]
+        expectedSix?.reviewStep = schedule.reviewStep
+        expectedSix?.reviewDueDay = schedule.reviewDueDay
+        expectedSix?.settled = schedule.settled
+        XCTAssertEqual(store.progress(for: 6), expectedSix)
         let introLesson = try XCTUnwrap(LessonStore.shared.libraryCatalog.introLessons.first { $0.id == 6 })
         XCTAssertEqual(introLesson.cat, "intro")
         XCTAssertTrue(store.progress(for: introLesson.id)?.memory == true)
@@ -51,10 +60,15 @@ final class IntroProgressMigrationTests: XCTestCase {
     }
 
     func testExistingTargetStarsScoreAndTempoAreNeverLowered() throws {
+        let schedule = ReviewScheduler.migrationSchedule(today: AppCalendar.today())
         let source = LessonProgress(hasPlayed: true, currentBpm: 130, bestScore: 0.2)
         let target = LessonProgress(passed: true, mastery: true, memory: true, currentBpm: 100, bestScore: 0.98)
         let store = ProgressStore(fileURL: try progressFile([5: source, 10011: target]))
-        XCTAssertEqual(store.progress(for: 10011), target)
+        var expected = target
+        expected.reviewStep = schedule.reviewStep
+        expected.reviewDueDay = schedule.reviewDueDay
+        expected.settled = schedule.settled
+        XCTAssertEqual(store.progress(for: 10011), expected)
         XCTAssertNil(store.progress(for: 5))
     }
 
