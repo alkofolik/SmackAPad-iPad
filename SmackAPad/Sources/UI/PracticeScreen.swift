@@ -70,7 +70,12 @@ struct PracticeScreen: View {
         .onChange(of: settings.padsVolume) { _, newVolume in session.setPadsVolume(newVolume) }
         .onChange(of: settings.patternVolume) { _, newVolume in session.setPatternVolume(newVolume) }
         .onChange(of: session.running) { _, running in
-            if running { showingInfo = false }
+            if running {
+                showingInfo = false
+                showingStarRules = false
+                showingDetails = false
+                showingTempo = false
+            }
         }
         .onChange(of: showingMIDI) { _, showing in
             if showing { session.suspend() }
@@ -218,7 +223,14 @@ struct PracticeScreen: View {
             toolSeparator
 
             HStack(spacing: 0) {
-                icon("rectangle.split.2x2", settings.localized("Static view"), selected: !scrolling) { scrolling = false }
+                let effectiveBars = min(max(1, visibleBars), session.lesson.bars)
+                icon("rectangle.split.2x2", settings.localized("Static view"),
+                     selected: !scrolling,
+                     count: session.lesson.bars > 1 ? effectiveBars : nil,
+                     accessibilityValue: staticViewAccessibilityValue(effectiveBars),
+                     accessibilityHint: session.lesson.bars > 1 ? settings.localized("Tap again to show more bars") : nil) {
+                    handleStaticViewTap()
+                }
                 icon("arrow.right.to.line", settings.localized("Scrolling view"), selected: scrolling) { scrolling = true }
             }
             .accessibilityElement(children: .contain)
@@ -243,14 +255,42 @@ struct PracticeScreen: View {
         .fixedSize(horizontal: true, vertical: false)
     }
 
+    private func handleStaticViewTap() {
+        if scrolling {
+            scrolling = false
+            return
+        }
+        guard session.lesson.bars > 1 else { return }
+        let current = min(visibleBars, session.lesson.bars)
+        let next = current >= session.lesson.bars ? 1 : current + 1
+        visibleBars = next
+    }
+
+    private func staticViewAccessibilityValue(_ bars: Int) -> String {
+        if bars == 1 {
+            return settings.localized("%lld bar shown", 1)
+        }
+        return settings.localized("%lld bars shown", bars)
+    }
+
     private var toolSeparator: some View {
         Rectangle().fill(Theme.hairline).frame(width: 1, height: 28)
             .accessibilityHidden(true)
     }
 
     private func icon(_ symbol: String, _ text: String, selected: Bool = false,
+                      count: Int? = nil, accessibilityValue: String? = nil,
+                      accessibilityHint: String? = nil,
                       action: @escaping () -> Void) -> some View {
-        PracticeIconButton(symbol: symbol, title: text, selected: selected, action: action)
+        PracticeIconButton(
+            symbol: symbol,
+            title: text,
+            count: count,
+            selected: selected,
+            accessibilityValue: accessibilityValue,
+            accessibilityHint: accessibilityHint,
+            action: action
+        )
     }
 
     private var middleZone: some View {
@@ -278,7 +318,7 @@ struct PracticeScreen: View {
                                      position: frame.position, tapePosition: frame.tapePosition,
                                      running: session.running && frame.countdown == nil,
                                      hidden: session.fromMemory && session.running && !session.listen,
-                                     scrolling: scrolling, visibleBars: [1, 2, 4].contains(visibleBars) ? visibleBars : 4,
+                                     scrolling: scrolling, visibleBars: [1, 2, 3, 4].contains(visibleBars) ? visibleBars : 4,
                                      verdicts: session.barVerdicts,
                                      judgments: session.hitJudgments, bpm: frame.bpm,
                                      playedHits: session.playedHits, pass: frame.pass,
@@ -339,12 +379,19 @@ struct PracticeScreen: View {
     }
 
     private func bottomZone(s: CGFloat, portraitPads: Bool, screenHeight: CGFloat, availableWidth: CGFloat) -> some View {
-        VStack(spacing: Theme.Space.regular) {
-            bottomZoneRow(s: s, availableWidth: availableWidth)
+        let padsHeight: CGFloat = (portraitPads && midi.padIndices != nil) ? {
+            let availableForPads = max(260, screenHeight - 48 - 110 - s - 280)
+            return min(520, max(280, min((screenHeight - 48) * 0.44, availableForPads)))
+        }() : 0
+
+        let spaceAbove = padsHeight > 0
+            ? (screenHeight - Theme.Space.page - padsHeight - Theme.Space.regular - s)
+            : (screenHeight - Theme.Space.page - s)
+
+        return VStack(spacing: Theme.Space.regular) {
+            bottomZoneRow(s: s, availableWidth: availableWidth, spaceAbove: spaceAbove)
 
             if portraitPads, let pads = midi.padIndices {
-                let availableForPads = max(260, screenHeight - 48 - 110 - s - 280)
-                let padsHeight = min(520, max(280, min((screenHeight - 48) * 0.44, availableForPads)))
                 PracticeTouchPadGrid(pads: pads,
                                      used: Set(session.patternHits.map(\.padIndex)),
                                      flashes: session.padFlashes,
@@ -360,7 +407,7 @@ struct PracticeScreen: View {
         .frame(maxWidth: .infinity)
     }
 
-    private func bottomZoneRow(s: CGFloat, availableWidth: CGFloat) -> some View {
+    private func bottomZoneRow(s: CGFloat, availableWidth: CGFloat, spaceAbove: CGFloat) -> some View {
         let showsResult = session.summary != nil && !session.running
         let gap = max(0, (availableWidth - 3 * s) / 2)
         let resultCardWidth = 2 * s + gap
@@ -376,18 +423,34 @@ struct PracticeScreen: View {
                     badgeText: session.badgeSummaryMessage(settings: settings),
                     cardWidth: resultCardWidth,
                     cardHeight: s,
-                    openRules: { showingStarRules = true },
-                    openSessionResults: { showingDetails = true }
+                    openRules: {
+                        showingDetails = false
+                        showingTempo = false
+                        showingStarRules = true
+                    },
+                    openSessionResults: {
+                        showingStarRules = false
+                        showingTempo = false
+                        showingDetails = true
+                    },
+                    starRulesAttachment: AnyView(
+                        Color.clear
+                            .adaptivePopoverOrSheet(
+                                isPresented: $showingStarRules,
+                                asSheet: spaceAbove < 415,
+                                arrowEdge: .bottom
+                            ) {
+                                starRules
+                            }
+                    )
                 )
-                .popover(isPresented: $showingDetails, arrowEdge: .top) {
+                .adaptivePopoverOrSheet(
+                    isPresented: $showingDetails,
+                    asSheet: spaceAbove < 650,
+                    arrowEdge: .bottom
+                ) {
                     sessionResultsView(summary)
                 }
-                .background(
-                    Color.clear
-                        .popover(isPresented: $showingStarRules, arrowEdge: .top) {
-                            starRules
-                        }
-                )
 
                 Spacer(minLength: 0)
 
@@ -395,7 +458,7 @@ struct PracticeScreen: View {
             } else {
                 padLayoutSquare(s: s)
                 Spacer(minLength: 0)
-                tempoSquare(s: s)
+                tempoSquare(s: s, spaceAbove: spaceAbove)
                 Spacer(minLength: 0)
                 transportSquare(s: s)
             }
@@ -418,9 +481,11 @@ struct PracticeScreen: View {
         .frame(width: s, height: s)
     }
 
-    private func tempoSquare(s: CGFloat) -> some View {
+    private func tempoSquare(s: CGFloat, spaceAbove: CGFloat) -> some View {
         let editable = !session.running && session.ready && session.available
         return Button {
+            showingDetails = false
+            showingStarRules = false
             showingTempo.toggle()
         } label: {
             ZStack {
@@ -461,8 +526,15 @@ struct PracticeScreen: View {
         }
         .buttonStyle(.plain)
         .disabled(!editable)
-        .popover(isPresented: $showingTempo) {
-            tempoControls.padding(Theme.Space.page).background(Theme.background)
+        .adaptivePopoverOrSheet(
+            isPresented: $showingTempo,
+            asSheet: spaceAbove < 285,
+            arrowEdge: .bottom
+        ) {
+            tempoControls
+                .padding(Theme.Space.page)
+                .background(Theme.background)
+                .presentationDetents([.height(300), .medium])
         }
         .accessibilityLabel(settings.localized("Tempo %lld BPM, goal %lld", session.bpm, session.lesson.targetBpm))
     }
@@ -499,7 +571,7 @@ struct PracticeScreen: View {
                     }
                 }
             } label: {
-                Text(settings.localized("From memory for ★3"))
+                Text(settings.localized("Memory ★3"))
                     .lineLimit(1)
                     .minimumScaleFactor(0.7)
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -531,7 +603,7 @@ struct PracticeScreen: View {
             .minimumScaleFactor(0.8)
             .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
-        .buttonStyle(InstrumentButtonStyle(customHeight: buttonHeight))
+        .buttonStyle(InstrumentButtonStyle(main: true, customHeight: buttonHeight))
         .disabled(nextLesson == nil)
         .accessibilityHint(nextLesson.map { settings.localized($0.title) } ?? settings.localized("No next lesson available"))
     }
@@ -571,7 +643,15 @@ struct PracticeScreen: View {
 
     private var tempoControls: some View {
         VStack(alignment: .leading, spacing: Theme.Space.regular) {
-            Text(settings.localized("Tempo")).font(Theme.screenTitle)
+            HStack {
+                Text(settings.localized("Tempo")).font(Theme.screenTitle)
+                Spacer()
+                Button(settings.localized("Close")) {
+                    showingTempo = false
+                }
+                .font(Theme.control)
+                .frame(minHeight: Theme.Size.touch)
+            }
             Text("\(session.bpm) → \(session.lesson.targetBpm) BPM").font(Theme.control).monospacedDigit()
                         .contentTransition(motion.numeric).motion(value: session.bpm)
             HStack(spacing: Theme.Space.small) {
@@ -728,12 +808,18 @@ struct PracticeScreen: View {
             .background(Theme.background)
         }
         .frame(idealWidth: 440, maxWidth: 480, maxHeight: 600)
+        .presentationDetents([.height(600), .large])
     }
 
     private var starRules: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: Theme.Space.regular) {
-                Text(settings.localized("Star requirements")).font(Theme.sectionTitle)
+                HStack {
+                    Text(settings.localized("Star requirements")).font(Theme.sectionTitle)
+                    Spacer()
+                    Button(settings.localized("Close")) { showingStarRules = false }
+                        .font(Theme.control).frame(minHeight: Theme.Size.touch)
+                }
                 ForEach(0..<3, id: \.self) { index in
                     HStack(alignment: .top, spacing: Theme.Space.small) {
                         Image(systemName: isStarEarned(index) ? "star.fill" : "star")
@@ -746,13 +832,12 @@ struct PracticeScreen: View {
                     }
                     .font(Theme.control)
                 }
-                Button(settings.localized("Close")) { showingStarRules = false }
-                    .font(Theme.control).frame(minHeight: Theme.Size.touch)
             }
             .padding(Theme.Space.page)
         }
         .frame(width: 420, height: 360)
         .foregroundStyle(Theme.ink).background(Theme.background)
+        .presentationDetents([.height(380), .medium])
     }
 
     private var legend: some View {
@@ -968,6 +1053,7 @@ private struct PracticeTools: View {
                 Picker(settings.localized("Bars shown"), selection: $visibleBars) {
                     Text(settings.localized("1 bar")).tag(1)
                     Text(settings.localized("%lld bars", 2)).tag(2)
+                    Text(settings.localized("%lld bars", 3)).tag(3)
                     Text(settings.localized("All bars")).tag(4)
                 }
                 Toggle(settings.localized("Small pad layout"), isOn: $showPads)
@@ -1038,5 +1124,32 @@ private struct PracticeTools: View {
         .font(Theme.control).tint(Theme.ink)
         .frame(width: 480, height: 640)
         .scrollContentBackground(.hidden).background(Theme.background).foregroundStyle(Theme.ink)
+    }
+}
+
+private extension View {
+    func adaptivePopoverOrSheet<Content: View>(
+        isPresented: Binding<Bool>,
+        asSheet: Bool,
+        arrowEdge: Edge = .bottom,
+        @ViewBuilder content: @escaping () -> Content
+    ) -> some View {
+        self
+            .sheet(isPresented: Binding(
+                get: { isPresented.wrappedValue && asSheet },
+                set: { if !$0 { isPresented.wrappedValue = false } }
+            )) {
+                content()
+                    .presentationDragIndicator(.visible)
+            }
+            .popover(
+                isPresented: Binding(
+                    get: { isPresented.wrappedValue && !asSheet },
+                    set: { if !$0 { isPresented.wrappedValue = false } }
+                ),
+                arrowEdge: arrowEdge
+            ) {
+                content()
+            }
     }
 }

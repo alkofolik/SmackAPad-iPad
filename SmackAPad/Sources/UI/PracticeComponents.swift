@@ -85,14 +85,16 @@ struct InstrumentButtonStyle: ButtonStyle {
 struct PracticeIconButton: View {
     let symbol: String
     let title: String
+    var count: Int? = nil
     var selected = false
+    var accessibilityValue: String? = nil
+    var accessibilityHint: String? = nil
     let action: () -> Void
     @State private var showingHint = false
 
     var body: some View {
         Button(action: action) {
-            Image(systemName: symbol)
-                .font(.system(size: 21, weight: .medium))
+            buttonContent
                 .frame(width: Theme.Size.touch, height: Theme.Size.touch)
                 .foregroundStyle(selected ? Theme.background : Theme.ink)
                 .background(selected ? Theme.ink : Theme.background)
@@ -100,6 +102,7 @@ struct PracticeIconButton: View {
         }
         .buttonStyle(.plain)
         .accessibilityLabel(title)
+        .modifier(OptionalAccessibilityModifier(value: accessibilityValue, hint: accessibilityHint))
         .accessibilityAddTraits(selected ? .isSelected : [])
         .help(title)
         .highPriorityGesture(LongPressGesture(minimumDuration: 0.5).onEnded { _ in showingHint = true })
@@ -110,6 +113,44 @@ struct PracticeIconButton: View {
                 .foregroundStyle(Theme.ink)
                 .background(Theme.background)
                 .presentationCompactAdaptation(.popover)
+        }
+    }
+
+    @ViewBuilder
+    private var buttonContent: some View {
+        if let count {
+            HStack(spacing: 3) {
+                Image(systemName: symbol)
+                    .font(.system(size: 17, weight: .medium))
+                Text("\(count)")
+                    .font(Theme.canvasDisplay(13))
+                    .monospacedDigit()
+            }
+        } else {
+            Image(systemName: symbol)
+                .font(.system(size: 21, weight: .medium))
+        }
+    }
+}
+
+private struct OptionalAccessibilityModifier: ViewModifier {
+    let value: String?
+    let hint: String?
+
+    @ViewBuilder
+    func body(content: Content) -> some View {
+        if let value, let hint {
+            content
+                .accessibilityValue(value)
+                .accessibilityHint(hint)
+        } else if let value {
+            content
+                .accessibilityValue(value)
+        } else if let hint {
+            content
+                .accessibilityHint(hint)
+        } else {
+            content
         }
     }
 }

@@ -145,6 +145,24 @@ extension AppAppearance {
         case .system: return nil
         }
     }
+
+    public var userInterfaceStyle: UIUserInterfaceStyle {
+        switch self {
+        case .light: return .light
+        case .dark: return .dark
+        case .system: return .unspecified
+        }
+    }
+
+    @MainActor
+    public func applyToWindows() {
+        for scene in UIApplication.shared.connectedScenes {
+            guard let windowScene = scene as? UIWindowScene else { continue }
+            for window in windowScene.windows {
+                window.overrideUserInterfaceStyle = userInterfaceStyle
+            }
+        }
+    }
 }
 
 extension Theme {

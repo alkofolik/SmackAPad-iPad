@@ -134,6 +134,7 @@ public struct SettingsView: View {
                         Picker(settings.localized("Bars shown"), selection: $visibleBars) {
                             Text(settings.localized("1 bar")).tag(1)
                             Text(settings.localized("%lld bars", 2)).tag(2)
+                            Text(settings.localized("%lld bars", 3)).tag(3)
                             Text(settings.localized("All bars")).tag(4)
                         }
                         Toggle(settings.localized("Small pad layout"), isOn: $showPads)

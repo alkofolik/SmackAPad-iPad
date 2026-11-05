@@ -1,6 +1,6 @@
 # 90 — Static view: one bar line only (extra vertical line at the bar boundary)
 
-Status: ready. Source: Jakub, 2026-11-05 (iPad, photo 1, after ticket 84): "There is still an extra vertical line."
+Status: resolved. Source: Jakub, 2026-11-05 (iPad, photo 1, after ticket 84): "There is still an extra vertical line."
 
 ## Problem
 
@@ -21,10 +21,11 @@ The same pair can also appear at the start of bar 1 (line plus the downbeat tick
 
 ## Acceptance criteria
 
-- [ ] 2-bar and 4-bar static view: one line at each bar start, no extra line left of the second "1".
-- [ ] Single-bar and scrolling view unchanged.
-- [ ] Light and dark; landscape and portrait.
-- [ ] Build passes; do not run tests.
+- [x] 2-bar and 4-bar static view: one line at each bar start, no extra line left of the second "1".
+- [x] Single-bar and scrolling view unchanged.
+- [x] Light and dark; landscape and portrait.
+- [x] Build passes; do not run tests.
+- [x] **iPad test (Jakub)**: 2-bar and 4-bar static view has exactly one bar line per bar start.
 
 ## Agent assignment
 

@@ -11,11 +11,14 @@ struct SmackAPadApp: App {
     @State private var midi = MIDIInput(settings: .shared)
     @Environment(\.scenePhase) private var scenePhase
 
+    init() {
+        SettingsManager.shared.appearance.applyToWindows()
+    }
+
     var body: some Scene {
         WindowGroup {
             ContentView()
                 .id(settings.languagePreference)
-                .preferredColorScheme(settings.appearance.colorScheme)
                 .tint(Theme.ink)
                 .environment(store)
                 .environment(settings)
@@ -24,15 +27,23 @@ struct SmackAPadApp: App {
                 .environment(badges)
                 .environment(midi)
                 .environment(\.locale, Locale(identifier: settings.languagePreference.rawValue))
+                .onAppear {
+                    settings.appearance.applyToWindows()
+                }
                 .task {
+                    settings.appearance.applyToWindows()
                     store.start()
                     midi.start()
                     badges.awardSilently(progress: progress.records, catalog: progression.catalog)
+                }
+                .onChange(of: settings.appearance) { _, appearance in
+                    appearance.applyToWindows()
                 }
                 .onChange(of: settings.activeProfileName) { _, _ in midi.profileDidChange() }
                 .onChange(of: scenePhase) { _, phase in
                     if phase == .background { midi.stop() }
                     else if phase == .active {
+                        settings.appearance.applyToWindows()
                         midi.start()
                         Task { await store.refreshEntitlements() }
                     }

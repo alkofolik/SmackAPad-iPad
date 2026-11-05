@@ -149,6 +149,9 @@
 "All bars" = "Všechny takty";
 "%lld bars" = "%lld takty";
 "%lld bar" = "%lld takt";
+"%lld bars shown" = "Zobrazeny %lld takty";
+"%lld bar shown" = "Zobrazen %lld takt";
+"Tap again to show more bars" = "Dalším klepnutím zobrazíte více taktů";
 "Static view, bar count" = "Statický pohled, počet taktů";
 "Scrolling view" = "Posouvaný pohled";
 "On" = "Zapnuto";
@@ -344,7 +347,7 @@
 /* MIDI practice buttons and tempo knob. */
 "Controller buttons" = "Tlačítka kontroléru";
 "Start / stop" = "Spustit / zastavit";
-"Restart" = "Spustit znovu";
+"Restart" = "Znovu";
 "Tempo −" = "Tempo −";
 "Tempo +" = "Tempo +";
 "Advanced" = "Pokročilé";
@@ -442,7 +445,8 @@
 "Run stopped before the first pass finished." = "Běh skončil před dokončením prvního průchodu.";
 
 /* Practice screen round 6 */
-"From memory for ★3" = "Z paměti o ★3";
+"Memory ★3" = "Zpaměti ★3";
+"From memory for ★3" = "Zpaměti pro ★3";
 "Starts Play from memory for the 3rd star" = "Spustí hru z paměti o 3. hvězdu";
 "Band colour" = "Barva pásu";
 "The band gets deeper as the tempo nears the goal. A glow on the right edge: you are rushing; on the left: you are dragging." = "Čím blíž cílovému tempu, tím sytější pás. Záře u pravého okraje: spěcháš, u levého: zpožďuješ se.";

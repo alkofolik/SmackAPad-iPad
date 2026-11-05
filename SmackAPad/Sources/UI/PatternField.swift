@@ -92,40 +92,64 @@ struct PatternField: View {
 
             let contentHeight = max(availableHeight,
                 PracticeBandStyle.minimumHeight(rows: rows.count, scale: fitScale))
-            ScrollView(.vertical) {
-                Group {
-                    if scrolling {
-                        ScrollingPattern(lesson: lesson, hits: hits, rows: rows, position: tapePosition,
-                                         running: running, hidden: hidden, verdicts: verdicts,
-                                         judgments: judgments, pass: pass,
-                                         playedHits: playedHits,
-                                         scoring: scoring, missGraceSteps: missGraceSteps, band: band, scale: notationScale)
-                    } else if count <= 1 {
-                        let currentBar = min(lesson.bars - 1, max(0, Int(position) / 16))
-                        PatternBar(bar: currentBar, hits: hits.filter { $0.step / 16 == currentBar }, rows: rows,
-                                   position: position - Double(currentBar * 16), active: running,
-                                   hidden: hidden, verdict: verdicts[currentBar],
-                                   feedback: feedback,
-                                   playedHits: visiblePlayedHits(steps: (currentBar * 16)..<((currentBar + 1) * 16)),
-                                   scoring: scoring, missGraceSteps: missGraceSteps, band: band, scale: fitScale)
-                            .frame(height: contentHeight)
-                    } else {
-                        let currentBar = min(lesson.bars - 1, max(0, Int(position) / 16))
-                        let first = (currentBar / max(1, count)) * max(1, count)
-                        let bars = Array(first..<min(first + count, lesson.bars))
-                        let startStep = first * 16
-                        let endStep = min(first + count, lesson.bars) * 16
-                        StaticPattern(lesson: lesson, hits: hits, rows: rows, bars: bars, firstBar: first,
-                                      position: position, running: running, hidden: hidden,
-                                      verdicts: verdicts, feedback: feedback,
-                                      playedHits: visiblePlayedHits(steps: startStep..<endStep),
-                                      scoring: scoring, missGraceSteps: missGraceSteps, band: band, scale: fitScale)
-                            .frame(height: contentHeight)
+            let gutter: CGFloat = scrolling ? 0 : (PracticeBandStyle.showPadLabels ? 96 * fitScale : 0)
+
+            ZStack {
+                ScrollView(.vertical) {
+                    Group {
+                        if scrolling {
+                            ScrollingPattern(lesson: lesson, hits: hits, rows: rows, position: tapePosition,
+                                             running: running, hidden: hidden, verdicts: verdicts,
+                                             judgments: judgments, pass: pass,
+                                             playedHits: playedHits,
+                                             scoring: scoring, missGraceSteps: missGraceSteps, band: band, scale: notationScale)
+                        } else if count <= 1 {
+                            let currentBar = min(lesson.bars - 1, max(0, Int(position) / 16))
+                            let barHits = hits.filter { $0.step / 16 == currentBar }
+                            let barPos = position - Double(currentBar * 16)
+                            let barVerdict = verdicts[currentBar]
+                            let barPlayed = visiblePlayedHits(steps: (currentBar * 16)..<((currentBar + 1) * 16))
+                            PatternBar(bar: currentBar, hits: barHits, rows: rows,
+                                       position: barPos, active: running,
+                                       hidden: hidden, verdict: barVerdict,
+                                       feedback: feedback,
+                                       playedHits: barPlayed,
+                                       scoring: scoring, missGraceSteps: missGraceSteps, band: band, scale: fitScale)
+                                .frame(height: contentHeight)
+                        } else {
+                            let currentBar = min(lesson.bars - 1, max(0, Int(position) / 16))
+                            let first = (currentBar / max(1, count)) * max(1, count)
+                            let bars = Array(first..<min(first + count, lesson.bars))
+                            let startStep = first * 16
+                            let endStep = min(first + count, lesson.bars) * 16
+                            let staticPlayed = visiblePlayedHits(steps: startStep..<endStep)
+                            StaticPattern(lesson: lesson, hits: hits, rows: rows, bars: bars, firstBar: first,
+                                          position: position, running: running, hidden: hidden,
+                                          verdicts: verdicts, feedback: feedback,
+                                          playedHits: staticPlayed,
+                                          scoring: scoring, missGraceSteps: missGraceSteps, band: band, scale: fitScale)
+                                .frame(height: contentHeight)
+                        }
                     }
+                    .frame(height: contentHeight)
                 }
-                .frame(height: contentHeight)
+                .scrollBounceBehavior(.basedOnSize)
+
+                if lesson.bars > 1 {
+                    PatternPassProgress(position: position, bars: lesson.bars, gutter: gutter)
+                        .padding(.bottom, Theme.Space.small)
+                        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottom)
+                }
+
+                if scoring && countdown == nil {
+                    BandTopSpineRuler(
+                        bars: runBars,
+                        tapePosition: tapePosition,
+                        starMomentBeamActive: starMomentBeamActive
+                    )
+                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+                }
             }
-            .scrollBounceBehavior(.basedOnSize)
         }
         .opacity(countdown == nil ? 1 : 0.22)
         .padding(.horizontal, Theme.Space.page)
@@ -137,21 +161,6 @@ struct PatternField: View {
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
                 }
                 .allowsHitTesting(false)
-            }
-        }
-        .overlay(alignment: .bottom) {
-            if lesson.bars > 1 {
-                PatternPassProgress(position: position, bars: lesson.bars)
-                    .padding(.horizontal, Theme.Space.page).padding(.bottom, Theme.Space.small)
-            }
-        }
-        .overlay(alignment: .top) {
-            if scoring && countdown == nil {
-                BandTopSpineRuler(
-                    bars: runBars,
-                    tapePosition: tapePosition,
-                    starMomentBeamActive: starMomentBeamActive
-                )
             }
         }
         .overlay { BandEdgeGlow(tendency: edgeTendency) }
@@ -217,13 +226,17 @@ private func drawBeat(step: Int, x: CGFloat, lanes: PatternLanes, context: inout
     if step.isMultiple(of: 4) {
         context.draw(Text(String(step % 16 / 4 + 1)).font(Theme.canvasDisplay(28 * lanes.scale)).monospacedDigit().foregroundColor(Theme.black),
                      at: CGPoint(x: x, y: lanes.countY))
-        var path = Path()
-        path.move(to: CGPoint(x: x, y: lanes.top - 20))
-        path.addLine(to: CGPoint(x: x, y: lanes.bottom))
         let bar = step.isMultiple(of: 16)
+        let lineTop = lanes.countY + 14 * lanes.scale
+        var path = Path()
+        path.move(to: CGPoint(x: x, y: lineTop))
+        path.addLine(to: CGPoint(x: x, y: lanes.bottom))
         context.stroke(path, with: .color(Theme.black.opacity(bar ? 0.38 : 0.18)), lineWidth: bar ? 1.2 : 0.65)
         if bar {
-            context.fill(Path(roundedRect: CGRect(x: x - 3, y: 12, width: 6, height: 8), cornerRadius: 2),
+            let tickWidth = max(4, 6 * lanes.scale)
+            let tickHeight = max(2.5, 4 * lanes.scale)
+            let tickY = lanes.countY + 12 * lanes.scale
+            context.fill(Path(roundedRect: CGRect(x: x - tickWidth / 2, y: tickY, width: tickWidth, height: tickHeight), cornerRadius: 1),
                          with: .color(Theme.black.opacity(0.7)))
         }
     } else {
@@ -268,14 +281,6 @@ private struct StaticPattern: View {
                 }
             }
 
-            // Hairline bar separator line between bars (takes no layout width)
-            for barIndex in 1..<barCount {
-                let sepX = gutter + CGFloat(barIndex * 16) * cellWidth
-                var path = Path()
-                path.move(to: CGPoint(x: sepX, y: lanes.top - 20))
-                path.addLine(to: CGPoint(x: sepX, y: lanes.bottom))
-                context.stroke(path, with: .color(Theme.black.opacity(0.35)), lineWidth: 1)
-            }
 
             let startStep = firstBar * 16
             let endStep = (firstBar + barCount) * 16
@@ -296,7 +301,7 @@ private struct StaticPattern: View {
                 } else {
                     var playedContext = context
                     let visiblePosition = position - Double(startStep)
-                    let markerX = gutter + (CGFloat(visiblePosition) + 0.5) * cellWidth
+                    let markerX = gutter + CGFloat(visiblePosition) * cellWidth
                     let behindMarker = min(size.width, max(0, markerX))
                     playedContext.clip(to: Path(CGRect(x: 0, y: 0, width: behindMarker, height: size.height)))
 
@@ -318,8 +323,8 @@ private struct StaticPattern: View {
 
             // Smooth playhead moving across bar boundaries at constant speed
             let visiblePosition = position - Double(startStep)
-            if running && visiblePosition >= -0.5 && visiblePosition <= Double(totalSteps) {
-                let markerX = gutter + (CGFloat(visiblePosition) + 0.5) * cellWidth
+            if running && visiblePosition >= 0 && visiblePosition <= Double(totalSteps) {
+                let markerX = gutter + CGFloat(visiblePosition) * cellWidth
                 drawMarker(x: markerX, top: lanes.top - 4 * scale, bottom: lanes.bottom + 4, context: &context)
             }
 
@@ -551,6 +556,7 @@ private struct PatternPassProgress: View {
     @Environment(SettingsManager.self) private var settings
     let position: Double
     let bars: Int
+    var gutter: CGFloat = 0
 
     var body: some View {
         let count = max(1, bars)
@@ -559,14 +565,15 @@ private struct PatternPassProgress: View {
         let fraction = totalSteps > 0 ? min(1, max(0, localPosition / totalSteps)) : 0
         Canvas { context, size in
             let y = size.height - 2
-            context.fill(Path(CGRect(x: 0, y: y - 1, width: size.width, height: 1.5)),
+            let trackWidth = max(1, size.width - gutter)
+            context.fill(Path(CGRect(x: gutter, y: y - 1, width: trackWidth, height: 1.5)),
                          with: .color(Theme.black.opacity(0.25)))
             if fraction > 0 {
-                context.fill(Path(CGRect(x: 0, y: y - 1, width: size.width * fraction, height: 2)),
+                context.fill(Path(CGRect(x: gutter, y: y - 1, width: trackWidth * fraction, height: 2)),
                              with: .color(Theme.black))
             }
             for bar in 1..<count {
-                let x = min(size.width - 1, max(1, size.width * Double(bar) / Double(count)))
+                let x = min(size.width - 1, max(gutter + 1, gutter + trackWidth * Double(bar) / Double(count)))
                 context.fill(Path(CGRect(x: x - 0.5, y: y - 4, width: 1, height: 6)),
                              with: .color(Theme.black))
             }
@@ -618,11 +625,13 @@ struct BandTopSpineRuler: View {
         GeometryReader { geometry in
             let width = geometry.size.width
             let sectorCount = max(1, bars)
-            let sectorWidth = width / CGFloat(sectorCount)
+            let gap: CGFloat = 2
+            let totalGaps = CGFloat(sectorCount - 1) * gap
+            let sectorWidth = max(1, (width - totalGaps) / CGFloat(sectorCount))
 
             ZStack(alignment: .topLeading) {
                 // Background track & dividers
-                HStack(spacing: 0) {
+                HStack(spacing: gap) {
                     ForEach(0..<sectorCount, id: \.self) { index in
                         ZStack(alignment: .leading) {
                             if index == sectorCount - 1 {
@@ -644,20 +653,13 @@ struct BandTopSpineRuler: View {
                             }
                         }
                         .frame(width: sectorWidth, height: 8)
-                        .clipped()
-                        .overlay(alignment: .trailing) {
-                            if index < sectorCount - 1 {
-                                Rectangle()
-                                    .fill(Color.black.opacity(0.35))
-                                    .frame(width: 1, height: 8)
-                            }
-                        }
+                        .clipShape(RoundedRectangle(cornerRadius: 1.5))
                     }
                 }
 
                 // Warning tooth on leading edge of the last sector
                 if sectorCount >= 2 {
-                    let toothX = CGFloat(sectorCount - 1) * sectorWidth
+                    let toothX = CGFloat(sectorCount - 1) * (sectorWidth + gap)
                     WarningToothShape()
                         .fill(isWarningLit ? Color.white : Color.black.opacity(0.5))
                         .overlay {

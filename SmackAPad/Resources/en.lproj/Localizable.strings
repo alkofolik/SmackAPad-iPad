@@ -150,6 +150,9 @@
 "All bars" = "All bars";
 "%lld bars" = "%lld bars";
 "%lld bar" = "%lld bar";
+"%lld bars shown" = "%lld bars shown";
+"%lld bar shown" = "%lld bar shown";
+"Tap again to show more bars" = "Tap again to show more bars";
 "Static view, bar count" = "Static view, bar count";
 "Scrolling view" = "Scrolling view";
 "On" = "On";
@@ -443,6 +446,7 @@
 "Run stopped before the first pass finished." = "Run stopped before the first pass finished.";
 
 /* Practice screen round 6 */
+"Memory ★3" = "Memory ★3";
 "From memory for ★3" = "From memory for ★3";
 "Starts Play from memory for the 3rd star" = "Starts Play from memory for the 3rd star";
 "Band colour" = "Band colour";

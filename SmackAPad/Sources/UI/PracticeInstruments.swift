@@ -228,6 +228,7 @@ struct ResultCard: View {
     let cardHeight: CGFloat
     let openRules: () -> Void
     let openSessionResults: () -> Void
+    var starRulesAttachment: AnyView? = nil
 
     private var scorePercent: Int {
         Int((summary.score * 100).rounded())
@@ -342,6 +343,11 @@ struct ResultCard: View {
                 .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
+            .background {
+                if let starRulesAttachment {
+                    starRulesAttachment
+                }
+            }
 
             if let badgeText {
                 Text(badgeText)
@@ -374,12 +380,14 @@ struct MemoryChallengeButtonStyle: ButtonStyle {
             .font(Theme.action)
             .foregroundStyle(Theme.black)
             .lineLimit(1)
-            .padding(.horizontal, Theme.Space.small)
+            .padding(.horizontal, Theme.Space.regular)
             .frame(height: customHeight)
-            .frame(minHeight: customHeight == nil ? Theme.Size.rowLarge : nil)
-            .background(PracticeBandStyle.orange.opacity(configuration.isPressed ? 0.8 : 1),
-                        in: RoundedRectangle(cornerRadius: Theme.Radius.pad))
-            .fixedSize(horizontal: false, vertical: true)
+            .frame(minHeight: customHeight == nil ? Theme.Size.control : nil)
+            .background(PracticeBandStyle.orange.opacity(configuration.isPressed ? 0.8 : 1))
+            .overlay(Rectangle().stroke(Theme.ink, lineWidth: Theme.Size.border))
+            .opacity(configuration.isPressed ? 0.65 : 1)
+            .contentShape(Rectangle())
+            .motion(value: configuration.isPressed)
     }
 }
 
