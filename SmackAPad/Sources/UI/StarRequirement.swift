@@ -18,8 +18,12 @@ public enum StarRequirement {
         requiredRuns: Int = 1,
         targetBpm: Int? = nil,
         language: AppLanguage = .english,
-        mode: PracticeMode = .learning
+        mode: PracticeMode = .learning,
+        isMemoryPracticeToday: Bool = false
     ) -> String {
+        if starIndex == 2 && isMemoryPracticeToday {
+            return language.localized("From memory: from tomorrow. Today it is practice.")
+        }
         switch starIndex {
         case 0:
             if requiredRuns > 1 {
@@ -65,9 +69,10 @@ public enum StarRequirement {
         for starIndex: Int,
         requiredRuns: Int = 1,
         targetBpm: Int? = nil,
-        settings: SettingsManager? = nil
+        settings: SettingsManager? = nil,
+        isMemoryPracticeToday: Bool = false
     ) -> String {
-        requirementText(for: starIndex, requiredRuns: requiredRuns, targetBpm: targetBpm, language: settings?.languagePreference ?? .english, mode: settings?.practiceMode ?? .learning)
+        requirementText(for: starIndex, requiredRuns: requiredRuns, targetBpm: targetBpm, language: settings?.languagePreference ?? .english, mode: settings?.practiceMode ?? .learning, isMemoryPracticeToday: isMemoryPracticeToday)
     }
 
     /// Convenience overload for a Lesson.
@@ -75,11 +80,12 @@ public enum StarRequirement {
         for starIndex: Int,
         lesson: Lesson,
         padCount: Int = 16,
-        settings: SettingsManager? = nil
+        settings: SettingsManager? = nil,
+        isMemoryPracticeToday: Bool = false
     ) -> String {
         let expectedHits = lesson.hits(forPadCount: padCount).count
         let runs = StarStreak.requiredRuns(expectedHits: expectedHits, isIntro: lesson.cat == "intro" && starIndex != 0)
-        return requirementText(for: starIndex, requiredRuns: runs, targetBpm: lesson.targetBpm, settings: settings)
+        return requirementText(for: starIndex, requiredRuns: runs, targetBpm: lesson.targetBpm, settings: settings, isMemoryPracticeToday: isMemoryPracticeToday)
     }
 
     /// Returns the guidance line for the next missing star (e.g. "Next: play it from memory at 85 BPM, 80 % or better"),
@@ -89,11 +95,15 @@ public enum StarRequirement {
         requiredRuns: Int = 1,
         targetBpm: Int? = nil,
         language: AppLanguage = .english,
-        mode: PracticeMode = .learning
+        mode: PracticeMode = .learning,
+        isMemoryPracticeToday: Bool = false
     ) -> String? {
         guard let index = nextMissingStarIndex(progress: progress) else { return nil }
-        let text = requirementText(for: index, requiredRuns: requiredRuns, targetBpm: targetBpm, language: language, mode: mode)
+        let text = requirementText(for: index, requiredRuns: requiredRuns, targetBpm: targetBpm, language: language, mode: mode, isMemoryPracticeToday: isMemoryPracticeToday)
         guard !text.isEmpty else { return nil }
+        if index == 2 && isMemoryPracticeToday {
+            return text
+        }
         let lowered = text.prefix(1).lowercased() + text.dropFirst()
         return language.localized("Next: %@", lowered)
     }
@@ -103,9 +113,10 @@ public enum StarRequirement {
         progress: LessonProgress?,
         requiredRuns: Int = 1,
         targetBpm: Int? = nil,
-        settings: SettingsManager? = nil
+        settings: SettingsManager? = nil,
+        isMemoryPracticeToday: Bool = false
     ) -> String? {
-        nextMissingStarText(progress: progress, requiredRuns: requiredRuns, targetBpm: targetBpm, language: settings?.languagePreference ?? .english, mode: settings?.practiceMode ?? .learning)
+        nextMissingStarText(progress: progress, requiredRuns: requiredRuns, targetBpm: targetBpm, language: settings?.languagePreference ?? .english, mode: settings?.practiceMode ?? .learning, isMemoryPracticeToday: isMemoryPracticeToday)
     }
 
     /// Convenience overload for a Lesson.
@@ -113,11 +124,12 @@ public enum StarRequirement {
         progress: LessonProgress?,
         lesson: Lesson,
         padCount: Int = 16,
-        settings: SettingsManager? = nil
+        settings: SettingsManager? = nil,
+        isMemoryPracticeToday: Bool = false
     ) -> String? {
         let expectedHits = lesson.hits(forPadCount: padCount).count
         let first = nextMissingStarIndex(progress: progress) == 0
         let runs = StarStreak.requiredRuns(expectedHits: expectedHits, isIntro: lesson.cat == "intro" && !first)
-        return nextMissingStarText(progress: progress, requiredRuns: runs, targetBpm: lesson.targetBpm, settings: settings)
+        return nextMissingStarText(progress: progress, requiredRuns: runs, targetBpm: lesson.targetBpm, settings: settings, isMemoryPracticeToday: isMemoryPracticeToday)
     }
 }

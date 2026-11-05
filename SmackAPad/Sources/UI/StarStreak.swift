@@ -19,6 +19,54 @@ public struct StarStreak: Codable, Equatable, Hashable, Sendable {
         errors <= max(1, expectedHits / 10)
     }
 
+    /// Decides whether a run qualifies to earn memory credit toward Star 3.
+    /// Star 3 can only be earned on a calendar day strictly after the day Star 2 (goal tempo) was earned.
+    /// Under ticket 99, when fadeNotes is on, only hidden passes (pass >= 3) qualify.
+    public static func mayEarnMemoryCredit(
+        masteryDay: String?,
+        wasMastered: Bool,
+        today: String,
+        fromMemory: Bool,
+        bpm: Int,
+        targetBpm: Int,
+        score: Double,
+        isSectionLoop: Bool = false,
+        pass: Int = 3,
+        fadeNotes: Bool = true
+    ) -> Bool {
+        guard !isSectionLoop && fromMemory && bpm >= targetBpm && score >= 0.8 else { return false }
+        if fadeNotes && pass < 3 { return false }
+        guard wasMastered else { return false }
+        guard let masteryDay else { return true }
+        return today > masteryDay
+    }
+
+    /// Convenience overload using LessonProgress before the run.
+    public static func mayEarnMemoryCredit(
+        progress: LessonProgress?,
+        today: String,
+        fromMemory: Bool,
+        bpm: Int,
+        targetBpm: Int,
+        score: Double,
+        isSectionLoop: Bool = false,
+        pass: Int = 3,
+        fadeNotes: Bool = true
+    ) -> Bool {
+        mayEarnMemoryCredit(
+            masteryDay: progress?.masteryDay,
+            wasMastered: progress?.mastery == true,
+            today: today,
+            fromMemory: fromMemory,
+            bpm: bpm,
+            targetBpm: targetBpm,
+            score: score,
+            isSectionLoop: isSectionLoop,
+            pass: pass,
+            fadeNotes: fadeNotes
+        )
+    }
+
     static let minimumHitsPerStar = 16
     public static func forgetAll() {}
     private(set) var passedRuns = 0

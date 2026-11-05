@@ -2607,3 +2607,20 @@ Hide “%@”? You can show it again at the bottom of the list.	Skrýt „%@“?
 Hide	Skrýt
 Show	Zobrazit
 Hidden categories (%lld)	Skryté kategorie (%lld)
+From memory: from tomorrow. Today it is practice.	Zpaměti: od zítřka. Dnes je to jen cvičení.
+Training	Trénink
+%lld due	%lld na řadě
+Due	Na řadě
+Step %lld of 4	Krok %lld ze 4
+Nothing to review today. Next: %@	Dnes nic k opakování. Další: %@
+Reviews start once a lesson has two stars.	Opakování začne, až bude mít lekce dvě hvězdy.
+Settled	Upevněno
+Review · step %lld of 4 · from memory at %lld BPM, 80 %	Opakování · krok %lld ze 4 · zpaměti při %lld BPM, 80 %
+Review passed · next in %lld days	Opakování splněno · další za %lld dní
+Review passed · next in 1 day	Opakování splněno · další za 1 den
+Lesson settled	Lekce je upevněná
+Review not passed · again tomorrow	Opakování nesplněno · znovu zítra
+Does not count · play from memory at %lld BPM	Nepočítá se · hraj zpaměti při %lld BPM
+Fade notes in From memory	Nápověda zpaměti postupně mizí
+Pass 1 · notes shown	Průchod 1 · noty vidět
+Pass 2 · notes fading	Průchod 2 · noty mizí

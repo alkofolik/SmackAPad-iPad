@@ -139,6 +139,7 @@ public struct SettingsView: View {
                         }
                         Toggle(settings.localized("Small pad layout"), isOn: $showPads)
                         Toggle(settings.localized("Touch pads in portrait"), isOn: $touchPadsInPortrait)
+                        Toggle(settings.localized("Fade notes in From memory"), isOn: $settings.fadeMemoryNotes)
                     } header: {
                         SectionHeader(title: settings.localized("Practice screen"))
                     } footer: {
@@ -259,6 +260,25 @@ public struct SettingsView: View {
                     } header: {
                         SectionHeader(title: "IBM Plex Sans")
                     }
+
+                    Section {
+                        NavigationLink {
+                            AboutDetailView()
+                        } label: {
+                            HStack {
+                                Text(settings.localized("About"))
+                                    .font(Theme.control)
+                                Spacer()
+                                let version = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.0"
+                                Text("v\(version)")
+                                    .font(Theme.meta)
+                                    .foregroundStyle(Theme.secondary)
+                            }
+                            .frame(minHeight: Theme.Size.touch)
+                        }
+                    } header: {
+                        SectionHeader(title: settings.localized("About"))
+                    }
                 }
                 .listRowBackground(Theme.surface)
                 .listRowInsets(EdgeInsets(top: Theme.Space.small, leading: Theme.Space.regular,
@@ -295,6 +315,35 @@ public struct SettingsView: View {
             }
         } catch {
             self.kits = []
+        }
+    }
+}
+
+private struct AboutDetailView: View {
+    @Environment(SettingsManager.self) private var settings
+
+    var body: some View {
+        let version = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.0"
+        VStack(alignment: .leading, spacing: Theme.Space.regular) {
+            Text("Smack-a-Pad")
+                .font(Theme.sectionTitle)
+                .foregroundStyle(Theme.ink)
+            Text(settings.localized("Version %@", version))
+                .font(Theme.meta)
+                .foregroundStyle(Theme.secondary)
+            Divider()
+            Text(settings.localized("Font IBM Plex Sans, SIL OFL 1.1"))
+                .font(Theme.meta)
+                .foregroundStyle(Theme.secondary)
+            Spacer()
+        }
+        .padding(Theme.Space.page)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+        .background(Theme.background.ignoresSafeArea())
+        .navigationTitle(settings.localized("About"))
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItem(placement: .principal) { ScreenHeader(title: settings.localized("About")) }
         }
     }
 }

@@ -973,12 +973,19 @@ struct LibraryLessonRow: View {
                 ViewThatFits(in: .horizontal) {
                     HStack(spacing: Theme.Space.regular) {
                         LessonPatternStrip(hits: lesson.hits, dimmed: locked)
+                        settledMark
                         StarsView(record: record, lesson: lesson)
                     }
-                    StarsView(record: record, lesson: lesson)
+                    HStack(spacing: Theme.Space.small) {
+                        settledMark
+                        StarsView(record: record, lesson: lesson)
+                    }
                 }
             } else {
-                StarsView(record: record, lesson: lesson)
+                HStack(spacing: Theme.Space.small) {
+                    settledMark
+                    StarsView(record: record, lesson: lesson)
+                }
             }
         }
         .padding(.horizontal, Theme.Space.regular)
@@ -991,6 +998,16 @@ struct LibraryLessonRow: View {
                 .stroke(Theme.hairline, lineWidth: 1)
         )
         .lessonSource(lesson.id)
+    }
+
+    @ViewBuilder
+    private var settledMark: some View {
+        if record?.reviewSchedule.isSettled == true {
+            Image(systemName: "checkmark")
+                .font(Theme.meta)
+                .foregroundStyle(Theme.secondary)
+                .accessibilityLabel(settings.localized("Settled"))
+        }
     }
 
     private var genre: some View {

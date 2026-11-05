@@ -28,8 +28,17 @@ struct PracticeScreen: View {
     @State private var purchaseAccess: String?
     @State private var midLessonStarMomentActive = false
 
-    init(lesson: Lesson, settings: SettingsManager, progress: ProgressStore, midi: MIDIInput) {
-        _session = State(initialValue: PracticeSession(lesson: lesson, settings: settings, progress: progress, midi: midi))
+    init(lesson: Lesson, settings: SettingsManager, progress: ProgressStore, midi: MIDIInput,
+         initialFromMemory: Bool = false, initialBpm: Int? = nil, mixLessons: [Lesson] = []) {
+        _session = State(initialValue: PracticeSession(
+            lesson: lesson,
+            settings: settings,
+            progress: progress,
+            midi: midi,
+            initialFromMemory: initialFromMemory,
+            initialBpm: initialBpm,
+            mixLessons: mixLessons
+        ))
     }
 
     var body: some View {
@@ -56,8 +65,9 @@ struct PracticeScreen: View {
             .foregroundStyle(Theme.ink)
         }
         .toolbar(.hidden, for: .navigationBar)
-        .task(id: session.lesson.id) {
+        .task(id: ObjectIdentifier(session)) {
             await session.prepare()
+            if session.isMix { session.start() }
         }
         .onDisappear {
             session.close()
@@ -143,7 +153,7 @@ struct PracticeScreen: View {
             session.stop()
             if let dismissLesson { dismissLesson() } else { dismiss() }
         } label: {
-            Label(settings.localized("Library"), systemImage: "square.grid.2x2")
+            Label(settings.localized(session.isMix ? "Training" : "Library"), systemImage: "square.grid.2x2")
                 .lineLimit(1)
                 .fixedSize(horizontal: true, vertical: false)
         }
@@ -152,7 +162,9 @@ struct PracticeScreen: View {
 
     private var titleAndSubtitle: some View {
         VStack(alignment: .leading, spacing: Theme.Space.tight) {
-            Text(settings.localized(session.lesson.title))
+            Text(session.isMix
+                 ? settings.localized("Mix · %lld of %lld · %@", session.mixIndex + 1, session.mixLessons.count, settings.localized(session.lesson.title))
+                 : settings.localized(session.lesson.title))
                 .font(Theme.rowTitle)
                 .fixedSize(horizontal: false, vertical: true)
             lessonSubtitle
@@ -161,14 +173,22 @@ struct PracticeScreen: View {
     }
 
     private var lessonSubtitle: some View {
-        HStack(spacing: 0) {
-            difficultyDots
-            Text(" · \(localizedBarCount(session.lesson.bars))")
-                .font(Theme.meta)
-                .foregroundStyle(Theme.secondary)
+        Group {
+            if session.isDueReview {
+                Text(session.reviewStatusText(settings: settings))
+                    .font(Theme.meta)
+                    .foregroundStyle(Theme.secondary)
+            } else {
+                HStack(spacing: 0) {
+                    difficultyDots
+                    Text(" · \(localizedBarCount(session.lesson.bars))")
+                        .font(Theme.meta)
+                        .foregroundStyle(Theme.secondary)
+                }
+                .accessibilityElement(children: .ignore)
+                .accessibilityLabel(settings.localized("Difficulty %lld of 5, %@", session.lesson.level, localizedBarCount(session.lesson.bars)))
+            }
         }
-        .accessibilityElement(children: .ignore)
-        .accessibilityLabel(settings.localized("Difficulty %lld of 5, %@", session.lesson.level, localizedBarCount(session.lesson.bars)))
     }
 
     private var difficultyDots: some View {
@@ -199,8 +219,9 @@ struct PracticeScreen: View {
         .fixedSize(horizontal: true, vertical: false)
     }
 
+    @ViewBuilder
     private var modeButtons: some View {
-        HStack(spacing: 0) {
+        if !session.isMix { HStack(spacing: 0) {
             Button(settings.localized("Listen")) { session.listen = true }
                 .buttonStyle(InstrumentButtonStyle(selected: session.listen))
             Button(settings.localized("Play")) { session.listen = false }
@@ -210,6 +231,7 @@ struct PracticeScreen: View {
         .fixedSize(horizontal: true, vertical: false)
         .disabled(session.running)
         .accessibilityLabel(settings.localized("Lesson mode"))
+        }
     }
 
     private var toolIcons: some View {
@@ -217,7 +239,7 @@ struct PracticeScreen: View {
             icon("eye.slash", settings.localized("From memory"), selected: session.fromMemory) {
                 session.fromMemory.toggle()
             }
-            .disabled(session.running)
+            .disabled(session.running || session.isMix)
             .accessibilityValue(settings.localized(session.fromMemory ? "On" : "Off"))
 
             toolSeparator
@@ -313,7 +335,8 @@ struct PracticeScreen: View {
                         PatternField(lesson: session.practiceLesson, hits: session.patternHits,
                                      position: frame.position, tapePosition: frame.tapePosition,
                                      running: session.running && frame.countdown == nil,
-                                     hidden: session.fromMemory && session.running && !session.listen,
+                                     visibility: session.noteVisibility(pass: frame.pass),
+                                     fromMemory: session.fromMemory,
                                      scrolling: scrolling, visibleBars: [1, 2, 3, 4].contains(visibleBars) ? visibleBars : 4,
                                      verdicts: session.barVerdicts,
                                      judgments: session.hitJudgments, bpm: frame.bpm,
@@ -357,7 +380,9 @@ struct PracticeScreen: View {
                                 .id(event.id)
                         }
                         PlayingLastRunChip(lastRun: session.runResults.last)
-                        if let progress = session.starRunProgress {
+                        if session.showsMemoryFadePhase {
+                            MemoryPhaseChip(phase: session.memoryPhaseText(settings: settings))
+                        } else if let progress = session.starRunProgress {
                             LapVaultView(
                                 progress: progress,
                                 mode: session.practiceMode,
@@ -417,7 +442,12 @@ struct PracticeScreen: View {
         let resultCardWidth = 2 * s + gap
 
         return HStack(spacing: 0) {
-            if showsResult, let summary = session.summary {
+            if showsResult, session.isMix {
+                mixResultsCard
+                    .frame(width: resultCardWidth, height: s)
+                Spacer(minLength: 0)
+                transportSquare(s: s)
+            } else if showsResult, let summary = session.summary {
                 ResultCard(
                     summary: summary,
                     runs: session.runResults,
@@ -425,6 +455,8 @@ struct PracticeScreen: View {
                     event: session.starEvent,
                     announcement: resultAnnouncement,
                     badgeText: session.badgeSummaryMessage(settings: settings),
+                    memoryNotice: session.isMemoryPracticeToday ? settings.localized("From memory: from tomorrow. Today it is practice.") : nil,
+                    reviewMessage: session.reviewFeedback?.message(language: settings.languagePreference),
                     cardWidth: resultCardWidth,
                     cardHeight: s,
                     openRules: {
@@ -470,6 +502,43 @@ struct PracticeScreen: View {
         .frame(maxWidth: .infinity)
     }
 
+    private var mixResultsCard: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: Theme.Space.small) {
+                ForEach(session.mixResults) { result in
+                    VStack(alignment: .leading, spacing: Theme.Space.tight) {
+                        HStack(alignment: .firstTextBaseline, spacing: Theme.Space.small) {
+                            Text(settings.localized(result.title))
+                                .lineLimit(1)
+                            Spacer(minLength: 0)
+                            Text(result.score.map { "\(Int(($0 * 100).rounded())) %" } ?? "—")
+                                .monospacedDigit()
+                        }
+                        Text(mixBarSummary(result))
+                            .foregroundStyle(Theme.secondary)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                    .font(Theme.meta)
+                }
+            }
+            .padding(Theme.Space.small)
+        }
+        .background(Theme.surface)
+        .overlay(Rectangle().stroke(Theme.hairline, lineWidth: 1))
+        .accessibilityLabel(settings.localized("Mix results"))
+    }
+
+    private func mixBarSummary(_ result: MixLessonResult) -> String {
+        var parts = ["clean", "ahead", "behind", "uneven"].compactMap { verdict -> String? in
+            guard let count = result.barCounts[verdict], count > 0 else { return nil }
+            return "\(count) \(settings.localized(verdict))"
+        }
+        if result.unmeasuredBars > 0 {
+            parts.append(settings.localized("%lld not measured", result.unmeasuredBars))
+        }
+        return settings.localized("Bars: %@", parts.joined(separator: " · "))
+    }
+
     private func padLayoutSquare(s: CGFloat) -> some View {
         ZStack {
             if showPads, let pads = midi.padIndices {
@@ -486,7 +555,7 @@ struct PracticeScreen: View {
     }
 
     private func tempoSquare(s: CGFloat, spaceAbove: CGFloat) -> some View {
-        let editable = !session.running && session.ready && session.available
+        let editable = !session.isMix && !session.running && session.ready && session.available
         return Button {
             showingDetails = false
             showingStarRules = false
@@ -545,7 +614,7 @@ struct PracticeScreen: View {
 
     private func transportSquare(s: CGFloat) -> some View {
         let showsResult = session.summary != nil && !session.running
-        let second = showsResult ? transportSecondAction(s: s) : nil
+        let second = showsResult && !session.isMix ? transportSecondAction(s: s) : nil
         return TransportControls(
             running: session.running,
             enabled: session.ready && session.available,
@@ -686,6 +755,12 @@ struct PracticeScreen: View {
             let stars = starAnnouncement(for: starEvent)
             if !stars.isEmpty { parts.append(stars) }
         }
+        if session.isMemoryPracticeToday {
+            parts.append(settings.localized("From memory: from tomorrow. Today it is practice."))
+        }
+        if let reviewMessage = session.reviewFeedback?.message(language: settings.languagePreference) {
+            parts.append(reviewMessage)
+        }
         return parts.joined(separator: ". ")
     }
 
@@ -793,6 +868,8 @@ struct PracticeScreen: View {
                         Text(settings.localized(star == 3
                             ? "Run finished: star 3 earned, from memory"
                             : "Run finished: star 2 earned, goal tempo"))
+                    } else if session.isMemoryPracticeToday {
+                        Text(settings.localized("From memory: from tomorrow. Today it is practice."))
                     }
                     Text("\(summary.bpm) BPM · \(settings.localized("%lld completed passes", summary.passes))")
                     Text(settings.localized("Best: %@", session.savedProgress.map {
@@ -831,7 +908,8 @@ struct PracticeScreen: View {
                             .frame(width: 24, height: 24)
                             .accessibilityHidden(true)
                         Text(StarRequirement.requirementText(for: index, lesson: session.lesson,
-                            padCount: midi.activeProfile.padCount, settings: settings))
+                            padCount: midi.activeProfile.padCount, settings: settings,
+                            isMemoryPracticeToday: session.isMemoryPracticeToday))
                             .fixedSize(horizontal: false, vertical: true)
                     }
                     .font(Theme.control)
@@ -1061,6 +1139,8 @@ private struct PracticeTools: View {
                     Text(settings.localized("All bars")).tag(4)
                 }
                 Toggle(settings.localized("Small pad layout"), isOn: $showPads)
+                Toggle(settings.localized("Fade notes in From memory"), isOn: $settings.fadeMemoryNotes)
+                    .disabled(session.running)
                 Toggle(settings.localized("Pattern sound in Play"), isOn: $session.lessonSound)
                     .disabled(session.running)
                 Toggle(settings.localized("Metronome"), isOn: $session.metronome).disabled(session.running)
@@ -1118,7 +1198,7 @@ private struct PracticeTools: View {
                     ForEach(session.loopStartBar..<session.lesson.bars, id: \.self) { bar in Text("\(bar + 1)").tag(bar) }
                 }
                 Text(settings.localized("Section loops do not earn lesson stars."))
-            }.disabled(session.running)
+            }.disabled(session.running || session.isMix)
             Section(settings.localized("Appearance")) {
                 PlexSegmentedPicker(title: settings.localized("Appearance"), selection: $settings.appearance,
                     options: AppAppearance.allCases.map { ($0, settings.localized($0.title)) })

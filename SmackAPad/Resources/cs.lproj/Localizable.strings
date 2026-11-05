@@ -620,4 +620,34 @@
 "Run %lld" = "Běh %lld";
 "Last run %lld percent, %lld BPM, %@" = "Poslední běh %lld procent, %lld BPM, %@";
 "Result %lld percent, %lld of 3 stars, %@" = "Výsledek %lld procent, %lld ze 3 hvězd, %@";
+"From memory: from tomorrow. Today it is practice." = "Zpaměti: od zítřka. Dnes je to jen cvičení.";
 
+"Training" = "Trénink";
+"%lld due" = "%lld na řadě";
+"Due" = "Na řadě";
+"Step %lld of 4" = "Krok %lld ze 4";
+"Nothing to review today. Next: %@" = "Dnes nic k opakování. Další: %@";
+"Reviews start once a lesson has two stars." = "Opakování začne, až bude mít lekce dvě hvězdy.";
+"Settled" = "Upevněno";
+"Review · step %lld of 4 · from memory at %lld BPM, 80 %%" = "Opakování · krok %lld ze 4 · zpaměti při %lld BPM, 80 %";
+"Review passed · next in %lld days" = "Opakování splněno · další za %lld dní";
+"Review passed · next in 1 day" = "Opakování splněno · další za 1 den";
+"Lesson settled" = "Lekce je upevněná";
+"Review not passed · again tomorrow" = "Opakování nesplněno · znovu zítra";
+"Does not count · play from memory at %lld BPM" = "Nepočítá se · hraj zpaměti při %lld BPM";
+
+
+
+/* Ticket 99: From memory fading notes */
+"Fade notes in From memory" = "Nápověda zpaměti postupně mizí";
+"Pass 1 · notes shown" = "Průchod 1 · noty vidět";
+"Pass 2 · notes fading" = "Průchod 2 · noty mizí";
+
+/* Ticket 100: Training Mix. */
+"Mix" = "Mix";
+"New mix" = "Jiný mix";
+"Mix needs two lessons with two stars." = "Mix potřebuje dvě lekce se dvěma hvězdami.";
+"Mix · %lld of %lld · %@" = "Mix · %lld ze %lld · %@";
+"Mix results" = "Výsledky mixu";
+"Bars: %@" = "Takty: %@";
+"%lld not measured" = "%lld nezměřeno";

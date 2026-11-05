@@ -185,6 +185,7 @@ public struct HomeScreen: View {
     let isColdStart: Bool
     let onColdStartFinished: () -> Void
     let onNavigateToLibrary: (LibraryLaunchTarget) -> Void
+    let onNavigateToTraining: () -> Void
 
     @Environment(StoreManager.self) private var store
     @Environment(SettingsManager.self) private var settings
@@ -216,7 +217,6 @@ public struct HomeScreen: View {
     @State private var showingSettings = false
     @State private var showingControllerSetup = false
     @State private var showingPurchases = false
-    @State private var showingAbout = false
     @State private var showingBadges = false
 
     private static let cream = Color(red: 242 / 255.0, green: 240 / 255.0, blue: 234 / 255.0)
@@ -224,11 +224,13 @@ public struct HomeScreen: View {
     public init(
         isColdStart: Bool = false,
         onColdStartFinished: @escaping () -> Void = {},
-        onNavigateToLibrary: @escaping (LibraryLaunchTarget) -> Void = { _ in }
+        onNavigateToLibrary: @escaping (LibraryLaunchTarget) -> Void = { _ in },
+        onNavigateToTraining: @escaping () -> Void = {}
     ) {
         self.isColdStart = isColdStart
         self.onColdStartFinished = onColdStartFinished
         self.onNavigateToLibrary = onNavigateToLibrary
+        self.onNavigateToTraining = onNavigateToTraining
 
         let settled = !isColdStart
         _pad1Popped = State(initialValue: settled)
@@ -362,7 +364,7 @@ public struct HomeScreen: View {
     @ViewBuilder
     private func gridContent(cellSize: CGFloat, gap: CGFloat) -> some View {
         VStack(spacing: gap) {
-            // Row 0: Continue/Start (1) · Library (2) · Settings (3)
+            // Row 0: Continue/Start (1) · Library (2) · Training (3)
             HStack(spacing: gap) {
                 cornerPad(pad1)
                     .frame(width: cellSize, height: cellSize)
@@ -381,7 +383,7 @@ public struct HomeScreen: View {
                 edgePad(pad5)
                     .frame(width: cellSize, height: cellSize)
             }
-            // Row 2: Badges (6) · Full Version (7) · About (8)
+            // Row 2: Badges (6) · Full Version (7) · Settings (8)
             HStack(spacing: gap) {
                 cornerPad(pad6)
                     .frame(width: cellSize, height: cellSize)
@@ -459,9 +461,15 @@ public struct HomeScreen: View {
     }
 
     private var pad3: some View {
-        let label = settings.localized("Settings").uppercased(with: Locale(identifier: settings.languagePreference.rawValue))
-        return HomePadView(title: label, subtitle: nil, isHero: false) {
-            showingSettings = true
+        let label = settings.localized("Training").uppercased(with: Locale(identifier: settings.languagePreference.rawValue))
+        let dueCount = progress.dueLessonsCount(today: AppCalendar.today())
+        let subtitle: String? = {
+            guard dueCount > 0 else { return nil }
+            return settings.localized("%lld due", dueCount)
+        }()
+
+        return HomePadView(title: label, subtitle: subtitle, isHero: false) {
+            onNavigateToTraining()
         }
     }
 
@@ -518,29 +526,9 @@ public struct HomeScreen: View {
     }
 
     private var pad8: some View {
-        let label = settings.localized("About").uppercased(with: Locale(identifier: settings.languagePreference.rawValue))
-        let version = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.0"
-        let subtitle = "v\(version)"
-
-        return HomePadView(title: label, subtitle: subtitle, isHero: false) {
-            showingAbout = true
-        }
-        .popover(isPresented: $showingAbout) {
-            VStack(alignment: .leading, spacing: Theme.Space.regular) {
-                Text("Smack-a-Pad")
-                    .font(Theme.sectionTitle)
-                    .foregroundStyle(Theme.ink)
-                Text(settings.localized("Version %@", version))
-                    .font(Theme.meta)
-                    .foregroundStyle(Theme.secondary)
-                Divider()
-                Text(settings.localized("Font IBM Plex Sans, SIL OFL 1.1"))
-                    .font(Theme.meta)
-                    .foregroundStyle(Theme.secondary)
-            }
-            .padding(Theme.Space.regular)
-            .frame(minWidth: 260)
-            .presentationCompactAdaptation(.popover)
+        let label = settings.localized("Settings").uppercased(with: Locale(identifier: settings.languagePreference.rawValue))
+        return HomePadView(title: label, subtitle: nil, isHero: false) {
+            showingSettings = true
         }
     }
 

@@ -1,12 +1,13 @@
 import SwiftUI
 
-/// Top-level app routes between Home and Library.
+/// Top-level app routes between Home, Library and Training.
 public enum AppRoute: Equatable, Sendable {
     case home
     case library(LibraryLaunchTarget)
+    case training
 }
 
-/// Main content entry point hosting Home and Library routes.
+/// Main content entry point hosting Home, Library and Training routes.
 @MainActor
 struct ContentView: View {
     @State private var route: AppRoute = .home
@@ -26,6 +27,11 @@ struct ContentView: View {
                         withAnimation(Theme.Motion.Policy(reduced: reduced).animation(Theme.Motion.standard)) {
                             route = .library(target)
                         }
+                    },
+                    onNavigateToTraining: {
+                        withAnimation(Theme.Motion.Policy(reduced: reduced).animation(Theme.Motion.standard)) {
+                            route = .training
+                        }
                     }
                 )
                 .transition(.opacity)
@@ -33,6 +39,16 @@ struct ContentView: View {
             case .library(let target):
                 LibraryScreen(
                     launchTarget: target,
+                    onHome: {
+                        withAnimation(Theme.Motion.Policy(reduced: reduced).animation(Theme.Motion.standard)) {
+                            route = .home
+                        }
+                    }
+                )
+                .transition(.opacity)
+
+            case .training:
+                TrainingScreen(
                     onHome: {
                         withAnimation(Theme.Motion.Policy(reduced: reduced).animation(Theme.Motion.standard)) {
                             route = .home

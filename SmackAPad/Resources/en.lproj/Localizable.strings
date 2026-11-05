@@ -617,4 +617,34 @@
 "Run %lld" = "Run %lld";
 "Last run %lld percent, %lld BPM, %@" = "Last run %lld percent, %lld BPM, %@";
 "Result %lld percent, %lld of 3 stars, %@" = "Result %lld percent, %lld of 3 stars, %@";
+"From memory: from tomorrow. Today it is practice." = "From memory: from tomorrow. Today it is practice.";
 
+"Training" = "Training";
+"%lld due" = "%lld due";
+"Due" = "Due";
+"Step %lld of 4" = "Step %lld of 4";
+"Nothing to review today. Next: %@" = "Nothing to review today. Next: %@";
+"Reviews start once a lesson has two stars." = "Reviews start once a lesson has two stars.";
+"Settled" = "Settled";
+"Review · step %lld of 4 · from memory at %lld BPM, 80 %%" = "Review · step %lld of 4 · from memory at %lld BPM, 80 %";
+"Review passed · next in %lld days" = "Review passed · next in %lld days";
+"Review passed · next in 1 day" = "Review passed · next in 1 day";
+"Lesson settled" = "Lesson settled";
+"Review not passed · again tomorrow" = "Review not passed · again tomorrow";
+"Does not count · play from memory at %lld BPM" = "Does not count · play from memory at %lld BPM";
+
+
+
+/* Ticket 99: From memory fading notes */
+"Fade notes in From memory" = "Fade notes in From memory";
+"Pass 1 · notes shown" = "Pass 1 · notes shown";
+"Pass 2 · notes fading" = "Pass 2 · notes fading";
+
+/* Ticket 100: Training Mix. */
+"Mix" = "Mix";
+"New mix" = "New mix";
+"Mix needs two lessons with two stars." = "Mix needs two lessons with two stars.";
+"Mix · %lld of %lld · %@" = "Mix · %lld of %lld · %@";
+"Mix results" = "Mix results";
+"Bars: %@" = "Bars: %@";
+"%lld not measured" = "%lld not measured";

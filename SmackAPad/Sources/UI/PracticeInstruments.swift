@@ -242,6 +242,27 @@ struct PlayingLastRunChip: View {
     }
 }
 
+/// Chip showing the current memory fade phase (Pass 1 · notes shown / Pass 2 · notes fading) in place of lap vault.
+struct MemoryPhaseChip: View {
+    let phase: String
+
+    var body: some View {
+        Text(phase)
+            .font(Theme.control)
+            .foregroundStyle(Theme.ink)
+            .lineLimit(1)
+            .padding(.horizontal, Theme.Space.small)
+            .frame(height: 48)
+            .background(Theme.surface, in: Rectangle())
+            .overlay(
+                Rectangle()
+                    .strokeBorder(Theme.hairline, lineWidth: 1)
+            )
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel(phase)
+    }
+}
+
 /// Result card taking the left two thirds of the bottom zone after STOP.
 struct ResultCard: View {
     @Environment(SettingsManager.self) private var settings
@@ -251,6 +272,8 @@ struct ResultCard: View {
     let event: StarEvent?
     let announcement: String
     var badgeText: String? = nil
+    var memoryNotice: String? = nil
+    var reviewMessage: String? = nil
     let cardWidth: CGFloat
     let cardHeight: CGFloat
     let openRules: () -> Void
@@ -291,6 +314,12 @@ struct ResultCard: View {
     private var voiceOverLabel: String {
         let count = runs.count
         let runPart: String
+        let noticePart: String = {
+            var parts: [String] = []
+            if let reviewMessage { parts.append(reviewMessage) }
+            if let memoryNotice { parts.append(memoryNotice) }
+            return parts.isEmpty ? "" : ", " + parts.joined(separator: ", ")
+        }()
         if settings.languagePreference == .czech {
             let runsWord: String
             if count == 1 {
@@ -301,11 +330,11 @@ struct ResultCard: View {
                 runsWord = "\(count) běhů"
             }
             runPart = "\(runsWord), nejlepší \(bestPercent) procent"
-            return "Výsledek \(scorePercent) procent, \(starCount) ze 3 hvězd, \(runPart)"
+            return "Výsledek \(scorePercent) procent, \(starCount) ze 3 hvězd\(noticePart), \(runPart)"
         } else {
             let runsWord = count == 1 ? "1 run" : "\(count) runs"
             runPart = "\(runsWord), best \(bestPercent) percent"
-            return "Result \(scorePercent) percent, \(starCount) of 3 stars, \(runPart)"
+            return "Result \(scorePercent) percent, \(starCount) of 3 stars\(noticePart), \(runPart)"
         }
     }
 
@@ -376,11 +405,23 @@ struct ResultCard: View {
                 }
             }
 
-            if let badgeText {
+            if let reviewMessage {
+                Text(reviewMessage)
+                    .font(Theme.meta)
+                    .foregroundStyle(Theme.secondary)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.8)
+            } else if let badgeText {
                 Text(badgeText)
                     .font(Theme.meta)
                     .foregroundStyle(Theme.secondary)
                     .lineLimit(1)
+            } else if let memoryNotice {
+                Text(memoryNotice)
+                    .font(Theme.meta)
+                    .foregroundStyle(Theme.secondary)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.8)
             }
         }
     }

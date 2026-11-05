@@ -64,10 +64,26 @@ struct PatternFrame {
 
 /// Owns one continuous practice run, with native host times shared by sound and scoring.
 /// The view only reads position; display refreshes never determine audible note times.
+struct MixLessonResult: Identifiable {
+    let id: Int
+    let title: String
+    var score: Double?
+    var barCounts: [String: Int] = [:]
+    var unmeasuredBars: Int
+}
+
 @MainActor
 @Observable
 final class PracticeSession {
-    let lesson: Lesson
+    private(set) var lesson: Lesson
+    let mixLessons: [Lesson]
+    var isMix: Bool { mixLessons.count >= 2 }
+    private(set) var mixIndex = 0
+    private(set) var mixResults: [MixLessonResult] = []
+    @ObservationIgnored private var mixNeedsAdvance = false
+    @ObservationIgnored private var mixAppearances: [Int: Int] = [:]
+    @ObservationIgnored private var mixStreaks: [Int: StarStreak] = [:]
+    @ObservationIgnored private var mixBarVerdicts: [Int: BarVerdict] = [:]
     private(set) var bpm: Int
     private(set) var running = false
     private(set) var ready = false
@@ -115,6 +131,7 @@ final class PracticeSession {
     @ObservationIgnored private let badgeStore = BadgeStore.shared
     @ObservationIgnored private let midi: MIDIInput
     @ObservationIgnored private let clock: () -> Double
+    @ObservationIgnored private let currentDay: () -> String
     @ObservationIgnored private let audio = AudioEngine()
     @ObservationIgnored private var task: Task<Void, Never>?
     @ObservationIgnored private var passes: [Pass] = []
@@ -179,22 +196,67 @@ final class PracticeSession {
         }
     }
 
+    public private(set) var reviewFeedback: ReviewScheduler.ReviewFeedback?
+
     init(lesson: Lesson, settings: SettingsManager, progress: ProgressStore, midi: MIDIInput,
-         clock: @escaping () -> Double = { AVAudioTime.seconds(forHostTime: mach_absolute_time()) }) {
-        self.lesson = lesson
+         initialFromMemory: Bool = false, initialBpm: Int? = nil,
+         mixLessons: [Lesson] = [],
+         clock: @escaping () -> Double = { AVAudioTime.seconds(forHostTime: mach_absolute_time()) },
+         currentDay: @escaping () -> String = { AppCalendar.today() }) {
+        let activeLesson = mixLessons.count >= 2 ? mixLessons[0] : lesson
+        self.lesson = activeLesson
+        self.mixLessons = mixLessons
         self.starStreak = settings.practiceMode == .learning
-            ? progress.learningCredit(lessonId: lesson.id, padCount: midi.activeProfile.padCount) : StarStreak()
+            ? progress.learningCredit(lessonId: activeLesson.id, padCount: midi.activeProfile.padCount) : StarStreak()
         self.practiceMode = settings.practiceMode
         self.settings = settings
         self.progress = progress
         self.midi = midi
         self.clock = clock
-        loopEndBar = lesson.bars - 1
-        let saved = progress.progress(for: lesson.id)?.currentBpm ?? lesson.startBpm
-        bpm = PracticeTempo.clamp(saved > 0 ? saved : lesson.startBpm)
+        self.currentDay = currentDay
+        self.fromMemory = initialFromMemory
+        loopEndBar = activeLesson.bars - 1
+        let saved = initialBpm ?? progress.progress(for: activeLesson.id)?.currentBpm ?? activeLesson.startBpm
+        bpm = PracticeTempo.clamp(mixLessons.count >= 2 ? activeLesson.targetBpm : (saved > 0 ? saved : activeLesson.startBpm))
         audio.setMetronomeVolume(Float(settings.metronomeVolume) / 100)
         audio.setPadsVolume(Float(settings.padsVolume) / 100)
         audio.setPatternVolume(Float(settings.patternVolume) / 100)
+    }
+
+    public var isDueReview: Bool {
+        progress.progress(for: lesson.id)?.reviewSchedule.isDue(on: currentDay()) == true
+    }
+
+    public var reviewStep: Int {
+        (progress.progress(for: lesson.id)?.reviewStep ?? 0) + 1
+    }
+
+    public func reviewStatusText(settings: SettingsManager) -> String {
+        let step = reviewStep
+        if settings.languagePreference == .czech {
+            return String(format: "Opakování · krok %lld ze 4 · zpaměti při %lld BPM, 80 %%", step, lesson.targetBpm)
+        } else {
+            return String(format: "Review · step %lld of 4 · from memory at %lld BPM, 80 %%", step, lesson.targetBpm)
+        }
+    }
+
+    public var showsMemoryFadePhase: Bool {
+        fromMemory && running && !listen && !isSectionLoop && settings.fadeMemoryNotes && passNumber < 3
+    }
+
+    public func memoryPhaseText(settings: SettingsManager) -> String {
+        passNumber == 1 ? settings.localized("Pass 1 · notes shown") : settings.localized("Pass 2 · notes fading")
+    }
+
+    public func noteVisibility(pass: Int) -> NoteVisibility {
+        NoteVisibility.derive(
+            fromMemory: fromMemory,
+            running: running,
+            listen: listen,
+            isSectionLoop: isSectionLoop,
+            pass: pass,
+            fadeNotes: settings.fadeMemoryNotes
+        )
     }
 
     var hits: [LessonHit] { lesson.hits(forPadCount: midi.activeProfile.padCount) }
@@ -304,6 +366,18 @@ final class PracticeSession {
         return denominator > 0 ? Double(matches) / Double(denominator) : nil
     }
     var patternHits: [LessonHit] { practiceLesson.hits(forPadCount: midi.activeProfile.padCount) }
+    /// True when From memory is active on the same calendar day as the goal-tempo star (Star 2).
+    /// Star 3 cannot be earned today; today From memory is practice only.
+    var isMemoryPracticeToday: Bool {
+        guard fromMemory, !listen else { return false }
+        let saved = progress.progress(for: lesson.id)
+        guard let saved, saved.mastery, !saved.memory else { return false }
+        if let masteryDay = saved.masteryDay {
+            return masteryDay == currentDay()
+        }
+        return false
+    }
+
     var starRunProgress: (count: Int, required: Int, name: String, starIndex: Int)? {
         guard !listen, !isSectionLoop else { return nil }
         let hitsCount = scoredLesson.hits(forPadCount: midi.activeProfile.padCount).count
@@ -311,7 +385,21 @@ final class PracticeSession {
         let passedRequired = StarStreak.requiredRuns(expectedHits: hitsCount)
         let saved = progress.progress(for: lesson.id)
         if saved?.passed != true { return (starStreak.passedRuns, passedRequired, "Passed", 0) }
-        if fromMemory, saved?.memory != true { return (starStreak.memoryRuns, required, "From memory", 2) }
+        if fromMemory, saved?.memory != true {
+            if StarStreak.mayEarnMemoryCredit(
+                progress: saved,
+                today: currentDay(),
+                fromMemory: true,
+                bpm: lesson.targetBpm,
+                targetBpm: lesson.targetBpm,
+                score: 1.0,
+                pass: passNumber,
+                fadeNotes: settings.fadeMemoryNotes
+            ) {
+                return (starStreak.memoryRuns, required, "From memory", 2)
+            }
+            return nil
+        }
         if saved?.mastery != true { return (starStreak.masteryRuns, required, "Goal tempo", 1) }
         return nil
     }
@@ -355,7 +443,7 @@ final class PracticeSession {
         midi.onPadEvent = { [weak self] event in self?.receive(event) }
         midi.onPracticeAction = { [weak self] action in self?.performControllerAction(action) }
         midi.stoppedPracticeTempo = { [weak self] in
-            guard let self, self.active, self.ready, !self.running else { return nil }
+            guard let self, self.active, self.ready, !self.running, !self.isMix else { return nil }
             return self.bpm
         }
         midi.onPracticeTempo = { [weak self] bpm in
@@ -375,7 +463,7 @@ final class PracticeSession {
     }
 
     func setTempo(_ tempo: Int) {
-        guard !running else { return }
+        guard !running, !isMix else { return }
         bpm = PracticeTempo.clamp(tempo)
         saveTempo()
     }
@@ -385,7 +473,7 @@ final class PracticeSession {
         switch action {
         case .startStop: if running { stop() } else { start() }
         case .restart: restart()
-        case .listen: if !running { listen = true }
+        case .listen: if !running && !isMix { listen = true }
         case .tempoDown: setTempo(bpm - MIDIPracticeAction.tempoButtonStep)
         case .tempoUp: setTempo(bpm + MIDIPracticeAction.tempoButtonStep)
         }
@@ -394,6 +482,23 @@ final class PracticeSession {
     func start() {
         guard ready, !running, available else { return }
         do {
+            if isMix {
+                mixIndex = 0
+                lesson = mixLessons[0]
+                bpm = PracticeTempo.clamp(lesson.targetBpm)
+                listen = false
+                loopStartBar = 0
+                loopEndBar = lesson.bars - 1
+                midi.setLesson(lesson)
+                mixAppearances = [:]
+                mixStreaks = [:]
+                mixNeedsAdvance = false
+                mixBarVerdicts = [:]
+                mixResults = mixLessons.map {
+                    MixLessonResult(id: $0.id, title: $0.title, score: nil,
+                                    unmeasuredBars: $0.bars * max(1, Int((4.0 / Double($0.bars)).rounded())))
+                }
+            }
             applyVolumes()
             try audio.selectKit(resolvedKitId)
             try audio.start()
@@ -487,12 +592,19 @@ final class PracticeSession {
             summary = RunSummary(score: result.score, bpm: result.bpm, passes: completedPasses,
                                  passed: earnedPass, mastery: earnedMastery, memory: earnedMemory,
                                  finishedByStar: finishedByStar, runs: runResults)
+        } else if isMix {
+            summary = RunSummary(score: mixResults.compactMap(\.score).last ?? 0, bpm: bpm,
+                                 passes: runResults.count, passed: earnedPass, mastery: earnedMastery,
+                                 memory: earnedMemory, runs: runResults)
         } else if !listen, let accuracy {
             summary = RunSummary(score: accuracy, bpm: bpm, passes: 0,
                                  passed: false, mastery: false, memory: false,
                                  runs: runResults)
         }
         saveTempo()
+        if reviewFeedback != nil {
+            try? progress.save()
+        }
         evaluateBadges()
     }
 
@@ -505,7 +617,7 @@ final class PracticeSession {
         }
         if let score = pendingScore {
             progress.recordResult(lessonId: lesson.id, passed: false, mastery: false,
-                                  bpm: pendingBpm, score: score, autoSave: false)
+                                  bpm: pendingBpm, score: score, autoSave: false, today: currentDay())
         }
         pendingScore = nil
         pendingBpm = 0
@@ -547,6 +659,60 @@ final class PracticeSession {
     func receiveBarSummary(bar: Int, pass: Int, verdict: BarVerdict) {
         guard !listen, pass == passNumber, (0..<lesson.bars).contains(bar) else { return }
         barVerdicts[bar] = verdict
+        if isMix { mixBarVerdicts[(currentRepetition - 1) * lesson.bars + bar] = verdict }
+    }
+
+    /// Flush the old lesson before swapping it. Only the pattern schedule changes;
+    /// the prepared audio engine and MIDI callbacks remain owned by this session.
+    private func advanceMix() {
+        mixNeedsAdvance = false
+        mixIndex = (mixIndex + 1) % mixLessons.count
+        lesson = mixLessons[mixIndex]
+        bpm = PracticeTempo.clamp(lesson.targetBpm)
+        loopStartBar = 0
+        loopEndBar = lesson.bars - 1
+        midi.setLesson(lesson)
+        midi.resetControlPickup()
+        var record = progress.progress(for: lesson.id) ?? LessonProgress()
+        record.hasPlayed = true
+        record.currentBpm = bpm
+        progress.setProgress(record, for: lesson.id, autoSave: false)
+        settings.lastLessonID = lesson.id
+        starStreak = mixStreaks[lesson.id] ?? (practiceMode == .learning
+            ? progress.learningCredit(lessonId: lesson.id, padCount: runPadCount) : StarStreak())
+        passNumber = (mixAppearances[lesson.id] ?? 0) + 1
+        currentRepetition = 1
+        lastResult = nil
+        lastVerdict = nil
+        starEvent = nil
+        reviewFeedback = nil
+        finishedByStar = nil
+        tempoUpEvent = nil
+        barVerdicts = [:]
+        mixBarVerdicts = [:]
+        judgmentsByPass = [:]
+        judgmentVersion += 1
+        playedHits = []
+        padFlashes = [:]
+        timingHistory = TimingHistory()
+        completedMatches = 0
+        completedExpected = 0
+        completedExtras = 0
+        do {
+            try audio.selectKit(resolvedKitId)
+            // Anchor AFTER kit/layout work to native host time. No events from the
+            // next lesson were queued early; four clicks use the new goal tempo.
+            let first = now + 0.6
+            let beat = 60 / Double(bpm)
+            countInEvents = (0..<4).map { first + Double($0) * beat }
+            displayStart = first + 4 * beat
+            passes = [makePass(number: passNumber, start: displayStart, bpm: bpm)]
+            countdown = 4
+            BluetoothTimingDiagnostics.shared.startRun(lessonId: lesson.id, bpm: bpm)
+        } catch {
+            errorMessage = error.localizedDescription
+            stop()
+        }
     }
 
     private var now: Double { clock() }
@@ -560,6 +726,10 @@ final class PracticeSession {
     func tick() {
         let time = now
         finishCompleted(at: time)
+        if isMix, mixNeedsAdvance {
+            advanceMix()
+            return
+        }
         if stopAfterStar {
             stop()
             return
@@ -568,7 +738,7 @@ final class PracticeSession {
         // Decide the next BPM from the run's result as known so far. Notes whose
         // matching window has closed count as usual; notes still inside their window
         // are left out of that decision.
-        if let last = passes.last, last.start + last.duration <= horizon {
+        if !isMix, let last = passes.last, last.start + last.duration <= horizon {
             if let scorer = last.scorer {
                 let early = scorer.earlyResult(at: AVAudioTime.hostTime(forSeconds: time))
                 tempo.completed(nextBpm: early.nextBpm)
@@ -654,15 +824,50 @@ final class PracticeSession {
             completedPasses += 1
             let runPassed: Bool
             if !isSectionLoop {
-                let memory = fromMemory && result.bpm >= lesson.targetBpm && result.score >= 0.8
+                let saved = progress.progress(for: lesson.id)
+
+                let isHiddenPass = !fromMemory || !settings.fadeMemoryNotes || pass.number >= 3
+
+                // Ticket 98 spaced review evaluation: only hidden passes (3+) count as review
+                if isHiddenPass,
+                   let currentProgress = saved,
+                   currentProgress.reviewSchedule.isDue(on: currentDay()) {
+                    let outcome = ReviewScheduler.evaluate(
+                        schedule: currentProgress.reviewSchedule,
+                        today: currentDay(),
+                        isFullRun: !isSectionLoop,
+                        fromMemory: fromMemory,
+                        bpm: result.bpm,
+                        targetBpm: lesson.targetBpm,
+                        score: Float(result.score),
+                        pass: pass.number,
+                        fadeNotes: settings.fadeMemoryNotes
+                    )
+                    if let feedback = outcome.feedback {
+                        self.reviewFeedback = feedback
+                        progress.updateReviewSchedule(outcome.newSchedule, for: lesson.id, autoSave: false)
+                    }
+                }
+
+                let memoryCredit = StarStreak.mayEarnMemoryCredit(
+                    progress: saved,
+                    today: currentDay(),
+                    fromMemory: fromMemory,
+                    bpm: result.bpm,
+                    targetBpm: lesson.targetBpm,
+                    score: result.score,
+                    isSectionLoop: isSectionLoop,
+                    pass: pass.number,
+                    fadeNotes: settings.fadeMemoryNotes
+                )
+                let memoryRunPassed = fromMemory && result.bpm >= lesson.targetBpm && result.score >= 0.8 && isHiddenPass
                 let required = StarStreak.requiredRuns(expectedHits: result.expectedHitCount, isIntro: lesson.cat == "intro")
                 let passed = result.passed || (practiceMode == .learning && StarStreak.learningPassed(
                     score: result.score, perfectOrGoodHits: result.perfectOrGoodHitCount,
                     expectedHits: result.expectedHitCount, errors: result.errorCount))
-                let saved = progress.progress(for: lesson.id)
                 runPassed = {
                     if saved?.passed != true { return passed }
-                    if fromMemory, saved?.memory != true { return memory }
+                    if fromMemory, saved?.memory != true { return isHiddenPass ? memoryRunPassed : result.passed }
                     if saved?.mastery != true { return result.mastery }
                     return result.passed
                 }()
@@ -673,8 +878,9 @@ final class PracticeSession {
                     if saved?.mastery != true { return starStreak.masteryRuns > 0 }
                     return false
                 }()
-                let stars = starStreak.record(passed: passed, mastery: result.mastery,
-                                              memory: memory, requiredRuns: required,
+                let stars = starStreak.record(passed: fromMemory ? false : passed,
+                                              mastery: fromMemory ? false : result.mastery,
+                                              memory: memoryCredit, requiredRuns: required,
                                               passedRequired: StarStreak.requiredRuns(expectedHits: result.expectedHitCount),
                                               mode: practiceMode)
                 lastVerdict = RunVerdict(passed: runPassed, brokenStreak: streakWasReset)
@@ -689,7 +895,8 @@ final class PracticeSession {
                 if award.fresh.contains(true) {
                     // A new star is rare and must be visible at once (library, next-star text).
                     progress.recordResult(lessonId: lesson.id, passed: stars.passed, mastery: stars.mastery,
-                                          bpm: result.bpm, score: Float(result.score), memory: stars.memory, autoSave: false)
+                                          bpm: result.bpm, score: Float(result.score), memory: stars.memory,
+                                          autoSave: false, today: currentDay())
                     if practiceMode == .learning {
                         progress.setLearningCredit(starStreak, lessonId: lesson.id, padCount: pass.padCount, autoSave: false)
                         pendingCredit = false
@@ -697,7 +904,7 @@ final class PracticeSession {
                     starEvent = StarEvent(award: award)
                     evaluateBadges()
                 }
-                stopAfterStar = award.shouldStop
+                stopAfterStar = !isMix && award.shouldStop
                 if award.shouldStop { finishedByStar = award.fresh[2] ? 3 : 2 }
             } else {
                 runPassed = result.passed
@@ -707,6 +914,19 @@ final class PracticeSession {
                                                 score: result.score,
                                                 bpm: result.bpm,
                                                 passed: runPassed))
+            if isMix {
+                flushPendingProgress()
+                mixStreaks[lesson.id] = starStreak
+                mixAppearances[lesson.id, default: 0] += 1
+                if let index = mixResults.firstIndex(where: { $0.id == lesson.id }) {
+                    mixResults[index].score = result.score
+                    mixResults[index].barCounts = Dictionary(grouping: mixBarVerdicts.values, by: \.rawValue).mapValues(\.count)
+                    mixResults[index].unmeasuredBars = max(0, scoredLesson.bars - mixBarVerdicts.count)
+                }
+                try? progress.save()
+                evaluateBadges()
+                mixNeedsAdvance = true
+            }
             // The tempo preference is saved once at STOP, not at every pass.
             if let error = progress.lastSaveError { errorMessage = error.localizedDescription }
             if stopAfterStar { return }

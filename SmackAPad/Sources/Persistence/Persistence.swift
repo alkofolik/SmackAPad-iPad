@@ -11,6 +11,44 @@ import Observation
 import UIKit
 #endif
 
+// MARK: - AppCalendar (Injectable Date / Day Provider)
+
+/// Provides the current calendar day string (`YYYY-MM-DD`, device time zone).
+/// Injectable for tests and future tickets (e.g. review scheduler).
+public struct AppCalendar: Sendable {
+    public static var todayProvider: @Sendable () -> String = {
+        dayString(from: Date())
+    }
+
+    public static func today() -> String {
+        todayProvider()
+    }
+
+    public static func dayString(from date: Date, timeZone: TimeZone = .current) -> String {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = timeZone
+        let components = calendar.dateComponents([.year, .month, .day], from: date)
+        let y = components.year ?? 2026
+        let m = components.month ?? 1
+        let d = components.day ?? 1
+        return String(format: "%04d-%02d-%02d", y, m, d)
+    }
+
+    public static func addingDays(_ days: Int, to day: String, timeZone: TimeZone = .current) -> String? {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = timeZone
+        let parts = day.split(separator: "-").compactMap { Int($0) }
+        guard parts.count == 3 else { return nil }
+        var components = DateComponents()
+        components.year = parts[0]
+        components.month = parts[1]
+        components.day = parts[2]
+        guard let date = calendar.date(from: components),
+              let nextDate = calendar.date(byAdding: .day, value: days, to: date) else { return nil }
+        return dayString(from: nextDate, timeZone: timeZone)
+    }
+}
+
 // MARK: - Settings Keys & Types
 
 /// Clean, namespaced keys for UserDefaults storage (no legacy prefixes).
@@ -30,6 +68,7 @@ public enum SettingsKey: String, CaseIterable, Sendable {
     case patternVolume = "smackapad.settings.volume.pattern"
     case appearance = "smackapad.settings.appearance"
     case playPadsWithKeyboard = "smackapad.settings.playPadsWithKeyboard"
+    case fadeMemoryNotes = "smackapad.settings.fadeMemoryNotes"
 }
 
 /// Supported app appearances (Light, Dark, or follow System).
@@ -270,6 +309,9 @@ public final class SettingsManager: @unchecked Sendable {
     public var playPadsWithKeyboard: Bool {
         didSet { userDefaults.set(playPadsWithKeyboard, forKey: SettingsKey.playPadsWithKeyboard.rawValue) }
     }
+    public var fadeMemoryNotes: Bool {
+        didSet { userDefaults.set(fadeMemoryNotes, forKey: SettingsKey.fadeMemoryNotes.rawValue) }
+    }
     public var hideCompletedLessons: Bool {
         didSet { userDefaults.set(hideCompletedLessons, forKey: "smackapad.library.hideCompleted") }
     }
@@ -454,6 +496,7 @@ public final class SettingsManager: @unchecked Sendable {
         }
 
         self.playPadsWithKeyboard = userDefaults.object(forKey: SettingsKey.playPadsWithKeyboard.rawValue) as? Bool ?? true
+        self.fadeMemoryNotes = userDefaults.object(forKey: SettingsKey.fadeMemoryNotes.rawValue) as? Bool ?? true
         self.hideCompletedLessons = userDefaults.object(forKey: "smackapad.library.hideCompleted") as? Bool ?? true
 
         var loadedHidden: [String: Set<String>] = [:]
@@ -679,7 +722,23 @@ public struct LessonProgress: Codable, Equatable, Hashable, Sendable {
     public var memory: Bool
     public var currentBpm: Int
     public var bestScore: Float
+    public var lastPlayedDay: String?
+    public var masteryDay: String?
+    public var reviewStep: Int?
+    public var reviewDueDay: String?
+    public var settled: Bool?
     var learningCreditByPadCount: [String: StarStreak] = [:]
+
+    public var reviewSchedule: ReviewScheduler.ScheduleState {
+        get {
+            ReviewScheduler.ScheduleState(reviewStep: reviewStep, reviewDueDay: reviewDueDay, settled: settled)
+        }
+        set {
+            self.reviewStep = newValue.reviewStep
+            self.reviewDueDay = newValue.reviewDueDay
+            self.settled = newValue.settled
+        }
+    }
 
     public init(
         passed: Bool = false,
@@ -687,7 +746,12 @@ public struct LessonProgress: Codable, Equatable, Hashable, Sendable {
         memory: Bool = false,
         hasPlayed: Bool = false,
         currentBpm: Int = 0,
-        bestScore: Float = 0.0
+        bestScore: Float = 0.0,
+        lastPlayedDay: String? = nil,
+        masteryDay: String? = nil,
+        reviewStep: Int? = nil,
+        reviewDueDay: String? = nil,
+        settled: Bool? = nil
     ) {
         self.hasPlayed = hasPlayed || passed || mastery || memory
         self.passed = passed
@@ -695,11 +759,19 @@ public struct LessonProgress: Codable, Equatable, Hashable, Sendable {
         self.memory = memory
         self.currentBpm = currentBpm
         self.bestScore = bestScore
+        self.lastPlayedDay = lastPlayedDay
+        self.masteryDay = masteryDay
+        self.reviewStep = reviewStep
+        self.reviewDueDay = reviewDueDay
+        self.settled = settled
     }
 
-    private enum CodingKeys: String, CodingKey { case hasPlayed, passed, mastery, memory, currentBpm, bestScore, learningCreditByPadCount }
+    private enum CodingKeys: String, CodingKey {
+        case hasPlayed, passed, mastery, memory, currentBpm, bestScore, masteryDay, lastPlayedDay, learningCreditByPadCount
+        case reviewStep, reviewDueDay, settled
+    }
 
-    /// Existing progress files predate the memory star.
+    /// Existing progress files predate the memory star and review schedule.
     public init(from decoder: Decoder) throws {
         let values = try decoder.container(keyedBy: CodingKeys.self)
         passed = try values.decode(Bool.self, forKey: .passed)
@@ -707,7 +779,12 @@ public struct LessonProgress: Codable, Equatable, Hashable, Sendable {
         memory = try values.decodeIfPresent(Bool.self, forKey: .memory) ?? false
         currentBpm = try values.decode(Int.self, forKey: .currentBpm)
         bestScore = try values.decode(Float.self, forKey: .bestScore)
+        lastPlayedDay = try values.decodeIfPresent(String.self, forKey: .lastPlayedDay)
+        masteryDay = try values.decodeIfPresent(String.self, forKey: .masteryDay)
         learningCreditByPadCount = try values.decodeIfPresent([String: StarStreak].self, forKey: .learningCreditByPadCount) ?? [:]
+        reviewStep = try values.decodeIfPresent(Int.self, forKey: .reviewStep)
+        reviewDueDay = try values.decodeIfPresent(String.self, forKey: .reviewDueDay)
+        settled = try values.decodeIfPresent(Bool.self, forKey: .settled)
         // Old records did not distinguish a saved tempo from an interrupted attempt.
         hasPlayed = try values.decodeIfPresent(Bool.self, forKey: .hasPlayed) ?? (passed || mastery || memory || currentBpm > 0 || bestScore > 0)
     }
@@ -803,7 +880,11 @@ public final class ProgressStore: @unchecked Sendable {
             }
             self.records = converted
             self.lastLoadError = nil
-            if migrateDuplicateIntroProgress() {
+            var didMigrate = migrateDuplicateIntroProgress()
+            if migrateLegacyMasteredReviewSchedule() {
+                didMigrate = true
+            }
+            if didMigrate {
                 // Atomic saving leaves the original file intact on failure. Keep merged
                 // progress in memory for the next normal save; do not treat it as a decode error.
                 try? save()
@@ -834,6 +915,28 @@ public final class ProgressStore: @unchecked Sendable {
         return changed
     }
 
+    private func migrateLegacyMasteredReviewSchedule() -> Bool {
+        Self.migrateLegacyMasteredReviewSchedule(in: &records)
+    }
+
+    /// Ticket 98: lessons that had star 2 before this update get their first review tomorrow.
+    @discardableResult
+    static func migrateLegacyMasteredReviewSchedule(in records: inout [Int: LessonProgress], today: String = AppCalendar.today()) -> Bool {
+        var changed = false
+        for (id, record) in records {
+            if record.mastery && record.reviewDueDay == nil && record.settled != true {
+                var updated = record
+                let migrated = ReviewScheduler.migrationSchedule(today: today)
+                updated.reviewStep = migrated.reviewStep
+                updated.reviewDueDay = migrated.reviewDueDay
+                updated.settled = migrated.settled
+                records[id] = updated
+                changed = true
+            }
+        }
+        return changed
+    }
+
     static func merging(_ existing: LessonProgress, with incoming: LessonProgress) -> LessonProgress {
         var result = existing
         result.passed = existing.passed || incoming.passed
@@ -842,6 +945,16 @@ public final class ProgressStore: @unchecked Sendable {
         result.hasPlayed = existing.hasPlayed || incoming.hasPlayed
         result.bestScore = max(existing.bestScore, incoming.bestScore)
         if result.currentBpm <= 0 { result.currentBpm = incoming.currentBpm }
+        if let d1 = existing.masteryDay, let d2 = incoming.masteryDay {
+            result.masteryDay = min(d1, d2)
+        } else {
+            result.masteryDay = existing.masteryDay ?? incoming.masteryDay
+        }
+        result.lastPlayedDay = [existing.lastPlayedDay, incoming.lastPlayedDay].compactMap { $0 }.max()
+        let mergedSchedule = ReviewScheduler.merge(existing.reviewSchedule, incoming.reviewSchedule)
+        result.reviewStep = mergedSchedule.reviewStep
+        result.reviewDueDay = mergedSchedule.reviewDueDay
+        result.settled = mergedSchedule.settled
         return result
     }
 
@@ -993,7 +1106,8 @@ public final class ProgressStore: @unchecked Sendable {
         bpm: Int,
         score: Float,
         memory: Bool = false,
-        autoSave: Bool = true
+        autoSave: Bool = true,
+        today: String = AppCalendar.today()
     ) {
         lock.lock()
         var record = records[lessonId] ?? LessonProgress(
@@ -1004,8 +1118,21 @@ public final class ProgressStore: @unchecked Sendable {
         )
 
         record.hasPlayed = true
+        record.lastPlayedDay = today
         record.passed = record.passed || passed
+        let wasMastered = record.mastery
         record.mastery = record.mastery || mastery
+        if record.mastery && !wasMastered {
+            if record.masteryDay == nil {
+                record.masteryDay = today
+            }
+            if record.reviewDueDay == nil && record.settled != true {
+                let initial = ReviewScheduler.initialSchedule(masteryDay: record.masteryDay ?? today)
+                record.reviewStep = initial.reviewStep
+                record.reviewDueDay = initial.reviewDueDay
+                record.settled = initial.settled
+            }
+        }
         record.memory = record.memory || memory
         if bpm > record.currentBpm {
             record.currentBpm = bpm
@@ -1028,9 +1155,10 @@ public final class ProgressStore: @unchecked Sendable {
         bpm: Int = 100,
         score: Float = 0.85,
         mastery: Bool = false,
-        autoSave: Bool = true
+        autoSave: Bool = true,
+        today: String = AppCalendar.today()
     ) {
-        recordResult(lessonId: lessonId, passed: true, mastery: mastery, bpm: bpm, score: score, autoSave: autoSave)
+        recordResult(lessonId: lessonId, passed: true, mastery: mastery, bpm: bpm, score: score, autoSave: autoSave, today: today)
     }
 
     /// Directly sets or replaces the progress record for a lesson.
@@ -1046,6 +1174,58 @@ public final class ProgressStore: @unchecked Sendable {
         if autoSave {
             try? save()
         }
+    }
+
+    /// Updates review schedule for a lesson.
+    public func updateReviewSchedule(_ schedule: ReviewScheduler.ScheduleState, for lessonId: Int, autoSave: Bool = true) {
+        lock.lock()
+        var record = records[lessonId] ?? LessonProgress()
+        record.reviewSchedule = schedule
+        records[lessonId] = record
+        lock.unlock()
+
+        if autoSave {
+            try? save()
+        }
+    }
+
+    /// Number of lessons currently due for spaced review.
+    public func dueLessonsCount(today: String = AppCalendar.today()) -> Int {
+        lock.lock()
+        defer { lock.unlock() }
+        return records.values.filter { $0.reviewSchedule.isDue(on: today) }.count
+    }
+
+    /// Sorted list of lesson IDs currently due for spaced review (oldest due day first).
+    public func dueLessonIds(today: String = AppCalendar.today()) -> [Int] {
+        lock.lock()
+        defer { lock.unlock() }
+        let dueRecords = records.filter { $0.value.reviewSchedule.isDue(on: today) }
+        return dueRecords.sorted { a, b in
+            let dayA = a.value.reviewDueDay ?? ""
+            let dayB = b.value.reviewDueDay ?? ""
+            if dayA != dayB { return dayA < dayB }
+            return a.key < b.key
+        }.map(\.key)
+    }
+
+    /// Returns the nearest due day among all scheduled lessons that are not yet settled,
+    /// or nil if no lessons are scheduled.
+    public func nearestDueDay(today: String = AppCalendar.today()) -> String? {
+        lock.lock()
+        defer { lock.unlock() }
+        let futureDueDays = records.values.compactMap { record -> String? in
+            guard !record.reviewSchedule.isSettled, let due = record.reviewDueDay else { return nil }
+            return due
+        }
+        return futureDueDays.sorted().first
+    }
+
+    /// Returns whether any lesson has earned star 2 (mastered).
+    public var hasAnyMasteredLesson: Bool {
+        lock.lock()
+        defer { lock.unlock() }
+        return records.values.contains { $0.mastery }
     }
 
     /// Clears all progress records in memory and resets or deletes the file.
