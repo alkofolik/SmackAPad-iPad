@@ -29,7 +29,7 @@ Status: ready. Blocked by: 84 (same file `PatternField.swift`). Source: Jakub, 2
 
 ## Agent assignment
 
-- **Agent**: Gemini 3.8 Flash, **high** thinking.
+- **Agent**: Gemini 3.8 Flash, **high** thinking. Fallback: Codex GPT-6.1 Sol, high.
 
 ## Done rule
 

@@ -22,7 +22,7 @@ Status: ready. Source: Jakub, 2026-11-05 (photo 2): the button text is cut off (
 
 ## Agent assignment
 
-- **Agent**: Gemini 3.8 Flash, **medium** thinking.
+- **Agent**: Gemini 3.8 Flash, **medium** thinking. Fallback: Codex GPT-6.1 Sol, medium.
 
 ## Done rule
 

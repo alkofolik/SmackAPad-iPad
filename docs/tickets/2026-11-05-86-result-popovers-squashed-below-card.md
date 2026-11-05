@@ -26,7 +26,7 @@ Status: ready. Source: Jakub, 2026-11-05 (photos 2, 3): "Under the result someth
 
 ## Agent assignment
 
-- **Agent**: Gemini 3.8 Flash, **high** thinking.
+- **Agent**: Gemini 3.8 Flash, **high** thinking. Fallback: Codex GPT-6.1 Sol, high.
 
 ## Done rule
 

@@ -108,9 +108,9 @@ Source: Jakub's iPad test, photos 1–6.
 
 | Ticket | Topic | Agent / thinking | Order |
 |---|---|---|---|
-| 84 | Static view: smooth bar transition, downbeat mark covers the "1" | Gemini 3.8 Pro, high (fallback Codex GPT-6.1 Sol, high) | 1st |
+| 84 | Static view: smooth bar transition, downbeat mark covers the "1" | Gemini 3.8 Flash, high (fallback Codex GPT-6.1 Sol, high) | 1st |
 | 87 | Static-view button cycles bars shown (1, 2, 3, all) | Gemini 3.8 Flash, high | after 84 (same file) |
-| 85 | Shorter "Memory ★3" button label | Gemini 3.8 Flash, medium | any time, parallel |
+| 85 | Shorter "Memory ★3" button label | Gemini 3.8 Flash, medium (fallback Codex Sol, medium) | any time, parallel |
 | 86 | Star rules / session results popovers squashed below the card | Gemini 3.8 Flash, high | after 85 (same file) |
 | 88 | Appearance change applies at once | Gemini 3.8 Flash, high | any time, parallel |
 | 89 | Library: framed levels, categories, lesson cards; top-left overlap | Gemini 3.8 Flash, high | any time, parallel |

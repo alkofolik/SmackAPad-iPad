@@ -37,7 +37,7 @@ Also, on the photo the playhead is already well past the first notes of bar 2 al
 
 ## Agent assignment
 
-- **Agent**: Gemini 3.8 Pro, **high** thinking. Fallback: Codex GPT-6.1 Sol, high.
+- **Agent**: Gemini 3.8 Flash, **high** thinking. Fallback: Codex GPT-6.1 Sol, high.
 
 ## Done rule
 
