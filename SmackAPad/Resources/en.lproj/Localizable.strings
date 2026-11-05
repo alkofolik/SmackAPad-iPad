@@ -681,3 +681,10 @@
 /* Ticket 104: training reminders. */
 "Comes back tomorrow for a review" = "Comes back tomorrow for a review";
 "Due for review" = "Due for review";
+
+/* Ticket 105: review reminder notification. */
+"Review reminder" = "Review reminder";
+"Time" = "Time";
+"Notifications are turned off in iPad Settings." = "Notifications are turned off in iPad Settings.";
+"1 lesson due for review" = "1 lesson due for review";
+"%lld lessons due for review" = "%lld lessons due for review";

@@ -69,6 +69,8 @@ public enum SettingsKey: String, CaseIterable, Sendable {
     case appearance = "smackapad.settings.appearance"
     case playPadsWithKeyboard = "smackapad.settings.playPadsWithKeyboard"
     case fadeMemoryNotes = "smackapad.settings.fadeMemoryNotes"
+    case reviewReminderEnabled = "smackapad.settings.reviewReminderEnabled"
+    case reviewReminderTime = "smackapad.settings.reviewReminderTime"
 }
 
 /// Supported app appearances (Light, Dark, or follow System).
@@ -312,6 +314,16 @@ public final class SettingsManager: @unchecked Sendable {
     public var fadeMemoryNotes: Bool {
         didSet { userDefaults.set(fadeMemoryNotes, forKey: SettingsKey.fadeMemoryNotes.rawValue) }
     }
+    public var reviewReminderEnabled: Bool {
+        didSet {
+            persistReviewReminderEnabled()
+        }
+    }
+    public var reviewReminderTime: Date {
+        didSet {
+            persistReviewReminderTime()
+        }
+    }
     public var hideCompletedLessons: Bool {
         didSet { userDefaults.set(hideCompletedLessons, forKey: "smackapad.library.hideCompleted") }
     }
@@ -397,6 +409,22 @@ public final class SettingsManager: @unchecked Sendable {
     public var bpmStepEnum: BpmStep {
         get { BpmStep.from(raw: bpmStep) }
         set { bpmStep = newValue.rawValue }
+    }
+
+    public static func defaultReminderTime(calendar: Calendar = .current) -> Date {
+        var components = calendar.dateComponents([.year, .month, .day], from: Date())
+        components.hour = 18
+        components.minute = 0
+        components.second = 0
+        return calendar.date(from: components) ?? Date()
+    }
+
+    public var reviewReminderHour: Int {
+        Calendar.current.component(.hour, from: reviewReminderTime)
+    }
+
+    public var reviewReminderMinute: Int {
+        Calendar.current.component(.minute, from: reviewReminderTime)
     }
 
     // MARK: Initialization
@@ -497,6 +525,12 @@ public final class SettingsManager: @unchecked Sendable {
 
         self.playPadsWithKeyboard = userDefaults.object(forKey: SettingsKey.playPadsWithKeyboard.rawValue) as? Bool ?? true
         self.fadeMemoryNotes = userDefaults.object(forKey: SettingsKey.fadeMemoryNotes.rawValue) as? Bool ?? true
+        self.reviewReminderEnabled = userDefaults.bool(forKey: SettingsKey.reviewReminderEnabled.rawValue)
+        if let storedReminderTime = userDefaults.object(forKey: SettingsKey.reviewReminderTime.rawValue) as? Date {
+            self.reviewReminderTime = storedReminderTime
+        } else {
+            self.reviewReminderTime = Self.defaultReminderTime()
+        }
         self.hideCompletedLessons = userDefaults.object(forKey: "smackapad.library.hideCompleted") as? Bool ?? true
 
         var loadedHidden: [String: Set<String>] = [:]
@@ -567,6 +601,18 @@ public final class SettingsManager: @unchecked Sendable {
         if let data = try? JSONEncoder().encode(customProfiles) {
             userDefaults.set(data, forKey: SettingsKey.customProfiles.rawValue)
         }
+    }
+
+    private func persistReviewReminderEnabled() {
+        lock.lock()
+        defer { lock.unlock() }
+        userDefaults.set(reviewReminderEnabled, forKey: SettingsKey.reviewReminderEnabled.rawValue)
+    }
+
+    private func persistReviewReminderTime() {
+        lock.lock()
+        defer { lock.unlock() }
+        userDefaults.set(reviewReminderTime, forKey: SettingsKey.reviewReminderTime.rawValue)
     }
 
     private func persistHiddenCategories() {
@@ -702,6 +748,8 @@ public final class SettingsManager: @unchecked Sendable {
         self.padsVolume = Self.defaultPadsVolume
         self.patternVolume = Self.defaultPatternVolume
         self.playPadsWithKeyboard = true
+        self.reviewReminderEnabled = false
+        self.reviewReminderTime = Self.defaultReminderTime()
         userDefaults.removeObject(forKey: "smackapad.library.hideCompleted")
         self.hideCompletedLessons = true
         for mode in ["path", "genre", "technique"] {
@@ -1151,6 +1199,7 @@ public final class ProgressStore: @unchecked Sendable {
         if autoSave {
             try? save()
         }
+        ReviewReminderScheduler.shared.reschedule()
     }
 
     /// Convenience helper to record a passing result for a lesson.
@@ -1191,6 +1240,7 @@ public final class ProgressStore: @unchecked Sendable {
         if autoSave {
             try? save()
         }
+        ReviewReminderScheduler.shared.reschedule()
     }
 
     /// Records a full review attempt, including warm-up passes that do not advance the schedule.

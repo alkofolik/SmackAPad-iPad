@@ -7,6 +7,7 @@
 //
 
 import SwiftUI
+import UserNotifications
 #if DEBUG
 import UniformTypeIdentifiers
 #endif
@@ -18,6 +19,7 @@ public struct SettingsView: View {
     @Environment(\.dismiss) private var dismiss
 
     @State private var kits: [SampleKit] = []
+    @State private var notificationsDenied = false
     @AppStorage("smackapad.practice.showPads") private var showPads = true
     @AppStorage("smackapad.practice.touchPadsInPortrait") private var touchPadsInPortrait = true
     @AppStorage("smackapad.practice.visibleBars") private var visibleBars = 4
@@ -146,6 +148,42 @@ public struct SettingsView: View {
                         Text(settings.localized("Shows a small pad layout in the lesson that lights up the pads you hit."))
                             .font(Theme.meta)
                             .foregroundStyle(Theme.secondary)
+                    }
+
+                    // MARK: 2c. Training
+                    Section {
+                        Toggle(
+                            settings.localized("Review reminder"),
+                            isOn: Binding(
+                                get: { settings.reviewReminderEnabled },
+                                set: { handleReminderToggle($0) }
+                            )
+                        )
+                        .frame(minHeight: Theme.Size.touch)
+
+                        if notificationsDenied {
+                            Text(settings.localized("Notifications are turned off in iPad Settings."))
+                                .font(Theme.meta)
+                                .foregroundStyle(Theme.markWrong)
+                        }
+
+                        if settings.reviewReminderEnabled {
+                            DatePicker(
+                                settings.localized("Time"),
+                                selection: Binding(
+                                    get: { settings.reviewReminderTime },
+                                    set: { newTime in
+                                        settings.reviewReminderTime = newTime
+                                        ReviewReminderScheduler.shared.reschedule()
+                                    }
+                                ),
+                                displayedComponents: .hourAndMinute
+                            )
+                            .font(Theme.control)
+                            .frame(minHeight: Theme.Size.touch)
+                        }
+                    } header: {
+                        SectionHeader(title: settings.localized("Training"))
                     }
 
                     Section {
@@ -299,7 +337,60 @@ public struct SettingsView: View {
             }
             .task {
                 loadKits()
+                await refreshNotificationStatus()
             }
+        }
+    }
+
+    private func handleReminderToggle(_ enabled: Bool) {
+        if enabled {
+            Task {
+                let center = UNUserNotificationCenter.current()
+                let currentSettings = await center.notificationSettings()
+                switch currentSettings.authorizationStatus {
+                case .authorized, .provisional, .ephemeral:
+                    settings.reviewReminderEnabled = true
+                    notificationsDenied = false
+                    ReviewReminderScheduler.shared.reschedule()
+                case .denied:
+                    settings.reviewReminderEnabled = false
+                    notificationsDenied = true
+                case .notDetermined:
+                    do {
+                        let granted = try await center.requestAuthorization(options: [.alert, .sound])
+                        if granted {
+                            settings.reviewReminderEnabled = true
+                            notificationsDenied = false
+                            ReviewReminderScheduler.shared.reschedule()
+                        } else {
+                            settings.reviewReminderEnabled = false
+                            notificationsDenied = true
+                        }
+                    } catch {
+                        settings.reviewReminderEnabled = false
+                        notificationsDenied = true
+                    }
+                @unknown default:
+                    settings.reviewReminderEnabled = false
+                    notificationsDenied = true
+                }
+            }
+        } else {
+            settings.reviewReminderEnabled = false
+            notificationsDenied = false
+            ReviewReminderScheduler.shared.cancelAll()
+        }
+    }
+
+    private func refreshNotificationStatus() async {
+        let center = UNUserNotificationCenter.current()
+        let currentSettings = await center.notificationSettings()
+        if currentSettings.authorizationStatus != .denied {
+            notificationsDenied = false
+        } else if settings.reviewReminderEnabled {
+            settings.reviewReminderEnabled = false
+            notificationsDenied = true
+            ReviewReminderScheduler.shared.cancelAll()
         }
     }
 

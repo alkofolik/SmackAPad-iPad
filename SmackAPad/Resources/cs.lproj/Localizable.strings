@@ -684,3 +684,11 @@
 /* Ticket 104: training reminders. */
 "Comes back tomorrow for a review" = "Zítra se vrátí k opakování";
 "Due for review" = "Na řadě k opakování";
+
+/* Ticket 105: review reminder notification. */
+"Review reminder" = "Připomínka opakování";
+"Time" = "Čas";
+"Notifications are turned off in iPad Settings." = "Upozornění jsou vypnutá v Nastavení iPadu.";
+"1 lekce čeká na opakování" = "1 lekce čeká na opakování";
+"%lld lekce čekají na opakování" = "%lld lekce čekají na opakování";
+"%lld lekcí čeká na opakování" = "%lld lekcí čeká na opakování";

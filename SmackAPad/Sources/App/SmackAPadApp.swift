@@ -1,4 +1,5 @@
 import SwiftUI
+import UserNotifications
 
 @main
 @MainActor
@@ -13,6 +14,7 @@ struct SmackAPadApp: App {
 
     init() {
         SettingsManager.shared.appearance.applyToWindows()
+        UNUserNotificationCenter.current().delegate = ReviewReminderDelegate.shared
     }
 
     var body: some Scene {
@@ -35,14 +37,20 @@ struct SmackAPadApp: App {
                     store.start()
                     midi.start()
                     badges.awardSilently(progress: progress.records, catalog: progression.catalog)
+                    ReviewReminderScheduler.shared.reschedule()
                 }
                 .onChange(of: settings.appearance) { _, appearance in
                     appearance.applyToWindows()
                 }
                 .onChange(of: settings.activeProfileName) { _, _ in midi.profileDidChange() }
+                .onChange(of: settings.languagePreference) { _, _ in
+                    ReviewReminderScheduler.shared.reschedule()
+                }
                 .onChange(of: scenePhase) { _, phase in
-                    if phase == .background { midi.stop() }
-                    else if phase == .active {
+                    if phase == .background {
+                        midi.stop()
+                        ReviewReminderScheduler.shared.reschedule()
+                    } else if phase == .active {
                         settings.appearance.applyToWindows()
                         midi.start()
                         Task { await store.refreshEntitlements() }

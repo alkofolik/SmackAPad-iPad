@@ -10,13 +10,13 @@ public enum AppRoute: Equatable, Sendable {
 /// Main content entry point hosting Home, Library and Training routes.
 @MainActor
 struct ContentView: View {
-    @State private var route: AppRoute = .home
+    @State private var navigation = AppNavigation.shared
     @State private var hasPlayedColdStartAnimation = false
     @Environment(\.accessibilityReduceMotion) private var reduced
 
     var body: some View {
         ZStack {
-            switch route {
+            switch navigation.route {
             case .home:
                 HomeScreen(
                     isColdStart: !hasPlayedColdStartAnimation,
@@ -25,12 +25,12 @@ struct ContentView: View {
                     },
                     onNavigateToLibrary: { target in
                         withAnimation(Theme.Motion.Policy(reduced: reduced).animation(Theme.Motion.standard)) {
-                            route = .library(target)
+                            navigation.openLibrary(target)
                         }
                     },
                     onNavigateToTraining: {
                         withAnimation(Theme.Motion.Policy(reduced: reduced).animation(Theme.Motion.standard)) {
-                            route = .training
+                            navigation.openTraining()
                         }
                     }
                 )
@@ -41,7 +41,7 @@ struct ContentView: View {
                     launchTarget: target,
                     onHome: {
                         withAnimation(Theme.Motion.Policy(reduced: reduced).animation(Theme.Motion.standard)) {
-                            route = .home
+                            navigation.openHome()
                         }
                     }
                 )
@@ -51,13 +51,13 @@ struct ContentView: View {
                 TrainingScreen(
                     onHome: {
                         withAnimation(Theme.Motion.Policy(reduced: reduced).animation(Theme.Motion.standard)) {
-                            route = .home
+                            navigation.openHome()
                         }
                     }
                 )
                 .transition(.opacity)
             }
         }
-        .animation(Theme.Motion.Policy(reduced: reduced).animation(Theme.Motion.standard), value: route)
+        .animation(Theme.Motion.Policy(reduced: reduced).animation(Theme.Motion.standard), value: navigation.route)
     }
 }

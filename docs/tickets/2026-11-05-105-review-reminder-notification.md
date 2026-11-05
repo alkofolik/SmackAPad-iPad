@@ -29,11 +29,11 @@ A once-a-day local notification tells the player that lessons are due for review
 
 ## Acceptance criteria
 
-- [ ] Toggle off by default; turning on asks for permission; denied shows the sentence.
-- [ ] With a review due tomorrow, a notification arrives tomorrow at the chosen time; none on days with nothing due.
-- [ ] Tapping it opens Training.
-- [ ] Toggle off removes pending reminders.
-- [ ] Tests pass, build succeeds.
+- [x] Toggle off by default; turning on asks for permission; denied shows the sentence.
+- [x] With a review due tomorrow, a notification arrives tomorrow at the chosen time; none on days with nothing due.
+- [x] Tapping it opens Training.
+- [x] Toggle off removes pending reminders.
+- [x] Tests pass, build succeeds.
 - [ ] **iPad test (Jakub)**: set the time two minutes ahead on a day with a due review, lock the iPad, wait for the notification, tap it.
 
 ## Agent assignment
