@@ -55,13 +55,13 @@ h3{margin:0;font-size:15px;letter-spacing:.1em;text-transform:uppercase;font-wei
 /* two columns */
 .row2{display:grid;grid-template-columns:minmax(0,1.25fr) minmax(0,1fr);gap:24px}
 .meter{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:10px}
-.mcol{display:grid;gap:6px;align-content:end}
+.mcol{display:grid;gap:6px;align-content:start}
 .segs{display:flex;flex-direction:column-reverse;gap:3px;height:96px}
 .seg{height:9px;background:var(--led-off)}
 .seg.on{background:var(--ink)}
 .mcol.last .seg.on{background:var(--orange)}
 .mcol .v{font:600 20px var(--mono);font-variant-numeric:tabular-nums}
-.mcol .l{font-size:13px;color:var(--sec);line-height:1.2}
+.mcol .l{font-size:13px;color:var(--sec);line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .week{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:6px;text-align:center}
 .day{border:2px solid var(--hair);padding:8px 2px;display:grid;gap:4px}
 .day.today{border-color:var(--ink);background:var(--bg)}
@@ -148,7 +148,7 @@ h3{margin:0;font-size:15px;letter-spacing:.1em;text-transform:uppercase;font-wei
             <div class="step"><span class="led"></span><span class="n">KROK 3 · NEPOVINNÝ</span><span class="t">Mix</span><span class="d">3 lekce, každá jednou</span></div>
           </div>
           <div class="band-foot">
-            <span class="gate"><i>ETAPA 3</i> se otevře po 4 dalších opakováních v etapě 2.</span>
+            <span class="gate">Nic se nezamyká. Každý krok můžeš přeskočit.</span>
             <div class="btns"><button class="btn" type="button">Dnes ne</button><button class="btn fill" type="button">START DNEŠNÍHO TRÉNINKU</button></div>
           </div>
         </div>
@@ -158,9 +158,9 @@ h3{margin:0;font-size:15px;letter-spacing:.1em;text-transform:uppercase;font-wei
             <h3>Paměť</h3>
             <div class="meter">
               <div class="mcol"><div class="segs"><i class="seg on"></i><i class="seg on"></i><i class="seg on"></i><i class="seg on"></i><i class="seg on"></i><i class="seg on"></i><i class="seg"></i><i class="seg"></i></div><span class="v">6</span><span class="l">Naučené ★★</span></div>
-              <div class="mcol"><div class="segs"><i class="seg on"></i><i class="seg on"></i><i class="seg on"></i><i class="seg on"></i><i class="seg"></i><i class="seg"></i><i class="seg"></i><i class="seg"></i></div><span class="v">4</span><span class="l">Krok 1<br>za 1 den</span></div>
-              <div class="mcol"><div class="segs"><i class="seg on"></i><i class="seg on"></i><i class="seg on"></i><i class="seg"></i><i class="seg"></i><i class="seg"></i><i class="seg"></i><i class="seg"></i></div><span class="v">3</span><span class="l">Krok 2<br>za 3 dny</span></div>
-              <div class="mcol"><div class="segs"><i class="seg on"></i><i class="seg on"></i><i class="seg"></i><i class="seg"></i><i class="seg"></i><i class="seg"></i><i class="seg"></i><i class="seg"></i></div><span class="v">2</span><span class="l">Krok 3<br>za 7 dní</span></div>
+              <div class="mcol"><div class="segs"><i class="seg on"></i><i class="seg on"></i><i class="seg on"></i><i class="seg on"></i><i class="seg"></i><i class="seg"></i><i class="seg"></i><i class="seg"></i></div><span class="v">4</span><span class="l">Krok 1</span></div>
+              <div class="mcol"><div class="segs"><i class="seg on"></i><i class="seg on"></i><i class="seg on"></i><i class="seg"></i><i class="seg"></i><i class="seg"></i><i class="seg"></i><i class="seg"></i></div><span class="v">3</span><span class="l">Krok 2</span></div>
+              <div class="mcol"><div class="segs"><i class="seg on"></i><i class="seg on"></i><i class="seg"></i><i class="seg"></i><i class="seg"></i><i class="seg"></i><i class="seg"></i><i class="seg"></i></div><span class="v">2</span><span class="l">Krok 3</span></div>
               <div class="mcol last"><div class="segs"><i class="seg on"></i><i class="seg on"></i><i class="seg on"></i><i class="seg on"></i><i class="seg"></i><i class="seg"></i><i class="seg"></i><i class="seg"></i></div><span class="v">4</span><span class="l">Upevněno</span></div>
             </div>
           </div>
@@ -252,7 +252,6 @@ h3{margin:0;font-size:15px;letter-spacing:.1em;text-transform:uppercase;font-wei
     <p class="caption">Co na náhledu posoudit</p>
     <ul class="notes">
       <li>Je oranžový pás „DNES“ dost výrazný, aby hráč věděl, co má dělat?</li>
-      <li>Řádek o etapě 3 odpovídá variantě B (pevnější). U varianty A by zmizel.</li>
       <li>Měřič „Paměť“ ukazuje, kolik lekcí je v kterém kroku opakování. Rozumíš mu na první pohled?</li>
       <li>Na výšku se stejné bloky jen poskládají pod sebe; tři kroky v pásu zůstanou v jedné řadě.</li>
     </ul>
