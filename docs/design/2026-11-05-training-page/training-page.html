@@ -1,0 +1,260 @@
+<title>Smack-a-Pad Trénink</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wdth,wght@75..100,400..700&family=IBM+Plex+Mono:wght@500;600&display=swap">
+<style>
+/* Layout: hardware panel — one orange "Today" band dominates, quiet cream panels below, square corners, 2px ink edges (app tokens from Theme.swift). */
+:root{
+  --bg:#F4EFE6; --ink:#1F1D1A; --sec:#5E5950; --surface:#EBE5DA; --orange:#FF6B00;
+  --on-orange:#1F1D1A; --hair:rgba(31,29,26,.15); --led-off:#D6D0C4; --frame:#1F1D1A; --page:#E4DED2;
+  --display:"IBM Plex Sans",system-ui,sans-serif; --mono:"IBM Plex Mono",ui-monospace,monospace;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#1F1D1A; --ink:#F4EFE6; --sec:#B3ADA2; --surface:#2A2824; --hair:rgba(244,239,230,.15); --led-off:#3E3B36; --frame:#000; --page:#141311; color-scheme:dark}}
+:root[data-theme="dark"]{--bg:#1F1D1A; --ink:#F4EFE6; --sec:#B3ADA2; --surface:#2A2824; --hair:rgba(244,239,230,.15); --led-off:#3E3B36; --frame:#000; --page:#141311; color-scheme:dark}
+*{box-sizing:border-box}
+body{background:var(--page);color:var(--ink);font-family:var(--display);font-size:16px;line-height:1.4;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:32px 56px}
+.wrap{max-width:1240px;margin:0 auto;display:grid;gap:40px}
+.intro{max-width:70ch;display:grid;gap:8px}
+.intro h1{font-size:30px;margin:0;font-stretch:85%;letter-spacing:-.01em}
+.intro p{margin:0;color:var(--sec)}
+.caption{font-size:13px;letter-spacing:.08em;text-transform:uppercase;color:var(--sec);margin:0 0 10px;font-weight:600}
+/* iPad frame */
+.ipad{background:var(--frame);padding:14px;border-radius:28px;max-width:100%}
+.screen{background:var(--bg);overflow:hidden;border-radius:14px}
+.nav{display:flex;align-items:center;justify-content:space-between;padding:14px 24px;border-bottom:1px solid var(--hair);font-size:18px}
+.nav b{font-stretch:80%;font-size:22px;letter-spacing:.06em}
+.nav span{min-width:90px}.nav span:last-child{text-align:right}
+.content{padding:24px;display:grid;gap:24px}
+h3{margin:0;font-size:15px;letter-spacing:.1em;text-transform:uppercase;font-weight:700}
+.panel{background:var(--surface);border:2px solid var(--ink);padding:16px;display:grid;gap:12px;min-width:0}
+.btn{font:600 18px var(--display);border:2px solid var(--ink);background:transparent;color:var(--ink);padding:10px 18px;min-height:48px;cursor:pointer;border-radius:0}
+.btn.fill{background:var(--ink);color:var(--bg)}
+.btn:focus-visible{outline:3px solid var(--orange);outline-offset:2px}
+.meta{color:var(--sec);font-size:15px}
+/* Today band */
+.band{background:var(--orange);color:var(--on-orange);padding:20px;display:grid;gap:16px;border:2px solid #1F1D1A}
+.band-head{display:flex;justify-content:space-between;align-items:baseline;gap:12px;flex-wrap:wrap}
+.band-head h2{margin:0;font-size:34px;font-stretch:80%;letter-spacing:.04em;line-height:1}
+.band-head .meta{color:#1F1D1A;opacity:.8}
+.steps{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+.step{background:#F4EFE6;color:#1F1D1A;border:2px solid #1F1D1A;border-radius:14px;padding:14px;display:grid;gap:6px;min-height:118px;align-content:start;position:relative}
+.step.done{background:transparent;border-style:dashed}
+.step .n{font:600 13px var(--mono);letter-spacing:.06em}
+.step .t{font-size:22px;font-weight:700;font-stretch:85%;line-height:1.1}
+.step .d{font-size:15px}
+.led{position:absolute;top:14px;right:14px;width:14px;height:14px;border-radius:50%;border:2px solid #1F1D1A;background:#D6D0C4}
+.led.on{background:#FF6B00;box-shadow:0 0 0 3px rgba(255,107,0,.35)}
+.led.ok{background:#1F1D1A}
+.band-foot{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}
+.band-foot .btn{border-color:#1F1D1A;color:#1F1D1A}
+.band-foot .btn.fill{background:#1F1D1A;color:#F4EFE6;font-size:20px;padding:12px 26px}
+.gate{font-size:15px;color:#1F1D1A;display:flex;gap:8px;align-items:center}
+.gate i{font-style:normal;font:600 13px var(--mono);border:2px solid #1F1D1A;padding:1px 6px}
+/* two columns */
+.row2{display:grid;grid-template-columns:minmax(0,1.25fr) minmax(0,1fr);gap:24px}
+.meter{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:10px}
+.mcol{display:grid;gap:6px;align-content:end}
+.segs{display:flex;flex-direction:column-reverse;gap:3px;height:96px}
+.seg{height:9px;background:var(--led-off)}
+.seg.on{background:var(--ink)}
+.mcol.last .seg.on{background:var(--orange)}
+.mcol .v{font:600 20px var(--mono);font-variant-numeric:tabular-nums}
+.mcol .l{font-size:13px;color:var(--sec);line-height:1.2}
+.week{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:6px;text-align:center}
+.day{border:2px solid var(--hair);padding:8px 2px;display:grid;gap:4px}
+.day.today{border-color:var(--ink);background:var(--bg)}
+.day .dn{font-size:13px;color:var(--sec)}
+.day .c{font:600 22px var(--mono);font-variant-numeric:tabular-nums}
+.day .c.zero{color:var(--led-off)}
+/* due list */
+.list{display:grid}
+.item{display:grid;grid-template-columns:minmax(0,1fr) auto auto auto;align-items:center;gap:16px;min-height:60px;border-top:1px solid var(--hair);padding-block:6px}
+.item:first-child{border-top:0}
+.item .tt{font-size:20px;font-weight:600;font-stretch:90%}
+.stars{letter-spacing:2px;font-size:18px}
+.stars .off{color:var(--led-off)}
+.chip{font:600 13px var(--mono);border:2px solid var(--ink);padding:3px 8px;white-space:nowrap}
+.late{color:var(--sec);font-size:14px;white-space:nowrap}
+.row2b{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:24px}
+.mixlist{margin:0;padding-left:20px;display:grid;gap:2px;font-size:18px}
+.btns{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+.toggle{display:flex;align-items:center;gap:10px;font-size:17px;margin-left:auto}
+.sw{width:46px;height:26px;border:2px solid var(--ink);position:relative;background:var(--bg)}
+.sw::after{content:"";position:absolute;top:3px;left:3px;width:16px;height:16px;background:var(--ink)}
+/* badges */
+.badges{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px}
+.badge{display:grid;grid-template-columns:44px minmax(0,1fr);gap:12px;align-items:center}
+.medal{width:44px;height:44px;border:2px solid var(--ink);border-radius:50%;display:grid;place-items:center;font:700 15px var(--mono)}
+.bar{height:8px;background:var(--led-off);margin-top:6px}
+.bar span{display:block;height:100%;background:var(--ink)}
+.badge b{font-size:17px}
+.badge .meta{font-size:13px}
+.head-line{display:flex;justify-content:space-between;align-items:baseline;gap:12px}
+.link{color:var(--ink);font-weight:600;text-decoration:underline;text-underline-offset:3px}
+/* small frames */
+.pair{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:32px;align-items:start}
+.home{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;padding:18px}
+.hp{aspect-ratio:1.25;border:2px solid var(--ink);border-radius:14px;padding:12px;display:grid;align-content:space-between;background:var(--surface);position:relative;min-width:0}
+.hp b{font-size:16px;letter-spacing:.06em;font-stretch:80%}
+.hp small{font-size:13px;color:var(--sec)}
+.hp.hero{background:var(--orange);border-color:#1F1D1A}
+.hp.hero b,.hp.hero small{color:#1F1D1A}
+.hp.lit{box-shadow:inset 0 0 0 4px var(--orange)}
+.hp .led{top:10px;right:10px;width:12px;height:12px}
+.hp.logo{background:transparent;border-style:dashed;place-content:center;text-align:center;font-weight:700;font-stretch:80%}
+.handoff{padding:28px;display:grid;gap:16px;justify-items:start}
+.handoff .big{font-size:28px;font-weight:700;font-stretch:85%;line-height:1.15;text-wrap:balance}
+.notes{max-width:70ch;display:grid;gap:8px;margin:0;padding-left:20px;color:var(--ink)}
+.notes li::marker{color:var(--sec)}
+.ex{font:600 12px var(--mono);color:var(--sec);letter-spacing:.06em}
+@media (max-width:900px){
+  .row2,.row2b,.pair{grid-template-columns:minmax(0,1fr)}
+  .badges{grid-template-columns:minmax(0,1fr)}
+}
+@media (max-width:620px){
+  .ipad{padding:8px;border-radius:18px}.screen{border-radius:10px}
+  .content{padding:14px}
+  .steps{grid-template-columns:minmax(0,1fr)}
+  .step{min-height:0}
+  .item{grid-template-columns:minmax(0,1fr) auto;row-gap:4px}
+  .item .late{grid-column:1}
+  .band-head h2{font-size:28px}
+  .toggle{margin-left:0}
+}
+</style>
+
+<div class="wrap">
+  <header class="intro">
+    <h1>Nová stránka Trénink — náhled</h1>
+    <p>Náhled podle návrhu z 5. 11. 2026. Barvy, písmo a hranaté rohy jsou z aplikace. Názvy lekcí a čísla jsou jen ukázková data. Stránka se přepíná do tmavého vzhledu podle systému.</p>
+  </header>
+
+  <section>
+    <p class="caption">1 · Stránka Trénink, iPad na šířku</p>
+    <div class="ipad"><div class="screen">
+      <div class="nav"><span>‹ Domů</span><b>TRÉNINK</b><span></span></div>
+      <div class="content">
+
+        <div class="band">
+          <div class="band-head">
+            <h2>DNES</h2>
+            <span class="meta">Čtvrtek 5. 11. · 2 opakování na řadě</span>
+          </div>
+          <div class="steps">
+            <div class="step"><span class="led on"></span><span class="n">KROK 1</span><span class="t">Opakování</span><span class="d">2 lekce zpaměti v cílovém tempu</span></div>
+            <div class="step"><span class="led"></span><span class="n">KROK 2</span><span class="t">Nová lekce</span><span class="d">Funk 3 · Ghost noty</span></div>
+            <div class="step"><span class="led"></span><span class="n">KROK 3 · NEPOVINNÝ</span><span class="t">Mix</span><span class="d">3 lekce, každá jednou</span></div>
+          </div>
+          <div class="band-foot">
+            <span class="gate"><i>ETAPA 3</i> se otevře po 4 dalších opakováních v etapě 2.</span>
+            <div class="btns"><button class="btn" type="button">Dnes ne</button><button class="btn fill" type="button">START DNEŠNÍHO TRÉNINKU</button></div>
+          </div>
+        </div>
+
+        <div class="row2">
+          <div class="panel">
+            <h3>Paměť</h3>
+            <div class="meter">
+              <div class="mcol"><div class="segs"><i class="seg on"></i><i class="seg on"></i><i class="seg on"></i><i class="seg on"></i><i class="seg on"></i><i class="seg on"></i><i class="seg"></i><i class="seg"></i></div><span class="v">6</span><span class="l">Naučené ★★</span></div>
+              <div class="mcol"><div class="segs"><i class="seg on"></i><i class="seg on"></i><i class="seg on"></i><i class="seg on"></i><i class="seg"></i><i class="seg"></i><i class="seg"></i><i class="seg"></i></div><span class="v">4</span><span class="l">Krok 1<br>za 1 den</span></div>
+              <div class="mcol"><div class="segs"><i class="seg on"></i><i class="seg on"></i><i class="seg on"></i><i class="seg"></i><i class="seg"></i><i class="seg"></i><i class="seg"></i><i class="seg"></i></div><span class="v">3</span><span class="l">Krok 2<br>za 3 dny</span></div>
+              <div class="mcol"><div class="segs"><i class="seg on"></i><i class="seg on"></i><i class="seg"></i><i class="seg"></i><i class="seg"></i><i class="seg"></i><i class="seg"></i><i class="seg"></i></div><span class="v">2</span><span class="l">Krok 3<br>za 7 dní</span></div>
+              <div class="mcol last"><div class="segs"><i class="seg on"></i><i class="seg on"></i><i class="seg on"></i><i class="seg on"></i><i class="seg"></i><i class="seg"></i><i class="seg"></i><i class="seg"></i></div><span class="v">4</span><span class="l">Upevněno</span></div>
+            </div>
+          </div>
+          <div class="panel">
+            <h3>Příštích 7 dní</h3>
+            <div class="week">
+              <div class="day today"><span class="dn">Čt</span><span class="c">2</span></div>
+              <div class="day"><span class="dn">Pá</span><span class="c">1</span></div>
+              <div class="day"><span class="dn">So</span><span class="c zero">0</span></div>
+              <div class="day"><span class="dn">Ne</span><span class="c">3</span></div>
+              <div class="day"><span class="dn">Po</span><span class="c zero">0</span></div>
+              <div class="day"><span class="dn">Út</span><span class="c">1</span></div>
+              <div class="day"><span class="dn">St</span><span class="c">2</span></div>
+            </div>
+            <span class="meta">Počet lekcí, které se ten den vrátí k opakování.</span>
+          </div>
+        </div>
+
+        <div class="panel">
+          <h3>Na řadě teď</h3>
+          <div class="list">
+            <div class="item"><span class="tt">Rock 2 · Osmina na hi-hatu</span><span class="stars">★★<span class="off">★</span></span><span class="chip">KROK 2 ZE 4</span><span class="late">o 3 dny později</span></div>
+            <div class="item"><span class="tt">Funk 1 · Shuffle</span><span class="stars">★★★</span><span class="chip">KROK 1 ZE 4</span><span class="late">dnes</span></div>
+          </div>
+        </div>
+
+        <div class="row2b">
+          <div class="panel">
+            <h3>Mix</h3>
+            <ol class="mixlist"><li>Rock 3 · Crash na jedničku</li><li>Funk 1 · Shuffle</li><li>Hip-hop 2 · Líný beat</li></ol>
+            <div class="btns"><button class="btn fill" type="button">Spustit</button><button class="btn" type="button">Jiný mix</button><span class="toggle">Zpaměti <span class="sw" aria-hidden="true"></span></span></div>
+          </div>
+          <div class="panel">
+            <h3>Zahraj po mně</h3>
+            <div class="item" style="border:0;grid-template-columns:minmax(0,1fr) auto;min-height:48px"><span class="tt">Jazz 1 · Ride</span><span class="stars">★★<span class="off">★</span></span></div>
+            <span class="meta">Aplikace zahraje, ty zopakuješ. Bez not.</span>
+            <div class="btns"><button class="btn fill" type="button">Spustit</button><button class="btn" type="button">Jiná lekce</button></div>
+          </div>
+        </div>
+
+        <div class="panel">
+          <div class="head-line"><h3>Odznaky za trénink</h3><a class="link" href="#vse">Všechny odznaky ›</a></div>
+          <div class="badges">
+            <div class="badge"><span class="medal">7</span><div><b>Pravidelně</b><div class="meta">Projdi 10 opakování · 7 / 10</div><div class="bar"><span style="width:70%"></span></div></div></div>
+            <div class="badge"><span class="medal">4</span><div><b>Pevná půda</b><div class="meta">Upevni 10 lekcí · 4 / 10</div><div class="bar"><span style="width:40%"></span></div></div></div>
+            <div class="badge"><span class="medal">6</span><div><b>Deset tréninků</b><div class="meta">Trénuj v 10 různých dnech · 6 / 10</div><div class="bar"><span style="width:60%"></span></div></div></div>
+          </div>
+        </div>
+
+      </div>
+    </div></div>
+  </section>
+
+  <section class="pair">
+    <div>
+      <p class="caption">2 · Domů, když čeká opakování</p>
+      <div class="ipad"><div class="screen">
+        <div class="home">
+          <div class="hp hero"><b>DNES</b><small>2 opakování · pak nová lekce</small></div>
+          <div class="hp"><b>KNIHOVNA</b><small>38 / 120 ★</small></div>
+          <div class="hp lit"><span class="led on"></span><b>TRÉNINK</b><small>2 na řadě</small></div>
+          <div class="hp"><b>…</b><small></small></div>
+          <div class="hp logo">Smack-a-Pad</div>
+          <div class="hp"><b>…</b><small></small></div>
+          <div class="hp"><b>ODZNAKY</b><small></small></div>
+          <div class="hp"><b>PLNÁ VERZE</b><small></small></div>
+          <div class="hp"><b>NASTAVENÍ</b><small></small></div>
+        </div>
+      </div></div>
+      <p class="meta" style="margin-top:10px">Velký pad místo „Pokračovat“ ukáže „DNES“ a spustí denní plán. Pad Trénink svítí oranžovou diodou. Když nic nečeká, je všechno jako dnes.</p>
+    </div>
+    <div>
+      <p class="caption">3 · Přechod mezi kroky dnešního tréninku</p>
+      <div class="ipad"><div class="screen">
+        <div class="handoff">
+          <span class="ex">OPAKOVÁNÍ 1 ZE 2</span>
+          <span class="big">Opakování splněno · další za 3 dny</span>
+          <span class="meta">Rock 2 · Osmina na hi-hatu · 91 % zpaměti při 96 BPM</span>
+          <span class="ex" style="margin-top:8px">DALŠÍ</span>
+          <span style="font-size:20px;font-weight:600">Funk 1 · Shuffle (opakování 2 ze 2)</span>
+          <div class="btns"><button class="btn fill" type="button">Pokračovat</button><button class="btn" type="button">Přeskočit</button><button class="btn" type="button">Konec na dnes</button></div>
+        </div>
+      </div></div>
+      <p class="meta" style="margin-top:10px">Po posledním kroku pás „DNES“ na stránce Trénink napíše „Dnes stačí“ a shrne dnešní čísla.</p>
+    </div>
+  </section>
+
+  <section>
+    <p class="caption">Co na náhledu posoudit</p>
+    <ul class="notes">
+      <li>Je oranžový pás „DNES“ dost výrazný, aby hráč věděl, co má dělat?</li>
+      <li>Řádek o etapě 3 odpovídá variantě B (pevnější). U varianty A by zmizel.</li>
+      <li>Měřič „Paměť“ ukazuje, kolik lekcí je v kterém kroku opakování. Rozumíš mu na první pohled?</li>
+      <li>Na výšku se stejné bloky jen poskládají pod sebe; tři kroky v pásu zůstanou v jedné řadě.</li>
+    </ul>
+  </section>
+</div>

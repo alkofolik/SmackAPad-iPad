@@ -115,9 +115,12 @@ Recommendation: a visual mockup (HTML in the scratchpad or images) before the ti
 4. Training log + Training badges (3.4, 4).
 5. New Training page (5), after the mockup is approved.
 
-## 7. Open questions for Jakub
+## 7. Decisions and open questions
 
-1. Option A, B or C (3.2)?
-2. Badge list (4): keep, cut or add?
-3. Local notification: yes (opt-in) or no?
-4. Mockup first: HTML in the browser, or image prompts for Gemini/ChatGPT as with the earlier directions?
+Decided by Jakub, 2026-11-05:
+- Badge list (4): enough for now, keep as is.
+- Local notification: **yes** (opt-in, off by default).
+- Mockup: Claude's choice, must be easy to view → HTML mockup published as a private page (`docs/design/2026-11-05-training-page/training-page.html`).
+
+Still open:
+1. Option A, B or C (3.2)? The mockup shows option B (stage gate line).
