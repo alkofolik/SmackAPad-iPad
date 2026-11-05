@@ -6,6 +6,7 @@ Status: ready. Source: Jakub, 2026-11-05 (iPad photos): the Practice screen feel
 
 - The pattern band (orange field, static and moving view) gets **more height**: taller lanes, larger pad labels and beat numbers, scaled to the free vertical space. Keep the existing proportions and the bar/beat grid logic.
 - The band sits **vertically centred in the free area** between the top toolbar and the bottom controls (equal space above and below), not stuck to the top.
+- **The band height is not fixed.** It depends on the number of lanes (pads used in the lesson): from 1–2 lanes up to the maximum of the lesson set (check the real range in the lesson data, do not assume 3). Row height, label sizes and beat numbers are computed from the lane count and the free space, with a **maximum row height** (so a 1–2 lane band does not become huge) and a **minimum** (so the largest lane count still fits). The band stays vertically centred for every lane count. Also covers 1, 2, 3 and all bars shown.
 - The bottom controls (pad map, BPM box, Start/Restart) stay visually **quiet**: no new colour, no new elements. Their left and right edges align exactly with the left and right edges of the band.
 - The pad map (bottom left): raise the contrast of its cell outlines and labels so it is readable at a glance (target: label text at least 4.5:1 on the cell; outlines clearly visible on the cream background). No size change unless needed for the 44 pt touch minimum.
 - Do not add decoration, backgrounds, patterns or new labels.
@@ -16,7 +17,7 @@ Status: ready. Source: Jakub, 2026-11-05 (iPad photos): the Practice screen feel
 
 ## Acceptance criteria
 
-- [ ] Band visibly larger; spacing above and below it equal on iPad portrait and landscape.
+- [ ] Band visibly larger; spacing above and below it equal on iPad portrait and landscape, **for the lowest and the highest lane count** (check one lesson with the fewest and one with the most pads).
 - [ ] Band, pad map and Start/Restart share the same left/right margins.
 - [ ] Pad map readable in light and dark.
 - [ ] 1, 2, 3 and all bars shown still fit; running playhead and result marks unchanged.

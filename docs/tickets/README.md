@@ -120,3 +120,4 @@ Source: Jakub's iPad test, photos 1–6.
 | 93 | Practice: orange band larger and centred; pad map contrast | Codex GPT-6.1 Sol, high (fallback Gemini Flash, high) | after 92 |
 | 94 | One shape language (square corners, one border style) | Gemini 3.8 Flash, high (fallback Codex Sol, medium) | after 91, 92 |
 | 95 | Home grid centred/larger; Library filter row spacing | Gemini 3.8 Flash, medium (fallback Codex Sol, medium) | after 92 |
+| 96 | Logo optically centred (icon, Home tile, wordmark SVGs) | Gemini 3.8 Flash, high (fallback Codex Sol, medium) | after 95 |
