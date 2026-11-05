@@ -441,6 +441,7 @@ struct RunSummary: Identifiable {
     let memory: Bool
     var finishedByStar: Int? = nil
     var runs: [PracticeRunResult] = []
+    var firstStar2: Bool = false
 }
 
 struct SummaryStrip: View {
@@ -465,6 +466,11 @@ struct SummaryStrip: View {
                             .frame(minWidth: Theme.Size.touch, minHeight: Theme.Size.touch)
                     }
                 }
+            }
+            if summary.firstStar2 {
+                Text(settings.localized("Comes back tomorrow for a review"))
+                    .font(Theme.meta)
+                    .foregroundStyle(Theme.secondary)
             }
             HStack(spacing: Theme.Space.regular) {
                 Text("\(Int((summary.score * 100).rounded())) %").font(Theme.mainValue).monospacedDigit()

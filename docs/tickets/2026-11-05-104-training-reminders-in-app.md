@@ -1,6 +1,6 @@
 # 104 — Training reminders inside the app: lit Training pad, result line, Library due mark
 
-Status: ready-for-agent. Depends on: 98. Source: Jakub, 2026-11-05, `docs/2026-11-05-training-push-proposal.md` §3.3 (option A). Mockup: `docs/design/2026-11-05-training-page/training-page.html` (frame 2).
+Status: ready-for-human. Depends on: 98. Source: Jakub, 2026-11-05, `docs/2026-11-05-training-push-proposal.md` §3.3 (option A). Mockup: `docs/design/2026-11-05-training-page/training-page.html` (frame 2).
 
 ## Goal
 
@@ -26,10 +26,10 @@ Show the player that reviews are waiting in the places they already look, and se
 
 ## Acceptance criteria
 
-- [ ] Training pad shows the LED only when something is due.
-- [ ] First star 2 shows the "comes back tomorrow" line once.
-- [ ] Due lessons show the mark in Library; settled ones never.
-- [ ] Build succeeds.
+- [x] Training pad shows the LED only when something is due.
+- [x] First star 2 shows the "comes back tomorrow" line once.
+- [x] Due lessons show the mark in Library; settled ones never.
+- [x] Build succeeds.
 - [ ] **iPad test (Jakub)**: earn star 2 on a new lesson, read the line; next day see the lit pad and the Library mark.
 
 ## Agent assignment

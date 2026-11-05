@@ -974,16 +974,19 @@ struct LibraryLessonRow: View {
                     HStack(spacing: Theme.Space.regular) {
                         LessonPatternStrip(hits: lesson.hits, dimmed: locked)
                         settledMark
+                        dueMark
                         StarsView(record: record, lesson: lesson)
                     }
                     HStack(spacing: Theme.Space.small) {
                         settledMark
+                        dueMark
                         StarsView(record: record, lesson: lesson)
                     }
                 }
             } else {
                 HStack(spacing: Theme.Space.small) {
                     settledMark
+                    dueMark
                     StarsView(record: record, lesson: lesson)
                 }
             }
@@ -1000,6 +1003,10 @@ struct LibraryLessonRow: View {
         .lessonSource(lesson.id)
     }
 
+    private var isDue: Bool {
+        record?.reviewSchedule.isSettled != true && record?.reviewSchedule.isDue(on: AppCalendar.today()) == true
+    }
+
     @ViewBuilder
     private var settledMark: some View {
         if record?.reviewSchedule.isSettled == true {
@@ -1007,6 +1014,16 @@ struct LibraryLessonRow: View {
                 .font(Theme.meta)
                 .foregroundStyle(Theme.secondary)
                 .accessibilityLabel(settings.localized("Settled"))
+        }
+    }
+
+    @ViewBuilder
+    private var dueMark: some View {
+        if isDue {
+            Image(systemName: "clock")
+                .font(Theme.meta)
+                .foregroundStyle(Theme.ink)
+                .accessibilityLabel(settings.localized("Due for review"))
         }
     }
 

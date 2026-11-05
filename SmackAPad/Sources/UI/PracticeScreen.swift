@@ -493,6 +493,7 @@ struct PracticeScreen: View {
                     event: session.starEvent,
                     announcement: resultAnnouncement,
                     badgeText: session.badgeSummaryMessage(settings: settings),
+                    firstStar2Notice: summary.firstStar2 ? settings.localized("Comes back tomorrow for a review") : nil,
                     memoryNotice: session.isMemoryPracticeToday ? settings.localized("From memory: from tomorrow. Today it is practice.") : nil,
                     reviewMessage: session.reviewFeedback?.message(language: settings.languagePreference),
                     cardWidth: resultCardWidth,
@@ -833,6 +834,9 @@ struct PracticeScreen: View {
             let stars = starAnnouncement(for: starEvent)
             if !stars.isEmpty { parts.append(stars) }
         }
+        if session.summary?.firstStar2 == true {
+            parts.append(settings.localized("Comes back tomorrow for a review"))
+        }
         if session.isMemoryPracticeToday {
             parts.append(settings.localized("From memory: from tomorrow. Today it is practice."))
         }
@@ -949,6 +953,9 @@ struct PracticeScreen: View {
                             : "Run finished: star 2 earned, goal tempo"))
                     } else if session.isMemoryPracticeToday {
                         Text(settings.localized("From memory: from tomorrow. Today it is practice."))
+                    }
+                    if summary.firstStar2 {
+                        Text(settings.localized("Comes back tomorrow for a review"))
                     }
                     Text("\(summary.bpm) BPM · \(settings.localized("%lld completed passes", summary.passes))")
                     Text(settings.localized("Best: %@", session.savedProgress.map {

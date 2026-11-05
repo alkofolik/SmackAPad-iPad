@@ -21,6 +21,8 @@ struct HomePadView: View {
     let subtitle: String?
     var secondarySubtitle: String? = nil
     var accessibilityText: String? = nil
+    var accessibilityValue: String? = nil
+    var isLit: Bool = false
     let isHero: Bool
     let action: () -> Void
 
@@ -66,10 +68,29 @@ struct HomePadView: View {
                 Rectangle()
                     .stroke(Theme.hairline, lineWidth: 1)
             )
+            .overlay {
+                if isLit {
+                    Rectangle()
+                        .strokeBorder(Theme.orange, lineWidth: 4)
+                }
+            }
+            .overlay(alignment: .topTrailing) {
+                if isLit {
+                    Circle()
+                        .fill(Theme.orange)
+                        .frame(width: 12, height: 12)
+                        .overlay(
+                            Circle()
+                                .stroke(Theme.ink, lineWidth: 2)
+                        )
+                        .padding([.top, .trailing], 10)
+                }
+            }
             .contentShape(Rectangle())
         }
         .buttonStyle(TactilePadButtonStyle())
         .accessibilityLabel(accessibilityText ?? defaultAccessibilityText)
+        .modifier(AccessibilityValueModifier(value: accessibilityValue))
     }
 
     private var defaultAccessibilityText: String {
@@ -83,6 +104,19 @@ struct HomePadView: View {
         return parts.joined(separator: ", ")
     }
 }
+
+private struct AccessibilityValueModifier: ViewModifier {
+    let value: String?
+    @ViewBuilder
+    func body(content: Content) -> some View {
+        if let value, !value.isEmpty {
+            content.accessibilityValue(value)
+        } else {
+            content
+        }
+    }
+}
+
 
 /// The centre logo mark (three pads + rotated orange pad at 8°, optically centred).
 struct HomeLogoMarkView: View {
@@ -522,13 +556,20 @@ public struct HomeScreen: View {
 
     private var pad3: some View {
         let label = settings.localized("Training").uppercased(with: Locale(identifier: settings.languagePreference.rawValue))
-        let dueCount = progress.dueLessonsCount(today: AppCalendar.today())
+        let dueCount = progress.dueLessonsCount(today: calendarDay)
         let subtitle: String? = {
             guard dueCount > 0 else { return nil }
             return settings.localized("%lld due", dueCount)
         }()
 
-        return HomePadView(title: label, subtitle: subtitle, isHero: false) {
+        return HomePadView(
+            title: label,
+            subtitle: subtitle,
+            accessibilityText: label,
+            accessibilityValue: dueCount > 0 ? settings.localized("%lld due", dueCount) : nil,
+            isLit: dueCount > 0,
+            isHero: false
+        ) {
             onNavigateToTraining()
         }
     }

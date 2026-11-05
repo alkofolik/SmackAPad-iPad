@@ -98,6 +98,7 @@ final class PracticeSession {
     private(set) var earnedBadgesInRun: [BadgeDefinition] = []
     private(set) var tempoUpEvent: TempoUpEvent?
     private(set) var badgeBannerEvent: BadgeBannerEvent?
+    private(set) var earnedFirstMasteryInRun = false
     private(set) var errorMessage: String?
     private(set) var barVerdicts: [Int: BarVerdict] = [:]
     @ObservationIgnored private var judgmentsByPass: [Int: [LessonHit: HitJudgment]] = [:]
@@ -561,6 +562,7 @@ final class PracticeSession {
             tempoUpEvent = nil
             stopAfterStar = false
             finishedByStar = nil
+            earnedFirstMasteryInRun = false
             runResults = []
             practiceMode = settings.practiceMode
             runPadCount = midi.activeProfile.padCount
@@ -644,7 +646,8 @@ final class PracticeSession {
         } else if let result = lastResult, !listen {
             summary = RunSummary(score: result.score, bpm: result.bpm, passes: completedPasses,
                                  passed: earnedPass, mastery: earnedMastery, memory: earnedMemory,
-                                 finishedByStar: finishedByStar, runs: runResults)
+                                 finishedByStar: finishedByStar, runs: runResults,
+                                 firstStar2: earnedFirstMasteryInRun)
         } else if isMix {
             summary = RunSummary(score: mixResults.compactMap(\.score).last ?? 0, bpm: bpm,
                                  passes: runResults.count, passed: earnedPass, mastery: earnedMastery,
@@ -955,6 +958,9 @@ final class PracticeSession {
                                       passed: stars.passed, mastery: stars.mastery, memory: stars.memory)
                 pendingScore = max(pendingScore ?? 0, Float(result.score))
                 pendingBpm = max(pendingBpm, result.bpm)
+                if award.fresh[1] {
+                    earnedFirstMasteryInRun = true
+                }
                 if award.fresh.contains(true) {
                     // A new star is rare and must be visible at once (library, next-star text).
                     progress.recordResult(lessonId: lesson.id, passed: stars.passed, mastery: stars.mastery,

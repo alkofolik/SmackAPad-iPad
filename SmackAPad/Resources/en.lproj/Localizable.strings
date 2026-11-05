@@ -677,3 +677,7 @@
 "New lesson: %@" = "New lesson: %@";
 "Best score: %lld %%" = "Best score: %lld %%";
 "Does not count · finish a hidden pass" = "Does not count · finish a hidden pass";
+
+/* Ticket 104: training reminders. */
+"Comes back tomorrow for a review" = "Comes back tomorrow for a review";
+"Due for review" = "Due for review";
