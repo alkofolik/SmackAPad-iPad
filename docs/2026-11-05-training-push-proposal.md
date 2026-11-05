@@ -122,5 +122,7 @@ Decided by Jakub, 2026-11-05:
 - Local notification: **yes** (opt-in, off by default).
 - Mockup: Claude's choice, must be easy to view → HTML mockup published as a private page (`docs/design/2026-11-05-training-page/training-page.html`).
 
-Still open:
-1. Option A, B or C (3.2)? The mockup shows option B (stage gate line).
+- Firmness (3.2): **option A** (soft, no stage gate). The mockup was updated to match.
+- Memory meter: one-line labels, columns aligned.
+
+Tickets: 103 (daily session), 104 (in-app reminders), 105 (notification), 106 (Training log and badges), 107 (new Training page). Order: 103 → 104 → 105 → 106 → 107.
