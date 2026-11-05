@@ -648,3 +648,14 @@
 "Mix results" = "Mix results";
 "Bars: %@" = "Bars: %@";
 "%lld not measured" = "%lld not measured";
+
+/* Ticket 101: Play after me. */
+"After me" = "After me";
+"Listen…" = "Listen…";
+"Your turn" = "Your turn";
+"Play after me" = "Play after me";
+"Another lesson" = "Another lesson";
+"Practice only · no stars" = "Practice only · no stars";
+"Last response" = "Last response";
+"Best response" = "Best response";
+"Learn a lesson to play after me." = "Learn a lesson to play after me.";

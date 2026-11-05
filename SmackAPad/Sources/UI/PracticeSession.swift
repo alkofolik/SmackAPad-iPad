@@ -117,7 +117,27 @@ final class PracticeSession {
     }
     /// A note not struck this long after its time is shown as missed.
     var missGraceSteps: Double { Double(bpm) * 4 / 60 * 0.2 }
-    var listen = false
+    private(set) var playbackMode: LessonPlaybackMode = .play
+    var listen: Bool {
+        get { playbackMode == .listen }
+        set { playbackMode = newValue ? .listen : .play }
+    }
+    var afterMe: Bool { playbackMode == .afterMe }
+    private(set) var bestResponseScore: Double?
+
+    func selectPlaybackMode(_ mode: LessonPlaybackMode) {
+        guard !running, !isMix, mode != playbackMode else { return }
+        playbackMode = mode
+        summary = nil
+        lastResult = nil
+        reviewFeedback = nil
+        starEvent = nil
+    }
+
+    func afterMePhase(at frame: PatternFrame) -> String {
+        frame.countdown == nil && frame.pass.isMultiple(of: 2) ? "Your turn" : "Listen…"
+    }
+
     var fromMemory = false
     var lessonSound = false
     var metronome = true
@@ -167,11 +187,12 @@ final class PracticeSession {
         let padCount: Int
         let duration: Double
         let finalTime: Double
+        let responseStart: Double?
         var scorer: ScoringEngine?
         var sounds: [Sound]
 
         init(number: Int, start: Double, bpm: Int, lesson: Lesson, padCount: Int,
-             listen: Bool, lessonSound: Bool, metronome: Bool, bpmStep: BpmStep) {
+             listen: Bool, lessonSound: Bool, metronome: Bool, bpmStep: BpmStep, callLesson: Lesson? = nil) {
             self.number = number
             self.start = start
             self.bpm = bpm
@@ -180,12 +201,14 @@ final class PracticeSession {
             let hits = lesson.hits(forPadCount: padCount)
             let lastHit = Double(hits.map(\.step).max() ?? 0) * 15 / Double(bpm)
             let window = lesson.level <= 2 ? 0.2 : lesson.level <= 4 ? 0.175 : 0.15
-            finalTime = start + max(duration, lastHit + window)
+            responseStart = callLesson.map { start + Double($0.bars) * 240 / Double(bpm) }
+            finalTime = callLesson == nil ? start + max(duration, lastHit + window) : start + duration
             scorer = listen ? nil : ScoringEngine(lesson: lesson, bpm: bpm,
                 startTimestamp: AVAudioTime.hostTime(forSeconds: start), padCount: padCount, bpmStep: bpmStep)
             var events: [Sound] = []
-            if listen || lessonSound {
-                events += hits.map { Sound(time: start + Double($0.step) * 15 / Double(bpm), pad: $0.padIndex, velocity: $0.velocity) }
+            if listen || lessonSound || callLesson != nil {
+                let soundHits = callLesson?.hits(forPadCount: padCount) ?? hits
+                events += soundHits.map { Sound(time: start + Double($0.step) * 15 / Double(bpm), pad: $0.padIndex, velocity: $0.velocity) }
             }
             if metronome && !listen {
                 events += (0..<(lesson.bars * 4)).map {
@@ -194,18 +217,24 @@ final class PracticeSession {
             }
             sounds = events.sorted { $0.time < $1.time }
         }
+
+        func acceptsInput(at time: Double) -> Bool {
+            guard let responseStart else { return true }
+            return time >= responseStart && time < start + duration
+        }
     }
 
     public private(set) var reviewFeedback: ReviewScheduler.ReviewFeedback?
 
     init(lesson: Lesson, settings: SettingsManager, progress: ProgressStore, midi: MIDIInput,
          initialFromMemory: Bool = false, initialBpm: Int? = nil,
-         mixLessons: [Lesson] = [],
+         mixLessons: [Lesson] = [], initialAfterMe: Bool = false,
          clock: @escaping () -> Double = { AVAudioTime.seconds(forHostTime: mach_absolute_time()) },
          currentDay: @escaping () -> String = { AppCalendar.today() }) {
         let activeLesson = mixLessons.count >= 2 ? mixLessons[0] : lesson
         self.lesson = activeLesson
         self.mixLessons = mixLessons
+        self.playbackMode = initialAfterMe && mixLessons.count < 2 ? .afterMe : .play
         self.starStreak = settings.practiceMode == .learning
             ? progress.learningCredit(lessonId: activeLesson.id, padCount: midi.activeProfile.padCount) : StarStreak()
         self.practiceMode = settings.practiceMode
@@ -224,7 +253,7 @@ final class PracticeSession {
     }
 
     public var isDueReview: Bool {
-        progress.progress(for: lesson.id)?.reviewSchedule.isDue(on: currentDay()) == true
+        !afterMe && progress.progress(for: lesson.id)?.reviewSchedule.isDue(on: currentDay()) == true
     }
 
     public var reviewStep: Int {
@@ -241,7 +270,7 @@ final class PracticeSession {
     }
 
     public var showsMemoryFadePhase: Bool {
-        fromMemory && running && !listen && !isSectionLoop && settings.fadeMemoryNotes && passNumber < 3
+        !afterMe && fromMemory && running && !listen && !isSectionLoop && settings.fadeMemoryNotes && passNumber < 3
     }
 
     public func memoryPhaseText(settings: SettingsManager) -> String {
@@ -249,7 +278,8 @@ final class PracticeSession {
     }
 
     public func noteVisibility(pass: Int) -> NoteVisibility {
-        NoteVisibility.derive(
+        if afterMe { return .hidden }
+        return NoteVisibility.derive(
             fromMemory: fromMemory,
             running: running,
             listen: listen,
@@ -296,6 +326,7 @@ final class PracticeSession {
     }
     var isSectionLoop: Bool { loopStartBar != 0 || loopEndBar != lesson.bars - 1 }
     var repeatsPerRun: Int {
+        if afterMe { return 2 }
         guard !listen, !isSectionLoop else { return 1 }
         return max(1, Int((4.0 / Double(lesson.bars)).rounded()))
     }
@@ -313,7 +344,23 @@ final class PracticeSession {
                       src: lesson.src, hits: slice(lesson.hits), hits8: lesson.hits8.map(slice),
                       eightNote: lesson.eightNote, intro: lesson.intro)
     }
+    /// One cycle is twice the phrase length. Only response notes are expected;
+    /// the call is scheduled separately as sound and never enters scoring.
+    var afterMeLesson: Lesson {
+        let phrase = practiceLesson
+        func responseHits(_ hits: [LessonHit]) -> [LessonHit] {
+            hits.map { LessonHit(step: $0.step + phrase.bars * 16, padIndex: $0.padIndex,
+                                 hand: $0.hand, velocity: $0.velocity) }
+        }
+        return Lesson(id: phrase.id, cat: phrase.cat, title: phrase.title, genre: phrase.genre,
+                      tags: phrase.tags, text: phrase.text, division: phrase.division,
+                      bars: phrase.bars * 2, startBpm: phrase.startBpm, targetBpm: phrase.targetBpm,
+                      level: phrase.level, score: phrase.score, src: phrase.src,
+                      hits: responseHits(phrase.hits), hits8: phrase.hits8.map(responseHits),
+                      eightNote: phrase.eightNote, intro: phrase.intro, access: phrase.access)
+    }
     var scoredLesson: Lesson {
+        if afterMe { return afterMeLesson }
         let repeats = repeatsPerRun
         guard repeats > 1 else { return practiceLesson }
         let baseBars = lesson.bars
@@ -345,6 +392,7 @@ final class PracticeSession {
     var currentRunAccuracy: Double? {
         guard running, !listen else { return nil }
         let time = now
+        if afterMe, afterMePhase(at: patternFrame) != "Your turn" { return nil }
         var matches = completedMatches
         var denominator = completedExpected + completedExtras
         let hits = scoredLesson.hits(forPadCount: runPadCount)
@@ -354,7 +402,7 @@ final class PracticeSession {
             let result = scorer.finish()
             let missed = hits.enumerated().filter { index, hit in
                 let repIndex = baseCount > 0 ? index / baseCount : 0
-                let cycle = (pass.number - 1) * repeatsPerRun + repIndex + 1
+                let cycle = (pass.number - 1) * repeatsPerRun + (afterMe ? 2 : repIndex + 1)
                 let baseHit = patternHits.indices.contains(index % max(1, baseCount)) ? patternHits[index % max(1, baseCount)] : hit
                 return pass.start + Double(hit.step) * 15 / Double(pass.bpm)
                     + scorer.maximumTimingMilliseconds / 1_000 <= time
@@ -369,7 +417,7 @@ final class PracticeSession {
     /// True when From memory is active on the same calendar day as the goal-tempo star (Star 2).
     /// Star 3 cannot be earned today; today From memory is practice only.
     var isMemoryPracticeToday: Bool {
-        guard fromMemory, !listen else { return false }
+        guard fromMemory, !listen, !afterMe else { return false }
         let saved = progress.progress(for: lesson.id)
         guard let saved, saved.mastery, !saved.memory else { return false }
         if let masteryDay = saved.masteryDay {
@@ -379,7 +427,7 @@ final class PracticeSession {
     }
 
     var starRunProgress: (count: Int, required: Int, name: String, starIndex: Int)? {
-        guard !listen, !isSectionLoop else { return nil }
+        guard !listen, !afterMe, !isSectionLoop else { return nil }
         let hitsCount = scoredLesson.hits(forPadCount: midi.activeProfile.padCount).count
         let required = StarStreak.requiredRuns(expectedHits: hitsCount, isIntro: lesson.cat == "intro")
         let passedRequired = StarStreak.requiredRuns(expectedHits: hitsCount)
@@ -506,6 +554,8 @@ final class PracticeSession {
             errorMessage = nil
             summary = nil
             lastResult = nil
+            bestResponseScore = nil
+            reviewFeedback = nil
             starEvent = nil
             lastVerdict = nil
             tempoUpEvent = nil
@@ -544,7 +594,7 @@ final class PracticeSession {
                 hostTime: AVAudioTime.hostTime(forSeconds: displayStart),
                 bpm: bpm
             )
-            if !listen {
+            if !listen && !afterMe {
                 var record = progress.progress(for: lesson.id) ?? LessonProgress()
                 record.hasPlayed = true
                 record.currentBpm = bpm
@@ -588,7 +638,10 @@ final class PracticeSession {
         passes = []; countInEvents = []
         audio.stop()
         if active { resume() }
-        if let result = lastResult, !listen {
+        if afterMe {
+            summary = RunSummary(score: lastResult?.score ?? 0, bpm: bpm, passes: completedPasses,
+                                 passed: false, mastery: false, memory: false, runs: runResults)
+        } else if let result = lastResult, !listen {
             summary = RunSummary(score: result.score, bpm: result.bpm, passes: completedPasses,
                                  passed: earnedPass, mastery: earnedMastery, memory: earnedMemory,
                                  finishedByStar: finishedByStar, runs: runResults)
@@ -601,11 +654,11 @@ final class PracticeSession {
                                  passed: false, mastery: false, memory: false,
                                  runs: runResults)
         }
-        saveTempo()
+        if !afterMe { saveTempo() }
         if reviewFeedback != nil {
             try? progress.save()
         }
-        evaluateBadges()
+        if !afterMe { evaluateBadges() }
     }
 
     func restart() { stop(); start() }
@@ -657,7 +710,8 @@ final class PracticeSession {
     /// The future scoring bar-summary adapter supplies these values. No timing
     /// thresholds or invented judgments are duplicated in the presentation layer.
     func receiveBarSummary(bar: Int, pass: Int, verdict: BarVerdict) {
-        guard !listen, pass == passNumber, (0..<lesson.bars).contains(bar) else { return }
+        guard !listen, pass == passNumber, (0..<practiceLesson.bars).contains(bar),
+              !afterMe || currentRepetition == 2 else { return }
         barVerdicts[bar] = verdict
         if isMix { mixBarVerdicts[(currentRepetition - 1) * lesson.bars + bar] = verdict }
     }
@@ -719,7 +773,9 @@ final class PracticeSession {
 
     private func makePass(number: Int, start: Double, bpm: Int) -> Pass {
         Pass(number: number, start: start, bpm: bpm, lesson: scoredLesson, padCount: runPadCount,
-             listen: listen, lessonSound: lessonSound, metronome: metronome, bpmStep: settings.bpmStepEnum)
+             listen: listen, lessonSound: afterMe ? false : lessonSound,
+             metronome: afterMe || metronome, bpmStep: settings.bpmStepEnum,
+             callLesson: afterMe ? practiceLesson : nil)
     }
 
     /// Internal so session tests can advance a supplied host clock without waiting.
@@ -739,13 +795,13 @@ final class PracticeSession {
         // matching window has closed count as usual; notes still inside their window
         // are left out of that decision.
         if !isMix, let last = passes.last, last.start + last.duration <= horizon {
-            if let scorer = last.scorer {
+            if !afterMe, let scorer = last.scorer {
                 let early = scorer.earlyResult(at: AVAudioTime.hostTime(forSeconds: time))
                 tempo.completed(nextBpm: early.nextBpm)
-            } else if let lastResult, last.number == completedPasses {
+            } else if !afterMe, let lastResult, last.number == completedPasses {
                 tempo.completed(nextBpm: lastResult.nextBpm)
             }
-            let nextBpm = tempo.queue(after: last.bpm, targetBpm: lesson.targetBpm,
+            let nextBpm = afterMe ? last.bpm : tempo.queue(after: last.bpm, targetBpm: lesson.targetBpm,
                                       listenBpm: listen ? bpm : nil)
             let nextPass = makePass(number: last.number + 1, start: last.start + last.duration,
                                     bpm: nextBpm)
@@ -767,7 +823,7 @@ final class PracticeSession {
                 // Announce a tempo increase at the moment the faster pass
                 // actually starts (audible change). Not on the first pass and
                 // not on manual changes (which are blocked while running).
-                if !listen, let event = tempo.tempoUpEvent(newBpm: current.bpm) {
+                if !listen, !afterMe, let event = tempo.tempoUpEvent(newBpm: current.bpm) {
                     tempoUpEvent = event
                 }
                 tempo.recordPassStart(bpm: current.bpm)
@@ -822,6 +878,13 @@ final class PracticeSession {
             completedExpected += result.expectedHitCount
             completedExtras += result.extraHitCount
             completedPasses += 1
+            if afterMe {
+                bestResponseScore = max(bestResponseScore ?? 0, result.score)
+                lastVerdict = RunVerdict(passed: result.passed, brokenStreak: false)
+                runResults.append(PracticeRunResult(runNumber: runResults.count + 1, score: result.score,
+                                                    bpm: result.bpm, passed: result.passed))
+                continue
+            }
             let runPassed: Bool
             if !isSectionLoop {
                 let saved = progress.progress(for: lesson.id)
@@ -944,6 +1007,12 @@ final class PracticeSession {
             recordPlayedHit(padIndex: event.padIndex, at: adjusted, mark: nil)
             return
         }
+        // Boundary ownership follows the calibrated input timestamp, never the
+        // display tick. Call hits cannot match even an early response note.
+        if afterMe, !passes.contains(where: { $0.acceptsInput(at: adjusted) }) {
+            recordPlayedHit(padIndex: event.padIndex, at: adjusted, mark: nil)
+            return
+        }
         let timestamp = AVAudioTime.hostTime(forSeconds: adjusted)
         var mark: HitMark?
         var matchedFeedback: HitFeedback?
@@ -954,7 +1023,7 @@ final class PracticeSession {
         // at the previous boundary go to one scorer, never to both.
         var best: (Pass, ScoringEngine, Double, HitFeedback)?
         for pass in passes {
-            guard var scorer = pass.scorer else { continue }
+            guard pass.acceptsInput(at: adjusted), var scorer = pass.scorer else { continue }
             let feedback = scorer.receive(padIndex: event.padIndex, at: timestamp)
             if let error = feedback.timingErrorMilliseconds,
                best == nil || abs(error) < best!.2 {
@@ -972,7 +1041,7 @@ final class PracticeSession {
             matchedFeedback = best.3
             currentScorerCenter = best.1.currentTimingCenterMilliseconds
             matchedPassNumber = best.0.number
-        } else if let pass = passes.first(where: { $0.start <= adjusted && adjusted < $0.start + $0.duration }) {
+        } else if let pass = passes.first(where: { $0.start <= adjusted && adjusted < $0.start + $0.duration && $0.acceptsInput(at: adjusted) }) {
             if let feedback = pass.scorer?.receive(padIndex: event.padIndex, at: timestamp) {
                 mark = record(feedback, pass: pass.number, padIndex: event.padIndex)
                 matchedFeedback = feedback
@@ -1025,7 +1094,7 @@ final class PracticeSession {
             let baseCount = hits.count
             let baseHit = hits[index % baseCount]
             let repIndex = index / baseCount
-            let cycle = (pass - 1) * repeatsPerRun + repIndex + 1
+            let cycle = (pass - 1) * repeatsPerRun + (afterMe ? 2 : repIndex + 1)
             judgmentsByPass[cycle, default: [:]][baseHit] = feedback.judgment
             judgmentVersion += 1
         }

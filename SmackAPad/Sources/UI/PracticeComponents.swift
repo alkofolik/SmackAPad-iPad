@@ -1,6 +1,12 @@
 import SwiftUI
 import UIKit
 
+enum LessonPlaybackMode: String, CaseIterable {
+    case listen = "Listen"
+    case play = "Play"
+    case afterMe = "After me"
+}
+
 /// How one pad strike or expected note turned out. Shown as colour only.
 enum HitMark {
     case correct, off, wrong

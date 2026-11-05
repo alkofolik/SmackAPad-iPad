@@ -651,3 +651,14 @@
 "Mix results" = "Výsledky mixu";
 "Bars: %@" = "Takty: %@";
 "%lld not measured" = "%lld nezměřeno";
+
+/* Ticket 101: Play after me. */
+"After me" = "Po mně";
+"Listen…" = "Poslouchej…";
+"Your turn" = "Teď ty";
+"Play after me" = "Zahraj po mně";
+"Another lesson" = "Jiná lekce";
+"Practice only · no stars" = "Jen cvičení · bez hvězd";
+"Last response" = "Poslední odpověď";
+"Best response" = "Nejlepší odpověď";
+"Learn a lesson to play after me." = "Nejdřív splň alespoň jednu lekci.";

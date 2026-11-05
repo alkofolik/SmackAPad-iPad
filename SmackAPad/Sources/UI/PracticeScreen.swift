@@ -29,7 +29,7 @@ struct PracticeScreen: View {
     @State private var midLessonStarMomentActive = false
 
     init(lesson: Lesson, settings: SettingsManager, progress: ProgressStore, midi: MIDIInput,
-         initialFromMemory: Bool = false, initialBpm: Int? = nil, mixLessons: [Lesson] = []) {
+         initialFromMemory: Bool = false, initialBpm: Int? = nil, mixLessons: [Lesson] = [], initialAfterMe: Bool = false) {
         _session = State(initialValue: PracticeSession(
             lesson: lesson,
             settings: settings,
@@ -37,7 +37,8 @@ struct PracticeScreen: View {
             midi: midi,
             initialFromMemory: initialFromMemory,
             initialBpm: initialBpm,
-            mixLessons: mixLessons
+            mixLessons: mixLessons,
+            initialAfterMe: initialAfterMe
         ))
     }
 
@@ -174,7 +175,11 @@ struct PracticeScreen: View {
 
     private var lessonSubtitle: some View {
         Group {
-            if session.isDueReview {
+            if session.afterMe {
+                Text(settings.localized("Practice only · no stars"))
+                    .font(Theme.meta)
+                    .foregroundStyle(Theme.secondary)
+            } else if session.isDueReview {
                 Text(session.reviewStatusText(settings: settings))
                     .font(Theme.meta)
                     .foregroundStyle(Theme.secondary)
@@ -221,16 +226,17 @@ struct PracticeScreen: View {
 
     @ViewBuilder
     private var modeButtons: some View {
-        if !session.isMix { HStack(spacing: 0) {
-            Button(settings.localized("Listen")) { session.listen = true }
-                .buttonStyle(InstrumentButtonStyle(selected: session.listen))
-            Button(settings.localized("Play")) { session.listen = false }
-                .buttonStyle(InstrumentButtonStyle(selected: !session.listen))
-        }
-        .lineLimit(1)
-        .fixedSize(horizontal: true, vertical: false)
-        .disabled(session.running)
-        .accessibilityLabel(settings.localized("Lesson mode"))
+        if !session.isMix {
+            HStack(spacing: 0) {
+                ForEach(LessonPlaybackMode.allCases, id: \.self) { mode in
+                    Button(settings.localized(mode.rawValue)) { session.selectPlaybackMode(mode) }
+                        .buttonStyle(InstrumentButtonStyle(selected: session.playbackMode == mode))
+                }
+            }
+            .lineLimit(1)
+            .fixedSize(horizontal: true, vertical: false)
+            .disabled(session.running)
+            .accessibilityLabel(settings.localized("Lesson mode"))
         }
     }
 
@@ -239,7 +245,7 @@ struct PracticeScreen: View {
             icon("eye.slash", settings.localized("From memory"), selected: session.fromMemory) {
                 session.fromMemory.toggle()
             }
-            .disabled(session.running || session.isMix)
+            .disabled(session.running || session.isMix || session.afterMe)
             .accessibilityValue(settings.localized(session.fromMemory ? "On" : "Off"))
 
             toolSeparator
@@ -332,24 +338,33 @@ struct PracticeScreen: View {
                     TimelineView(.animation(minimumInterval: 1.0 / 60, paused: !session.running)) { timeline in
                         let frame = session.patternFrame(at: timeline.date)
                         let scored = session.running && !session.listen && frame.countdown == nil
-                        PatternField(lesson: session.practiceLesson, hits: session.patternHits,
-                                     position: frame.position, tapePosition: frame.tapePosition,
-                                     running: session.running && frame.countdown == nil,
-                                     visibility: session.noteVisibility(pass: frame.pass),
-                                     fromMemory: session.fromMemory,
-                                     scrolling: scrolling, visibleBars: [1, 2, 3, 4].contains(visibleBars) ? visibleBars : 4,
-                                     verdicts: session.barVerdicts,
-                                     judgments: session.hitJudgments, bpm: frame.bpm,
-                                     playedHits: session.playedHits, pass: frame.pass,
-                                     scoring: session.running && !session.listen && frame.countdown == nil,
-                                     missGraceSteps: frame.missGraceSteps, countdown: frame.countdown,
-                                     band: BandTone.color(listen: session.listen,
-                                                          memory: session.fromMemory && !session.listen,
-                                                          bpm: session.bpm, startBpm: session.lesson.startBpm,
-                                                          targetBpm: session.lesson.targetBpm),
-                                     edgeTendency: scored ? BandTone.edgeTendency(session.timingHistory, at: timeline.date) : 0,
-                                     runBars: session.repeatsPerRun * session.practiceLesson.bars,
-                                     starMomentBeamActive: midLessonStarMomentActive)
+                            && (!session.afterMe || frame.pass.isMultiple(of: 2))
+                        VStack(alignment: .leading, spacing: Theme.Space.small) {
+                            if session.afterMe {
+                                Text(settings.localized(session.afterMePhase(at: frame)))
+                                    .font(Theme.rowTitle)
+                                    .frame(maxWidth: .infinity, alignment: .leading)
+                            }
+                            PatternField(lesson: session.practiceLesson, hits: session.patternHits,
+                                         position: frame.position, tapePosition: frame.tapePosition,
+                                         running: session.running && frame.countdown == nil,
+                                         visibility: session.noteVisibility(pass: frame.pass),
+                                         fromMemory: session.fromMemory && !session.afterMe,
+                                         afterMe: session.afterMe,
+                                         scrolling: scrolling, visibleBars: [1, 2, 3, 4].contains(visibleBars) ? visibleBars : 4,
+                                         verdicts: session.barVerdicts,
+                                         judgments: session.hitJudgments, bpm: frame.bpm,
+                                         playedHits: session.playedHits, pass: frame.pass,
+                                         scoring: scored,
+                                         missGraceSteps: frame.missGraceSteps, countdown: frame.countdown,
+                                         band: BandTone.color(listen: session.listen,
+                                                              memory: session.fromMemory && !session.listen,
+                                                              bpm: session.bpm, startBpm: session.lesson.startBpm,
+                                                              targetBpm: session.lesson.targetBpm),
+                                         edgeTendency: scored ? BandTone.edgeTendency(session.timingHistory, at: timeline.date) : 0,
+                                         runBars: session.repeatsPerRun * session.practiceLesson.bars,
+                                         starMomentBeamActive: midLessonStarMomentActive)
+                        }
                     }
                     .frame(height: bandHeight)
                     .frame(maxWidth: .infinity)
@@ -447,6 +462,11 @@ struct PracticeScreen: View {
                     .frame(width: resultCardWidth, height: s)
                 Spacer(minLength: 0)
                 transportSquare(s: s)
+            } else if showsResult, session.afterMe {
+                afterMeResultsCard
+                    .frame(width: resultCardWidth, height: s)
+                Spacer(minLength: 0)
+                transportSquare(s: s)
             } else if showsResult, let summary = session.summary {
                 ResultCard(
                     summary: summary,
@@ -500,6 +520,34 @@ struct PracticeScreen: View {
             }
         }
         .frame(maxWidth: .infinity)
+    }
+
+    private var afterMeResultsCard: some View {
+        VStack(alignment: .leading, spacing: Theme.Space.small) {
+            Text(settings.localized("Practice only · no stars"))
+                .font(Theme.control)
+            HStack {
+                Text(settings.localized("Last response"))
+                Spacer(minLength: 0)
+                Text(responseScore(session.lastResult?.score))
+            }
+            HStack {
+                Text(settings.localized("Best response"))
+                Spacer(minLength: 0)
+                Text(responseScore(session.bestResponseScore))
+            }
+        }
+        .font(Theme.meta)
+        .monospacedDigit()
+        .padding(Theme.Space.regular)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
+        .background(Theme.surface)
+        .overlay(Rectangle().stroke(Theme.hairline, lineWidth: 1))
+        .accessibilityElement(children: .combine)
+    }
+
+    private func responseScore(_ score: Double?) -> String {
+        score.map { "\(Int(($0 * 100).rounded())) %" } ?? "—"
     }
 
     private var mixResultsCard: some View {
@@ -614,7 +662,7 @@ struct PracticeScreen: View {
 
     private func transportSquare(s: CGFloat) -> some View {
         let showsResult = session.summary != nil && !session.running
-        let second = showsResult && !session.isMix ? transportSecondAction(s: s) : nil
+        let second = showsResult && !session.isMix && !session.afterMe ? transportSecondAction(s: s) : nil
         return TransportControls(
             running: session.running,
             enabled: session.ready && session.available,
@@ -1142,11 +1190,14 @@ private struct PracticeTools: View {
                 Toggle(settings.localized("Fade notes in From memory"), isOn: $settings.fadeMemoryNotes)
                     .disabled(session.running)
                 Toggle(settings.localized("Pattern sound in Play"), isOn: $session.lessonSound)
-                    .disabled(session.running)
-                Toggle(settings.localized("Metronome"), isOn: $session.metronome).disabled(session.running)
+                    .disabled(session.running || session.afterMe)
+                Toggle(settings.localized("Metronome"), isOn: Binding(
+                    get: { session.afterMe || session.metronome },
+                    set: { session.metronome = $0 }
+                )).disabled(session.running || session.afterMe)
                 Picker(settings.localized("Tempo step after a clean pass"), selection: $settings.bpmStep) {
                     ForEach(BpmStep.allCases) { step in Text("+\(step.rawValue) BPM").tag(step.rawValue) }
-                }.disabled(session.running)
+                }.disabled(session.running || session.afterMe || session.isMix)
                 Picker(settings.localized("Sound kit"), selection: Binding(
                     get: { settings.kitOverride(for: session.lesson.id) ?? "auto" },
                     set: { newValue in

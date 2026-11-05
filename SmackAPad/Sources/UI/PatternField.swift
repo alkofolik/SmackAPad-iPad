@@ -79,6 +79,7 @@ struct PatternField: View {
     let running: Bool
     let visibility: NoteVisibility
     var fromMemory: Bool = false
+    var afterMe: Bool = false
     var hidden: Bool { visibility == .hidden }
     let scrolling: Bool
     let visibleBars: Int
@@ -131,7 +132,7 @@ struct PatternField: View {
                     Group {
                         if scrolling {
                             ScrollingPattern(lesson: lesson, hits: hits, rows: rows, position: tapePosition,
-                                             running: running, visibility: visibility, fromMemory: fromMemory,
+                                             running: running, visibility: visibility, fromMemory: fromMemory, afterMe: afterMe,
                                              verdicts: verdicts, judgments: judgments, pass: pass,
                                              playedHits: playedHits, scoring: scoring,
                                              missGraceSteps: missGraceSteps, band: band, scale: bandScale)
@@ -147,7 +148,7 @@ struct PatternField: View {
                                        feedback: feedback,
                                        playedHits: barPlayed,
                                        scoring: scoring, missGraceSteps: missGraceSteps,
-                                       band: band, scale: bandScale, bpm: bpm, reduceMotion: reduceMotion)
+                                       band: band, scale: bandScale, bpm: bpm, reduceMotion: reduceMotion || afterMe)
                                 .frame(height: contentHeight)
                         } else {
                             let currentBar = min(lesson.bars - 1, max(0, Int(position) / 16))
@@ -161,7 +162,7 @@ struct PatternField: View {
                                           verdicts: verdicts, feedback: feedback,
                                           playedHits: staticPlayed,
                                           scoring: scoring, missGraceSteps: missGraceSteps,
-                                          band: band, scale: bandScale, bpm: bpm, reduceMotion: reduceMotion)
+                                          band: band, scale: bandScale, bpm: bpm, reduceMotion: reduceMotion || afterMe)
                                 .frame(height: contentHeight)
                         }
                     }
@@ -210,6 +211,9 @@ struct PatternField: View {
         .accessibilityLabel(settings.localized("Rhythm pattern"))
         .accessibilityValue(
             countdown.map { String($0) } ?? {
+                if afterMe {
+                    return settings.localized(running ? (pass.isMultiple(of: 2) ? "Your turn" : "Listen…") : "After me")
+                }
                 if fromMemory && scoring {
                     switch visibility {
                     case .shown:
@@ -511,6 +515,7 @@ private struct ScrollingPattern: View {
     let running: Bool
     let visibility: NoteVisibility
     var fromMemory: Bool = false
+    var afterMe: Bool = false
     let verdicts: [Int: BarVerdict]
     let judgments: [Int: [LessonHit: HitJudgment]]
     let pass: Int
@@ -535,7 +540,7 @@ private struct ScrollingPattern: View {
                 guard globalStep >= 0 else { continue }
                 let step = (globalStep % total + total) % total
                 let recordedPass = globalStep / total + 1
-                let stepVisibility = NoteVisibility.derive(
+                let stepVisibility: NoteVisibility = afterMe ? .hidden : NoteVisibility.derive(
                     fromMemory: fromMemory,
                     running: running,
                     listen: false,

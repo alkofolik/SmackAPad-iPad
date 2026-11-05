@@ -20,6 +20,8 @@ public struct TrainingScreen: View {
     @Environment(MIDIInput.self) private var midi
     @State private var lessonStore = LessonStore.shared
     @State private var selectedLesson: Lesson?
+    @State private var selectedAfterMeLesson: Lesson?
+    @State private var afterMeLessonID: Int?
     @State private var mixLessonIDs: [Int] = []
     @State private var playingMix: [Lesson] = []
     @State private var showingMix = false
@@ -46,6 +48,7 @@ public struct TrainingScreen: View {
                 VStack(alignment: .leading, spacing: Theme.Space.page) {
                     dueCard
                     mixCard
+                    afterMeCard
                     Spacer(minLength: Theme.Space.page)
                 }
                 .padding(Theme.Space.page)
@@ -65,6 +68,11 @@ public struct TrainingScreen: View {
                 }
             }
             .task(id: mixContext) { refreshMix() }
+            .task(id: afterMeContext) { chooseAfterMeLesson() }
+            .fullScreenCover(item: $selectedAfterMeLesson) { lesson in
+                PracticeScreen(lesson: lesson, settings: settings, progress: progress, midi: midi,
+                               initialAfterMe: true)
+            }
             .fullScreenCover(isPresented: $showingMix) {
                 if let first = playingMix.first {
                     PracticeScreen(lesson: first, settings: settings, progress: progress, midi: midi,
@@ -82,6 +90,65 @@ public struct TrainingScreen: View {
                     initialBpm: lesson.targetBpm
                 )
             }
+        }
+    }
+
+    private var afterMeCandidates: [Lesson] {
+        let openIDs = openMixLessonIDs
+        return progression.catalog.lessons.filter { lesson in
+            guard let record = progress.progress(for: lesson.id), record.passed || record.mastery || record.memory,
+                  openIDs.contains(lesson.id) else { return false }
+            return midi.activeProfile.padCount == 16 || EightPadLayout.slots(for: lesson) != nil
+        }.sorted {
+            let leftMemory = progress.progress(for: $0.id)?.memory == true
+            let rightMemory = progress.progress(for: $1.id)?.memory == true
+            return leftMemory != rightMemory ? !leftMemory : $0.id < $1.id
+        }
+    }
+
+    private var afterMeContext: [Int] { afterMeCandidates.map(\.id) }
+
+    private func chooseAfterMeLesson(another: Bool = false) {
+        let candidates = afterMeCandidates
+        if !another, candidates.contains(where: { $0.id == afterMeLessonID }) { return }
+        let alternatives = candidates.filter { $0.id != afterMeLessonID }
+        let preferred = alternatives.filter { progress.progress(for: $0.id)?.memory != true }
+        let pool = preferred.isEmpty ? alternatives : preferred
+        afterMeLessonID = (another ? pool.randomElement() : pool.first)?.id ?? candidates.first?.id
+    }
+
+    private var afterMeCard: some View {
+        VStack(alignment: .leading, spacing: Theme.Space.regular) {
+            SectionHeader(title: settings.localized("Play after me"))
+            VStack(alignment: .leading, spacing: Theme.Space.regular) {
+                if let lesson = afterMeCandidates.first(where: { $0.id == afterMeLessonID }) {
+                    Button {
+                        selectedAfterMeLesson = lesson
+                    } label: {
+                        HStack(spacing: Theme.Space.regular) {
+                            Text(settings.localized(lesson.title))
+                                .font(Theme.rowTitle)
+                                .fixedSize(horizontal: false, vertical: true)
+                            Spacer(minLength: Theme.Space.small)
+                            StarsView(record: progress.progress(for: lesson.id), lesson: lesson)
+                        }
+                        .frame(minHeight: Theme.Size.touch)
+                        .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                } else {
+                    Text(settings.localized("Learn a lesson to play after me."))
+                        .font(Theme.meta)
+                        .foregroundStyle(Theme.secondary)
+                }
+                Button(settings.localized("Another lesson")) { chooseAfterMeLesson(another: true) }
+                    .buttonStyle(InstrumentButtonStyle())
+                    .disabled(afterMeCandidates.count < 2)
+            }
+            .padding(Theme.Space.regular)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(Theme.surface)
+            .overlay(Rectangle().stroke(Theme.hairline, lineWidth: 1))
         }
     }
 
