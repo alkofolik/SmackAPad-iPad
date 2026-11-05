@@ -136,20 +136,6 @@ struct PatternField: View {
                                              verdicts: verdicts, judgments: judgments, pass: pass,
                                              playedHits: playedHits, scoring: scoring,
                                              missGraceSteps: missGraceSteps, band: band, scale: bandScale)
-                        } else if count <= 1 {
-                            let currentBar = min(lesson.bars - 1, max(0, Int(position) / 16))
-                            let barHits = hits.filter { $0.step / 16 == currentBar }
-                            let barPos = position - Double(currentBar * 16)
-                            let barVerdict = verdicts[currentBar]
-                            let barPlayed = visiblePlayedHits(steps: (currentBar * 16)..<((currentBar + 1) * 16))
-                            PatternBar(bar: currentBar, hits: barHits, rows: rows,
-                                       position: barPos, active: running,
-                                       visibility: visibility, verdict: barVerdict,
-                                       feedback: feedback,
-                                       playedHits: barPlayed,
-                                       scoring: scoring, missGraceSteps: missGraceSteps,
-                                       band: band, scale: bandScale, bpm: bpm, reduceMotion: reduceMotion || afterMe)
-                                .frame(height: contentHeight)
                         } else {
                             let currentBar = min(lesson.bars - 1, max(0, Int(position) / 16))
                             let first = (currentBar / max(1, count)) * max(1, count)
@@ -397,110 +383,6 @@ private struct StaticPattern: View {
             }
 
             // Pad labels appear once, on the left of the whole row of bars
-            lanes.drawLabels(band: band, context: &context)
-        }
-    }
-}
-
-private struct PatternBar: View {
-    let bar: Int
-    let hits: [LessonHit]
-    let rows: [Int]
-    let position: Double
-    let active: Bool
-    let visibility: NoteVisibility
-    let verdict: BarVerdict?
-    let feedback: PatternFeedback
-    let playedHits: [PlayedHit]
-    let scoring: Bool
-    let missGraceSteps: Double
-    let band: Color
-    let scale: CGFloat
-    var bpm: Int = 60
-    var reduceMotion: Bool = false
-
-    var body: some View {
-        GeometryReader { geometry in
-            ScrollViewReader { proxy in
-                ScrollView(.horizontal) {
-                    canvas
-                        .frame(width: max(geometry.size.width, PracticeBandStyle.barWidth(rows: rows, scale: scale)),
-                               height: geometry.size.height)
-                        .overlay(alignment: .topLeading) {
-                            // Beat anchors keep the active part visible in narrow windows.
-                            HStack(spacing: 0) {
-                                Color.clear.frame(width: 96 * scale, height: 1)
-                                ForEach(0..<4, id: \.self) { beat in
-                                    Color.clear.frame(width: PracticeBandStyle.cellWidth(rows: rows, scale: scale) * 4,
-                                                      height: 1).id(beat)
-                                }
-                            }
-                            .allowsHitTesting(false)
-                        }
-                }
-                .scrollBounceBehavior(.basedOnSize)
-                .onChange(of: Int(position) / 4) { _, beat in
-                    if active { proxy.scrollTo(beat, anchor: .center) }
-                }
-                .onChange(of: active) { _, active in
-                    if active { proxy.scrollTo(max(0, Int(position) / 4), anchor: .center) }
-                }
-            }
-        }
-    }
-
-    private var canvas: some View {
-        Canvas { context, size in
-            // Leave a fixed label gutter even when the first static note is at step zero.
-            let gutter: CGFloat = PracticeBandStyle.showPadLabels ? 96 * scale : 0
-            let cellWidth = max(1, (size.width - gutter) / 16)
-            let lanes = PatternLanes(size: size, rows: rows, scale: scale)
-            lanes.drawRows(context: &context)
-            for step in 0..<16 {
-                drawBeat(step: step, x: gutter + (CGFloat(step) + 0.5) * cellWidth, lanes: lanes, context: &context)
-            }
-            let elapsedSeconds = position * 15.0 / Double(max(1, bpm))
-            let fadeProgress = reduceMotion ? 1.0 : min(1.0, max(0.0, elapsedSeconds / 0.25))
-
-            for (row, pad) in rows.enumerated() {
-                if visibility != .hidden {
-                    for hit in hits where hit.padIndex == pad {
-                        let step = hit.step % 16
-                        let rect = lanes.tile(x: gutter + (CGFloat(step) + 0.5) * cellWidth, width: cellWidth, row: row)
-                        let tail = feedback.position < Double(hit.step) ? feedback.strength(offset: -1, step: Double(hit.step)) : 0
-                        let mark = hitMark(hit, judgments: feedback.judgments[feedback.pass + (tail > 0 ? -1 : 0)] ?? [:],
-                                           scoring: scoring, elapsedSteps: tail > 0 ? Double(feedback.totalSteps) : position - Double(step),
-                                           grace: missGraceSteps)
-                        drawHit(hit, in: rect, mark: mark, strength: tail > 0 ? tail : 1,
-                                visibility: visibility, fadeProgress: fadeProgress,
-                                fontSize: lanes.fontSize, context: &context)
-                    }
-                } else {
-                    if fadeProgress < 1 {
-                        for hit in hits where hit.padIndex == pad {
-                            let step = hit.step % 16
-                            let rect = lanes.tile(x: gutter + (CGFloat(step) + 0.5) * cellWidth, width: cellWidth, row: row)
-                            drawHit(hit, in: rect, mark: nil, strength: 1,
-                                    visibility: .hidden, fadeProgress: fadeProgress,
-                                    fontSize: lanes.fontSize, context: &context)
-                        }
-                    }
-                    var playedContext = context
-                    let behindMarker = min(size.width, max(0, gutter + (CGFloat(position) + 0.5) * cellWidth))
-                    playedContext.clip(to: Path(CGRect(x: 0, y: 0, width: behindMarker, height: size.height)))
-                    for hit in playedHits where hit.padIndex == pad {
-                        let step = hit.step - Double(bar * 16)
-                        let rect = lanes.tile(x: gutter + (CGFloat(step) + 0.5) * cellWidth, width: cellWidth, row: row)
-                        var hitContext = hit.pass == feedback.pass ? playedContext : context
-                        if hit.pass != feedback.pass { hitContext.opacity = feedback.strength(offset: -1, step: hit.step) }
-                        drawPlayedHit(hit, in: rect, fontSize: lanes.fontSize, context: &hitContext)
-                    }
-                }
-            }
-            if active {
-                drawMarker(x: gutter + (CGFloat(position) + 0.5) * cellWidth, top: lanes.top - 4 * scale,
-                           bottom: lanes.bottom + 4, context: &context)
-            }
             lanes.drawLabels(band: band, context: &context)
         }
     }

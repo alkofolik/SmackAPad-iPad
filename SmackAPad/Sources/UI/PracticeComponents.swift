@@ -579,7 +579,7 @@ struct PadVoice {
     }
 }
 
-/// The small, non-interactive diagram used in landscape and when touch pads are off.
+/// The small diagram used in landscape and when touch pads are off. Tapping it toggles keyboard key labels.
 struct PadLayoutGrid: View {
     @ScaledMetric(relativeTo: .body) private var width: CGFloat = 176
     var side: CGFloat? = nil

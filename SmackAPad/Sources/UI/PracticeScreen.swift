@@ -16,6 +16,7 @@ struct PracticeScreen: View {
     @State private var session: PracticeSession
     @AppStorage("smackapad.practice.scrolling") private var scrolling = false
     @AppStorage("smackapad.practice.visibleBars") private var visibleBars = 4
+    @AppStorage("smackapad.practice.showPadKeys") private var showPadKeys = false
     @AppStorage("smackapad.practice.showPads") private var showPads = true
     @AppStorage("smackapad.practice.touchPadsInPortrait") private var touchPadsInPortrait = true
     @State private var showingLegend = false
@@ -590,13 +591,18 @@ struct PracticeScreen: View {
     private func padLayoutSquare(s: CGFloat) -> some View {
         ZStack {
             if showPads, let pads = midi.padIndices {
+                let canShowKeys = midi.activeProfile.isSixteenPad
                 PadLayoutGrid(
                     side: s,
                     pads: pads,
                     used: Set(session.patternHits.map(\.padIndex)),
                     flashes: session.padFlashes,
-                    showKeyboardKeys: midi.isKeyboardConnected && settings.playPadsWithKeyboard && midi.activeProfile.isSixteenPad
+                    showKeyboardKeys: canShowKeys && showPadKeys
                 )
+                .contentShape(Rectangle())
+                .onTapGesture { if canShowKeys { showPadKeys.toggle() } }
+                .accessibilityAddTraits(canShowKeys ? .isButton : [])
+                .accessibilityHint(canShowKeys ? settings.localized("Shows or hides keyboard keys") : "")
             }
         }
         .frame(width: s, height: s)
