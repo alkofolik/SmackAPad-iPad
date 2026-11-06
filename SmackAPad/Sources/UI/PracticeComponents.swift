@@ -589,14 +589,81 @@ struct PadVoice {
     }
 }
 
+/// Precomputed data for a single pad cell in PadLayoutGrid.
+public struct PadLayoutCellData: Equatable {
+    public let pad: Int
+    public let abbreviation: String
+    public let keyLabel: String?
+    public let combinedLabel: String
+    public let isUsed: Bool
+    public let accessibilityBase: String
+    public let accessibilityWithKey: String
+
+    public init(pad: Int, abbreviation: String, keyLabel: String?, combinedLabel: String, isUsed: Bool, accessibilityBase: String, accessibilityWithKey: String) {
+        self.pad = pad
+        self.abbreviation = abbreviation
+        self.keyLabel = keyLabel
+        self.combinedLabel = combinedLabel
+        self.isUsed = isUsed
+        self.accessibilityBase = accessibilityBase
+        self.accessibilityWithKey = accessibilityWithKey
+    }
+}
+
+/// Precomputed layout and labels for the pad layout grid.
+/// Computed once per lesson and controller mapping so toggling key labels only shows/hides.
+public struct PadLayoutModel: Equatable {
+    public let pads: [Int]
+    public let cells: [PadLayoutCellData]
+    public let canShowKeys: Bool
+
+    public init(pads: [Int], used: Set<Int>, canShowKeys: Bool, settings: SettingsManager? = nil) {
+        self.pads = pads
+        self.canShowKeys = canShowKeys
+        self.cells = pads.map { pad in
+            let abbr = PadVoice.abbreviation(pad)
+            let key = KeyboardPadMapping.label(for: pad)
+            let combined = key.map { "\(abbr) · \($0)" } ?? abbr
+            let name = PadVoice.name(pad, settings: settings)
+            let base = "\(name), pad \(pad + 1)"
+            let withKey = key.map { "\(base), key \($0)" } ?? base
+            return PadLayoutCellData(
+                pad: pad,
+                abbreviation: abbr,
+                keyLabel: key,
+                combinedLabel: combined,
+                isUsed: used.contains(pad),
+                accessibilityBase: base,
+                accessibilityWithKey: withKey
+            )
+        }
+    }
+}
+
 /// The small diagram used in landscape and when touch pads are off. Tapping it toggles keyboard key labels.
 struct PadLayoutGrid: View {
+    @Environment(\.accessibilityReduceMotion) private var reduced
     @ScaledMetric(relativeTo: .body) private var width: CGFloat = 176
     var side: CGFloat? = nil
-    let pads: [Int]
-    let used: Set<Int>
+    let model: PadLayoutModel
     var flashes: [Int: PadFlash] = [:]
     var showKeyboardKeys: Bool = false
+
+    private var motion: Theme.Motion.Policy { .init(reduced: reduced) }
+
+    init(side: CGFloat? = nil, model: PadLayoutModel, flashes: [Int: PadFlash] = [:], showKeyboardKeys: Bool = false) {
+        self.side = side
+        self.model = model
+        self.flashes = flashes
+        self.showKeyboardKeys = showKeyboardKeys
+    }
+
+    init(side: CGFloat? = nil, pads: [Int], used: Set<Int>, flashes: [Int: PadFlash] = [:], showKeyboardKeys: Bool = false) {
+        self.side = side
+        self.model = PadLayoutModel(pads: pads, used: used, canShowKeys: pads.count == 16)
+        self.flashes = flashes
+        self.showKeyboardKeys = showKeyboardKeys
+    }
 
     var body: some View {
         TimelineView(.animation(minimumInterval: 1.0 / 30, paused: flashes.isEmpty)) { timeline in
@@ -608,8 +675,8 @@ struct PadLayoutGrid: View {
                         HStack(spacing: spacing) {
                             ForEach(0..<4, id: \.self) { col in
                                 let index = row * 4 + col
-                                if pads.indices.contains(index) {
-                                    cell(pads[index], cellSize: cellSize, now: timeline.date)
+                                if model.cells.indices.contains(index) {
+                                    cell(model.cells[index], cellSize: cellSize, now: timeline.date)
                                 }
                             }
                         }
@@ -618,8 +685,8 @@ struct PadLayoutGrid: View {
                 .frame(width: side, height: side)
             } else {
                 LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: Theme.Space.tight), count: 4), spacing: Theme.Space.tight) {
-                    ForEach(Array(pads.enumerated()), id: \.offset) { _, pad in
-                        cell(pad, cellSize: nil, now: timeline.date)
+                    ForEach(model.cells, id: \.pad) { cellData in
+                        cell(cellData, cellSize: nil, now: timeline.date)
                     }
                 }
                 .frame(width: width)
@@ -627,26 +694,25 @@ struct PadLayoutGrid: View {
         }
     }
 
-    private func cell(_ pad: Int, cellSize: CGFloat?, now: Date) -> some View {
-        let flash = flashes[pad]
+    private func cell(_ cellData: PadLayoutCellData, cellSize: CGFloat?, now: Date) -> some View {
+        let flash = flashes[cellData.pad]
         let strength = flash?.strength(at: now) ?? 0
-        let isUsed = used.contains(pad)
+        let isUsed = cellData.isUsed
         let tint = (flash?.color ?? Theme.orange).opacity(strength)
-        let label: String = {
-            let abbr = PadVoice.abbreviation(pad)
-            if showKeyboardKeys, let key = KeyboardPadMapping.label(for: pad) {
-                return "\(abbr) · \(key)"
-            }
-            return abbr
-        }()
-        let font: Font = {
+
+        let fontWithoutKeys: Font = {
             if let cellSize {
-                return showKeyboardKeys
-                    ? Theme.text(min(11, cellSize * 0.3))
-                    : Theme.canvasDisplay(min(18, max(12, cellSize * 0.4)))
+                return Theme.canvasDisplay(min(18, max(12, cellSize * 0.4)))
             }
-            return Theme.text(showKeyboardKeys ? 12 : Theme.Size.dense)
+            return Theme.text(Theme.Size.dense)
         }()
+        let fontWithKeys: Font = {
+            if let cellSize {
+                return Theme.text(min(11, cellSize * 0.3))
+            }
+            return Theme.text(12)
+        }()
+
         let textStyle: Color = {
             if strength > 0.35 { return Theme.white }
             if isUsed { return Theme.ink }
@@ -655,29 +721,70 @@ struct PadLayoutGrid: View {
         let outlineColor: Color = isUsed ? Theme.ink : Theme.ink.opacity(0.50)
         let outlineWidth: CGFloat = isUsed ? Theme.Size.border : 1.0
 
-        return Text(label)
-            .font(font)
-            .lineLimit(1)
-            .minimumScaleFactor(0.6)
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
-            .frame(width: cellSize, height: cellSize)
-            .foregroundStyle(textStyle)
-            .background {
-                ZStack {
-                    Theme.surface
-                    tint
-                }
-            }
-            .overlay(Rectangle().stroke(outlineColor, lineWidth: outlineWidth))
-            .accessibilityLabel(accessibilityLabel(for: pad))
-    }
+        return ZStack {
+            Text(cellData.abbreviation)
+                .font(fontWithoutKeys)
+                .lineLimit(1)
+                .minimumScaleFactor(0.6)
+                .opacity(showKeyboardKeys ? 0 : 1)
 
-    private func accessibilityLabel(for pad: Int) -> String {
-        let base = "\(PadVoice.name(pad)), pad \(pad + 1)"
-        if showKeyboardKeys, let key = KeyboardPadMapping.label(for: pad) {
-            return "\(base), key \(key)"
+            Text(cellData.combinedLabel)
+                .font(fontWithKeys)
+                .lineLimit(1)
+                .minimumScaleFactor(0.6)
+                .opacity(showKeyboardKeys ? 1 : 0)
         }
-        return base
+        .animation(motion.animation(Theme.Motion.fast), value: showKeyboardKeys)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .frame(width: cellSize, height: cellSize)
+        .foregroundStyle(textStyle)
+        .background {
+            ZStack {
+                Theme.surface
+                tint
+            }
+        }
+        .overlay(Rectangle().stroke(outlineColor, lineWidth: outlineWidth))
+        .accessibilityLabel(showKeyboardKeys ? cellData.accessibilityWithKey : cellData.accessibilityBase)
+    }
+}
+
+/// The square in the bottom-left of the practice screen showing the 4x4 pad layout.
+/// Tapping toggles keyboard key labels. State is isolated here so toggling never
+/// invalidates or re-renders the rest of PracticeScreen.
+struct PracticePadLayoutSquare: View {
+    @Environment(\.accessibilityReduceMotion) private var reduced
+    @Environment(SettingsManager.self) private var settings
+    @AppStorage("smackapad.practice.showPadKeys") private var showPadKeys = false
+    let side: CGFloat
+    let model: PadLayoutModel
+    let flashes: [Int: PadFlash]
+    let showPads: Bool
+
+    private var motion: Theme.Motion.Policy { .init(reduced: reduced) }
+
+    var body: some View {
+        ZStack {
+            if showPads && !model.cells.isEmpty {
+                PadLayoutGrid(
+                    side: side,
+                    model: model,
+                    flashes: flashes,
+                    showKeyboardKeys: model.canShowKeys && showPadKeys
+                )
+                .contentShape(Rectangle())
+                .onTapGesture {
+                    if model.canShowKeys {
+                        withAnimation(motion.animation(Theme.Motion.fast)) {
+                            showPadKeys.toggle()
+                        }
+                    }
+                }
+                .accessibilityAddTraits(model.canShowKeys ? .isButton : [])
+                .accessibilityHint(model.canShowKeys ? settings.localized("Shows or hides keyboard keys") : "")
+            }
+        }
+        .frame(width: side, height: side)
     }
 }
 

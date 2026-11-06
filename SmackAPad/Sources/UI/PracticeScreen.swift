@@ -16,9 +16,9 @@ struct PracticeScreen: View {
     @State private var session: PracticeSession
     @AppStorage("smackapad.practice.scrolling") private var scrolling = false
     @AppStorage("smackapad.practice.visibleBars") private var visibleBars = 4
-    @AppStorage("smackapad.practice.showPadKeys") private var showPadKeys = false
     @AppStorage("smackapad.practice.showPads") private var showPads = true
     @AppStorage("smackapad.practice.touchPadsInPortrait") private var touchPadsInPortrait = true
+    @State private var padLayoutModel: PadLayoutModel
     @State private var showingLegend = false
     @State private var showingTools = false
     @State private var showingTempo = false
@@ -44,6 +44,23 @@ struct PracticeScreen: View {
             mixLessons: mixLessons,
             initialAfterMe: initialAfterMe
         ))
+        if let initialPads = midi.padIndices {
+            let initialPadCount = midi.activeProfile.padCount
+            let initialUsed = Set(lesson.hits(forPadCount: initialPadCount).map(\.padIndex))
+            _padLayoutModel = State(initialValue: PadLayoutModel(
+                pads: initialPads,
+                used: initialUsed,
+                canShowKeys: midi.activeProfile.isSixteenPad,
+                settings: settings
+            ))
+        } else {
+            _padLayoutModel = State(initialValue: PadLayoutModel(
+                pads: [],
+                used: [],
+                canShowKeys: false,
+                settings: settings
+            ))
+        }
     }
 
     var body: some View {
@@ -72,6 +89,7 @@ struct PracticeScreen: View {
         .toolbar(.hidden, for: .navigationBar)
         .task(id: ObjectIdentifier(session)) {
             await session.prepare()
+            updatePadLayoutModel()
             if session.isMix { session.start() }
         }
         .onDisappear {
@@ -83,7 +101,11 @@ struct PracticeScreen: View {
         .onChange(of: scenePhase) { _, phase in
             if phase == .active { session.resume() } else { session.suspend() }
         }
-        .onChange(of: settings.activeProfileName) { _, _ in session.stop() }
+        .onChange(of: session.lesson.id) { _, _ in updatePadLayoutModel() }
+        .onChange(of: settings.activeProfileName) { _, _ in
+            session.stop()
+            updatePadLayoutModel()
+        }
         .onChange(of: settings.metronomeVolume) { _, newVolume in session.setMetronomeVolume(newVolume) }
         .onChange(of: settings.padsVolume) { _, newVolume in session.setPadsVolume(newVolume) }
         .onChange(of: settings.patternVolume) { _, newVolume in session.setPatternVolume(newVolume) }
@@ -620,24 +642,27 @@ struct PracticeScreen: View {
         return settings.localized("Bars: %@", parts.joined(separator: " · "))
     }
 
-    private func padLayoutSquare(s: CGFloat) -> some View {
-        ZStack {
-            if showPads, let pads = midi.padIndices {
-                let canShowKeys = midi.activeProfile.isSixteenPad
-                PadLayoutGrid(
-                    side: s,
-                    pads: pads,
-                    used: Set(session.patternHits.map(\.padIndex)),
-                    flashes: session.padFlashes,
-                    showKeyboardKeys: canShowKeys && showPadKeys
-                )
-                .contentShape(Rectangle())
-                .onTapGesture { if canShowKeys { showPadKeys.toggle() } }
-                .accessibilityAddTraits(canShowKeys ? .isButton : [])
-                .accessibilityHint(canShowKeys ? settings.localized("Shows or hides keyboard keys") : "")
-            }
+    private func updatePadLayoutModel() {
+        guard let pads = midi.padIndices else {
+            padLayoutModel = PadLayoutModel(pads: [], used: [], canShowKeys: false, settings: settings)
+            return
         }
-        .frame(width: s, height: s)
+        let used = Set(session.patternHits.map(\.padIndex))
+        padLayoutModel = PadLayoutModel(
+            pads: pads,
+            used: used,
+            canShowKeys: midi.activeProfile.isSixteenPad,
+            settings: settings
+        )
+    }
+
+    private func padLayoutSquare(s: CGFloat) -> some View {
+        PracticePadLayoutSquare(
+            side: s,
+            model: padLayoutModel,
+            flashes: session.padFlashes,
+            showPads: showPads
+        )
     }
 
     private func tempoSquare(s: CGFloat, spaceAbove: CGFloat) -> some View {
