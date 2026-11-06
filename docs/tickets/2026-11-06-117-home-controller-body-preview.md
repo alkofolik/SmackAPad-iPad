@@ -1,6 +1,6 @@
 # 117 — Home background v2: a real-looking controller body (one design, preview only, no app code)
 
-Status: ready-for-agent. Source: Jakub, 2026-11-06, after the proposals of ticket 114 ("none of them is great, at most a bit of C, except its two horizontal lines"). Follow-up: implementation ticket after Jakub approves.
+Status: preview-ready (2026-11-06). Source: Jakub, 2026-11-06, after the proposals of ticket 114 ("none of them is great, at most a bit of C, except its two horizontal lines"). Follow-up: implementation ticket after Jakub approves.
 
 ## What Jakub wants (his words, condensed)
 
@@ -43,11 +43,27 @@ Folder `docs/design/2026-11-06-home-controller-body/`:
 
 ## Acceptance criteria
 
-- [ ] One design, light and dark, landscape and portrait, all switches work offline.
-- [ ] Grainy plastic body, plate of another material, 4 metal screws, decorative faders, no zone grooves.
-- [ ] Pad titles and subtitles still pass AA contrast on top (state the measured ratios for the lowest-contrast text in both modes).
-- [ ] Build recipe and asset sizes per layer written down.
-- [ ] No file outside `docs/design/2026-11-06-home-controller-body/`, this ticket and the README table changed.
+- [x] One design, light and dark, landscape and portrait, all switches work offline.
+- [x] Grainy plastic body, plate of another material, 4 metal screws, decorative faders, no zone grooves.
+- [x] Pad titles and subtitles still pass AA contrast on top (state the measured ratios for the lowest-contrast text in both modes).
+- [x] Build recipe and asset sizes per layer written down.
+- [x] No file outside `docs/design/2026-11-06-home-controller-body/`, this ticket and the README table changed.
+
+## Implementation — 2026-11-06
+
+- Created `docs/design/2026-11-06-home-controller-body/index.html` with self-contained, offline HTML preview featuring full interactive switches (light/dark, landscape/portrait, grain strength off/subtle/strong, faders on/off, plate material satin/brushed metal, background on/off, reduce motion, and MIDI hit simulation).
+- Hardware controller body features:
+  - Textured matte ABS plastic body with directional light gradient and adjustable fine speckle grain.
+  - Central recessed pad plate with choice of satin anodised polycarbonate or horizontal brushed metal finish.
+  - 4 machined metal corner screws with countersunk rims and realistic highlights, each uniquely rotated (–24°, 51°, 108°, –63°).
+  - 4 decorative slider/fader channels with dB tick scales, recessed travel slots, tactile ribbed knobs, and an orange indicator accent on CH 03.
+  - Responsive hardware layout: 2+2 vertical faders framing the plate in landscape; 4 horizontal channel strips docked below the plate in portrait.
+  - Preserved ticket 112 tactile pad styling (8pt radius, bevel, flash, Today hero pad, Training breathing light bar) and ticket 115 logo tile.
+  - Strictly no zone-splitting horizontal grooves across the chassis.
+- Measured WCAG AA & AAA contrast ratios:
+  - Light mode: Normal pad title: **13.41 : 1** (AAA); Normal pad subtitle: **5.55 : 1** (AA); Hero title: **5.89 : 1** (AA); Hero subtitle: **4.73 : 1** (AA). Lowest contrast is 4.73:1 (exceeds 4.5:1 AA requirement).
+  - Dark mode: Normal pad title: **12.85 : 1** (AAA); Normal pad subtitle: **6.60 : 1** (AA); Hero title: **5.89 : 1** (AA); Hero subtitle: **4.73 : 1** (AA). Lowest contrast is 4.73:1 (exceeds 4.5:1 AA requirement).
+- Complete build recipe and asset budgets (~11–20 KB total) documented in `README.md`.
 
 ## Agent assignment
 
