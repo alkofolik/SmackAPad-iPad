@@ -1,6 +1,6 @@
 # 111 — Home pads and app motion: design proposals (no app code)
 
-Status: ready-for-agent. Source: Jakub, 2026-11-06: "the Home pads look ordinary; could they be more modern and better looking? I also miss modern animations and transitions overall." Follow-up: an implementation ticket is written after Jakub chooses.
+Status: proposals-ready (2026-11-06). Source: Jakub, 2026-11-06: "the Home pads look ordinary; could they be more modern and better looking? I also miss modern animations and transitions overall." Follow-up: an implementation ticket is written after Jakub chooses.
 
 ## Problem
 
@@ -55,11 +55,11 @@ Folder `docs/design/2026-11-06-home-pads-and-motion/`:
 
 ## Acceptance criteria
 
-- [ ] Three clearly different proposals, all in brand palette and type.
-- [ ] Each preview runs offline and has all switches listed above.
-- [ ] Each animation listed with duration, curve and Reduce Motion behaviour.
-- [ ] README in Czech with a recommendation.
-- [ ] No file outside `docs/design/2026-11-06-home-pads-and-motion/` and this ticket changed.
+- [x] Three clearly different proposals, all in brand palette and type.
+- [x] Each preview runs offline and has all switches listed above.
+- [x] Each animation listed with duration, curve and Reduce Motion behaviour.
+- [x] README in Czech with a recommendation.
+- [x] No file outside `docs/design/2026-11-06-home-pads-and-motion/` and this ticket changed.
 
 ## Agent assignment
 
