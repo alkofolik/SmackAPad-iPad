@@ -44,6 +44,9 @@ enum Theme {
 
     static let mainValue = strong(44)
     static let screenTitle = display(28)
+    static let handoffTitle = boldDisplay(28)
+    static let handoffNext = strong(20)
+    static let stepTag = strong(12).monospaced()
     static let sectionTitle = display(22)
     static let rowTitle = display(22)
     static let meta = text(16)
@@ -57,6 +60,7 @@ enum Theme {
         static let small: CGFloat = 8
         static let regular: CGFloat = 16
         static let page: CGFloat = 24
+        static let handoff: CGFloat = 28
         static let wide: CGFloat = 32
     }
 
@@ -85,6 +89,12 @@ enum Theme {
     static func display(_ size: CGFloat = Size.title) -> Font {
         _ = verifiedFonts
         return .custom("IBMPlexSans-Medium", size: size, relativeTo: .headline)
+    }
+
+    /// Bold display heading matching handoff and end screen typography.
+    static func boldDisplay(_ size: CGFloat = Size.listTitle) -> Font {
+        _ = verifiedFonts
+        return .custom("IBMPlexSans-Bold", size: size, relativeTo: .title)
     }
 
     /// The one key figure and the primary action label.

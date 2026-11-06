@@ -712,6 +712,16 @@
 "Best score: %lld %%" = "Nejlepší skóre: %lld %%";
 "Does not count · finish a hidden pass" = "Nepočítá se · dokonči průchod bez nápovědy";
 
+/* Ticket 110: Today session screen matching mockup frame 3. */
+"NEXT" = "DALŠÍ";
+"REVIEW %lld OF %lld" = "OPAKOVÁNÍ %lld ZE %lld";
+"NEW LESSON" = "NOVÁ LEKCE";
+"%@ (review %lld of %lld)" = "%@ (opakování %lld ze %lld)";
+"%lld %% from memory at %lld BPM" = "%lld %% zpaměti při %lld BPM";
+"%lld %% from memory" = "%lld %% zpaměti";
+"%lld %%" = "%lld %%";
+"Mix: %@" = "Mix: %@";
+
 /* Ticket 104: training reminders. */
 "Comes back tomorrow for a review" = "Zítra se vrátí k opakování";
 "Due for review" = "Na řadě k opakování";

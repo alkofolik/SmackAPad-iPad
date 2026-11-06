@@ -93,43 +93,17 @@ struct TodaySessionScreen: View {
     var body: some View {
         NavigationStack {
             ScrollView {
-                VStack(alignment: .leading, spacing: Theme.Space.page) {
-                    Text(settings.localized(coordinator.plan.finished ? "That's enough for today" : "Today"))
-                        .font(Theme.screenTitle)
-                        .accessibilityAddTraits(.isHeader)
-                    VStack(alignment: .leading, spacing: Theme.Space.page) {
-                        if coordinator.plan.finished {
-                            summary
-                            Button(settings.localized("Home"), action: onHome)
-                                .buttonStyle(InstrumentButtonStyle(filled: true, main: true))
-                        } else {
-                            if let index = coordinator.plan.lastPlayedIndex {
-                                outcomeCard(coordinator.plan.steps[index])
-                            }
-                            if let step = coordinator.currentStep {
-                                Text(nextText(step))
-                                    .font(Theme.rowTitle)
-                                    .fixedSize(horizontal: false, vertical: true)
-                            }
-                            VStack(alignment: .leading, spacing: Theme.Space.small) {
-                                Button(settings.localized("Continue")) { openPractice() }
-                                    .buttonStyle(InstrumentButtonStyle(filled: true, main: true))
-                                Button(settings.localized("Skip")) { coordinator.skip(progress: progress) }
-                                    .buttonStyle(InstrumentButtonStyle())
-                                Button(settings.localized("Done for today")) { coordinator.finish(progress: progress) }
-                                    .buttonStyle(InstrumentButtonStyle())
-                            }
-                        }
+                VStack(alignment: .leading, spacing: Theme.Space.regular) {
+                    if coordinator.plan.finished {
+                        endCard
+                    } else {
+                        handoffCard
                     }
-                    .padding(Theme.Space.page)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .background(Theme.surface)
-                    .overlay(Rectangle().stroke(Theme.hairline, lineWidth: 1))
                 }
-                .padding(Theme.Space.page)
-                .frame(maxWidth: 760, alignment: .leading)
-                .frame(maxWidth: .infinity)
+                .padding(Theme.Space.handoff)
+                .frame(maxWidth: .infinity, alignment: .leading)
             }
+            .scrollBounceBehavior(.basedOnSize)
             .foregroundStyle(Theme.ink)
             .background(Theme.background.ignoresSafeArea())
             .toolbar {
@@ -168,6 +142,170 @@ struct TodaySessionScreen: View {
         }
     }
 
+    @ViewBuilder
+    private var handoffCard: some View {
+        if let index = coordinator.plan.lastPlayedIndex, coordinator.plan.steps.indices.contains(index) {
+            let step = coordinator.plan.steps[index]
+            playedStepTag(step, index: index)
+            resultSentence(step)
+            metaLine(step)
+        }
+
+        if let step = coordinator.currentStep {
+            nextStepSection(step)
+            buttonRow
+        }
+    }
+
+    private func playedStepTag(_ step: TodayPlan.Step, index: Int) -> some View {
+        let tagText: String
+        switch step.kind {
+        case .review:
+            let position = coordinator.plan.steps.prefix(index + 1).filter { $0.kind == .review }.count
+            tagText = settings.localized("REVIEW %lld OF %lld", position, coordinator.plan.reviewCount)
+        case .newLesson:
+            tagText = settings.localized("NEW LESSON")
+        case .mix:
+            tagText = settings.localized("MIX")
+        }
+        return Text(tagText)
+            .font(Theme.stepTag)
+            .tracking(0.72)
+            .foregroundStyle(Theme.secondary)
+    }
+
+    private func resultSentence(_ step: TodayPlan.Step) -> some View {
+        Text(outcomeText(step))
+            .font(Theme.handoffTitle)
+            .foregroundStyle(Theme.ink)
+            .fixedSize(horizontal: false, vertical: true)
+            .accessibilityAddTraits(.isHeader)
+    }
+
+    private func metaLine(_ step: TodayPlan.Step) -> some View {
+        Text(metaText(step))
+            .font(Theme.meta)
+            .foregroundStyle(Theme.secondary)
+            .fixedSize(horizontal: false, vertical: true)
+    }
+
+    private func metaText(_ step: TodayPlan.Step) -> String {
+        var parts: [String] = []
+        let lesson = step.lessonIDs.first.flatMap { LessonStore.shared.lesson(for: $0) }
+        let title: String = {
+            if step.kind == .mix { return settings.localized("Mix") }
+            if let lesson { return settings.localized(lesson.title) }
+            return "—"
+        }()
+        parts.append(title)
+
+        if let outcome = step.outcome, outcome.played, let score = outcome.bestScore {
+            let percent = Int((score * 100).rounded())
+            if step.kind == .review {
+                if let bpm = lesson?.targetBpm, bpm > 0 {
+                    parts.append(settings.localized("%lld %% from memory at %lld BPM", percent, bpm))
+                } else {
+                    parts.append(settings.localized("%lld %% from memory", percent))
+                }
+            } else {
+                parts.append(settings.localized("%lld %%", percent))
+            }
+        }
+        return parts.joined(separator: " · ")
+    }
+
+    @ViewBuilder
+    private func nextStepSection(_ step: TodayPlan.Step) -> some View {
+        Text(settings.localized("NEXT"))
+            .font(Theme.stepTag)
+            .tracking(0.72)
+            .foregroundStyle(Theme.secondary)
+            .padding(.top, coordinator.plan.lastPlayedIndex != nil ? Theme.Space.small : 0)
+
+        Text(nextStepTitle(step))
+            .font(Theme.handoffNext)
+            .foregroundStyle(Theme.ink)
+            .fixedSize(horizontal: false, vertical: true)
+    }
+
+    private func nextStepTitle(_ step: TodayPlan.Step) -> String {
+        let title = step.kind == .mix ? settings.localized("Mix")
+            : step.lessonIDs.first.flatMap { LessonStore.shared.lesson(for: $0) }.map { settings.localized($0.title) } ?? "—"
+        if step.kind == .review {
+            let position = coordinator.plan.steps.prefix(coordinator.plan.index + 1).filter { $0.kind == .review }.count
+            return settings.localized("%@ (review %lld of %lld)", title, position, coordinator.plan.reviewCount)
+        }
+        return title
+    }
+
+    private var buttonRow: some View {
+        ViewThatFits(in: .horizontal) {
+            HStack(spacing: Theme.Space.small) {
+                continueButton
+                skipButton
+                doneButton
+            }
+            VStack(alignment: .leading, spacing: Theme.Space.small) {
+                continueButton
+                HStack(spacing: Theme.Space.small) {
+                    skipButton
+                    doneButton
+                }
+            }
+        }
+    }
+
+    private var continueButton: some View {
+        Button(settings.localized("Continue")) { openPractice() }
+            .buttonStyle(InstrumentButtonStyle(filled: true, main: true, customHeight: Theme.Size.touch))
+    }
+
+    private var skipButton: some View {
+        Button(settings.localized("Skip")) { coordinator.skip(progress: progress) }
+            .buttonStyle(InstrumentButtonStyle(customHeight: Theme.Size.touch))
+    }
+
+    private var doneButton: some View {
+        Button(settings.localized("Done for today")) { coordinator.finish(progress: progress) }
+            .buttonStyle(InstrumentButtonStyle(customHeight: Theme.Size.touch))
+    }
+
+    @ViewBuilder
+    private var endCard: some View {
+        Text(settings.localized("That's enough for today"))
+            .font(Theme.handoffTitle)
+            .foregroundStyle(Theme.ink)
+            .fixedSize(horizontal: false, vertical: true)
+            .accessibilityAddTraits(.isHeader)
+
+        let passed = coordinator.plan.steps.filter { step in
+            guard step.kind == .review, let feedback = step.outcome?.reviewFeedback else { return false }
+            switch feedback { case .passed, .settled: return true; default: return false }
+        }.count
+
+        if coordinator.plan.reviewCount > 0 {
+            Text(settings.localized("Reviews passed: %lld of %lld", passed, coordinator.plan.reviewCount))
+                .font(Theme.meta)
+                .foregroundStyle(Theme.secondary)
+        }
+
+        ForEach(Array(coordinator.plan.steps.enumerated()), id: \.offset) { _, step in
+            if step.kind == .newLesson {
+                Text(settings.localized("New lesson: %@", outcomeText(step)))
+                    .font(Theme.meta)
+                    .foregroundStyle(Theme.secondary)
+            } else if step.kind == .mix {
+                Text(settings.localized("Mix: %@", outcomeText(step)))
+                    .font(Theme.meta)
+                    .foregroundStyle(Theme.secondary)
+            }
+        }
+
+        Button(settings.localized("Home"), action: onHome)
+            .buttonStyle(InstrumentButtonStyle(filled: true, main: true, customHeight: Theme.Size.touch))
+            .padding(.top, Theme.Space.small)
+    }
+
     private func openPractice() {
         guard let step = coordinator.currentStep else { return }
         let lessons = step.lessonIDs.compactMap { LessonStore.shared.lesson(for: $0) }
@@ -182,26 +320,6 @@ struct TodaySessionScreen: View {
         showingPractice = true
     }
 
-    private func nextText(_ step: TodayPlan.Step) -> String {
-        let title = step.kind == .mix ? settings.localized("Mix")
-            : step.lessonIDs.first.flatMap { LessonStore.shared.lesson(for: $0) }.map { settings.localized($0.title) } ?? "—"
-        if step.kind == .review {
-            let position = coordinator.plan.steps.prefix(coordinator.plan.index + 1).filter { $0.kind == .review }.count
-            return settings.localized("Next: %@ (review %lld of %lld)", title, position, coordinator.plan.reviewCount)
-        }
-        return settings.localized("Next: %@", title)
-    }
-
-    private func outcomeCard(_ step: TodayPlan.Step) -> some View {
-        VStack(alignment: .leading, spacing: Theme.Space.small) {
-            Text(step.lessonIDs.first.flatMap { LessonStore.shared.lesson(for: $0) }
-                .map { step.kind == .mix ? settings.localized("Mix") : settings.localized($0.title) } ?? "—")
-                .font(Theme.rowTitle)
-            Text(outcomeText(step)).font(Theme.control)
-        }
-        .accessibilityElement(children: .combine)
-    }
-
     private func outcomeText(_ step: TodayPlan.Step) -> String {
         guard let outcome = step.outcome, outcome.played else { return settings.localized("Not played") }
         if step.kind == .review {
@@ -209,24 +327,5 @@ struct TodaySessionScreen: View {
             return settings.localized("Does not count · finish a hidden pass")
         }
         return settings.localized("Best score: %lld %%", Int(((outcome.bestScore ?? 0) * 100).rounded()))
-    }
-
-    private var summary: some View {
-        VStack(alignment: .leading, spacing: Theme.Space.regular) {
-            let passed = coordinator.plan.steps.filter { step in
-                guard step.kind == .review, let feedback = step.outcome?.reviewFeedback else { return false }
-                switch feedback { case .passed, .settled: return true; default: return false }
-            }.count
-            Text(settings.localized("Reviews passed: %lld of %lld", passed, coordinator.plan.reviewCount))
-                .font(Theme.rowTitle)
-            ForEach(Array(coordinator.plan.steps.enumerated()), id: \.offset) { _, step in
-                if step.kind == .newLesson {
-                    Text(settings.localized("New lesson: %@", outcomeText(step))).font(Theme.control)
-                }
-            }
-            if let index = coordinator.plan.lastPlayedIndex {
-                outcomeCard(coordinator.plan.steps[index])
-            }
-        }
     }
 }

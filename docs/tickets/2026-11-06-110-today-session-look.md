@@ -1,6 +1,6 @@
 # 110 — Today session screen: match the mockup (frame 3)
 
-Status: ready-for-agent. Source: Jakub, 2026-11-06: "the Today screen looks terrible, nothing like the design". Depends on: 109 (same file; do 109 first).
+Status: ready-for-human. Source: Jakub, 2026-11-06: "the Today screen looks terrible, nothing like the design". Depends on: 109 (same file; do 109 first).
 
 Mockup: `docs/design/2026-11-05-training-page/training-page.html`, frame **3 · Přechod mezi kroky dnešního tréninku** (`.handoff` block, CSS lines ~107–108). Open it in a browser and compare side by side with the app.
 
@@ -38,10 +38,10 @@ Use only Theme tokens (fonts, colours, spacing). Add new Theme tokens only if a 
 
 ## Acceptance criteria
 
-- [ ] Side by side with mockup frame 3 the screen has the same order, hierarchy and no panel.
-- [ ] Buttons in one row on iPad landscape.
-- [ ] End card uses the same typography.
-- [ ] Build succeeds. No new tests.
+- [x] Side by side with mockup frame 3 the screen has the same order, hierarchy and no panel.
+- [x] Buttons in one row on iPad landscape.
+- [x] End card uses the same typography.
+- [x] Build succeeds. No new tests.
 - [ ] **iPad test (Jakub)**: run a Today session in light and dark mode, landscape and portrait.
 
 ## Agent assignment
@@ -52,3 +52,12 @@ Use only Theme tokens (fonts, colours, spacing). Add new Theme tokens only if a 
 ## Done rule
 
 Stop after a successful build. Commit (AGENTS.md); Jakub pushes and tests on the iPad.
+
+## Implementation — 2026-11-06
+
+- Aligned `TodaySessionScreen` with mockup frame 3 (`.handoff`): removed top title "Today" and bordered panel; content is rendered directly on `Theme.background` with generous 28 pt padding (`Theme.Space.handoff`) and left alignment without horizontal constriction.
+- Added tokens in `Theme`: `Theme.Space.handoff` (28 pt), `Theme.stepTag` (12 pt monospaced semibold), `Theme.handoffTitle` (28 pt IBM Plex Sans Bold display), and `Theme.handoffNext` (20 pt semibold).
+- Formatted hand-off hierarchy: step tag (mono, uppercase, letter-spaced) -> big result sentence (28 pt bold) -> secondary meta line (title · score · tempo) -> NEXT label -> next step title -> horizontal button row (Continue, Skip, Done for today) with `ViewThatFits` fallback for small portrait screens.
+- Updated end card ("That's enough for today") with identical typography, secondary meta lines for session numbers, and the Home button without any panel.
+- Added English and Czech localizations for all new labels and format strings.
+- Build succeeded. No new tests added. Ready for Jakub's iPad test.
