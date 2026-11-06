@@ -151,3 +151,4 @@ Source: Jakub, retention and memory discussion; legacy "Trénink" concept 2026-1
 | 122 | Practice header subtitle on one line | Gemini 3.8 Flash, medium (fallback Codex Sol, medium) | any time |
 | 123 | Mode switch to/from After me: no jump, smooth animation | Gemini 3.8 Flash, high (fallback Codex Sol, high) | after 122 (same header) |
 | 124 | Pad layout toggle sometimes lags | Gemini 3.8 Flash, high (fallback Codex Sol, high) | any time |
+| 125 | Proposal: whole app matches Home (palette, graphics, motion), HTML previews, no code | Gemini 3.8 Flash, high (fallback Codex Sol, high) | any time; best after 122/123; implementation tickets after Jakub picks |
