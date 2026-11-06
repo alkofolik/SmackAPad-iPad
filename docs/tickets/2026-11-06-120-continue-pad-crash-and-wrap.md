@@ -1,6 +1,6 @@
 # 120 — Home "Continue" pad: crash on tap, Czech title wraps in portrait
 
-Status: ready-for-agent. Source: Jakub, 2026-11-06 (iPad, Czech, portrait).
+Status: in-testing. Source: Jakub, 2026-11-06 (iPad, Czech, portrait).
 
 ## Problem
 
@@ -21,7 +21,7 @@ Status: ready-for-agent. Source: Jakub, 2026-11-06 (iPad, Czech, portrait).
 
 - [ ] Tapping Continue opens the lesson, no crash (cause named in the report).
 - [ ] "Pokračovat" on one line, Czech, portrait and landscape.
-- [ ] Build succeeds. No new tests.
+- [x] Build succeeds. No new tests.
 - [ ] **iPad test (Jakub)**: Czech, portrait, tap Continue.
 
 ## Agent assignment
@@ -32,3 +32,12 @@ Status: ready-for-agent. Source: Jakub, 2026-11-06 (iPad, Czech, portrait).
 ## Done rule
 
 Stop after a successful build. Commit (AGENTS.md); Jakub pushes and tests on the iPad.
+
+## Implementation — 2026-11-06
+
+- Retrieved the actual device crash report `SmackAPad-2026-11-06-143253.ips` from the connected iPad into the ignored `.build/ticket120-diagnostics/` directory. It records `SIGABRT`, a UIKit assertion in `_morphPreviewFromCurrentState:fallbackBackgroundColor:contentScale:`, and SwiftUI `SheetBridge.dismissAndPresentAgain` during dismissal of a zoom presentation.
+- Cause: Continue first sets `.continueToLesson` (`pad-continue`), then `openLibrary` echoes the same lesson through the global route. `syncWithNavigationRoute` replaced it with `.library` (`pad-library`), changing the full-screen cover identity during its zoom. The same mismatch affected the Intro pad and Continue's empty-library fallback.
+- Added a semantic library target to Home destinations. Route synchronization now preserves the originating pad and cover identity when the requested library target already matches; different targets still navigate normally. No changes to lesson selection, pad geometry or transition styling.
+- Home pad titles now use one line with the existing 75% minimum scale. Subtitle fitting and full accessibility labels are unchanged.
+- No new tests. Runtime confirmation and portrait/landscape text inspection remain for Jakub on the iPad; simulator UI control was unavailable in this session.
+- Validation: `xcodebuild -project SmackAPad.xcodeproj -scheme SmackAPad -configuration Debug -destination 'generic/platform=iOS Simulator' -derivedDataPath .build/ticket120-build CODE_SIGNING_ALLOWED=NO build` succeeded. Stopped after the build as required.

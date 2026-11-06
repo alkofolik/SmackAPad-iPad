@@ -354,7 +354,7 @@ struct HomePadView: View {
                     .font(isHero ? Theme.strong(26) : Theme.action)
                     .foregroundStyle(isHero ? Theme.black : Theme.ink)
                     .multilineTextAlignment(.center)
-                    .lineLimit(nil)
+                    .lineLimit(1)
                     .minimumScaleFactor(0.75)
 
                 if let subtitleVariants, !subtitleVariants.isEmpty {
@@ -624,6 +624,16 @@ enum HomePadDestination: Identifiable, Equatable {
         case .purchases: return "pad-purchases"
         case .settings: return "pad-settings"
         case .about: return "pad-about"
+        }
+    }
+
+    var libraryTarget: LibraryLaunchTarget? {
+        switch self {
+        case .continueToLesson(let lesson): return .lesson(lesson)
+        case .continueToLibrary: return LibraryLaunchTarget.none
+        case .library(let target): return target
+        case .intro: return .intro
+        default: return nil
         }
     }
 }
@@ -956,7 +966,7 @@ public struct HomeScreen: View {
     private func syncWithNavigationRoute(_ route: AppRoute) {
         switch route {
         case .home:
-            if activeDestination == .training || isLibraryDestination(activeDestination) {
+            if activeDestination == .training || activeDestination?.libraryTarget != nil {
                 activeDestination = nil
             }
         case .training:
@@ -964,19 +974,11 @@ public struct HomeScreen: View {
                 activeDestination = .training
             }
         case .library(let target):
-            if activeDestination != .library(target) {
+            // Keep the originating pad's cover identity when its route is echoed back.
+            // Replacing Continue/Intro here dismisses and re-presents a zoom mid-transition.
+            if activeDestination?.libraryTarget != target {
                 activeDestination = .library(target)
             }
-        }
-    }
-
-    private func isLibraryDestination(_ destination: HomePadDestination?) -> Bool {
-        guard let destination else { return false }
-        switch destination {
-        case .library, .continueToLesson, .continueToLibrary, .intro:
-            return true
-        default:
-            return false
         }
     }
 
