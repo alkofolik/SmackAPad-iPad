@@ -24,6 +24,15 @@ enum Theme {
     static let surface = adaptive(light: UIColor(hex: 0xEBE5DA), dark: UIColor(hex: 0x2A2824))
     /// One hairline for every divider and outline in the chrome.
     static let hairline = ink.opacity(0.15)
+    /// Two-tone bevel colours for Home pads (ticket 112, proposal A).
+    static let padBevelTop = adaptive(
+        light: creamWhite.withAlphaComponent(0.55),
+        dark: creamWhite.withAlphaComponent(0.12)
+    )
+    static let padBevelBottom = adaptive(
+        light: softBlack.withAlphaComponent(0.16),
+        dark: softBlack.withAlphaComponent(0.45)
+    )
     /// One fill for an active or selected control.
     static let activeFill = orange.opacity(0.24)
     /// Inactive LED / off segment colour.
@@ -84,6 +93,11 @@ enum Theme {
         static let body: CGFloat = 22
         static let small: CGFloat = 20
         static let dense: CGFloat = 20
+    }
+
+    enum Radius {
+        /// Home pad radius (Akai MPC Tactile Rubber style, ticket 112).
+        static let pad: CGFloat = 8
     }
 
     static func display(_ size: CGFloat = Size.title) -> Font {
@@ -200,6 +214,12 @@ extension Theme {
         static let rise: CGFloat = 6
         static let starStagger = Duration.milliseconds(80)
 
+        /// Home pad tactile strike motion tokens (ticket 112).
+        static let padPress = Animation.spring(response: 0.18, dampingFraction: 0.7)
+        static let padFlash = Animation.easeOut(duration: 0.06)
+        static let ledBreath = Animation.easeInOut(duration: 1.6).repeatForever(autoreverses: true)
+        static let bootStagger = Duration.milliseconds(40)
+
         /// All accessibility decisions live here, including geometry and text effects.
         struct Policy {
             let reduced: Bool
@@ -217,6 +237,9 @@ extension Theme {
             }
             var summary: AnyTransition {
                 reduced ? .opacity : .opacity.combined(with: .move(edge: .bottom))
+            }
+            func breathingOpacity(animating: Bool) -> Double {
+                reduced ? 1.0 : (animating ? 1.0 : 0.45)
             }
         }
 

@@ -1,17 +1,74 @@
 import SwiftUI
 
-/// Tactile pad press animation style (0.97 scale and darker fill for 0.1 s).
+/// Tactile pad press animation style (scale 0.965 and 1.5 pt down, 60 ms light flash, spring back in 0.18 s).
+/// Reduce Motion: darker fill only (0.1 s), no scale or movement.
 struct TactilePadButtonStyle: ButtonStyle {
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
     func makeBody(configuration: Configuration) -> some View {
+        let policy = Theme.Motion.Policy(reduced: reduceMotion)
+        let isPressed = configuration.isPressed
+
         configuration.label
             .overlay {
-                if configuration.isPressed {
-                    Rectangle()
-                        .fill(Theme.black.opacity(0.12))
+                if policy.reduced {
+                    if isPressed {
+                        RoundedRectangle(cornerRadius: Theme.Radius.pad)
+                            .fill(Theme.black.opacity(0.12))
+                            .allowsHitTesting(false)
+                    }
+                } else {
+                    RoundedRectangle(cornerRadius: Theme.Radius.pad)
+                        .fill(Theme.white)
+                        .opacity(isPressed ? 0.38 : 0.0)
+                        .animation(Theme.Motion.padFlash, value: isPressed)
+                        .allowsHitTesting(false)
                 }
             }
-            .scaleEffect(configuration.isPressed ? 0.97 : 1.0)
-            .animation(.easeOut(duration: 0.1), value: configuration.isPressed)
+            .scaleEffect(policy.scale(isPressed ? 0.965 : 1.0))
+            .offset(y: policy.offset(isPressed ? 1.5 : 0))
+            .animation(
+                policy.reduced ? .easeOut(duration: 0.1) : (isPressed ? .easeOut(duration: 0.06) : Theme.Motion.padPress),
+                value: isPressed
+            )
+    }
+}
+
+/// The breathing light bar along the top edge of a lit pad (Training with reviews due, ticket 112).
+struct PadLightBar: View {
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @State private var breathing = false
+
+    var body: some View {
+        GeometryReader { geo in
+            let inset = geo.size.width * 0.22
+            VStack(spacing: 0) {
+                Capsule()
+                    .fill(Theme.orange)
+                    .frame(height: 2)
+                    .shadow(color: Theme.orange.opacity(0.8), radius: 3)
+                    .padding(.horizontal, inset)
+                    .padding(.top, 7)
+                    .opacity(Theme.Motion.Policy(reduced: reduceMotion).breathingOpacity(animating: breathing))
+                Spacer(minLength: 0)
+            }
+        }
+        .allowsHitTesting(false)
+        .onAppear {
+            guard !Theme.Motion.Policy(reduced: reduceMotion).reduced else { return }
+            withAnimation(Theme.Motion.ledBreath) {
+                breathing = true
+            }
+        }
+        .onChange(of: reduceMotion) { _, isReduced in
+            if isReduced {
+                breathing = false
+            } else {
+                withAnimation(Theme.Motion.ledBreath) {
+                    breathing = true
+                }
+            }
+        }
     }
 }
 
@@ -61,32 +118,49 @@ struct HomePadView: View {
             .padding(.horizontal, Theme.Space.small)
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .background(
-                Rectangle()
+                RoundedRectangle(cornerRadius: Theme.Radius.pad)
                     .fill(isHero ? Theme.orange : Theme.surface)
-            )
-            .overlay(
-                Rectangle()
-                    .stroke(Theme.hairline, lineWidth: 1)
+                    .shadow(
+                        color: isLit ? Theme.orange.opacity(0.4) : (isHero ? Theme.orange.opacity(0.25) : Theme.black.opacity(0.08)),
+                        radius: isLit ? 7 : (isHero ? 3 : 2),
+                        x: 0,
+                        y: isLit ? 0 : (isHero ? 3 : 2)
+                    )
             )
             .overlay {
+                // Two-tone bevel: top 1.5 pt light highlight, bottom 2 pt darker edge (proposal A)
+                VStack(spacing: 0) {
+                    (isHero ? Theme.white.opacity(0.42) : Theme.padBevelTop)
+                        .frame(height: 1.5)
+                    Spacer(minLength: 0)
+                    (isHero ? Theme.black.opacity(0.28) : Theme.padBevelBottom)
+                        .frame(height: isHero ? 2.5 : 2.0)
+                }
+                .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.pad))
+                .allowsHitTesting(false)
+            }
+            .overlay {
+                // Outline: 2 pt orange for lit state, 1 pt hairline (or black opacity for hero) otherwise
                 if isLit {
-                    Rectangle()
-                        .strokeBorder(Theme.orange, lineWidth: 4)
+                    RoundedRectangle(cornerRadius: Theme.Radius.pad)
+                        .strokeBorder(Theme.orange, lineWidth: 2)
+                        .allowsHitTesting(false)
+                } else if isHero {
+                    RoundedRectangle(cornerRadius: Theme.Radius.pad)
+                        .strokeBorder(Theme.black.opacity(0.12), lineWidth: 1)
+                        .allowsHitTesting(false)
+                } else {
+                    RoundedRectangle(cornerRadius: Theme.Radius.pad)
+                        .strokeBorder(Theme.hairline, lineWidth: 1)
+                        .allowsHitTesting(false)
                 }
             }
-            .overlay(alignment: .topTrailing) {
+            .overlay {
                 if isLit {
-                    Circle()
-                        .fill(Theme.orange)
-                        .frame(width: 12, height: 12)
-                        .overlay(
-                            Circle()
-                                .stroke(Theme.ink, lineWidth: 2)
-                        )
-                        .padding([.top, .trailing], 10)
+                    PadLightBar()
                 }
             }
-            .contentShape(Rectangle())
+            .contentShape(RoundedRectangle(cornerRadius: Theme.Radius.pad))
         }
         .buttonStyle(TactilePadButtonStyle())
         .accessibilityLabel(accessibilityText ?? defaultAccessibilityText)
@@ -248,8 +322,7 @@ public struct HomeScreen: View {
     @State private var blackBounce: CGFloat = 0
     @State private var wordmarkVisible: Bool
     @State private var isSettled: Bool
-    @State private var edgePadsVisible: Bool
-    @State private var cornerPadsVisible: Bool
+    @State private var padVisible: [Bool]
     @State private var animationFinished: Bool
     @State private var animationTask: Task<Void, Never>?
 
@@ -280,8 +353,7 @@ public struct HomeScreen: View {
         _orangeLanded = State(initialValue: settled)
         _wordmarkVisible = State(initialValue: settled)
         _isSettled = State(initialValue: settled)
-        _edgePadsVisible = State(initialValue: settled)
-        _cornerPadsVisible = State(initialValue: settled)
+        _padVisible = State(initialValue: Array(repeating: settled, count: 8))
         _animationFinished = State(initialValue: settled)
     }
 
@@ -417,49 +489,42 @@ public struct HomeScreen: View {
         VStack(spacing: gap) {
             // Row 0: Continue/Start (1) · Library (2) · Training (3)
             HStack(spacing: gap) {
-                cornerPad(pad1)
+                bootPad(pad1, isVisible: padVisible[0])
                     .frame(width: cellSize, height: cellSize)
-                edgePad(pad2)
+                bootPad(pad2, isVisible: padVisible[1])
                     .frame(width: cellSize, height: cellSize)
-                cornerPad(pad3)
+                bootPad(pad3, isVisible: padVisible[2])
                     .frame(width: cellSize, height: cellSize)
             }
             // Row 1: Intro (4) · [Centre Logo Placeholder] · Controller (5)
             HStack(spacing: gap) {
-                edgePad(pad4)
+                bootPad(pad4, isVisible: padVisible[3])
                     .frame(width: cellSize, height: cellSize)
                 Color.clear
                     .frame(width: cellSize, height: cellSize)
                     .accessibilityHidden(true)
-                edgePad(pad5)
+                bootPad(pad5, isVisible: padVisible[4])
                     .frame(width: cellSize, height: cellSize)
             }
             // Row 2: Badges (6) · Full Version (7) · Settings (8)
             HStack(spacing: gap) {
-                cornerPad(pad6)
+                bootPad(pad6, isVisible: padVisible[5])
                     .frame(width: cellSize, height: cellSize)
-                edgePad(pad7)
+                bootPad(pad7, isVisible: padVisible[6])
                     .frame(width: cellSize, height: cellSize)
-                cornerPad(pad8)
+                bootPad(pad8, isVisible: padVisible[7])
                     .frame(width: cellSize, height: cellSize)
             }
         }
     }
 
     @ViewBuilder
-    private func edgePad<Content: View>(_ content: Content) -> some View {
+    private func bootPad<Content: View>(_ content: Content, isVisible: Bool) -> some View {
+        let policy = Theme.Motion.Policy(reduced: reduceMotion)
         content
-            .scaleEffect(reduceMotion ? 1.0 : (edgePadsVisible ? 1.0 : 0.7))
-            .opacity(edgePadsVisible ? 1.0 : 0.0)
-            .allowsHitTesting(edgePadsVisible)
-    }
-
-    @ViewBuilder
-    private func cornerPad<Content: View>(_ content: Content) -> some View {
-        content
-            .scaleEffect(reduceMotion ? 1.0 : (cornerPadsVisible ? 1.0 : 0.7))
-            .opacity(cornerPadsVisible ? 1.0 : 0.0)
-            .allowsHitTesting(cornerPadsVisible)
+            .scaleEffect(policy.scale(isVisible ? 1.0 : 0.85))
+            .opacity(isVisible ? 1.0 : 0.0)
+            .allowsHitTesting(isVisible)
     }
 
     // MARK: - Pad Definitions
@@ -638,10 +703,11 @@ public struct HomeScreen: View {
     private func startAnimation() {
         animationTask?.cancel()
         animationTask = Task { @MainActor in
-            if reduceMotion {
+            let policy = Theme.Motion.Policy(reduced: reduceMotion)
+            if policy.reduced {
                 skipAnimation()
                 containerOpacity = 0.0
-                withAnimation(.easeIn(duration: 0.25)) {
+                withAnimation(.easeOut(duration: 0.2)) {
                     containerOpacity = 1.0
                 }
                 return
@@ -710,22 +776,45 @@ public struct HomeScreen: View {
             try? await Task.sleep(for: .milliseconds(600))
             guard !Task.isCancelled else { return }
 
-            // 2.10–2.80 s: 8 pads appear outward from the centre
-            // Edge-adjacent pads appear first
+            // 2.10–2.80 s: 8 pads appear in a diagonal wave from top-left to bottom-right (ticket 112)
+            // Wave 0: Pad 1 (top-left)
             withAnimation(.spring(response: 0.28, dampingFraction: 0.68)) {
-                edgePadsVisible = true
+                padVisible[0] = true
             }
-
-            // Corner pads appear 0.12 s later
-            try? await Task.sleep(for: .milliseconds(120))
+            try? await Task.sleep(for: Theme.Motion.bootStagger)
             guard !Task.isCancelled else { return }
 
+            // Wave 1: Pad 2 and Pad 4
             withAnimation(.spring(response: 0.28, dampingFraction: 0.68)) {
-                cornerPadsVisible = true
+                padVisible[1] = true
+                padVisible[3] = true
+            }
+            try? await Task.sleep(for: Theme.Motion.bootStagger)
+            guard !Task.isCancelled else { return }
+
+            // Wave 2: Pad 3 and Pad 6
+            withAnimation(.spring(response: 0.28, dampingFraction: 0.68)) {
+                padVisible[2] = true
+                padVisible[5] = true
+            }
+            try? await Task.sleep(for: Theme.Motion.bootStagger)
+            guard !Task.isCancelled else { return }
+
+            // Wave 3: Pad 5 and Pad 7
+            withAnimation(.spring(response: 0.28, dampingFraction: 0.68)) {
+                padVisible[4] = true
+                padVisible[6] = true
+            }
+            try? await Task.sleep(for: Theme.Motion.bootStagger)
+            guard !Task.isCancelled else { return }
+
+            // Wave 4: Pad 8 (bottom-right)
+            withAnimation(.spring(response: 0.28, dampingFraction: 0.68)) {
+                padVisible[7] = true
             }
 
-            // Done at 2.80–3.20 s
-            try? await Task.sleep(for: .milliseconds(580))
+            // Settle time
+            try? await Task.sleep(for: .milliseconds(300))
             guard !Task.isCancelled else { return }
 
             finishOnce()
@@ -744,8 +833,9 @@ public struct HomeScreen: View {
             blackBounce = 0
             wordmarkVisible = true
             isSettled = true
-            edgePadsVisible = true
-            cornerPadsVisible = true
+            for i in 0..<8 {
+                padVisible[i] = true
+            }
         }
         finishOnce()
     }
