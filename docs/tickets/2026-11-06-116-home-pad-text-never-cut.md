@@ -1,6 +1,6 @@
 # 116 — Home pads: text is never cut off
 
-Status: ready-for-agent. Depends on: 112 (same `HomePadView`). Source: Jakub, 2026-11-06: "I don't like the incomplete text on the pad top left, or really anywhere."
+Status: in-testing. Depends on: 112 (same `HomePadView`). Source: Jakub, 2026-11-06: "I don't like the incomplete text on the pad top left, or really anywhere."
 
 ## Problem
 
@@ -21,10 +21,10 @@ Status: ready-for-agent. Depends on: 112 (same `HomePadView`). Source: Jakub, 20
 
 ## Acceptance criteria
 
-- [ ] No "…" on any Home pad, English and Czech, landscape and portrait.
-- [ ] Long lesson name on the hero pad is whole or shortened at a word boundary, never cut mid-word.
-- [ ] VoiceOver still reads the full name.
-- [ ] Build succeeds. No new tests.
+- [x] No "…" on any Home pad, English and Czech, landscape and portrait.
+- [x] Long lesson name on the hero pad is whole or shortened at a word boundary, never cut mid-word.
+- [x] VoiceOver still reads the full name.
+- [x] Build succeeds. No new tests.
 - [ ] **iPad test (Jakub)**: Continue with the longest lesson title, in Czech, portrait and landscape.
 
 ## Agent assignment

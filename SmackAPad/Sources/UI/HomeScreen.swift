@@ -76,7 +76,9 @@ struct PadLightBar: View {
 struct HomePadView: View {
     let title: String
     let subtitle: String?
+    var subtitleVariants: [String]? = nil
     var secondarySubtitle: String? = nil
+    var secondarySubtitleVariants: [String]? = nil
     var accessibilityText: String? = nil
     var accessibilityValue: String? = nil
     var isLit: Bool = false
@@ -91,27 +93,47 @@ struct HomePadView: View {
                     .font(isHero ? Theme.strong(26) : Theme.action)
                     .foregroundStyle(isHero ? Theme.black : Theme.ink)
                     .multilineTextAlignment(.center)
-                    .lineLimit(2)
-                    .minimumScaleFactor(0.8)
+                    .lineLimit(nil)
+                    .minimumScaleFactor(0.75)
 
-                if let subtitle, !subtitle.isEmpty {
+                if let subtitleVariants, !subtitleVariants.isEmpty {
+                    ViewThatFits(in: .vertical) {
+                        ForEach(subtitleVariants, id: \.self) { variant in
+                            Text(variant)
+                                .font(Theme.meta)
+                                .foregroundStyle(isHero ? Theme.black.opacity(0.8) : Theme.secondary)
+                                .multilineTextAlignment(.center)
+                                .lineLimit(nil)
+                                .minimumScaleFactor(0.75)
+                        }
+                    }
+                } else if let subtitle, !subtitle.isEmpty {
                     Text(subtitle)
                         .font(Theme.meta)
                         .foregroundStyle(isHero ? Theme.black.opacity(0.8) : Theme.secondary)
                         .multilineTextAlignment(.center)
-                        .lineLimit(secondarySubtitle != nil ? 1 : 2)
-                        .truncationMode(.tail)
-                        .minimumScaleFactor(0.8)
+                        .lineLimit(nil)
+                        .minimumScaleFactor(0.75)
                 }
 
-                if let secondarySubtitle, !secondarySubtitle.isEmpty {
+                if let secondarySubtitleVariants, !secondarySubtitleVariants.isEmpty {
+                    ViewThatFits(in: .vertical) {
+                        ForEach(secondarySubtitleVariants, id: \.self) { variant in
+                            Text(variant)
+                                .font(Theme.meta)
+                                .foregroundStyle(Theme.secondary.opacity(0.8))
+                                .multilineTextAlignment(.center)
+                                .lineLimit(nil)
+                                .minimumScaleFactor(0.75)
+                        }
+                    }
+                } else if let secondarySubtitle, !secondarySubtitle.isEmpty {
                     Text(secondarySubtitle)
                         .font(Theme.meta)
                         .foregroundStyle(Theme.secondary.opacity(0.8))
                         .multilineTextAlignment(.center)
-                        .lineLimit(1)
-                        .truncationMode(.tail)
-                        .minimumScaleFactor(0.8)
+                        .lineLimit(nil)
+                        .minimumScaleFactor(0.75)
                 }
                 Spacer(minLength: 0)
             }
@@ -169,11 +191,11 @@ struct HomePadView: View {
 
     private var defaultAccessibilityText: String {
         var parts: [String] = [title]
-        if let subtitle, !subtitle.isEmpty {
-            parts.append(subtitle)
+        if let sub = subtitleVariants?.first ?? subtitle, !sub.isEmpty {
+            parts.append(sub)
         }
-        if let secondarySubtitle, !secondarySubtitle.isEmpty {
-            parts.append(secondarySubtitle)
+        if let sec = secondarySubtitleVariants?.first ?? secondarySubtitle, !sec.isEmpty {
+            parts.append(sec)
         }
         return parts.joined(separator: ", ")
     }
@@ -556,10 +578,93 @@ public struct HomeScreen: View {
         return settings.localized(key, count)
     }
 
+    private func todaySubtitleVariants(_ plan: TodayPlan) -> [String] {
+        let full = todaySubtitle(plan)
+        var variants = [full]
+        if full.contains(" · ") {
+            let short = full.components(separatedBy: " · ")[0].trimmingCharacters(in: .whitespaces)
+            if !variants.contains(short) { variants.append(short) }
+        }
+        let count = "\(plan.reviewCount)"
+        if !variants.contains(count) { variants.append(count) }
+        return variants
+    }
+
+    private func lessonSubtitleVariants(lesson: Lesson) -> [String] {
+        let title = settings.localized(lesson.title)
+        let record = progress.progress(for: lesson.id)
+        let stars = LibraryStarFilter.stars(record)
+        let starSuffix = stars > 0 ? " · \(String(repeating: "★", count: stars))" : ""
+        let fullSubtitle = "\(title)\(starSuffix)"
+
+        var variants: [String] = [fullSubtitle]
+
+        // 1. Short form if lesson has one (e.g. prefix before " · ")
+        if title.contains(" · ") {
+            let shortForm = title.components(separatedBy: " · ")[0].trimmingCharacters(in: .whitespaces)
+            let withStars = "\(shortForm)\(starSuffix)"
+            if !variants.contains(withStars) { variants.append(withStars) }
+            if !variants.contains(shortForm) { variants.append(shortForm) }
+        }
+
+        // 2. Lesson number plus first words that fit on a whole word boundary
+        let number: Int? = lesson.intro?.number
+            ?? progression.catalog.path.firstIndex(where: { $0.id == lesson.id }).map { $0 + 1 }
+            ?? (progression.catalog.lessons.filter { $0.cat == lesson.cat }.firstIndex { $0.id == lesson.id }.map { $0 + 1 })
+
+        let words = title.split(separator: " ").map(String.init)
+        let numPrefix = number.map { "\($0). " } ?? ""
+
+        for count in stride(from: words.count - 1, through: 1, by: -1) {
+            var prefix = words.prefix(count).joined(separator: " ")
+            if prefix.hasSuffix(" ·") { prefix = String(prefix.dropLast(2)) }
+            if prefix.hasSuffix(",") || prefix.hasSuffix("·") { prefix = String(prefix.dropLast()) }
+            let candidateWithStars = "\(numPrefix)\(prefix)\(starSuffix)"
+            if !variants.contains(candidateWithStars) { variants.append(candidateWithStars) }
+            let candidate = "\(numPrefix)\(prefix)"
+            if !variants.contains(candidate) { variants.append(candidate) }
+        }
+
+        if let number {
+            let numWithStars = "\(number)\(starSuffix)"
+            if !variants.contains(numWithStars) { variants.append(numWithStars) }
+            let numOnly = "\(number)"
+            if !variants.contains(numOnly) { variants.append(numOnly) }
+        }
+
+        return variants
+    }
+
+    static func wordBoundaryVariants(for text: String) -> [String] {
+        let words = text.split(separator: " ").map(String.init)
+        guard words.count > 1 else { return [text] }
+        var variants: [String] = [text]
+        for count in stride(from: words.count - 1, through: 1, by: -1) {
+            var prefix = words.prefix(count).joined(separator: " ")
+            if prefix.hasSuffix(" ·") {
+                prefix = String(prefix.dropLast(2))
+            } else if prefix.hasSuffix(",") || prefix.hasSuffix("·") {
+                prefix = String(prefix.dropLast())
+            }
+            if !prefix.isEmpty && !variants.contains(prefix) {
+                variants.append(prefix)
+            }
+        }
+        return variants
+    }
+
     private var pad1: some View {
         if let plan = todayPlan {
-            return AnyView(HomePadView(title: settings.localized("Today").uppercased(with: Locale(identifier: settings.languagePreference.rawValue)),
-                                      subtitle: todaySubtitle(plan), isHero: true) {
+            let label = settings.localized("Today").uppercased(with: Locale(identifier: settings.languagePreference.rawValue))
+            let subtitle = todaySubtitle(plan)
+            let variants = todaySubtitleVariants(plan)
+            return AnyView(HomePadView(
+                title: label,
+                subtitle: subtitle,
+                subtitleVariants: variants,
+                accessibilityText: "\(label), \(subtitle)",
+                isHero: true
+            ) {
                 activeTodayPlan = plan
                 // Keep the same Mix visible on Training even if reviews change recency first.
                 if let mix = plan.steps.first(where: { $0.kind == .mix }) {
@@ -595,7 +700,23 @@ public struct HomeScreen: View {
             return title
         }()
 
-        return AnyView(HomePadView(title: label, subtitle: subtitle, isHero: true) {
+        let variants: [String]? = {
+            guard let targetLesson else { return nil }
+            return lessonSubtitleVariants(lesson: targetLesson)
+        }()
+
+        let accessibility: String? = {
+            guard let subtitle else { return label }
+            return "\(label), \(subtitle)"
+        }()
+
+        return AnyView(HomePadView(
+            title: label,
+            subtitle: subtitle,
+            subtitleVariants: variants,
+            accessibilityText: accessibility,
+            isHero: true
+        ) {
             if let targetLesson {
                 onNavigateToLibrary(.lesson(targetLesson))
             } else {
@@ -661,11 +782,15 @@ public struct HomeScreen: View {
         }()
 
         let voiceOverText = "\(label), \(inputName), \(profileName)"
+        let inputVariants = Self.wordBoundaryVariants(for: inputName)
+        let profileVariants = Self.wordBoundaryVariants(for: profileName)
 
         return HomePadView(
             title: label,
             subtitle: inputName,
+            subtitleVariants: inputVariants,
             secondarySubtitle: profileName,
+            secondarySubtitleVariants: profileVariants,
             accessibilityText: voiceOverText,
             isHero: false
         ) {
