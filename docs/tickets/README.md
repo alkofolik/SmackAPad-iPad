@@ -137,3 +137,4 @@ Source: Jakub, retention and memory discussion; legacy "Trénink" concept 2026-1
 | 108 | Fix three failing tests (review stamp, After me scoring) | Gemini 3.8 Flash, high (fallback Codex Sol, high) | any time |
 | 109 | Today session: Home button that keeps the plan (way to the Library) | Gemini 3.8 Flash, medium (fallback Codex Sol, medium) | 1st (before 110) |
 | 110 | Today session screen matches mockup frame 3 | Gemini 3.8 Flash, high (fallback Codex Sol, medium) | after 109 (same file) |
+| 111 | Proposals: modern Home pads and app motion (HTML previews, no code) | Gemini 3.8 Flash, high (fallback Codex Sol, high) | any time; implementation ticket after Jakub chooses |
