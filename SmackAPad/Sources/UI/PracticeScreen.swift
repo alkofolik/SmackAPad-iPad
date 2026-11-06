@@ -192,29 +192,37 @@ struct PracticeScreen: View {
         .layoutPriority(1)
     }
 
+    @ScaledMetric(relativeTo: .body) private var subtitleHeight: CGFloat = 22
+
     private var lessonSubtitle: some View {
-        Group {
-            if session.afterMe {
-                Text(settings.localized("Practice only · no stars"))
-                    .font(Theme.meta)
-                    .foregroundStyle(Theme.secondary)
-            } else if session.isDueReview {
-                Text(session.reviewStatusText(settings: settings))
-                    .font(Theme.meta)
-                    .foregroundStyle(Theme.secondary)
-            } else {
-                HStack(spacing: 0) {
-                    difficultyDots
-                    Text(" · \(localizedBarCount(session.lesson.bars))")
-                        .font(Theme.meta)
-                        .foregroundStyle(Theme.secondary)
+        ZStack(alignment: .leading) {
+            Text(settings.localized("Practice only · no stars"))
+                .font(Theme.meta)
+                .foregroundStyle(Theme.secondary)
+                .opacity(session.afterMe ? 1 : 0)
+                .accessibilityHidden(!session.afterMe)
+
+            Group {
+                if session.isDueReview {
+                    Text(session.reviewStatusText(settings: settings))
+                } else {
+                    HStack(spacing: 0) {
+                        difficultyDots
+                        Text(" · \(localizedBarCount(session.lesson.bars))")
+                    }
+                    .accessibilityElement(children: .ignore)
+                    .accessibilityLabel(settings.localized("Difficulty %lld of 5, %@", session.lesson.level, localizedBarCount(session.lesson.bars)))
                 }
-                .accessibilityElement(children: .ignore)
-                .accessibilityLabel(settings.localized("Difficulty %lld of 5, %@", session.lesson.level, localizedBarCount(session.lesson.bars)))
             }
+            .font(Theme.meta)
+            .foregroundStyle(Theme.secondary)
+            .opacity(session.afterMe ? 0 : 1)
+            .accessibilityHidden(session.afterMe)
         }
         .lineLimit(1)
         .minimumScaleFactor(0.85)
+        .frame(height: subtitleHeight, alignment: .leading)
+        .animation(motion.animation(Theme.Motion.fast), value: session.afterMe)
     }
 
     private var difficultyDots: some View {
@@ -263,7 +271,7 @@ struct PracticeScreen: View {
 
     private var toolIcons: some View {
         HStack(spacing: Theme.Space.small) {
-            icon("eye.slash", settings.localized("From memory"), selected: session.fromMemory) {
+            icon("eye.slash", settings.localized("From memory"), selected: session.fromMemory && !session.afterMe) {
                 session.fromMemory.toggle()
             }
             .disabled(session.running || session.isMix || session.afterMe)
@@ -360,32 +368,35 @@ struct PracticeScreen: View {
                         let frame = session.patternFrame(at: timeline.date)
                         let scored = session.running && !session.listen && frame.countdown == nil
                             && (!session.afterMe || frame.pass.isMultiple(of: 2))
-                        VStack(alignment: .leading, spacing: Theme.Space.small) {
-                            if session.afterMe {
+                        PatternField(lesson: session.practiceLesson, hits: session.patternHits,
+                                     position: frame.position, tapePosition: frame.tapePosition,
+                                     running: session.running && frame.countdown == nil,
+                                     visibility: session.noteVisibility(pass: frame.pass),
+                                     fromMemory: session.fromMemory && !session.afterMe,
+                                     afterMe: session.afterMe,
+                                     scrolling: scrolling, visibleBars: [1, 2, 3, 4].contains(visibleBars) ? visibleBars : 4,
+                                     verdicts: session.barVerdicts,
+                                     judgments: session.hitJudgments, bpm: frame.bpm,
+                                     playedHits: session.playedHits, pass: frame.pass,
+                                     scoring: scored,
+                                     missGraceSteps: frame.missGraceSteps, countdown: frame.countdown,
+                                     band: BandTone.color(listen: session.listen,
+                                                          memory: session.fromMemory && !session.listen && !session.afterMe,
+                                                          bpm: session.bpm, startBpm: session.lesson.startBpm,
+                                                          targetBpm: session.lesson.targetBpm),
+                                     edgeTendency: scored ? BandTone.edgeTendency(session.timingHistory, at: timeline.date) : 0,
+                                     runBars: session.repeatsPerRun * session.practiceLesson.bars,
+                                     starMomentBeamActive: midLessonStarMomentActive)
+                            .overlay(alignment: .topLeading) {
                                 Text(settings.localized(session.afterMePhase(at: frame)))
                                     .font(Theme.rowTitle)
-                                    .frame(maxWidth: .infinity, alignment: .leading)
+                                    .foregroundStyle(Theme.ink)
+                                    .lineLimit(1)
+                                    .alignmentGuide(.top) { d in d.height + Theme.Space.small }
+                                    .opacity(session.afterMe ? 1 : 0)
+                                    .animation(motion.animation(Theme.Motion.fast), value: session.afterMe)
+                                    .allowsHitTesting(false)
                             }
-                            PatternField(lesson: session.practiceLesson, hits: session.patternHits,
-                                         position: frame.position, tapePosition: frame.tapePosition,
-                                         running: session.running && frame.countdown == nil,
-                                         visibility: session.noteVisibility(pass: frame.pass),
-                                         fromMemory: session.fromMemory && !session.afterMe,
-                                         afterMe: session.afterMe,
-                                         scrolling: scrolling, visibleBars: [1, 2, 3, 4].contains(visibleBars) ? visibleBars : 4,
-                                         verdicts: session.barVerdicts,
-                                         judgments: session.hitJudgments, bpm: frame.bpm,
-                                         playedHits: session.playedHits, pass: frame.pass,
-                                         scoring: scored,
-                                         missGraceSteps: frame.missGraceSteps, countdown: frame.countdown,
-                                         band: BandTone.color(listen: session.listen,
-                                                              memory: session.fromMemory && !session.listen,
-                                                              bpm: session.bpm, startBpm: session.lesson.startBpm,
-                                                              targetBpm: session.lesson.targetBpm),
-                                         edgeTendency: scored ? BandTone.edgeTendency(session.timingHistory, at: timeline.date) : 0,
-                                         runBars: session.repeatsPerRun * session.practiceLesson.bars,
-                                         starMomentBeamActive: midLessonStarMomentActive)
-                        }
                     }
                     .frame(height: bandHeight)
                     .frame(maxWidth: .infinity)

@@ -148,7 +148,8 @@ struct PatternField: View {
                                           verdicts: verdicts, feedback: feedback,
                                           playedHits: staticPlayed,
                                           scoring: scoring, missGraceSteps: missGraceSteps,
-                                          band: band, scale: bandScale, bpm: bpm, reduceMotion: reduceMotion || afterMe)
+                                          band: band, scale: bandScale, bpm: bpm, reduceMotion: reduceMotion,
+                                          afterMe: afterMe)
                                 .frame(height: contentHeight)
                         }
                     }
@@ -303,47 +304,53 @@ private struct StaticPattern: View {
     let scale: CGFloat
     var bpm: Int = 60
     var reduceMotion: Bool = false
+    var afterMe: Bool = false
 
     var body: some View {
-        Canvas { context, size in
-            let gutter: CGFloat = PracticeBandStyle.showPadLabels ? 96 * scale : 0
-            let barCount = max(1, bars.count)
-            let totalSteps = barCount * 16
-            let cellWidth = max(1, (size.width - gutter) / CGFloat(totalSteps))
-            let lanes = PatternLanes(size: size, rows: rows, scale: scale)
-            lanes.drawRows(context: &context)
+        let gutter: CGFloat = PracticeBandStyle.showPadLabels ? 96 * scale : 0
+        let barCount = max(1, bars.count)
+        let totalSteps = barCount * 16
+        let startStep = firstBar * 16
+        let endStep = (firstBar + barCount) * 16
 
-            // Beat division marks and numbers for each bar
-            for (barIndex, _) in bars.enumerated() {
-                let barOffsetSteps = barIndex * 16
-                for step in 0..<16 {
-                    let visibleStep = barOffsetSteps + step
-                    let x = gutter + (CGFloat(visibleStep) + 0.5) * cellWidth
-                    drawBeat(step: step, x: x, lanes: lanes, context: &context)
+        ZStack {
+            Canvas { context, size in
+                let cellWidth = max(1, (size.width - gutter) / CGFloat(totalSteps))
+                let lanes = PatternLanes(size: size, rows: rows, scale: scale)
+                lanes.drawRows(context: &context)
+
+                // Beat division marks and numbers for each bar
+                for (barIndex, _) in bars.enumerated() {
+                    let barOffsetSteps = barIndex * 16
+                    for step in 0..<16 {
+                        let visibleStep = barOffsetSteps + step
+                        let x = gutter + (CGFloat(visibleStep) + 0.5) * cellWidth
+                        drawBeat(step: step, x: x, lanes: lanes, context: &context)
+                    }
                 }
             }
 
-            let startStep = firstBar * 16
-            let endStep = (firstBar + barCount) * 16
-            let elapsedSeconds = position * 15.0 / Double(max(1, bpm))
-            let fadeProgress = reduceMotion ? 1.0 : min(1.0, max(0.0, elapsedSeconds / 0.25))
+            Canvas { context, size in
+                let cellWidth = max(1, (size.width - gutter) / CGFloat(totalSteps))
+                let lanes = PatternLanes(size: size, rows: rows, scale: scale)
+                let elapsedSeconds = position * 15.0 / Double(max(1, bpm))
+                let fadeProgress = reduceMotion ? 1.0 : min(1.0, max(0.0, elapsedSeconds / 0.25))
 
-            for (row, pad) in rows.enumerated() {
-                if visibility != .hidden {
-                    for hit in hits where hit.padIndex == pad && hit.step >= startStep && hit.step < endStep {
-                        let visibleStep = hit.step - startStep
-                        let x = gutter + (CGFloat(visibleStep) + 0.5) * cellWidth
-                        let rect = lanes.tile(x: x, width: cellWidth, row: row)
-                        let tail = feedback.position < Double(hit.step) ? feedback.strength(offset: -1, step: Double(hit.step)) : 0
-                        let mark = hitMark(hit, judgments: feedback.judgments[feedback.pass + (tail > 0 ? -1 : 0)] ?? [:],
-                                           scoring: scoring, elapsedSteps: tail > 0 ? Double(feedback.totalSteps) : position - Double(hit.step),
-                                           grace: missGraceSteps)
-                        drawHit(hit, in: rect, mark: mark, strength: tail > 0 ? tail : 1,
-                                visibility: visibility, fadeProgress: fadeProgress,
-                                fontSize: lanes.fontSize, context: &context)
-                    }
-                } else {
-                    if fadeProgress < 1 {
+                for (row, pad) in rows.enumerated() {
+                    if visibility != .hidden || afterMe {
+                        for hit in hits where hit.padIndex == pad && hit.step >= startStep && hit.step < endStep {
+                            let visibleStep = hit.step - startStep
+                            let x = gutter + (CGFloat(visibleStep) + 0.5) * cellWidth
+                            let rect = lanes.tile(x: x, width: cellWidth, row: row)
+                            let tail = feedback.position < Double(hit.step) ? feedback.strength(offset: -1, step: Double(hit.step)) : 0
+                            let mark = hitMark(hit, judgments: feedback.judgments[feedback.pass + (tail > 0 ? -1 : 0)] ?? [:],
+                                               scoring: scoring, elapsedSteps: tail > 0 ? Double(feedback.totalSteps) : position - Double(hit.step),
+                                               grace: missGraceSteps)
+                            drawHit(hit, in: rect, mark: mark, strength: tail > 0 ? tail : 1,
+                                    visibility: afterMe ? .shown : visibility, fadeProgress: fadeProgress,
+                                    fontSize: lanes.fontSize, context: &context)
+                        }
+                    } else if fadeProgress < 1 {
                         for hit in hits where hit.padIndex == pad && hit.step >= startStep && hit.step < endStep {
                             let visibleStep = hit.step - startStep
                             let x = gutter + (CGFloat(visibleStep) + 0.5) * cellWidth
@@ -353,43 +360,56 @@ private struct StaticPattern: View {
                                     fontSize: lanes.fontSize, context: &context)
                         }
                     }
-                    var playedContext = context
-                    let visiblePosition = position - Double(startStep)
-                    let markerX = gutter + CGFloat(visiblePosition) * cellWidth
-                    let behindMarker = min(size.width, max(0, markerX))
-                    playedContext.clip(to: Path(CGRect(x: 0, y: 0, width: behindMarker, height: size.height)))
-
-                    let barPlayedHits = playedHits.filter {
-                        $0.padIndex == pad && $0.step >= Double(startStep) && $0.step < Double(endStep)
-                    }
-                    for hit in barPlayedHits {
-                        let visibleStep = hit.step - Double(startStep)
-                        let x = gutter + (CGFloat(visibleStep) + 0.5) * cellWidth
-                        let rect = lanes.tile(x: x, width: cellWidth, row: row)
-                        var hitContext = hit.pass == feedback.pass ? playedContext : context
-                        if hit.pass != feedback.pass {
-                            hitContext.opacity = feedback.strength(offset: -1, step: hit.step)
-                        }
-                        drawPlayedHit(hit, in: rect, fontSize: lanes.fontSize, context: &hitContext)
-                    }
                 }
             }
+            .opacity(afterMe ? 0 : 1)
+            .animation(reduceMotion ? nil : Theme.Motion.fast, value: afterMe)
 
-            // Smooth playhead moving across bar boundaries at constant speed
-            let visiblePosition = position - Double(startStep)
-            if running && visiblePosition >= 0 && visiblePosition <= Double(totalSteps) {
-                let markerX = gutter + CGFloat(visiblePosition) * cellWidth
-                drawMarker(x: markerX, top: lanes.top - 4 * scale, bottom: lanes.bottom + 4, context: &context)
+            Canvas { context, size in
+                let cellWidth = max(1, (size.width - gutter) / CGFloat(totalSteps))
+                let lanes = PatternLanes(size: size, rows: rows, scale: scale)
+
+                if visibility == .hidden && running {
+                    for (row, pad) in rows.enumerated() {
+                        var playedContext = context
+                        let visiblePosition = position - Double(startStep)
+                        let markerX = gutter + CGFloat(visiblePosition) * cellWidth
+                        let behindMarker = min(size.width, max(0, markerX))
+                        playedContext.clip(to: Path(CGRect(x: 0, y: 0, width: behindMarker, height: size.height)))
+
+                        let barPlayedHits = playedHits.filter {
+                            $0.padIndex == pad && $0.step >= Double(startStep) && $0.step < Double(endStep)
+                        }
+                        for hit in barPlayedHits {
+                            let visibleStep = hit.step - Double(startStep)
+                            let x = gutter + (CGFloat(visibleStep) + 0.5) * cellWidth
+                            let rect = lanes.tile(x: x, width: cellWidth, row: row)
+                            var hitContext = hit.pass == feedback.pass ? playedContext : context
+                            if hit.pass != feedback.pass {
+                                hitContext.opacity = feedback.strength(offset: -1, step: hit.step)
+                            }
+                            drawPlayedHit(hit, in: rect, fontSize: lanes.fontSize, context: &hitContext)
+                        }
+                    }
+                }
+
+                // Smooth playhead moving across bar boundaries at constant speed
+                let visiblePosition = position - Double(startStep)
+                if running && visiblePosition >= 0 && visiblePosition <= Double(totalSteps) {
+                    let markerX = gutter + CGFloat(visiblePosition) * cellWidth
+                    drawMarker(x: markerX, top: lanes.top - 4 * scale, bottom: lanes.bottom + 4, context: &context)
+                }
+
+                // Pad labels appear once, on the left of the whole row of bars
+                lanes.drawLabels(band: band, context: &context)
             }
-
-            // Pad labels appear once, on the left of the whole row of bars
-            lanes.drawLabels(band: band, context: &context)
         }
     }
 }
 
 private struct ScrollingPattern: View {
     @Environment(SettingsManager.self) private var settings
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     let lesson: Lesson
     let hits: [LessonHit]
     let rows: [Int]
@@ -408,61 +428,85 @@ private struct ScrollingPattern: View {
     let scale: CGFloat
 
     var body: some View {
-        Canvas { context, size in
-            let total = max(16, lesson.bars * 16)
-            let cellWidth = max(PracticeBandStyle.cellWidth(rows: rows, scale: scale), size.width / 24)
-            let markerX = size.width / 3
-            let lanes = PatternLanes(size: size, rows: rows, scale: scale)
-            let rowTop = lanes.top
-            let rowBottom = lanes.bottom
-            let firstStep = Int(floor(position - Double(markerX / cellWidth))) - 1
-            let lastStep = Int(ceil(position + Double((size.width - markerX) / cellWidth))) + 1
-            lanes.drawRows(context: &context)
-            for globalStep in firstStep...lastStep {
-                guard globalStep >= 0 else { continue }
-                let step = (globalStep % total + total) % total
-                let recordedPass = globalStep / total + 1
-                let stepVisibility: NoteVisibility = afterMe ? .hidden : NoteVisibility.derive(
-                    fromMemory: fromMemory,
-                    running: running,
-                    listen: false,
-                    isSectionLoop: false,
-                    pass: recordedPass,
-                    fadeNotes: settings.fadeMemoryNotes
-                )
-                let x = markerX + CGFloat(Double(globalStep) - position) * cellWidth
-                drawBeat(step: step, x: x, lanes: lanes, context: &context)
-                if stepVisibility != .hidden {
-                    for hit in hits where hit.step == step {
-                        guard let row = rows.firstIndex(of: hit.padIndex) else { continue }
-                        let rect = lanes.tile(x: x, width: cellWidth, row: row)
-                        // A note keeps the judgment of its own tape repeat. Fade only
-                        // as its block leaves the viewport, independent of pass changes.
-                        let strength = min(1, max(0, rect.maxX / rect.width))
-                        let mark = hitMark(hit, judgments: judgments[recordedPass] ?? [:], scoring: scoring,
-                                           elapsedSteps: position - Double(globalStep), grace: missGraceSteps)
-                        drawHit(hit, in: rect, mark: mark, strength: strength, visibility: stepVisibility,
-                                fontSize: lanes.fontSize, context: &context)
+        let total = max(16, lesson.bars * 16)
+
+        ZStack {
+            Canvas { context, size in
+                let cellWidth = max(PracticeBandStyle.cellWidth(rows: rows, scale: scale), size.width / 24)
+                let markerX = size.width / 3
+                let lanes = PatternLanes(size: size, rows: rows, scale: scale)
+                let firstStep = Int(floor(position - Double(markerX / cellWidth))) - 1
+                let lastStep = Int(ceil(position + Double((size.width - markerX) / cellWidth))) + 1
+                lanes.drawRows(context: &context)
+                for globalStep in firstStep...lastStep {
+                    guard globalStep >= 0 else { continue }
+                    let step = (globalStep % total + total) % total
+                    let x = markerX + CGFloat(Double(globalStep) - position) * cellWidth
+                    drawBeat(step: step, x: x, lanes: lanes, context: &context)
+                }
+            }
+
+            Canvas { context, size in
+                let cellWidth = max(PracticeBandStyle.cellWidth(rows: rows, scale: scale), size.width / 24)
+                let markerX = size.width / 3
+                let lanes = PatternLanes(size: size, rows: rows, scale: scale)
+                let firstStep = Int(floor(position - Double(markerX / cellWidth))) - 1
+                let lastStep = Int(ceil(position + Double((size.width - markerX) / cellWidth))) + 1
+
+                for globalStep in firstStep...lastStep {
+                    guard globalStep >= 0 else { continue }
+                    let step = (globalStep % total + total) % total
+                    let recordedPass = globalStep / total + 1
+                    let stepVisibility: NoteVisibility = afterMe ? .shown : NoteVisibility.derive(
+                        fromMemory: fromMemory,
+                        running: running,
+                        listen: false,
+                        isSectionLoop: false,
+                        pass: recordedPass,
+                        fadeNotes: settings.fadeMemoryNotes
+                    )
+                    let x = markerX + CGFloat(Double(globalStep) - position) * cellWidth
+                    if stepVisibility != .hidden || afterMe {
+                        for hit in hits where hit.step == step {
+                            guard let row = rows.firstIndex(of: hit.padIndex) else { continue }
+                            let rect = lanes.tile(x: x, width: cellWidth, row: row)
+                            let strength = min(1, max(0, rect.maxX / rect.width))
+                            let mark = hitMark(hit, judgments: judgments[recordedPass] ?? [:], scoring: scoring,
+                                               elapsedSteps: position - Double(globalStep), grace: missGraceSteps)
+                            drawHit(hit, in: rect, mark: mark, strength: strength, visibility: afterMe ? .shown : stepVisibility,
+                                    fontSize: lanes.fontSize, context: &context)
+                        }
                     }
                 }
             }
-            if visibility == .hidden && running {
-                var playedContext = context
-                playedContext.clip(to: Path(CGRect(x: 0, y: rowTop, width: markerX, height: max(1, rowBottom - rowTop))))
-                for hit in playedHits {
-                    guard let row = rows.firstIndex(of: hit.padIndex) else { continue }
-                    let step = hit.tapeStep(totalSteps: total)
-                    guard step >= 0, step < position else { continue }
-                    let x = markerX + CGFloat(step - position) * cellWidth
-                    guard x + cellWidth * 0.42 >= 0 else { continue }
-                    let rect = lanes.tile(x: x, width: cellWidth, row: row)
-                    var hitContext = playedContext
-                    hitContext.opacity = min(1, max(0, rect.maxX / rect.width))
-                    drawPlayedHit(hit, in: rect, fontSize: lanes.fontSize, context: &hitContext)
+            .opacity(afterMe ? 0 : 1)
+            .animation(reduceMotion ? nil : Theme.Motion.fast, value: afterMe)
+
+            Canvas { context, size in
+                let cellWidth = max(PracticeBandStyle.cellWidth(rows: rows, scale: scale), size.width / 24)
+                let markerX = size.width / 3
+                let lanes = PatternLanes(size: size, rows: rows, scale: scale)
+                let rowTop = lanes.top
+                let rowBottom = lanes.bottom
+
+                if visibility == .hidden && running {
+                    var playedContext = context
+                    playedContext.clip(to: Path(CGRect(x: 0, y: rowTop, width: markerX, height: max(1, rowBottom - rowTop))))
+                    for hit in playedHits {
+                        guard let row = rows.firstIndex(of: hit.padIndex) else { continue }
+                        let step = hit.tapeStep(totalSteps: total)
+                        guard step >= 0, step < position else { continue }
+                        let x = markerX + CGFloat(step - position) * cellWidth
+                        guard x + cellWidth * 0.42 >= 0 else { continue }
+                        let rect = lanes.tile(x: x, width: cellWidth, row: row)
+                        var hitContext = playedContext
+                        hitContext.opacity = min(1, max(0, rect.maxX / rect.width))
+                        drawPlayedHit(hit, in: rect, fontSize: lanes.fontSize, context: &hitContext)
+                    }
                 }
+                drawMarker(x: markerX, top: lanes.top - 4 * scale, bottom: rowBottom + 4, context: &context)
+                lanes.drawLabels(band: band, context: &context)
             }
-            drawMarker(x: markerX, top: lanes.top - 4 * scale, bottom: rowBottom + 4, context: &context)
-            lanes.drawLabels(band: band, context: &context)
         }
     }
 }

@@ -89,6 +89,7 @@ struct InstrumentButtonStyle: ButtonStyle {
 
 /// A tap performs the action; holding the icon reveals its localized name.
 struct PracticeIconButton: View {
+    @Environment(\.isEnabled) private var isEnabled
     let symbol: String
     let title: String
     var count: Int? = nil
@@ -104,9 +105,12 @@ struct PracticeIconButton: View {
                 .frame(width: Theme.Size.touch, height: Theme.Size.touch)
                 .foregroundStyle(selected ? Theme.background : Theme.ink)
                 .background(selected ? Theme.ink : Theme.background)
+                .opacity(isEnabled ? 1 : 0.35)
                 .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
+        .motion(value: isEnabled)
+        .motion(value: selected)
         .accessibilityLabel(title)
         .modifier(OptionalAccessibilityModifier(value: accessibilityValue, hint: accessibilityHint))
         .accessibilityAddTraits(selected ? .isSelected : [])
