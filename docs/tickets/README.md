@@ -146,3 +146,8 @@ Source: Jakub, retention and memory discussion; legacy "Trénink" concept 2026-1
 | 117 | Home background v2: real-looking controller body, one design, HTML preview (no code) | Gemini 3.8 Flash, high (fallback Codex Sol, high) | any time; implementation after Jakub approves |
 | 118 | Controller body preview: ribbed body + smooth plate, centred layout, portrait fix (no code) | Gemini 3.8 Flash, high (fallback Codex Sol, high) | after 117 (same files); implementation ticket after Jakub approves |
 | 119 | Home controller body: ribbed body, smooth plate with screws, faders, real wordmark title | Codex GPT-6.1 Sol, high (fallback Gemini 3.8 Pro, high) | now (112, 113, 115, 116 are done) |
+| 120 | Home Continue pad: crash on tap, "Pokračovat" wraps in portrait | Codex GPT-6.1 Sol, high (fallback Gemini 3.8 Pro, high) | 1st (crash) |
+| 121 | Training: opens after ~5 s, lessons do not start from Training | Codex GPT-6.1 Sol, high (fallback Gemini 3.8 Pro, high) | 2nd |
+| 122 | Practice header subtitle on one line | Gemini 3.8 Flash, medium (fallback Codex Sol, medium) | any time |
+| 123 | Mode switch to/from After me: no jump, smooth animation | Gemini 3.8 Flash, high (fallback Codex Sol, high) | after 122 (same header) |
+| 124 | Pad layout toggle sometimes lags | Gemini 3.8 Flash, high (fallback Codex Sol, high) | any time |
