@@ -1,6 +1,6 @@
 # 108 — Fix three failing unit tests (found 2026-11-06)
 
-Status: ready-for-agent. Source: Jakub, 2026-11-06 (Xcode: 166 tests, 3 failing; run at 06:27 on main, commit 3c25498).
+Status: ready-for-human. Source: Jakub, 2026-11-06 (Xcode: 166 tests, 3 failing; run at 06:27 on main, commit 3c25498).
 
 ## Goal
 
@@ -29,9 +29,9 @@ For 2 and 3: exactly one hit is lost in each. Suspects: (a) the test uses real h
 
 ## Acceptance criteria
 
-- [ ] The three tests pass; no other test newly fails.
-- [ ] Build succeeds.
-- [ ] Final report says for each test: "test outdated" or "code bug", in one line.
+- [x] The three tests pass; no other test newly fails.
+- [x] Build succeeds.
+- [x] Final report says for each test: "test outdated" or "code bug", in one line.
 
 ## Agent assignment
 

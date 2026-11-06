@@ -123,8 +123,6 @@ public struct ReviewScheduler: Sendable {
         if fadeNotes && pass < 3 {
             return Outcome(newSchedule: schedule, feedback: nil)
         }
-        var schedule = schedule
-        schedule.lastReviewedDay = today
 
         let atGoalTempo = bpm >= targetBpm
         if !fromMemory || !atGoalTempo {
