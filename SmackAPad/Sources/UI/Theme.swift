@@ -10,6 +10,9 @@ enum Theme {
     static let softBlackHex: UInt32 = 0x1F1D1A
     private static let creamWhite = UIColor(hex: creamHex)
     private static let softBlack = UIColor(hex: softBlackHex)
+    private static let plateCreamTop = UIColor(hex: 0xECE5DC)
+    private static let plateCreamBottom = UIColor(hex: 0xDDD5C8)
+    private static let cavityBlack = UIColor(hex: 0x0C0B0A)
 
     static let orange = Color(red: 1, green: 107.0 / 255, blue: 0)
     static let black = Color(uiColor: softBlack)
@@ -110,17 +113,87 @@ enum Theme {
         static let ribShadow = adaptive(light: softBlack.withAlphaComponent(0.08), dark: softBlack.withAlphaComponent(0.45))
         static let plateTop = adaptive(light: UIColor(hex: 0xE6DFD4), dark: UIColor(hex: 0x2C2924))
         static let plateShade = adaptive(light: UIColor(hex: 0xD5CDC0), dark: UIColor(hex: 0x1D1B18))
-        static let plateLight = adaptive(light: UIColor(hex: 0xECE5DC), dark: UIColor(hex: 0x312E28))
-        static let plateBottom = adaptive(light: UIColor(hex: 0xDDD5C8), dark: UIColor(hex: 0x201E1B))
+        static let plateLight = adaptive(light: plateCreamTop, dark: UIColor(hex: 0x312E28))
+        static let plateBottom = adaptive(light: plateCreamBottom, dark: UIColor(hex: 0x201E1B))
         static let screwTop = adaptive(light: creamWhite, dark: UIColor(hex: 0x555047))
         static let screwMiddle = adaptive(light: UIColor(hex: 0xDCD6CA), dark: UIColor(hex: 0x32302B))
         static let screwShade = adaptive(light: UIColor(hex: 0xACA597), dark: UIColor(hex: 0x1E1C19))
         static let screwBottom = adaptive(light: UIColor(hex: 0x7E786B), dark: UIColor(hex: 0x100F0E))
-        static let slot = adaptive(light: UIColor(hex: 0x1A1816), dark: UIColor(hex: 0x0C0B0A))
+        static let slot = adaptive(light: UIColor(hex: 0x1A1816), dark: cavityBlack)
         static let capTop = adaptive(light: UIColor(hex: 0xF3ECE2), dark: UIColor(hex: 0x3A3731))
         static let capMiddle = adaptive(light: UIColor(hex: 0xD7D0C5), dark: UIColor(hex: 0x262420))
         static let capShade = adaptive(light: UIColor(hex: 0xC5BEB2), dark: UIColor(hex: 0x1D1C18))
         static let capBottom = adaptive(light: UIColor(hex: 0xDFD8CC), dark: UIColor(hex: 0x2F2C26))
+    }
+
+    /// Opt-in materials for non-Home screens. Geometry belongs to each caller.
+    enum Skin {
+        enum Chassis {
+            static let top = HomeController.bodyTop
+            static let bottom = HomeController.bodyBottom
+            static let angle: Double = 175
+            static let ribPitch: CGFloat = 4
+            static let ribOpacity: Double = 0.05
+        }
+
+        enum Plate {
+            static let top = adaptive(light: plateCreamTop, dark: UIColor(hex: 0x272521))
+            static let bottom = adaptive(light: plateCreamBottom, dark: UIColor(hex: 0x1E1C19))
+            static let angle: Double = 165
+            static let radius = Radius.controllerPlate
+            static let bevel: CGFloat = 1.5
+            static let highlight = adaptive(light: creamWhite.withAlphaComponent(0.85), dark: creamWhite.withAlphaComponent(0.24))
+            static let shade = adaptive(light: softBlack.withAlphaComponent(0.2), dark: softBlack.withAlphaComponent(0.7))
+            static let shadow = adaptive(light: softBlack.withAlphaComponent(0.09), dark: softBlack.withAlphaComponent(0.55))
+            static let contactShadow = adaptive(light: softBlack.withAlphaComponent(0.06), dark: softBlack.withAlphaComponent(0.35))
+            static let shadowRadius: CGFloat = 12
+            static let shadowY: CGFloat = 6
+            static let contactRadius: CGFloat = 1.5
+            static let contactY: CGFloat = 1
+        }
+
+        enum Pad {
+            static let radius = Radius.pad
+            static let fill = surface
+            static let highlight = padBevelTop
+            static let shade = padBevelBottom
+            static let heroHighlight = white.opacity(0.42)
+            static let heroShade = black.opacity(0.28)
+            static let topBevel: CGFloat = 1.5
+            static let bottomBevel: CGFloat = 2
+            static let heroBottomBevel: CGFloat = 2.5
+            static let pressedScale: CGFloat = 0.965
+            static let pressedY: CGFloat = 1.5
+            static let flashOpacity: Double = 0.38
+            static let reducedPressOpacity: Double = 0.12
+        }
+
+        enum Display {
+            static let fill = Color(uiColor: UIColor(hex: 0x151412))
+            static let ink = white
+            static let secondary = adaptive(light: UIColor(hex: 0xA59E92), dark: UIColor(hex: 0xB3ADA2))
+            static let glassTop = adaptive(light: creamWhite.withAlphaComponent(0.08), dark: creamWhite.withAlphaComponent(0.04))
+            static let glassBottom = adaptive(light: softBlack.withAlphaComponent(0.2), dark: softBlack.withAlphaComponent(0.3))
+            static let shadow = Color(uiColor: cavityBlack).opacity(0.85)
+            static let shadowRadius: CGFloat = 4
+            static let shadowY: CGFloat = 3
+        }
+
+        enum LightBar {
+            static let height: CGFloat = 2
+            static let glowRadius: CGFloat = 3
+            static let glow = orange.opacity(0.8)
+        }
+
+        /// CSS angles: 0° points up, 90° points right, 180° points down.
+        static func gradient(_ colors: [Color], degrees: Double) -> LinearGradient {
+            let radians = degrees * .pi / 180
+            let x = sin(radians) / 2
+            let y = -cos(radians) / 2
+            return LinearGradient(colors: colors,
+                                  startPoint: UnitPoint(x: 0.5 - x, y: 0.5 - y),
+                                  endPoint: UnitPoint(x: 0.5 + x, y: 0.5 + y))
+        }
     }
 
     static func display(_ size: CGFloat = Size.title) -> Font {

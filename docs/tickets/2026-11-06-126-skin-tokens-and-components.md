@@ -1,6 +1,6 @@
 # 126 — App skin, part 1: shared tokens and components ("Klidný satén")
 
-Status: ready-for-agent. Depends on: 125 (preview, done). Source: Jakub, 2026-11-06: chose **variant B "Klidný satén"** for all non-Home screens; only colours, materials and motion may change, never layout or sizes.
+Status: implemented; build OK; ready for integration in 127–129. Depends on: 125 (preview, done). Source: Jakub, 2026-11-06: chose **variant B "Klidný satén"** for all non-Home screens; only colours, materials and motion may change, never layout or sizes.
 
 ## Hard rule: skin only, never layout (read first)
 
@@ -32,9 +32,9 @@ Shared building blocks only, used by tickets 127–129. **No screen changes in t
 
 ## Acceptance criteria
 
-- [ ] Tokens and components exist, reuse Home values, light and dark.
-- [ ] Any screen already using the changed components: before/after screenshots match in layout (±1 pt).
-- [ ] Build succeeds. No new tests.
+- [x] Tokens and components exist, reuse Home values, light and dark.
+- [x] Any screen already using the changed components: before/after screenshots match in layout (±1 pt). Not applicable: all new components are opt-in; no existing component or screen rendering changed.
+- [x] Build succeeds. No new tests.
 
 ## Agent assignment
 
@@ -44,3 +44,13 @@ Shared building blocks only, used by tickets 127–129. **No screen changes in t
 ## Done rule
 
 Stop after a successful build. Commit (AGENTS.md); Jakub pushes and tests on the iPad.
+
+## Implementation — 2026-11-06
+
+- Added `Theme.Skin` material tokens. Chassis colours alias `HomeController`, plate radius aliases `Radius.controllerPlate`, and pads share the existing radius, surface, bevels and motion tokens. The shared light plate colours and deep slot colour have one definition; Home retains the same resolved values. Satin gradients use 175° / 165°, with static 4 pt ribbing at 5% opacity.
+- Added `.calmChassisBackground()` (isolated, equatable, rasterised surface), `.satinPlate()` (background only, inner bevel and two plate shadows), and `.insetDisplay()` (dark glass, inner shadow and cream foreground). None adds content padding, frames, fonts or numeric transitions; the existing numeric roll remains the caller's responsibility.
+- Added `PadPrimaryButtonStyle`, `PadSecondaryButtonStyle` and `PadIconButtonStyle`. Apply these to an existing button whose label already owns its sizing. They add material and Home press feedback without replacing the label or setting its font, padding or frame. Reduce Motion uses the central policy: darkening only, without flash, travel or scale.
+- Added `HardwareKeyButtonStyle(isSelected:)` for each existing segment button, retaining the group's selection binding and layout. Its bottom light bar is clipped inside the button bounds and switches with `Theme.Motion.fast`. `HardwareLightBar` is also reusable as an overlay; breathing uses `ledBreath` and becomes static under Reduce Motion.
+- All additions are opt-in for tickets 127–129. Existing `PlexSegmentedPicker`, button consumers, Home and Practice are untouched. No screen changed, so no before/after simulator screenshot comparison or ±1 pt match is claimed. Screenshot proof remains required when the following tickets apply these components.
+- Screws omitted: a generic background cannot establish that a caller has empty corners without inspecting its screen. Add them only in a later screen-specific ticket where existing free space allows them.
+- Validation: Debug build for generic iOS Simulator succeeded with `CODE_SIGNING_ALLOWED=NO`; log: `build/skin-126-build.log`. The first sandboxed build could not run compiler macros/CoreSimulator services; the same build succeeded with the required system access. No tests were added or run. Device appearance, interaction and performance checks remain with Jakub when the components are integrated.

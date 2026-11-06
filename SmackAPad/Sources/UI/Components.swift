@@ -1,6 +1,218 @@
 import SwiftUI
 import UIKit
 
+/// Static and isolated from control state; the ribbing is rasterised with the chassis.
+private struct CalmChassisSurface: View, Equatable {
+    let darkAppearance: Bool
+
+    var body: some View {
+        Theme.Skin.gradient([Theme.Skin.Chassis.top, Theme.Skin.Chassis.bottom],
+                            degrees: Theme.Skin.Chassis.angle)
+            .overlay {
+                Canvas { context, size in
+                    for y in stride(from: CGFloat.zero, to: size.height, by: Theme.Skin.Chassis.ribPitch) {
+                        context.fill(Path(CGRect(x: 0, y: y, width: size.width, height: 2)),
+                                     with: .color(Theme.HomeController.ribLight))
+                        context.fill(Path(CGRect(x: 0, y: y + 2, width: size.width, height: 2)),
+                                     with: .color(Theme.HomeController.ribShadow))
+                    }
+                }
+                .opacity(Theme.Skin.Chassis.ribOpacity)
+            }
+            .drawingGroup(opaque: true)
+            .allowsHitTesting(false)
+            .accessibilityHidden(true)
+    }
+}
+
+private struct CalmChassisBackground: ViewModifier {
+    @Environment(\.colorScheme) private var colorScheme
+
+    func body(content: Content) -> some View {
+        content.background {
+            CalmChassisSurface(darkAppearance: colorScheme == .dark)
+                .equatable()
+                .ignoresSafeArea()
+        }
+    }
+}
+
+/// All bevel drawing is clipped inside the caller's existing bounds.
+private struct SkinBevel: View {
+    let radius: CGFloat
+    let highlight: Color
+    let shade: Color
+    let top: CGFloat
+    let bottom: CGFloat
+
+    var body: some View {
+        RoundedRectangle(cornerRadius: radius)
+            .strokeBorder(highlight, lineWidth: top)
+            .mask(alignment: .top) { Rectangle().frame(height: radius + top) }
+            .overlay {
+                RoundedRectangle(cornerRadius: radius)
+                    .strokeBorder(shade, lineWidth: bottom)
+                    .mask(alignment: .bottom) { Rectangle().frame(height: radius + bottom) }
+            }
+            .allowsHitTesting(false)
+            .accessibilityHidden(true)
+    }
+}
+
+private struct SatinPlateSurface: View {
+    var body: some View {
+        RoundedRectangle(cornerRadius: Theme.Skin.Plate.radius)
+            .fill(Theme.Skin.gradient([Theme.Skin.Plate.top, Theme.Skin.Plate.bottom],
+                                      degrees: Theme.Skin.Plate.angle))
+            .overlay {
+                SkinBevel(radius: Theme.Skin.Plate.radius, highlight: Theme.Skin.Plate.highlight,
+                          shade: Theme.Skin.Plate.shade, top: Theme.Skin.Plate.bevel, bottom: Theme.Skin.Plate.bevel)
+            }
+            .overlay {
+                RoundedRectangle(cornerRadius: Theme.Skin.Plate.radius)
+                    .strokeBorder(Theme.hairline, lineWidth: 1)
+            }
+            .shadow(color: Theme.Skin.Plate.shadow, radius: Theme.Skin.Plate.shadowRadius, y: Theme.Skin.Plate.shadowY)
+            .shadow(color: Theme.Skin.Plate.contactShadow, radius: Theme.Skin.Plate.contactRadius, y: Theme.Skin.Plate.contactY)
+            .allowsHitTesting(false)
+            .accessibilityHidden(true)
+    }
+}
+
+private struct InsetDisplay: ViewModifier {
+    func body(content: Content) -> some View {
+        content
+            .foregroundStyle(Theme.Skin.Display.ink)
+            .background {
+                RoundedRectangle(cornerRadius: Theme.Skin.Pad.radius)
+                    .fill(Theme.Skin.Display.fill.shadow(.inner(color: Theme.Skin.Display.shadow,
+                        radius: Theme.Skin.Display.shadowRadius, y: Theme.Skin.Display.shadowY)))
+                    .overlay {
+                        RoundedRectangle(cornerRadius: Theme.Skin.Pad.radius)
+                            .fill(LinearGradient(colors: [Theme.Skin.Display.glassTop, Theme.Skin.Display.glassBottom],
+                                                 startPoint: .top, endPoint: .bottom))
+                    }
+                    .overlay {
+                        RoundedRectangle(cornerRadius: Theme.Skin.Pad.radius)
+                            .strokeBorder(Theme.white.opacity(0.06), lineWidth: 1)
+                    }
+                    .allowsHitTesting(false)
+                    .accessibilityHidden(true)
+            }
+        // The caller retains its existing font, frame and numeric content transition.
+    }
+}
+
+/// Place in an overlay: its two-point light never participates in content layout.
+struct HardwareLightBar: View {
+    var active = true
+    var breathes = true
+    @Environment(\.accessibilityReduceMotion) private var reduced
+    @State private var breathing = false
+
+    private var shouldBreathe: Bool {
+        active && breathes && !Theme.Motion.Policy(reduced: reduced).reduced
+    }
+
+    var body: some View {
+        Rectangle().fill(Theme.orange)
+            .frame(height: Theme.Skin.LightBar.height)
+            .shadow(color: Theme.Skin.LightBar.glow, radius: Theme.Skin.LightBar.glowRadius)
+            .opacity(active ? (shouldBreathe ? Theme.Motion.Policy(reduced: reduced).breathingOpacity(animating: breathing) : 1) : 0)
+            .animation(shouldBreathe ? Theme.Motion.ledBreath : nil, value: breathing)
+            .task(id: shouldBreathe) { breathing = shouldBreathe }
+            .allowsHitTesting(false)
+            .accessibilityHidden(true)
+    }
+}
+
+private struct PadControlBody<Label: View>: View {
+    let label: Label
+    let pressed: Bool
+    var primary = false
+    var selected: Bool? = nil
+    @Environment(\.accessibilityReduceMotion) private var reduced
+    @Environment(\.isEnabled) private var enabled
+
+    var body: some View {
+        let policy = Theme.Motion.Policy(reduced: reduced)
+        label
+            .foregroundStyle(primary ? Theme.black : Theme.ink)
+            .background {
+                RoundedRectangle(cornerRadius: Theme.Skin.Pad.radius)
+                    .fill(primary ? Theme.orange : Theme.Skin.Pad.fill)
+                    .overlay {
+                        SkinBevel(radius: Theme.Skin.Pad.radius,
+                                  highlight: primary ? Theme.Skin.Pad.heroHighlight : Theme.Skin.Pad.highlight,
+                                  shade: primary ? Theme.Skin.Pad.heroShade : Theme.Skin.Pad.shade,
+                                  top: Theme.Skin.Pad.topBevel,
+                                  bottom: primary ? Theme.Skin.Pad.heroBottomBevel : Theme.Skin.Pad.bottomBevel)
+                    }
+                    .overlay {
+                        RoundedRectangle(cornerRadius: Theme.Skin.Pad.radius)
+                            .strokeBorder(primary ? Theme.black.opacity(0.12) : Theme.hairline, lineWidth: 1)
+                    }
+                    .shadow(color: primary ? Theme.orange.opacity(0.25) : Theme.black.opacity(0.08),
+                            radius: primary ? 3 : 2, y: primary ? 3 : 2)
+            }
+            .overlay(alignment: .bottom) {
+                if let selected {
+                    Color.clear.overlay(alignment: .bottom) { HardwareLightBar(active: selected) }
+                        .clipShape(RoundedRectangle(cornerRadius: Theme.Skin.Pad.radius))
+                        .motion(Theme.Motion.fast, value: selected)
+                        .allowsHitTesting(false)
+                        .accessibilityHidden(true)
+                }
+            }
+            .overlay {
+                RoundedRectangle(cornerRadius: Theme.Skin.Pad.radius)
+                    .fill(policy.reduced ? Theme.black : Theme.white)
+                    .opacity(pressed ? (policy.reduced ? Theme.Skin.Pad.reducedPressOpacity : Theme.Skin.Pad.flashOpacity) : 0)
+                    .animation(policy.animation(Theme.Motion.padFlash), value: pressed)
+                    .allowsHitTesting(false)
+            }
+            .scaleEffect(policy.scale(pressed ? Theme.Skin.Pad.pressedScale : 1))
+            .offset(y: policy.offset(pressed ? Theme.Skin.Pad.pressedY : 0))
+            .animation(policy.animation(pressed ? Theme.Motion.padFlash : Theme.Motion.padPress), value: pressed)
+            .opacity(enabled ? 1 : 0.45)
+        // No padding, font or frame: sizing and touch targets remain the caller's.
+    }
+}
+
+struct PadPrimaryButtonStyle: ButtonStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        PadControlBody(label: configuration.label, pressed: configuration.isPressed, primary: true)
+    }
+}
+
+struct PadSecondaryButtonStyle: ButtonStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        PadControlBody(label: configuration.label, pressed: configuration.isPressed)
+    }
+}
+
+struct PadIconButtonStyle: ButtonStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        PadControlBody(label: configuration.label, pressed: configuration.isPressed)
+    }
+}
+
+/// Apply to each existing segment button; the group retains its sizes and selection binding.
+struct HardwareKeyButtonStyle: ButtonStyle {
+    let isSelected: Bool
+
+    func makeBody(configuration: Configuration) -> some View {
+        PadControlBody(label: configuration.label, pressed: configuration.isPressed, selected: isSelected)
+            .accessibilityAddTraits(isSelected ? .isSelected : [])
+    }
+}
+
+extension View {
+    func calmChassisBackground() -> some View { modifier(CalmChassisBackground()) }
+    func satinPlate() -> some View { background { SatinPlateSurface() } }
+    func insetDisplay() -> some View { modifier(InsetDisplay()) }
+}
+
 /// Native segmented controls ignore SwiftUI's custom font environment.
 /// Keep the native control, but give both states real Plex faces and enough height.
 struct PlexSegmentedPicker<Value: Hashable>: View {
