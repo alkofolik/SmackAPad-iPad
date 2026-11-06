@@ -140,3 +140,4 @@ Source: Jakub, retention and memory discussion; legacy "Trénink" concept 2026-1
 | 111 | Proposals: modern Home pads and app motion (HTML previews, no code) | Gemini 3.8 Flash, high (fallback Codex Sol, high) | any time; implementation ticket after Jakub chooses |
 | 112 | Home pads: look of proposal A with the light bar from B | Gemini 3.8 Flash, high (fallback Codex Sol, high) | 1st (after 110) |
 | 113 | Transitions: pad zoom into screens, Today step-in | Gemini 3.8 Flash, high (fallback Codex Sol, high) | after 112 (same Home files) |
+| 114 | Proposals: Home background like a pad-controller surface (HTML previews, no code) | Gemini 3.8 Flash, high (fallback Codex Sol, high) | any time (needs 112 look only as reference); implementation after Jakub chooses and after 113 |
