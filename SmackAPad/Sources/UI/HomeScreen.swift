@@ -339,6 +339,7 @@ enum HomePadDestination: Identifiable, Equatable {
     case badges
     case purchases
     case settings
+    case about
 
     var id: String {
         switch self {
@@ -351,6 +352,7 @@ enum HomePadDestination: Identifiable, Equatable {
         case .badges: return "pad-badges"
         case .purchases: return "pad-purchases"
         case .settings: return "pad-settings"
+        case .about: return "pad-about"
         }
     }
 }
@@ -388,6 +390,8 @@ public struct HomeScreen: View {
     @State private var blackBounce: CGFloat = 0
     @State private var wordmarkVisible: Bool
     @State private var isSettled: Bool
+    @State private var logoInPad: Bool
+    @State private var plateVisible: Bool
     @State private var padVisible: [Bool]
     @State private var animationFinished: Bool
     @State private var animationTask: Task<Void, Never>?
@@ -413,6 +417,8 @@ public struct HomeScreen: View {
         _orangeLanded = State(initialValue: settled)
         _wordmarkVisible = State(initialValue: settled)
         _isSettled = State(initialValue: settled)
+        _logoInPad = State(initialValue: settled)
+        _plateVisible = State(initialValue: settled)
         _padVisible = State(initialValue: Array(repeating: settled, count: 8))
         _animationFinished = State(initialValue: settled)
     }
@@ -470,24 +476,27 @@ public struct HomeScreen: View {
                     .ignoresSafeArea()
                     .opacity(isSettled ? 0.0 : 1.0)
 
-                // 3x3 Pad Grid (outer pads)
+                // 3x3 Pad Grid (outer pads + centre logo pad)
                 gridContent(cellSize: cellSize, gap: gap)
                     .frame(width: gridSize, height: gridSize)
                     .position(x: containerW / 2, y: settledGridCenterY)
 
-                // Centre Logo Mark
-                HomeLogoMarkView(
-                    size: isSettled ? cellSize : initialLogoSize,
-                    darkAppearance: darkLogo,
-                    reduceMotion: reduceMotion,
-                    pad1Popped: pad1Popped,
-                    pad2Popped: pad2Popped,
-                    pad3Popped: pad3Popped,
-                    orangeVisible: orangeVisible,
-                    orangeLanded: orangeLanded,
-                    blackBounce: blackBounce
-                )
-                .position(x: containerW / 2, y: isSettled ? settledGridCenterY : initialLogoY)
+                // Floating Centre Logo Mark (only during launch animation until landed)
+                if !logoInPad {
+                    HomeLogoMarkView(
+                        size: isSettled ? cellSize : initialLogoSize,
+                        darkAppearance: darkLogo,
+                        reduceMotion: reduceMotion,
+                        pad1Popped: pad1Popped,
+                        pad2Popped: pad2Popped,
+                        pad3Popped: pad3Popped,
+                        orangeVisible: orangeVisible,
+                        orangeLanded: orangeLanded,
+                        blackBounce: blackBounce
+                    )
+                    .position(x: containerW / 2, y: isSettled ? settledGridCenterY : initialLogoY)
+                    .allowsHitTesting(false)
+                }
 
                 // Wordmark "Smack-a-Pad"
                 HomeWordmarkView(
@@ -665,6 +674,19 @@ public struct HomeScreen: View {
             .environment(progression)
             .environment(badgeStore)
             .environment(midi)
+
+        case .about:
+            NavigationStack {
+                AboutDetailView(showsDoneButton: true, onDismiss: {
+                    activeDestination = nil
+                })
+            }
+            .environment(store)
+            .environment(settings)
+            .environment(progress)
+            .environment(progression)
+            .environment(badgeStore)
+            .environment(midi)
         }
     }
 
@@ -712,14 +734,14 @@ public struct HomeScreen: View {
                     .padSource("pad-training", in: homeNamespace)
                     .frame(width: cellSize, height: cellSize)
             }
-            // Row 1: Intro (4) · [Centre Logo Placeholder] · Controller (5)
+            // Row 1: Intro (4) · Centre Logo Pad (About) · Controller (5)
             HStack(spacing: gap) {
                 bootPad(pad4, isVisible: padVisible[3])
                     .padSource("pad-intro", in: homeNamespace)
                     .frame(width: cellSize, height: cellSize)
-                Color.clear
+                centreLogoPad(cellSize: cellSize)
+                    .padSource("pad-about", in: homeNamespace)
                     .frame(width: cellSize, height: cellSize)
-                    .accessibilityHidden(true)
                 bootPad(pad5, isVisible: padVisible[4])
                     .padSource("pad-controller", in: homeNamespace)
                     .frame(width: cellSize, height: cellSize)
@@ -1042,6 +1064,57 @@ public struct HomeScreen: View {
         }
     }
 
+    private func centreLogoPad(cellSize: CGFloat) -> some View {
+        let darkLogo = isSettled && (colorScheme == .dark)
+        let label = settings.localized("About")
+
+        return Button {
+            guard animationFinished else { return }
+            activeDestination = .about
+        } label: {
+            ZStack {
+                if logoInPad {
+                    HomeLogoMarkView(
+                        size: cellSize,
+                        darkAppearance: darkLogo,
+                        reduceMotion: reduceMotion
+                    )
+                    .accessibilityHidden(true)
+                }
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .background(
+                RoundedRectangle(cornerRadius: Theme.Radius.pad)
+                    .fill(Theme.surface)
+                    .opacity(plateVisible ? 1.0 : 0.0)
+            )
+            .overlay {
+                // Two-tone bevel: top 1.5 pt light highlight, bottom 2 pt darker edge (ticket 112)
+                VStack(spacing: 0) {
+                    Theme.padBevelTop
+                        .frame(height: 1.5)
+                    Spacer(minLength: 0)
+                    Theme.padBevelBottom
+                        .frame(height: 2.0)
+                }
+                .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.pad))
+                .opacity(plateVisible ? 1.0 : 0.0)
+                .allowsHitTesting(false)
+            }
+            .overlay {
+                RoundedRectangle(cornerRadius: Theme.Radius.pad)
+                    .strokeBorder(Theme.hairline, lineWidth: 1)
+                    .opacity(plateVisible ? 1.0 : 0.0)
+                    .allowsHitTesting(false)
+            }
+            .contentShape(RoundedRectangle(cornerRadius: Theme.Radius.pad))
+        }
+        .buttonStyle(TactilePadButtonStyle())
+        .accessibilityLabel(label)
+        .accessibilityAddTraits(.isButton)
+        .allowsHitTesting(animationFinished)
+    }
+
     // MARK: - Animation Sequence
 
     private func startAnimation() {
@@ -1120,6 +1193,12 @@ public struct HomeScreen: View {
             try? await Task.sleep(for: .milliseconds(600))
             guard !Task.isCancelled else { return }
 
+            // Logo has landed in centre cell; switch to pad logo and fade plate in (Ticket 115)
+            logoInPad = true
+            withAnimation(.easeOut(duration: 0.20)) {
+                plateVisible = true
+            }
+
             // 2.10–2.80 s: 8 pads appear in a diagonal wave from top-left to bottom-right (ticket 112)
             // Wave 0: Pad 1 (top-left)
             withAnimation(.spring(response: 0.28, dampingFraction: 0.68)) {
@@ -1177,6 +1256,8 @@ public struct HomeScreen: View {
             blackBounce = 0
             wordmarkVisible = true
             isSettled = true
+            logoInPad = true
+            plateVisible = true
             for i in 0..<8 {
                 padVisible[i] = true
             }

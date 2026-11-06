@@ -414,35 +414,6 @@ public struct SettingsView: View {
     }
 }
 
-private struct AboutDetailView: View {
-    @Environment(SettingsManager.self) private var settings
-
-    var body: some View {
-        let version = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.0"
-        VStack(alignment: .leading, spacing: Theme.Space.regular) {
-            Text("Smack-a-Pad")
-                .font(Theme.sectionTitle)
-                .foregroundStyle(Theme.ink)
-            Text(settings.localized("Version %@", version))
-                .font(Theme.meta)
-                .foregroundStyle(Theme.secondary)
-            Divider()
-            Text(settings.localized("Font IBM Plex Sans, SIL OFL 1.1"))
-                .font(Theme.meta)
-                .foregroundStyle(Theme.secondary)
-            Spacer()
-        }
-        .padding(Theme.Space.page)
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-        .background(Theme.background.ignoresSafeArea())
-        .navigationTitle(settings.localized("About"))
-        .navigationBarTitleDisplayMode(.inline)
-        .toolbar {
-            ToolbarItem(placement: .principal) { ScreenHeader(title: settings.localized("About")) }
-        }
-    }
-}
-
 private struct FontLicenceView: View {
     private static let licence: String = {
         guard let url = Bundle.main.url(forResource: "ibmplexsans-OFL", withExtension: "txt"),

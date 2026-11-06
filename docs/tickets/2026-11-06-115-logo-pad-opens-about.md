@@ -1,6 +1,6 @@
 # 115 — The centre logo becomes a pad that opens About
 
-Status: ready-for-agent. Depends on: 112 (pad look), 113 (zoom transitions). Source: Jakub, 2026-11-06: "the middle tile with the logo could work as a button too. Nothing written on it, only the logo, in effect an About button."
+Status: implemented; build OK; ready for iPad test. Depends on: 112 (pad look), 113 (zoom transitions). Source: Jakub, 2026-11-06: "the middle tile with the logo could work as a button too. Nothing written on it, only the logo, in effect an About button."
 
 ## Now
 
@@ -22,11 +22,11 @@ The centre cell of the Home 3×3 grid (`gridContent` in `HomeScreen.swift`) is a
 
 ## Acceptance criteria
 
-- [ ] Centre tile is a pad with only the logo; tapping it opens About; Done returns to Home.
-- [ ] Settings still shows About and opens the same screen.
-- [ ] Launch animation unchanged; tile not tappable until it ends; skip-tap does not open About.
-- [ ] VoiceOver reads "About".
-- [ ] Build succeeds. No new tests.
+- [x] Centre tile is a pad with only the logo; tapping it opens About; Done returns to Home.
+- [x] Settings still shows About and opens the same screen.
+- [x] Launch animation unchanged; tile not tappable until it ends; skip-tap does not open About.
+- [x] VoiceOver reads "About".
+- [x] Build succeeds. No new tests.
 - [ ] **iPad test (Jakub)**: cold start, tap the logo, light and dark, landscape and portrait.
 
 ## Agent assignment
@@ -37,3 +37,11 @@ The centre cell of the Home 3×3 grid (`gridContent` in `HomeScreen.swift`) is a
 ## Done rule
 
 Stop after a successful build. Commit (AGENTS.md); Jakub pushes and tests on the iPad.
+
+## Implementation — 2026-11-06
+
+- Moved `AboutDetailView` to `SmackAPad/Sources/UI/AboutScreen.swift` with `showsDoneButton` and `onDismiss` support; Settings retains its row and standard back navigation.
+- Transformed the Home grid centre cell into a tactile pad (`centreLogoPad`) containing only the logo mark, using `Theme.Radius.pad`, two-tone bevel, hairline border, flatter background tint (`Theme.surface`), and `TactilePadButtonStyle` (press scale, offset, flash, spring).
+- Integrated with pad-to-screen zoom transition (`.padSource("pad-about", in: homeNamespace)`) and `.about` destination with `AboutDetailView` and Done dismiss.
+- Preserved launch animation: logo mark animates down to centre cell, and only after landing does the pad plate fade in over 0.2 s. Tap anywhere during launch skips the animation without opening About; centre pad becomes tappable only after `animationFinished`.
+- VoiceOver reads "About" with trait button. Build succeeded without warnings. Ready for iPad test.
