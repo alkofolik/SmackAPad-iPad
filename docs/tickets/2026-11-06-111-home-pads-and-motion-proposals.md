@@ -69,3 +69,7 @@ Folder `docs/design/2026-11-06-home-pads-and-motion/`:
 ## Done rule
 
 Stop when the files are written. Commit (AGENTS.md); Jakub opens the previews and chooses.
+
+## Comments
+
+- 2026-11-06 (Jakub): chose proposal A, but with the orange light bar of proposal B instead of the corner dot. Implementation: tickets 112 (look) and 113 (transitions).
