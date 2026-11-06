@@ -28,6 +28,9 @@ struct PracticeScreen: View {
     @State private var showingInfo = false
     @State private var purchaseAccess: String?
     @State private var midLessonStarMomentActive = false
+    #if DEBUG
+    @State private var debugShowResult = false
+    #endif
     private let onStepResult: ((PracticeStepOutcome) -> Void)?
 
     init(lesson: Lesson, settings: SettingsManager, progress: ProgressStore, midi: MIDIInput,
@@ -83,13 +86,14 @@ struct PracticeScreen: View {
             }
             .padding(Theme.Space.page)
             .frame(width: geometry.size.width, height: geometry.size.height)
-            .background(Theme.background.ignoresSafeArea())
+            .calmChassisBackground()
             .foregroundStyle(Theme.ink)
         }
         .toolbar(.hidden, for: .navigationBar)
         .task(id: ObjectIdentifier(session)) {
             await session.prepare()
             updatePadLayoutModel()
+            handleDebugLaunchArguments()
             if session.isMix { session.start() }
         }
         .onDisappear {
@@ -144,6 +148,34 @@ struct PracticeScreen: View {
         }
     }
 
+    private func handleDebugLaunchArguments() {
+        #if DEBUG
+        let args = ProcessInfo.processInfo.arguments
+        if args.contains("-light") {
+            settings.appearance = .light
+        } else if args.contains("-dark") {
+            settings.appearance = .dark
+        }
+        if args.contains("-landscape") {
+            if let windowScene = UIApplication.shared.connectedScenes.compactMap({ $0 as? UIWindowScene }).first {
+                windowScene.requestGeometryUpdate(.iOS(interfaceOrientations: .landscapeRight))
+            }
+        } else if args.contains("-portrait") {
+            if let windowScene = UIApplication.shared.connectedScenes.compactMap({ $0 as? UIWindowScene }).first {
+                windowScene.requestGeometryUpdate(.iOS(interfaceOrientations: .portrait))
+            }
+        }
+        if args.contains("-mode-listen") {
+            session.selectPlaybackMode(.listen)
+        } else if args.contains("-mode-afterme") {
+            session.selectPlaybackMode(.afterMe)
+        }
+        if args.contains("-with-result") {
+            debugShowResult = true
+        }
+        #endif
+    }
+
     private var touchPadsReady: Bool {
         session.ready && session.available && scenePhase == .active && !showingMIDI
             && midi.lesson?.id == session.lesson.id && midi.padIndices?.count == 16
@@ -195,10 +227,13 @@ struct PracticeScreen: View {
             if let dismissLesson { dismissLesson() } else { dismiss() }
         } label: {
             Label(settings.localized(onStepResult != nil ? "Today" : (session.isMix ? "Training" : "Library")), systemImage: "square.grid.2x2")
+                .font(Theme.control)
+                .padding(.horizontal, Theme.Space.regular)
+                .frame(minHeight: Theme.Size.touch)
                 .lineLimit(1)
                 .fixedSize(horizontal: true, vertical: false)
         }
-        .buttonStyle(InstrumentButtonStyle())
+        .buttonStyle(PadSecondaryButtonStyle())
     }
 
     private var titleAndSubtitle: some View {
@@ -281,7 +316,10 @@ struct PracticeScreen: View {
             HStack(spacing: 0) {
                 ForEach(LessonPlaybackMode.allCases, id: \.self) { mode in
                     Button(settings.localized(mode.rawValue)) { session.selectPlaybackMode(mode) }
-                        .buttonStyle(InstrumentButtonStyle(selected: session.playbackMode == mode))
+                        .font(Theme.control)
+                        .padding(.horizontal, Theme.Space.regular)
+                        .frame(minHeight: Theme.Size.touch)
+                        .buttonStyle(HardwareKeyButtonStyle(isSelected: session.playbackMode == mode))
                 }
             }
             .lineLimit(1)
@@ -506,7 +544,12 @@ struct PracticeScreen: View {
     }
 
     private func bottomZoneRow(s: CGFloat, availableWidth: CGFloat, spaceAbove: CGFloat) -> some View {
-        let showsResult = session.summary != nil && !session.running
+        #if DEBUG
+        let activeSummary = session.summary ?? (debugShowResult ? RunSummary(score: 0.94, bpm: session.lesson.targetBpm, passes: 2, passed: true, mastery: true, memory: false) : nil)
+        #else
+        let activeSummary = session.summary
+        #endif
+        let showsResult = activeSummary != nil && !session.running
         let gap = max(0, (availableWidth - 3 * s) / 2)
         let resultCardWidth = 2 * s + gap
 
@@ -521,7 +564,7 @@ struct PracticeScreen: View {
                     .frame(width: resultCardWidth, height: s)
                 Spacer(minLength: 0)
                 transportSquare(s: s)
-            } else if showsResult, let summary = session.summary {
+            } else if showsResult, let summary = activeSummary {
                 ResultCard(
                     summary: summary,
                     runs: session.runResults,
@@ -596,8 +639,8 @@ struct PracticeScreen: View {
         .monospacedDigit()
         .padding(Theme.Space.regular)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
-        .background(Theme.surface)
-        .overlay(Rectangle().stroke(Theme.hairline, lineWidth: 1))
+        .satinPlate()
+        .contentShape(RoundedRectangle(cornerRadius: Theme.Skin.Plate.radius))
         .accessibilityElement(children: .combine)
     }
 
@@ -626,8 +669,8 @@ struct PracticeScreen: View {
             }
             .padding(Theme.Space.small)
         }
-        .background(Theme.surface)
-        .overlay(Rectangle().stroke(Theme.hairline, lineWidth: 1))
+        .satinPlate()
+        .contentShape(RoundedRectangle(cornerRadius: Theme.Skin.Plate.radius))
         .accessibilityLabel(settings.localized("Mix results"))
     }
 
@@ -698,15 +741,14 @@ struct PracticeScreen: View {
                         Text("→ \(session.lesson.targetBpm)")
                             .font(Theme.meta)
                             .monospacedDigit()
-                            .foregroundStyle(Theme.secondary)
+                            .foregroundStyle(Theme.Skin.Display.secondary)
                     }
                     .opacity(editable ? 1 : 0.6)
                 }
             }
             .frame(width: s, height: s)
-            .background(Theme.background)
-            .overlay(Rectangle().strokeBorder(Theme.ink.opacity(editable ? 1 : 0.35), lineWidth: Theme.Size.border))
-            .contentShape(Rectangle())
+            .insetDisplay()
+            .contentShape(RoundedRectangle(cornerRadius: Theme.Skin.Pad.radius))
         }
         .buttonStyle(.plain)
         .disabled(!editable)
@@ -748,7 +790,12 @@ struct PracticeScreen: View {
                 reportStepResult()
                 if let dismissLesson { dismissLesson() } else { dismiss() }
             }
-            .buttonStyle(InstrumentButtonStyle(main: true, customHeight: buttonHeight))
+            .font(Theme.action)
+            .lineLimit(1)
+            .fixedSize()
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .buttonStyle(PadPrimaryButtonStyle())
+            .frame(height: buttonHeight)
         } else if showsMemoryChallenge {
             Menu {
                 Button(action: startMemoryChallenge) {
@@ -790,11 +837,13 @@ struct PracticeScreen: View {
                 settings.localized("Next lesson"),
                 systemImage: nextLesson.map { store.isUnlocked($0) ? "arrow.right" : "lock" } ?? "arrow.right"
             )
+            .font(Theme.action)
             .lineLimit(1)
             .minimumScaleFactor(0.8)
             .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
-        .buttonStyle(InstrumentButtonStyle(main: true, customHeight: buttonHeight))
+        .buttonStyle(PadPrimaryButtonStyle())
+        .frame(height: buttonHeight)
         .disabled(nextLesson == nil)
         .accessibilityHint(nextLesson.map { settings.localized($0.title) } ?? settings.localized("No next lesson available"))
     }

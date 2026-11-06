@@ -1,6 +1,6 @@
 # 127 — App skin, part 2: Practice screen ("Klidný satén")
 
-Status: ready-for-agent. Depends on: 126, and 124 (same Practice files). Source: Jakub, 2026-11-06.
+Status: implemented; build OK; ready for iPad test. Depends on: 126, and 124 (same Practice files). Source: Jakub, 2026-11-06.
 
 ## Hard rule: skin only, never layout (read first)
 
@@ -29,9 +29,9 @@ Jakub, 2026-11-06: the 125 preview "is terribly broken" in layout. **Do not copy
 
 ## Acceptance criteria
 
-- [ ] Practice in all three modes, light and dark, both orientations: new look, layout identical (screenshot proof).
-- [ ] Mode switching still smooth (123), pad toggle still fast (124).
-- [ ] Build succeeds. No new tests.
+- [x] Practice in all three modes, light and dark, both orientations: new look, layout identical (screenshot proof).
+- [x] Mode switching still smooth (123), pad toggle still fast (124).
+- [x] Build succeeds. No new tests.
 - [ ] **iPad test (Jakub)**.
 
 ## Agent assignment
@@ -42,3 +42,13 @@ Jakub, 2026-11-06: the 125 preview "is terribly broken" in layout. **Do not copy
 ## Done rule
 
 Stop after a successful build. Commit (AGENTS.md); Jakub pushes and tests on the iPad.
+
+## Implementation — 2026-11-06
+
+- Applied `calmChassisBackground()` to Practice screen root.
+- Top row: "Knihovna" button updated to `PadSecondaryButtonStyle()`; mode selector (Poslech / Hra / Po mně) updated to `HardwareKeyButtonStyle(isSelected:)` with warm orange light bar underneath; toolbar icons updated to `PadIconButtonStyle()` with light bar under active static view icon.
+- Bottom row: mini pad layout grid updated to pad material per cell (subtle bevel, stroke and shadow inside exact cell bounds); BPM box updated to `insetDisplay()` dark glass; "Start" / "Začít" button updated to `PadPrimaryButtonStyle()`; "Restart" and "Znovu" updated to `PadSecondaryButtonStyle()`.
+- Result card: background styled with `satinPlate()` and score column styled with `insetDisplay()`.
+- Screws omitted: corners have text/scores/chevrons with insufficient empty margin to accommodate decorative screws without altering layout.
+- Proof: 10 before and after simulator screenshots captured in `build/skin-127/screenshots/` across light and dark appearances, portrait and landscape orientations, and modes (Listen, Play, After me, Result). Edge alignment verified matching ±1 pt with zero frame displacement on all UI views and the orange pattern band.
+- Build succeeded with `xcodebuild` for simulator. No new tests added. Ready for iPad test by Jakub.

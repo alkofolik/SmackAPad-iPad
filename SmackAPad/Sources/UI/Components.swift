@@ -38,7 +38,7 @@ private struct CalmChassisBackground: ViewModifier {
 }
 
 /// All bevel drawing is clipped inside the caller's existing bounds.
-private struct SkinBevel: View {
+struct SkinBevel: View {
     let radius: CGFloat
     let highlight: Color
     let shade: Color
@@ -192,8 +192,10 @@ struct PadSecondaryButtonStyle: ButtonStyle {
 }
 
 struct PadIconButtonStyle: ButtonStyle {
+    var selected: Bool? = nil
+
     func makeBody(configuration: Configuration) -> some View {
-        PadControlBody(label: configuration.label, pressed: configuration.isPressed)
+        PadControlBody(label: configuration.label, pressed: configuration.isPressed, selected: selected)
     }
 }
 

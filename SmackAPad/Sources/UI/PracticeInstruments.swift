@@ -354,11 +354,8 @@ struct ResultCard: View {
         }
         .padding(.horizontal, Theme.Space.regular)
         .frame(width: cardWidth, height: cardHeight)
-        .background(Theme.background)
-        .overlay(
-            Rectangle().strokeBorder(Theme.ink, lineWidth: Theme.Size.border)
-        )
-        .contentShape(Rectangle())
+        .satinPlate()
+        .contentShape(RoundedRectangle(cornerRadius: Theme.Skin.Plate.radius))
         .onTapGesture {
             openSessionResults()
         }
@@ -382,12 +379,16 @@ struct ResultCard: View {
                 .fontWeight(.bold)
                 .monospacedDigit()
                 .lineLimit(1)
-                .minimumScaleFactor(0.7)
+                .minimumScaleFactor(0.6)
             Text(settings.localized("Last run"))
                 .font(Theme.meta)
-                .foregroundStyle(Theme.secondary)
+                .foregroundStyle(Theme.Skin.Display.secondary)
                 .lineLimit(1)
+                .minimumScaleFactor(0.8)
         }
+        .padding(.horizontal, 6)
+        .padding(.vertical, 4)
+        .insetDisplay()
     }
 
     private var starsColumn: some View {

@@ -103,12 +103,8 @@ struct PracticeIconButton: View {
         Button(action: action) {
             buttonContent
                 .frame(width: Theme.Size.touch, height: Theme.Size.touch)
-                .foregroundStyle(selected ? Theme.background : Theme.ink)
-                .background(selected ? Theme.ink : Theme.background)
-                .opacity(isEnabled ? 1 : 0.35)
-                .contentShape(Rectangle())
         }
-        .buttonStyle(.plain)
+        .buttonStyle(PadIconButtonStyle(selected: selected ? true : nil))
         .motion(value: isEnabled)
         .motion(value: selected)
         .accessibilityLabel(title)
@@ -207,12 +203,13 @@ struct TransportControls: View {
                     Button(action: start) {
                         HStack(spacing: Theme.Space.small) {
                             Text(settings.localized("Again"))
+                                .font(Theme.action)
                                 .lineLimit(1)
                                 .fixedSize()
                         }
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
                     }
-                    .buttonStyle(InstrumentButtonStyle(filled: true, main: true, customHeight: buttonHeight))
+                    .buttonStyle(PadSecondaryButtonStyle())
                     .disabled(!enabled)
                     .opacity(enabled ? 1 : 0.5)
                     .frame(width: s, height: buttonHeight)
@@ -225,12 +222,13 @@ struct TransportControls: View {
                 Button(action: start) {
                     HStack(spacing: Theme.Space.small) {
                         Text(settings.localized("Again"))
+                            .font(Theme.action)
                             .lineLimit(1)
                             .fixedSize()
                     }
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
                 }
-                .buttonStyle(InstrumentButtonStyle(filled: true, main: true, customHeight: s))
+                .buttonStyle(PadSecondaryButtonStyle())
                 .disabled(!enabled)
                 .opacity(enabled ? 1 : 0.5)
                 .frame(width: s, height: s)
@@ -243,6 +241,7 @@ struct TransportControls: View {
                             Rectangle().frame(width: 14, height: 14).transition(.opacity)
                         }
                         Text(settings.localized(running ? "Stop" : "Start"))
+                            .font(Theme.action)
                             .lineLimit(1)
                             .fixedSize()
                             .id(running ? "Stop" : "Start")
@@ -250,7 +249,7 @@ struct TransportControls: View {
                     }
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
                 }
-                .buttonStyle(InstrumentButtonStyle(filled: true, main: true, customHeight: buttonHeight))
+                .buttonStyle(PadPrimaryButtonStyle())
                 .disabled(!running && !enabled)
                 .opacity(running || enabled ? 1 : 0.5)
                 .frame(width: s, height: buttonHeight)
@@ -259,12 +258,13 @@ struct TransportControls: View {
                     HStack(spacing: Theme.Space.small) {
                         PracticeGlyph(kind: .restart).frame(width: 18, height: 18)
                         Text(settings.localized("Restart"))
+                            .font(Theme.action)
                             .lineLimit(1)
                             .fixedSize()
                     }
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
                 }
-                .buttonStyle(InstrumentButtonStyle(main: true, customHeight: buttonHeight))
+                .buttonStyle(PadSecondaryButtonStyle())
                 .disabled(!enabled)
                 .opacity(enabled ? 1 : 0.5)
                 .frame(width: s, height: buttonHeight)
@@ -276,27 +276,48 @@ struct TransportControls: View {
     }
 
     @ViewBuilder private var buttons: some View {
-        Button(action: running ? stop : start) {
-            HStack(spacing: Theme.Space.small) {
-                if running { Rectangle().frame(width: 16, height: 16).transition(.opacity) }
-                Text(settings.localized(actionTitle))
-                    .lineLimit(1).fixedSize()
-                    .id(actionTitle).transition(.opacity)
+        if showsResult {
+            Button(action: start) {
+                HStack(spacing: Theme.Space.small) {
+                    Text(settings.localized("Again"))
+                        .font(Theme.action)
+                        .lineLimit(1).fixedSize()
+                }
+                .padding(.horizontal, Theme.Space.regular)
+                .frame(height: Theme.Size.control)
+                .frame(maxWidth: .infinity)
             }
-            .frame(maxWidth: .infinity)
+            .buttonStyle(PadSecondaryButtonStyle())
+            .disabled(!enabled)
+            .opacity(enabled ? 1 : 0.5)
+        } else {
+            Button(action: running ? stop : start) {
+                HStack(spacing: Theme.Space.small) {
+                    if running { Rectangle().frame(width: 16, height: 16).transition(.opacity) }
+                    Text(settings.localized(actionTitle))
+                        .font(Theme.action)
+                        .lineLimit(1).fixedSize()
+                        .id(actionTitle).transition(.opacity)
+                }
+                .padding(.horizontal, Theme.Space.regular)
+                .frame(height: Theme.Size.control)
+                .frame(maxWidth: .infinity)
+            }
+            .buttonStyle(PadPrimaryButtonStyle())
+            .disabled(!running && !enabled)
+            .opacity(running || enabled ? 1 : 0.5)
         }
-        .buttonStyle(InstrumentButtonStyle(filled: true, main: true))
-        .disabled(!running && !enabled)
-        .opacity(running || enabled ? 1 : 0.5)
         if running {
             Button(action: restart) {
                 HStack(spacing: Theme.Space.small) {
                     PracticeGlyph(kind: .restart).frame(width: 20, height: 20)
                     Text(settings.localized("Restart")).lineLimit(1).fixedSize()
                 }
+                .padding(.horizontal, Theme.Space.regular)
+                .frame(height: Theme.Size.control)
                 .frame(maxWidth: .infinity)
             }
-            .buttonStyle(InstrumentButtonStyle(main: true))
+            .buttonStyle(PadSecondaryButtonStyle())
             .transition(.opacity)
         }
     }
@@ -718,7 +739,8 @@ struct PadLayoutGrid: View {
             if isUsed { return Theme.ink }
             return Theme.ink.opacity(0.75)
         }()
-        let outlineColor: Color = isUsed ? Theme.ink : Theme.ink.opacity(0.50)
+        let cellRadius: CGFloat = 4
+        let outlineColor: Color = isUsed ? Theme.ink : Theme.hairline
         let outlineWidth: CGFloat = isUsed ? Theme.Size.border : 1.0
 
         return ZStack {
@@ -739,13 +761,29 @@ struct PadLayoutGrid: View {
         .frame(width: cellSize, height: cellSize)
         .foregroundStyle(textStyle)
         .background {
-            ZStack {
-                Theme.surface
-                tint
-            }
+            cellBackground(cellRadius: cellRadius, tint: tint, outlineColor: outlineColor, outlineWidth: outlineWidth)
         }
-        .overlay(Rectangle().stroke(outlineColor, lineWidth: outlineWidth))
         .accessibilityLabel(showKeyboardKeys ? cellData.accessibilityWithKey : cellData.accessibilityBase)
+    }
+
+    private func cellBackground(cellRadius: CGFloat, tint: Color, outlineColor: Color, outlineWidth: CGFloat) -> some View {
+        RoundedRectangle(cornerRadius: cellRadius)
+            .fill(Theme.Skin.Pad.fill)
+            .overlay {
+                SkinBevel(radius: cellRadius,
+                          highlight: Theme.Skin.Pad.highlight,
+                          shade: Theme.Skin.Pad.shade,
+                          top: 1, bottom: 1)
+            }
+            .overlay {
+                RoundedRectangle(cornerRadius: cellRadius)
+                    .fill(tint)
+            }
+            .overlay {
+                RoundedRectangle(cornerRadius: cellRadius)
+                    .strokeBorder(outlineColor, lineWidth: outlineWidth)
+            }
+            .shadow(color: Theme.black.opacity(0.06), radius: 1, y: 1)
     }
 }
 
