@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Smack-a-Pad — Tělo kontroleru (Ticket 117)</title>
+  <title>Smack-a-Pad — Tělo kontroleru (Ticket 118)</title>
   <style>
 
 @font-face {
@@ -24,22 +24,26 @@
   /* Light mode (default) */
   --bg: #F4EFE6;
   --body-plastic-grad: linear-gradient(172deg, #F5EFE5 0%, #E8E0D2 100%);
+  --body-rib-light: rgba(255, 255, 255, 0.55);
+  --body-rib-dark: rgba(31, 29, 26, 0.08);
+
   --ink: #1F1D1A;
   --surface: #EBE5DA;
   --secondary: #5E5950;
   --hairline: rgba(31, 29, 26, 0.15);
+
   --pad-bevel-top: rgba(255, 255, 255, 0.6);
   --pad-bevel-bottom: rgba(0, 0, 0, 0.16);
   --pad-well-bg: #DFD7CC;
   --pad-well-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.16), inset 0 0 0 1px rgba(0, 0, 0, 0.08), 0 1px 0 rgba(255, 255, 255, 0.6);
 
-  /* Plate: Satin in Light */
+  /* Plate: Satin in Light (Smooth) */
   --plate-bg-satin: linear-gradient(165deg, #ECE5DC 0%, #DFD7CD 100%);
   --plate-border-satin: rgba(31, 29, 26, 0.16);
   --plate-bevel-satin: inset 0 1.5px 0 rgba(255, 255, 255, 0.7), inset 0 -1.5px 0 rgba(0, 0, 0, 0.14);
   --plate-shadow: 0 6px 20px rgba(0, 0, 0, 0.09), 0 1px 3px rgba(0, 0, 0, 0.06);
 
-  /* Plate: Brushed Metal in Light */
+  /* Plate: Brushed Metal in Light (Micro-fine uniform brush) */
   --plate-bg-brushed: linear-gradient(170deg, #E6DFD4 0%, #D5CDC0 38%, #ECE5DC 62%, #DDD5C8 100%);
   --plate-border-brushed: rgba(31, 29, 26, 0.22);
   --plate-bevel-brushed: inset 0 1.5px 0 rgba(255, 255, 255, 0.85), inset 0 -1.5px 0 rgba(0, 0, 0, 0.2);
@@ -60,34 +64,45 @@
   --fader-cap-shadow: 0 4px 8px rgba(0, 0, 0, 0.22), inset 0 1px 0 rgba(255, 255, 255, 0.75), inset 0 -1px 0 rgba(0, 0, 0, 0.25);
   --fader-rib: rgba(31, 29, 26, 0.28);
   --fader-indicator: #1F1D1A;
-  --fader-scale-text: rgba(94, 89, 80, 0.8);
+  --fader-scale-text: rgba(94, 89, 80, 0.85);
   --fader-scale-tick: rgba(31, 29, 26, 0.32);
   --fader-scale-major: rgba(31, 29, 26, 0.65);
 
   /* Silkscreen markings */
-  --silkscreen-ink: rgba(31, 29, 26, 0.4);
+  --silkscreen-ink: rgba(31, 29, 26, 0.45);
   --silkscreen-accent: var(--theme-orange);
+
+  /* MATHEMATICALLY DERIVED LAYOUT SIZES */
+  --pad-size: 146px;
+  --pad-gap: 15px;
+  --pad-grid-size: calc(3 * var(--pad-size) + 2 * var(--pad-gap)); /* 468px */
+  --plate-pad: 36px;
+  --plate-size: calc(var(--pad-grid-size) + 2 * var(--plate-pad)); /* 540px */
 }
 
 [data-theme="dark"] {
   --bg: #1F1D1A;
   --body-plastic-grad: linear-gradient(172deg, #24221E 0%, #171513 100%);
+  --body-rib-light: rgba(255, 255, 255, 0.06);
+  --body-rib-dark: rgba(0, 0, 0, 0.45);
+
   --ink: #F4EFE6;
   --surface: #2A2824;
   --secondary: #B3ADA2;
   --hairline: rgba(244, 239, 230, 0.15);
+
   --pad-bevel-top: rgba(255, 255, 255, 0.12);
   --pad-bevel-bottom: rgba(0, 0, 0, 0.45);
   --pad-well-bg: #151412;
   --pad-well-shadow: inset 0 2px 5px rgba(0, 0, 0, 0.8), inset 0 0 0 1px rgba(255, 255, 255, 0.04), 0 1px 0 rgba(255, 255, 255, 0.04);
 
-  /* Plate: Satin in Dark */
+  /* Plate: Satin in Dark (Smooth) */
   --plate-bg-satin: linear-gradient(165deg, #272521 0%, #1E1C19 100%);
   --plate-border-satin: rgba(244, 239, 230, 0.12);
   --plate-bevel-satin: inset 0 1.5px 0 rgba(255, 255, 255, 0.16), inset 0 -1.5px 0 rgba(0, 0, 0, 0.6);
   --plate-shadow: 0 6px 24px rgba(0, 0, 0, 0.55), 0 1px 3px rgba(0, 0, 0, 0.35);
 
-  /* Plate: Brushed Metal in Dark */
+  /* Plate: Brushed Metal in Dark (Micro-fine uniform brush) */
   --plate-bg-brushed: linear-gradient(170deg, #2C2924 0%, #1D1B18 38%, #312E28 62%, #201E1B 100%);
   --plate-border-brushed: rgba(244, 239, 230, 0.18);
   --plate-bevel-brushed: inset 0 1.5px 0 rgba(255, 255, 255, 0.24), inset 0 -1.5px 0 rgba(0, 0, 0, 0.7);
@@ -108,13 +123,12 @@
   --fader-cap-shadow: 0 4px 8px rgba(0, 0, 0, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.2), inset 0 -1px 0 rgba(0, 0, 0, 0.55);
   --fader-rib: rgba(0, 0, 0, 0.5);
   --fader-indicator: #F4EFE6;
-  --fader-scale-text: rgba(179, 173, 162, 0.75);
+  --fader-scale-text: rgba(179, 173, 162, 0.8);
   --fader-scale-tick: rgba(244, 239, 230, 0.28);
   --fader-scale-major: rgba(244, 239, 230, 0.55);
 
   /* Silkscreen markings */
-  --silkscreen-ink: rgba(244, 239, 230, 0.35);
-  --silkscreen-accent: var(--theme-orange);
+  --silkscreen-ink: rgba(244, 239, 230, 0.4);
 }
 
 * {
@@ -128,42 +142,42 @@ body {
   font-family: 'IBM Plex Sans', -apple-system, BlinkMacSystemFont, sans-serif;
   background-color: #121214;
   color: #E2E0DB;
-  min-height: 100vh;
+  height: 100vh;
   display: flex;
   flex-direction: column;
+  overflow: hidden;
 }
 
 /* WORKBENCH HEADER */
 .workbench-header {
   background: #18181B;
   border-bottom: 1px solid #27272A;
-  padding: 10px 20px;
+  padding: 8px 16px;
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
+  gap: 10px;
   font-size: 13px;
-  position: sticky;
-  top: 0;
+  flex-shrink: 0;
   z-index: 1000;
 }
 
 .brand-badge {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
   color: #FFF;
   font-weight: 600;
-  font-size: 14px;
+  font-size: 13px;
 }
 
 .brand-badge .pill {
   background: #FF6B00;
   color: #1F1D1A;
-  font-size: 11px;
+  font-size: 10.5px;
   font-weight: 700;
-  padding: 2px 7px;
+  padding: 2px 6px;
   border-radius: 2px;
   text-transform: uppercase;
 }
@@ -171,7 +185,7 @@ body {
 .controls-cluster {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
   flex-wrap: wrap;
 }
 
@@ -179,15 +193,15 @@ body {
   background: #27272A;
   border: 1px solid #3F3F46;
   color: #E4E4E7;
-  padding: 5px 11px;
+  padding: 4px 9px;
   border-radius: 3px;
   font-family: inherit;
-  font-size: 12px;
+  font-size: 11.5px;
   font-weight: 500;
   cursor: pointer;
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: 5px;
   transition: background 0.15s, border-color 0.15s, color 0.15s;
   user-select: none;
 }
@@ -203,12 +217,18 @@ body {
   color: #FF6B00;
 }
 
+.ctrl-btn.guides-active {
+  background: #00363A;
+  border-color: #00E5FF;
+  color: #00E5FF;
+}
+
 .ctrl-btn.highlight {
   border-color: #FF6B00;
 }
 
 .ctrl-label {
-  font-size: 11px;
+  font-size: 10.5px;
   color: #71717A;
   text-transform: uppercase;
   font-weight: 600;
@@ -220,18 +240,19 @@ body {
   display: flex;
   align-items: center;
   gap: 3px;
+  margin-left: 4px;
 }
 
 .midi-trigger-btn {
   background: #27272A;
   border: 1px solid #3F3F46;
   color: #A1A1AA;
-  width: 24px;
-  height: 24px;
+  width: 22px;
+  height: 22px;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 11px;
+  font-size: 10.5px;
   font-weight: 600;
   border-radius: 2px;
   cursor: pointer;
@@ -244,17 +265,29 @@ body {
   border-color: #FF6B00;
 }
 
-/* VIEWPORT CONTAINER */
+/* VIEWPORT CONTAINER & AUTO-SCALER STAGE */
 .workbench-viewport {
   flex: 1;
+  min-height: 0;
   display: flex;
-  flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: 24px;
-  overflow: auto;
+  padding: 16px;
+  overflow: hidden;
   background: radial-gradient(circle at center, #1C1C20 0%, #0E0E10 100%);
   position: relative;
+}
+
+.viewport-stage {
+  position: relative;
+  display: block;
+}
+
+.chassis-scaler {
+  position: absolute;
+  top: 0;
+  left: 0;
+  transform-origin: top left;
 }
 
 /* SIMULATED IPAD CHASSIS */
@@ -262,59 +295,94 @@ body {
   background: var(--body-plastic-grad);
   color: var(--ink);
   box-shadow: 0 24px 60px rgba(0,0,0,0.65), 0 0 0 10px #2A2A2E, 0 0 0 12px #1A1A1E;
-  border-radius: 24px;
+  border-radius: 28px;
   position: relative;
   overflow: hidden;
-  transition: width 0.35s cubic-bezier(0.16, 1, 0.3, 1), height 0.35s cubic-bezier(0.16, 1, 0.3, 1), background 0.25s ease;
-  display: flex;
-  flex-direction: column;
+  user-select: none;
 }
 
-.ipad-chassis.landscape {
-  width: 980px;
-  height: 685px;
+/* Target device dimensions */
+/* 1. iPad Pro 11" (default) */
+.ipad-chassis.device-11.landscape {
+  width: 1194px;
+  height: 834px;
+}
+.ipad-chassis.device-11.portrait {
+  width: 834px;
+  height: 1194px;
 }
 
-.ipad-chassis.portrait {
-  width: 610px;
-  height: 874px;
+/* 2. iPad mini 6 */
+.ipad-chassis.device-mini.landscape {
+  width: 1133px;
+  height: 744px;
+}
+.ipad-chassis.device-mini.portrait {
+  width: 744px;
+  height: 1133px;
 }
 
-/* 1. CHASSIS TEXTURE & GRAIN LAYER */
-.chassis-grain-layer {
+/* 3. iPad 10.9" */
+.ipad-chassis.device-10.landscape {
+  width: 1180px;
+  height: 820px;
+}
+.ipad-chassis.device-10.portrait {
+  width: 820px;
+  height: 1180px;
+}
+
+/* 1. CHASSIS TEXTURE LAYERS (RIBBING & MATTE GRAIN) */
+/* Fine parallel moulded grooves on chassis */
+.chassis-ribbing-layer {
   position: absolute;
   inset: 0;
   pointer-events: none;
   z-index: 1;
-  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E");
-  background-repeat: repeat;
-  background-size: 180px 180px;
+  background-image: repeating-linear-gradient(
+    180deg,
+    transparent 0px,
+    transparent 2px,
+    var(--body-rib-light) 2.5px,
+    var(--body-rib-dark) 3.5px,
+    transparent 4px
+  );
+  background-size: 100% 4px;
   transition: opacity 0.25s ease;
 }
 
-/* Grain strength switch: off / subtle (default) / strong */
-[data-grain="off"] .chassis-grain-layer {
+/* Texture switches: off / subtle (default) / strong */
+[data-texture="off"] .chassis-ribbing-layer {
   display: none !important;
 }
+[data-texture="subtle"] .chassis-ribbing-layer {
+  opacity: 0.65;
+}
+[data-texture="strong"] .chassis-ribbing-layer {
+  opacity: 1.0;
+}
 
-[data-grain="subtle"] .chassis-grain-layer {
+/* Base matte speckle grain (micro-texture) */
+.chassis-speckle-layer {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 2;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E");
+  background-repeat: repeat;
+  background-size: 180px 180px;
+  opacity: 0.035;
+  mix-blend-mode: multiply;
+  transition: opacity 0.25s ease;
+}
+
+[data-theme="dark"] .chassis-speckle-layer {
   opacity: 0.055;
-  mix-blend-mode: multiply;
-}
-
-[data-theme="dark"][data-grain="subtle"] .chassis-grain-layer {
-  opacity: 0.07;
   mix-blend-mode: overlay;
 }
 
-[data-grain="strong"] .chassis-grain-layer {
-  opacity: 0.12;
-  mix-blend-mode: multiply;
-}
-
-[data-theme="dark"][data-grain="strong"] .chassis-grain-layer {
-  opacity: 0.16;
-  mix-blend-mode: overlay;
+[data-texture="off"] .chassis-speckle-layer {
+  opacity: 0.015;
 }
 
 /* Subtle Studio Vignette */
@@ -322,44 +390,74 @@ body {
   position: absolute;
   inset: 0;
   pointer-events: none;
-  z-index: 2;
-  background: radial-gradient(ellipse 80% 75% at 50% 48%, transparent 40%, rgba(0, 0, 0, 0.06) 100%);
+  z-index: 3;
+  background: radial-gradient(ellipse 80% 75% at 50% 50%, transparent 45%, rgba(0, 0, 0, 0.07) 100%);
   transition: background 0.25s ease;
 }
 
 [data-theme="dark"] .chassis-vignette {
-  background: radial-gradient(ellipse 80% 75% at 50% 48%, transparent 40%, rgba(0, 0, 0, 0.32) 100%);
+  background: radial-gradient(ellipse 80% 75% at 50% 50%, transparent 45%, rgba(0, 0, 0, 0.35) 100%);
 }
 
-/* 2. CENTRAL BAY PLATE */
-.pad-bay-plate {
+/* 2. TITLE BAND (SITS IN ITS OWN BAND ABOVE PLATE) */
+.controller-title-band {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: calc((100% - var(--plate-size)) / 2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10;
+  pointer-events: none;
+}
+
+.wordmark-svg {
+  height: 44px;
+  width: auto;
+  max-width: 320px;
+  color: var(--ink);
+  transition: color 0.25s ease;
+}
+
+.ipad-chassis.portrait .wordmark-svg {
+  height: 50px;
+  max-width: 360px;
+}
+
+.ipad-chassis.device-mini.landscape .wordmark-svg {
+  height: 36px;
+  max-width: 260px;
+}
+
+/* 3. CENTRAL BAY PLATE (SMOOTH, RECESSED, CONTAINS PADS & SCREWS) */
+.pad-plate {
   position: absolute;
   top: 50%;
   left: 50%;
-  transform: translate(-50%, -46%);
-  width: 546px;
-  height: 546px;
-  border-radius: 16px;
-  z-index: 3;
-  pointer-events: none;
-  transition: background 0.25s ease, box-shadow 0.25s ease, border-color 0.25s ease, width 0.35s ease, height 0.35s ease, transform 0.35s ease;
-}
-
-.ipad-chassis.portrait .pad-bay-plate {
-  width: 480px;
-  height: 480px;
   transform: translate(-50%, -50%);
+  width: var(--plate-size);
+  height: var(--plate-size);
+  padding: var(--plate-pad);
+  border-radius: 16px;
+  z-index: 20;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.25s ease, box-shadow 0.25s ease, border-color 0.25s ease;
 }
 
-/* Material: Satin (default) */
-[data-plate="satin"] .pad-bay-plate {
+/* Material: Satin (default - SMOOTH) */
+[data-plate="satin"] .pad-plate {
   background: var(--plate-bg-satin);
   border: 1px solid var(--plate-border-satin);
   box-shadow: var(--plate-bevel-satin), var(--plate-shadow);
 }
 
-/* Material: Brushed Metal */
-[data-plate="brushed"] .pad-bay-plate {
+/* Material: Brushed Metal (Micro-fine uniform hairline, smooth) */
+[data-plate="brushed"] .pad-plate {
   background: var(--plate-bg-brushed);
   border: 1px solid var(--plate-border-brushed);
   box-shadow: var(--plate-bevel-brushed), var(--plate-shadow);
@@ -370,14 +468,13 @@ body {
   inset: 0;
   border-radius: inherit;
   opacity: 0;
+  pointer-events: none;
   background: repeating-linear-gradient(
     90deg,
-    rgba(255, 255, 255, 0.04) 0px,
-    rgba(0, 0, 0, 0.04) 1px,
-    rgba(255, 255, 255, 0.02) 2px,
-    transparent 3px
+    rgba(255, 255, 255, 0.035) 0px,
+    rgba(0, 0, 0, 0.035) 1px,
+    transparent 2px
   );
-  pointer-events: none;
   transition: opacity 0.25s ease;
 }
 
@@ -385,20 +482,20 @@ body {
   opacity: 1;
 }
 
-/* Machined Metal Corner Screws */
+/* Machined Metal Corner Screws: 18px diameter, perfectly within padding */
 .bay-screw {
   position: absolute;
   width: 18px;
   height: 18px;
   pointer-events: none;
-  z-index: 5;
+  z-index: 25;
   filter: drop-shadow(0 1px 1.5px rgba(0,0,0,0.32));
 }
 
-.bay-screw.tl { top: 11px; left: 11px; transform: rotate(-24deg); }
-.bay-screw.tr { top: 11px; right: 11px; transform: rotate(51deg); }
-.bay-screw.bl { bottom: 11px; left: 11px; transform: rotate(108deg); }
-.bay-screw.br { bottom: 11px; right: 11px; transform: rotate(-63deg); }
+.bay-screw.tl { top: 9px; left: 9px; transform: rotate(-24deg); }
+.bay-screw.tr { top: 9px; right: 9px; transform: rotate(51deg); }
+.bay-screw.bl { bottom: 9px; left: 9px; transform: rotate(108deg); }
+.bay-screw.br { bottom: 9px; right: 9px; transform: rotate(-63deg); }
 
 .screw-svg {
   width: 100%;
@@ -435,7 +532,7 @@ body {
   opacity: 0.55;
 }
 
-/* Silkscreen Hardware Stamp on Plate */
+/* Silkscreen Hardware Badge on Plate */
 .plate-badge {
   position: absolute;
   bottom: 11px;
@@ -443,9 +540,9 @@ body {
   transform: translateX(-50%);
   display: flex;
   align-items: center;
-  gap: 8px;
-  font-size: 8.5px;
-  font-weight: 600;
+  gap: 7px;
+  font-size: 8px;
+  font-weight: 700;
   letter-spacing: 0.12em;
   color: var(--silkscreen-ink);
   text-transform: uppercase;
@@ -462,12 +559,214 @@ body {
   opacity: 0.9;
 }
 
-/* 3. DECORATIVE FADERS (SLIDERS) */
+/* 4. 3x3 PAD GRID (CENTERED INSIDE PLATE) */
+.pad-grid {
+  display: grid;
+  grid-template-columns: repeat(3, var(--pad-size));
+  grid-template-rows: repeat(3, var(--pad-size));
+  gap: var(--pad-gap);
+  width: var(--pad-grid-size);
+  height: var(--pad-grid-size);
+  position: relative;
+  z-index: 22;
+}
+
+/* Recessed pad well */
+.pad-well {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  border-radius: 10px;
+  background: var(--pad-well-bg);
+  box-shadow: var(--pad-well-shadow);
+  padding: 3px;
+  box-sizing: border-box;
+}
+
+/* Tactile button pad */
+.pad-btn {
+  width: 100%;
+  height: 100%;
+  border-radius: 8px;
+  border: none;
+  background: var(--surface);
+  color: var(--ink);
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 10px 8px 8px 8px;
+  position: relative;
+  overflow: hidden;
+  box-shadow: 
+    0 3px 6px rgba(0, 0, 0, 0.18),
+    0 1px 2px rgba(0, 0, 0, 0.1),
+    0 0 0 1px var(--hairline),
+    inset 0 1.5px 0 var(--pad-bevel-top),
+    inset 0 -1.5px 0 var(--pad-bevel-bottom);
+  transform: translateY(0);
+  transition: transform 0.08s cubic-bezier(0.2, 0.8, 0.4, 1), box-shadow 0.08s ease, background 0.15s ease;
+  user-select: none;
+  outline: none;
+}
+
+.pad-btn:active,
+.pad-btn.midi-hit {
+  transform: translateY(2px) scale(0.985);
+  box-shadow: 
+    0 1px 2px rgba(0, 0, 0, 0.22),
+    0 0 0 1px var(--hairline),
+    inset 0 1px 0 rgba(0, 0, 0, 0.25),
+    inset 0 -0.5px 0 rgba(255, 255, 255, 0.1);
+}
+
+/* Flash overlay for hit */
+.pad-flash {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: #FFF;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.04s ease;
+  z-index: 5;
+}
+
+.pad-btn.midi-hit .pad-flash {
+  opacity: 0.35;
+  transition: none;
+}
+
+/* Pad number tag (high contrast) */
+.pad-num-tag {
+  position: absolute;
+  top: 7px;
+  left: 8px;
+  font-family: 'IBM Plex Sans', monospace;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: var(--secondary);
+  opacity: 0.9;
+  pointer-events: none;
+  z-index: 3;
+}
+
+/* Pad typography */
+.pad-title {
+  font-size: 14.5px;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  line-height: 1.15;
+  text-align: center;
+  max-width: 96%;
+}
+
+.pad-subtitle {
+  font-size: 11px;
+  line-height: 1.25;
+  margin-top: 5px;
+  color: var(--secondary);
+  font-weight: 500;
+  max-width: 94%;
+  white-space: normal;
+  text-overflow: clip;
+  text-align: center;
+  word-break: normal;
+}
+
+.pad-sec-subtitle {
+  font-size: 9.5px;
+  line-height: 1.2;
+  margin-top: 2px;
+  color: var(--secondary);
+  opacity: 0.8;
+  font-weight: 400;
+  text-align: center;
+}
+
+/* Hero Pad (POKRAČOVAT) */
+.pad-btn.hero {
+  background: var(--theme-orange);
+  color: #1F1D1A;
+  box-shadow: 
+    0 4px 10px rgba(255, 107, 0, 0.35),
+    0 1px 3px rgba(0, 0, 0, 0.15),
+    0 0 0 1px rgba(255, 107, 0, 0.8),
+    inset 0 1.5px 0 rgba(255, 255, 255, 0.45),
+    inset 0 -1.5px 0 rgba(0, 0, 0, 0.25);
+}
+
+.pad-btn.hero .pad-num-tag {
+  color: #1F1D1A;
+  opacity: 0.95;
+  font-weight: 700;
+}
+
+.pad-btn.hero .pad-title {
+  color: #1F1D1A;
+  font-weight: 800;
+  font-size: 16.5px;
+  letter-spacing: 0.04em;
+}
+
+.pad-btn.hero .pad-subtitle {
+  color: #1F1D1A;
+  font-weight: 600;
+  opacity: 0.9;
+}
+
+/* Training breathing light bar */
+.light-bar {
+  position: absolute;
+  top: 7px;
+  left: 20%;
+  right: 20%;
+  height: 2.5px;
+  border-radius: 1.5px;
+  background: var(--theme-orange);
+  box-shadow: 0 0 6px var(--theme-orange-glow), 0 0 12px var(--theme-orange-subtle);
+  animation: ledBreath 2.6s ease-in-out infinite;
+  pointer-events: none;
+}
+
+@keyframes ledBreath {
+  0%, 100% { opacity: 0.35; transform: scaleY(0.9); }
+  50% { opacity: 1; transform: scaleY(1.1); box-shadow: 0 0 8px rgba(255, 107, 0, 0.9), 0 0 16px rgba(255, 107, 0, 0.6); }
+}
+
+[data-reduce-motion="true"] .light-bar {
+  animation: none;
+  opacity: 0.85;
+}
+
+/* Centre Pad: Logo Tile */
+.pad-btn.logo-pad {
+  padding: 0;
+}
+
+.logo-cell {
+  width: 76px;
+  height: 76px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.logo-mark-svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+/* 5. DECORATIVE FADERS (SLIDERS) */
 .faders-layer {
   position: absolute;
   inset: 0;
   pointer-events: none;
-  z-index: 3;
+  z-index: 15;
 }
 
 [data-faders="false"] .faders-layer {
@@ -476,33 +775,37 @@ body {
 
 .fader-bay {
   position: absolute;
-  display: flex;
   pointer-events: none;
-  transition: opacity 0.25s ease;
 }
 
-/* Landscape fader placements: 2 channels left, 2 channels right */
+/* Landscape fader bays: mirrored, centered vertically on the plate */
 .ipad-chassis.landscape .fader-bay-left {
   display: flex;
-  gap: 16px;
+  gap: 22px;
   top: 50%;
-  left: 36px;
-  transform: translateY(-46%);
+  left: 0;
+  width: calc((100% - var(--plate-size)) / 2);
+  transform: translateY(-50%);
+  justify-content: center;
+  align-items: center;
 }
 
 .ipad-chassis.landscape .fader-bay-right {
   display: flex;
-  gap: 16px;
+  gap: 22px;
   top: 50%;
-  right: 36px;
-  transform: translateY(-46%);
+  right: 0;
+  width: calc((100% - var(--plate-size)) / 2);
+  transform: translateY(-50%);
+  justify-content: center;
+  align-items: center;
 }
 
 .ipad-chassis.landscape .fader-bay-portrait {
   display: none !important;
 }
 
-/* Portrait fader placements: 4 channels docked under the plate */
+/* Portrait fader bay: single row docked below plate, horizontally and vertically centered */
 .ipad-chassis.portrait .fader-bay-left,
 .ipad-chassis.portrait .fader-bay-right {
   display: none !important;
@@ -510,13 +813,16 @@ body {
 
 .ipad-chassis.portrait .fader-bay-portrait {
   display: flex;
-  gap: 22px;
-  bottom: 24px;
-  left: 50%;
-  transform: translateX(-50%);
+  gap: 36px;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: calc((100% - var(--plate-size)) / 2);
+  justify-content: center;
+  align-items: center;
 }
 
-/* Single Fader Channel */
+/* Fader Channel */
 .fader-channel {
   display: flex;
   flex-direction: column;
@@ -549,9 +855,23 @@ body {
   margin-right: 4px;
 }
 
+/* Mirrored scale: sits on right side of slot */
+.fader-track-assembly.mirrored .fader-scale {
+  margin-right: 0;
+  margin-left: 4px;
+}
+
+.fader-track-assembly.mirrored .scale-tick {
+  justify-content: flex-start;
+}
+
+.fader-track-assembly.mirrored .scale-tick .tick-line {
+  order: -1;
+}
+
 .ipad-chassis.portrait .fader-scale {
-  height: 105px;
-  width: 20px;
+  height: 125px;
+  width: 22px;
 }
 
 .scale-tick {
@@ -571,10 +891,6 @@ body {
   font-weight: 600;
   color: var(--fader-scale-text);
   line-height: 1;
-}
-
-.ipad-chassis.portrait .scale-tick span {
-  font-size: 7px;
 }
 
 .scale-tick .tick-line {
@@ -604,8 +920,8 @@ body {
 }
 
 .ipad-chassis.portrait .fader-track {
-  height: 105px;
-  width: 24px;
+  height: 125px;
+  width: 26px;
 }
 
 .fader-slot {
@@ -646,22 +962,19 @@ body {
   z-index: 2;
 }
 
-/* Levels for Landscape */
-.ipad-chassis.landscape .fader-cap[data-level="1"] { bottom: calc(72% - 17px); }
-.ipad-chassis.landscape .fader-cap[data-level="2"] { bottom: calc(48% - 17px); }
-.ipad-chassis.landscape .fader-cap[data-level="3"] { bottom: calc(88% - 17px); }
-.ipad-chassis.landscape .fader-cap[data-level="4"] { bottom: calc(28% - 17px); }
+.fader-cap[data-level="1"] { bottom: calc(72% - 17px); }
+.fader-cap[data-level="2"] { bottom: calc(48% - 17px); }
+.fader-cap[data-level="3"] { bottom: calc(88% - 17px); }
+.fader-cap[data-level="4"] { bottom: calc(28% - 17px); }
 
-/* Levels for Portrait */
 .ipad-chassis.portrait .fader-cap {
-  width: 22px;
-  height: 26px;
+  width: 24px;
+  height: 28px;
 }
-
-.ipad-chassis.portrait .fader-cap[data-level="1"] { bottom: calc(72% - 13px); }
-.ipad-chassis.portrait .fader-cap[data-level="2"] { bottom: calc(48% - 13px); }
-.ipad-chassis.portrait .fader-cap[data-level="3"] { bottom: calc(88% - 13px); }
-.ipad-chassis.portrait .fader-cap[data-level="4"] { bottom: calc(28% - 13px); }
+.ipad-chassis.portrait .fader-cap[data-level="1"] { bottom: calc(72% - 14px); }
+.ipad-chassis.portrait .fader-cap[data-level="2"] { bottom: calc(48% - 14px); }
+.ipad-chassis.portrait .fader-cap[data-level="3"] { bottom: calc(88% - 14px); }
+.ipad-chassis.portrait .fader-cap[data-level="4"] { bottom: calc(28% - 14px); }
 
 .fader-cap-ribs {
   width: 16px;
@@ -674,18 +987,6 @@ body {
     transparent 4px
   );
   opacity: 0.7;
-}
-
-.ipad-chassis.portrait .fader-cap-ribs {
-  width: 13px;
-  height: 10px;
-  background: repeating-linear-gradient(
-    180deg,
-    var(--fader-rib) 0px,
-    var(--fader-rib) 1px,
-    transparent 1px,
-    transparent 3px
-  );
 }
 
 .fader-cap-indicator {
@@ -704,272 +1005,186 @@ body {
   box-shadow: 0 0 3px rgba(255, 107, 0, 0.45);
 }
 
-/* 4. HOME SCREEN LAYOUT */
-.home-screen {
-  width: 100%;
-  height: 100%;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding: 24px;
-  position: relative;
-  z-index: 10;
-}
-
-.brand-header-area {
-  margin-bottom: 22px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  position: relative;
-  z-index: 10;
-}
-
-.wordmark-svg {
-  width: 275px;
-  height: auto;
-  color: var(--ink);
-  transition: color 0.25s ease;
-}
-
-/* 3x3 GRID CONTAINER */
-.pad-grid {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  grid-template-rows: repeat(3, 1fr);
-  gap: 16px;
-  width: 100%;
-  max-width: 510px;
-  aspect-ratio: 1 / 1;
-  position: relative;
-  z-index: 10;
-}
-
-.ipad-chassis.portrait .pad-grid {
-  max-width: 450px;
-  gap: 14px;
-}
-
-/* RECESSED PAD WELL IN PLATE */
-.pad-well {
-  position: relative;
-  width: 100%;
-  height: 100%;
-  border-radius: 10px;
-  background: var(--pad-well-bg);
-  box-shadow: var(--pad-well-shadow);
-  padding: 3px;
-  display: flex;
-  transition: background 0.25s ease, box-shadow 0.25s ease;
-}
-
-/* BASE PAD STYLES (TICKET 112: 8PT RADIUS, TWO-TONE BEVEL, FLASH) */
-.pad-btn {
-  background: var(--surface);
-  color: var(--ink);
-  border: none;
-  outline: none;
-  cursor: pointer;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  text-align: center;
-  padding: 12px 10px;
-  position: relative;
-  user-select: none;
-  font-family: inherit;
-  aspect-ratio: 1 / 1;
-  width: 100%;
-  height: 100%;
-  border-radius: 8px;
-  box-shadow: 
-    inset 0 1.5px 0 var(--pad-bevel-top),
-    inset 0 -2px 0 var(--pad-bevel-bottom),
-    0 0 0 1px var(--hairline),
-    0 2px 4px rgba(0, 0, 0, 0.08);
-  transition: transform 0.08s ease, background 0.12s ease, box-shadow 0.12s ease;
-}
-
-.pad-btn.hero {
-  background: var(--theme-orange);
-  color: #1F1D1A;
-  box-shadow: 
-    inset 0 1.5px 0 rgba(255, 255, 255, 0.42),
-    inset 0 -2.5px 0 rgba(0, 0, 0, 0.28),
-    0 0 0 1px rgba(0, 0, 0, 0.12),
-    0 3px 6px rgba(255, 107, 0, 0.25);
-}
-
-/* Pad number silkscreen index tag inside pad */
-.pad-num-tag {
+/* 6. GUIDES OVERLAY (SHOW GUIDES SWITCH) */
+.chassis-guides-layer {
   position: absolute;
-  top: 7px;
-  left: 8px;
+  inset: 0;
+  pointer-events: none;
+  z-index: 99;
+  display: none;
+}
+
+[data-guides="true"] .chassis-guides-layer {
+  display: block;
+}
+
+.guide-line {
+  position: absolute;
+  pointer-events: none;
+}
+
+/* Centerlines */
+.guide-h-center {
+  top: 50%;
+  left: 0;
+  right: 0;
+  height: 1px;
+  border-top: 1px dashed #00E5FF;
+}
+
+.guide-v-center {
+  left: 50%;
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  border-left: 1px dashed #00E5FF;
+}
+
+.guide-badge {
+  position: absolute;
+  background: rgba(0, 0, 0, 0.85);
+  color: #00E5FF;
+  border: 1px solid #00E5FF;
   font-family: 'IBM Plex Sans', monospace;
   font-size: 8px;
   font-weight: 700;
-  letter-spacing: 0.08em;
-  color: var(--secondary);
-  opacity: 0.55;
-  pointer-events: none;
-  z-index: 2;
-  user-select: none;
-}
-
-.pad-btn.hero .pad-num-tag {
-  color: rgba(31, 29, 26, 0.45);
-}
-
-.pad-title {
-  font-weight: 700;
-  font-size: 17px;
-  line-height: 1.15;
-  letter-spacing: -0.01em;
-  text-transform: uppercase;
-}
-
-.pad-btn.hero .pad-title {
-  font-size: 20px;
-  font-weight: 700;
-}
-
-.pad-subtitle {
-  font-size: 12px;
-  line-height: 1.25;
-  margin-top: 6px;
-  color: var(--secondary);
-  font-weight: 400;
-  max-width: 90%;
+  padding: 2px 5px;
+  border-radius: 2px;
   white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  letter-spacing: 0.05em;
 }
 
-.pad-btn.hero .pad-subtitle {
-  color: rgba(31, 29, 26, 0.85);
-  font-weight: 500;
-}
+.guide-badge.cyan { color: #00E5FF; border-color: #00E5FF; }
+.guide-badge.magenta { color: #FF2D55; border-color: #FF2D55; }
+.guide-badge.yellow { color: #FFD600; border-color: #FFD600; }
+.guide-badge.green { color: #00E676; border-color: #00E676; }
 
-.pad-sec-subtitle {
-  font-size: 11px;
-  color: var(--secondary);
-  margin-top: 2px;
-}
-
-/* FLASH OVERLAY FOR TACTILE HIT */
-.pad-flash {
+/* Guide boxes */
+.screw-crosshair {
   position: absolute;
-  inset: 0;
-  background: rgba(255, 255, 255, 0.45);
-  opacity: 0;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  border: 1px dashed #00E5FF;
   pointer-events: none;
-  border-radius: inherit;
-  transition: opacity 0.05s ease-out;
+  box-sizing: border-box;
 }
-
-/* LIT PAD WITH BREATHING LIGHT BAR (TICKET 112) */
-.pad-btn.lit-pad {
-  box-shadow: 
-    inset 0 1.5px 0 var(--pad-bevel-top),
-    inset 0 -2px 0 var(--pad-bevel-bottom),
-    0 0 0 2px var(--theme-orange),
-    0 0 14px var(--theme-orange-glow);
-}
-
-.light-bar {
+.screw-crosshair::before,
+.screw-crosshair::after {
+  content: '';
   position: absolute;
-  top: 7px;
-  left: 22%;
-  right: 22%;
-  height: 2px;
-  border-radius: 1px;
-  background: var(--theme-orange);
-  box-shadow: 0 0 6px var(--theme-orange);
-  animation: barBreathB 3.2s ease-in-out infinite;
+  background: #00E5FF;
+}
+.screw-crosshair::before {
+  top: 50%;
+  left: -3px;
+  right: -3px;
+  height: 1px;
+  transform: translateY(-50%);
+}
+.screw-crosshair::after {
+  left: 50%;
+  top: -3px;
+  bottom: -3px;
+  width: 1px;
+  transform: translateX(-50%);
+}
+.screw-crosshair.tl { top: 9px; left: 9px; }
+.screw-crosshair.tr { top: 9px; right: 9px; }
+.screw-crosshair.bl { bottom: 9px; left: 9px; }
+.screw-crosshair.br { bottom: 9px; right: 9px; }
+
+.guide-plate-box {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: var(--plate-size);
+  height: var(--plate-size);
+  border: 1.5px solid #FF2D55;
+  box-shadow: inset 0 0 0 var(--plate-pad) rgba(255, 45, 85, 0.08);
+  pointer-events: none;
 }
 
-@keyframes barBreathB {
-  0%, 100% { opacity: 0.45; }
-  50% { opacity: 1.0; box-shadow: 0 0 10px var(--theme-orange); }
+.guide-grid-box {
+  position: absolute;
+  top: var(--plate-pad);
+  left: var(--plate-pad);
+  right: var(--plate-pad);
+  bottom: var(--plate-pad);
+  border: 1px dashed #00E676;
 }
 
-/* CENTRE LOGO PAD (TICKET 115) */
-.pad-btn.logo-pad {
-  padding: 0;
+.guide-top-zone {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: calc((100% - var(--plate-size)) / 2);
+  border-bottom: 1px dashed #FFD600;
+  background: rgba(255, 214, 0, 0.03);
 }
 
-.logo-cell {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  user-select: none;
-  width: 100%;
-  height: 100%;
+.guide-side-left-zone {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: calc((100% - var(--plate-size)) / 2);
+  border-right: 1px dashed #FFD600;
+  background: rgba(255, 214, 0, 0.02);
 }
 
-.logo-cell svg {
-  width: 82%;
-  height: 82%;
+.guide-side-right-zone {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  right: 0;
+  width: calc((100% - var(--plate-size)) / 2);
+  border-left: 1px dashed #FFD600;
+  background: rgba(255, 214, 0, 0.02);
 }
 
-/* TACTILE PRESS FEEDBACK */
-.pad-btn:active, .pad-btn.midi-hit {
-  transform: scale(0.965) translateY(1.5px);
-  box-shadow: 
-    inset 0 1px 2px rgba(0, 0, 0, 0.35),
-    0 0 0 1px var(--hairline);
-  transition-duration: 0.05s;
+.guide-bottom-zone {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: calc((100% - var(--plate-size)) / 2);
+  border-top: 1px dashed #FFD600;
+  background: rgba(255, 214, 0, 0.03);
 }
 
-.pad-btn:active .pad-flash, .pad-btn.midi-hit .pad-flash {
-  opacity: 0.38;
+.ipad-chassis.portrait .guide-side-left-zone,
+.ipad-chassis.portrait .guide-side-right-zone {
+  display: none;
 }
 
-/* REDUCE MOTION ENFORCEMENT */
-[data-reduce-motion="true"] *,
-[data-reduce-motion="true"] *::before,
-[data-reduce-motion="true"] *::after {
-  animation: none !important;
-  transition-duration: 0.12s !important;
+.ipad-chassis.landscape .guide-bottom-zone {
+  display: none;
 }
 
-[data-reduce-motion="true"] .pad-btn:active,
-[data-reduce-motion="true"] .pad-btn.midi-hit {
-  transform: none !important;
-  background: var(--ink) !important;
-  color: var(--bg) !important;
-}
-
-[data-reduce-motion="true"] .light-bar {
-  animation: none !important;
-  opacity: 0.9 !important;
-}
-
-/* BACKGROUND OFF COMPARISON TOGGLE */
+/* 7. BARE SCREEN COMPARISON (BACKGROUND OFF) */
 [data-bg-active="false"] {
   background: var(--bg) !important;
 }
 
-[data-bg-active="false"] .chassis-grain-layer,
+[data-bg-active="false"] .chassis-ribbing-layer,
+[data-bg-active="false"] .chassis-speckle-layer,
 [data-bg-active="false"] .chassis-vignette,
-[data-bg-active="false"] .pad-bay-plate,
-[data-bg-active="false"] .faders-layer {
+[data-bg-active="false"] .faders-layer,
+[data-bg-active="false"] .plate-badge,
+[data-bg-active="false"] .bay-screw {
   display: none !important;
 }
 
-[data-bg-active="false"] .pad-well {
+[data-bg-active="false"] .pad-plate {
   background: transparent !important;
+  border-color: transparent !important;
   box-shadow: none !important;
-  padding: 0 !important;
 }
 
-[data-bg-active="false"] .pad-num-tag {
-  display: none !important;
-}
-
-  </style>
+</style>
 </head>
 <body>
 
@@ -994,26 +1209,32 @@ body {
 <header class="workbench-header">
   <div class="brand-badge">
     <span class="pill">Smack-a-Pad</span>
-    <span>Ticket 117 · Tělo kontroleru (Controller Body v2)</span>
+    <span>Ticket 118 · Tělo kontroleru v2 (Centrování & Žebrování)</span>
   </div>
 
   <div class="controls-cluster">
-    <button class="ctrl-btn" id="theme-toggle" title="Přepnout Světlý (Cream) / Tmavý (Soft Black) režim">
+    <button class="ctrl-btn" id="theme-toggle" title="Přepnout Světlý (Cream) / Tmavý (Soft Black) režim [Klávesa L]">
       <span>Vzhled:</span> <strong id="theme-label">Světlý</strong>
     </button>
-    <button class="ctrl-btn" id="orientation-toggle" title="Přepnout iPad na šířku / na výšku">
+    <button class="ctrl-btn" id="orientation-toggle" title="Přepnout iPad na šířku / na výšku [Klávesa O]">
       <span>Orientace:</span> <strong id="orient-label">Na šířku</strong>
     </button>
-    <button class="ctrl-btn" id="grain-toggle" title="Nastavit sílu zrnitosti plastu (Vypnuto / Jemné / Výrazné)">
-      <span>Zrnitost těla:</span> <strong id="grain-label">Jemné</strong>
+    <button class="ctrl-btn" id="device-toggle" title="Vybrat model iPadu (iPad Pro 11″ / iPad mini / iPad 10.9″)">
+      <span>Zařízení:</span> <strong id="device-label">iPad 11″ (1194×834)</strong>
     </button>
-    <button class="ctrl-btn active" id="faders-toggle" title="Zapnout nebo vypnout postranní fadery">
-      <span>Fadery:</span> <strong id="faders-label">ZAPNUTO</strong>
+    <button class="ctrl-btn" id="texture-toggle" title="Nastavit jemné plastové žebrování / drážkování těla (Jemné / Výrazné / Vypnuto) [Klávesa T]">
+      <span>Žebrování těla:</span> <strong id="texture-label">Jemné</strong>
     </button>
-    <button class="ctrl-btn" id="plate-toggle" title="Přepnout materiál desky: Saténový vs Broušený kov">
+    <button class="ctrl-btn" id="plate-toggle" title="Materiál desky pod pady: Saténový vs Broušený kov (hladký) [Klávesa P]">
       <span>Deska:</span> <strong id="plate-label">Satén</strong>
     </button>
-    <button class="ctrl-btn highlight" id="bg-toggle" title="Vypnout strukturované pozadí pro okamžité porovnání s holou plochou">
+    <button class="ctrl-btn active" id="faders-toggle" title="Zapnout nebo vypnout fadery [Klávesa F]">
+      <span>Fadery:</span> <strong id="faders-label">ZAPNUTO</strong>
+    </button>
+    <button class="ctrl-btn" id="guides-toggle" title="Zobrazit vodítka, středové osy a padding desky [Klávesa G]">
+      <span>Vodítka:</span> <strong id="guides-label">VYPNUTO</strong>
+    </button>
+    <button class="ctrl-btn highlight" id="bg-toggle" title="Vypnout strukturované tělo pro okamžité porovnání s holou plochou [Klávesa B]">
       <span>Pozadí:</span> <strong id="bg-label">ZAPNUTO</strong>
     </button>
     <button class="ctrl-btn" id="motion-toggle" title="Aktivovat Reduce Motion dle pravidel Apple a Ticketu 27/112">
@@ -1034,351 +1255,401 @@ body {
 </header>
 
 <main class="workbench-viewport">
-  <div class="ipad-chassis landscape" id="ipad-chassis" data-bg-active="true" data-grain="subtle" data-plate="satin" data-faders="true">
-    
-    <!-- 1. PLASTIC BODY TEXTURE & VIGNETTE -->
-    <div class="chassis-grain-layer"></div>
-    <div class="chassis-vignette"></div>
+  <div class="viewport-stage" id="viewport-stage">
+    <div class="chassis-scaler" id="chassis-scaler">
+      <div class="ipad-chassis landscape device-11" id="ipad-chassis" data-bg-active="true" data-texture="subtle" data-plate="satin" data-faders="true" data-guides="false">
+        
+        <!-- 1. PLASTIC BODY TEXTURE: FINE PARALLEL GROOVES (RIBBING), SPECKLE & VIGNETTE -->
+        <div class="chassis-ribbing-layer"></div>
+        <div class="chassis-speckle-layer"></div>
+        <div class="chassis-vignette"></div>
 
-    <!-- 2. CENTRAL BAY PLATE WITH 4 CORNER SCREWS -->
-    <div class="pad-bay-plate">
-      <div class="plate-brushed-lines"></div>
+        <!-- 2. GUIDES OVERLAY (ENABLED VIA 'VODÍTKA' TOGGLE) -->
+        <div class="chassis-guides-layer">
+          <!-- Centerlines -->
+          <div class="guide-line guide-h-center">
+            <span class="guide-badge cyan" style="left: 16px; top: -11px;">Středová osa Y (50%)</span>
+          </div>
+          <div class="guide-line guide-v-center">
+            <span class="guide-badge cyan" style="top: 16px; left: 6px;">Středová osa X (50%)</span>
+          </div>
 
-      <!-- 4 Machined Metal Corner Screws (each uniquely rotated) -->
-      <div class="bay-screw tl" title="Šroub Top-Left (rotace -24°)">
-        <svg viewBox="0 0 24 24" class="screw-svg" role="img" aria-hidden="true">
-          <circle cx="12" cy="12" r="10" class="screw-bevel-ring" />
-          <circle cx="12" cy="12" r="8.8" class="screw-head-body" />
-          <circle cx="12" cy="12" r="7.8" class="screw-inner-ring" />
-          <path d="M10.7 5.5 h2.6 v4.2 h4.2 v2.6 h-4.2 v4.2 h-2.6 v-4.2 h-4.2 v-2.6 h4.2 z" class="screw-socket-slot" />
-          <path d="M6.5 12.3 h4.2 v4.2 h0.8 v-5 h-5 z" class="screw-slot-light" />
-        </svg>
-      </div>
+          <!-- Top band guide for Title -->
+          <div class="guide-top-zone">
+            <span class="guide-badge yellow" style="top: 14px; left: 16px;" id="guide-top-tag">Pruh titulku (výška: 147 px)</span>
+          </div>
 
-      <div class="bay-screw tr" title="Šroub Top-Right (rotace 51°)">
-        <svg viewBox="0 0 24 24" class="screw-svg" role="img" aria-hidden="true">
-          <circle cx="12" cy="12" r="10" class="screw-bevel-ring" />
-          <circle cx="12" cy="12" r="8.8" class="screw-head-body" />
-          <circle cx="12" cy="12" r="7.8" class="screw-inner-ring" />
-          <path d="M10.7 5.5 h2.6 v4.2 h4.2 v2.6 h-4.2 v4.2 h-2.6 v-4.2 h-4.2 v-2.6 h4.2 z" class="screw-socket-slot" />
-          <path d="M6.5 12.3 h4.2 v4.2 h0.8 v-5 h-5 z" class="screw-slot-light" />
-        </svg>
-      </div>
+          <!-- Side zones in landscape -->
+          <div class="guide-side-left-zone">
+            <span class="guide-badge yellow" style="top: 50%; left: 16px; transform: translateY(-50%);" id="guide-left-tag">Levé fadery (327 px)</span>
+          </div>
+          <div class="guide-side-right-zone">
+            <span class="guide-badge yellow" style="top: 50%; right: 16px; transform: translateY(-50%);" id="guide-right-tag">Pravé fadery (327 px)</span>
+          </div>
 
-      <div class="bay-screw bl" title="Šroub Bottom-Left (rotace 108°)">
-        <svg viewBox="0 0 24 24" class="screw-svg" role="img" aria-hidden="true">
-          <circle cx="12" cy="12" r="10" class="screw-bevel-ring" />
-          <circle cx="12" cy="12" r="8.8" class="screw-head-body" />
-          <circle cx="12" cy="12" r="7.8" class="screw-inner-ring" />
-          <path d="M10.7 5.5 h2.6 v4.2 h4.2 v2.6 h-4.2 v4.2 h-2.6 v-4.2 h-4.2 v-2.6 h4.2 z" class="screw-socket-slot" />
-          <path d="M6.5 12.3 h4.2 v4.2 h0.8 v-5 h-5 z" class="screw-slot-light" />
-        </svg>
-      </div>
+          <!-- Bottom zone in portrait -->
+          <div class="guide-bottom-zone">
+            <span class="guide-badge yellow" style="bottom: 14px; left: 50%; transform: translateX(-50%);" id="guide-bottom-tag">Spodní zóna faderů (výška: 327 px)</span>
+          </div>
 
-      <div class="bay-screw br" title="Šroub Bottom-Right (rotace -63°)">
-        <svg viewBox="0 0 24 24" class="screw-svg" role="img" aria-hidden="true">
-          <circle cx="12" cy="12" r="10" class="screw-bevel-ring" />
-          <circle cx="12" cy="12" r="8.8" class="screw-head-body" />
-          <circle cx="12" cy="12" r="7.8" class="screw-inner-ring" />
-          <path d="M10.7 5.5 h2.6 v4.2 h4.2 v2.6 h-4.2 v4.2 h-2.6 v-4.2 h-4.2 v-2.6 h4.2 z" class="screw-socket-slot" />
-          <path d="M6.5 12.3 h4.2 v4.2 h0.8 v-5 h-5 z" class="screw-slot-light" />
-        </svg>
-      </div>
+          <!-- Plate & Grid Guides -->
+          <div class="guide-plate-box">
+            <span class="guide-badge magenta" style="top: -11px; left: 50%; transform: translateX(-50%);">Deska: 540 × 540 px</span>
+            <span class="guide-badge magenta" style="top: 8px; left: 50%; transform: translateX(-50%);">Padding: 36 px</span>
+            <span class="guide-badge magenta" style="bottom: 8px; left: 50%; transform: translateX(-50%);">Padding: 36 px</span>
+            <span class="guide-badge magenta" style="top: 50%; left: 8px; transform: translateY(-50%);">36 px</span>
+            <span class="guide-badge magenta" style="top: 50%; right: 8px; transform: translateY(-50%);">36 px</span>
 
-      <!-- Silkscreen Hardware Badge on Plate -->
-      <div class="plate-badge">
-        <span class="badge-accent-dot"></span>
-        <span>SMACK-A-PAD // CONTROLLER BODY V2 // TACTILE 3×3</span>
+            
+            <!-- Screw alignment crosshairs -->
+            <div class="screw-crosshair tl" title="Střed šroubu TL (9px od hrany, 9px od mřížky)"></div>
+            <div class="screw-crosshair tr" title="Střed šroubu TR (9px od hrany, 9px od mřížky)"></div>
+            <div class="screw-crosshair bl" title="Střed šroubu BL (9px od hrany, 9px od mřížky)"></div>
+            <div class="screw-crosshair br" title="Střed šroubu BR (9px od hrany, 9px od mřížky)"></div>
+            <div class="guide-grid-box">
+              <span class="guide-badge green" style="bottom: -11px; left: 50%; transform: translateX(-50%);">Mřížka padů: 468 × 468 px</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- 3. TITLE BAND (SITS IN ITS OWN BAND ABOVE PLATE, TOUCHES NOTHING) -->
+        <div class="controller-title-band">
+          <svg viewBox="0 0 490.455 73.8" class="wordmark-svg" role="img" aria-label="Smack-a-Pad">
+            <g transform="translate(-110.25, -17.1)">
+              <path fill="currentColor" d="M129.375 90.9Q119.475 90.9 115.2675 86.715Q111.06 82.53 110.655 72.81Q110.61 71.37 110.61 69.6375Q110.61 67.905 110.7 66.1725Q110.79 64.44 111.015 63.0H123.705Q123.525 66.285 123.48 69.47999999999999Q123.435 72.675 123.705 75.33Q123.93 77.535 125.30250000000001 78.72749999999999Q126.675 79.92 129.375 79.92Q132.03 79.92 133.26749999999998 78.72749999999999Q134.505 77.535 134.775 75.33Q134.95499999999998 73.8 135.02249999999998 72.29249999999999Q135.09 70.785 135.02249999999998 69.2775Q134.95499999999998 67.77 134.775 66.24000000000001Q134.595 64.35 133.60500000000002 62.82Q132.615 61.290000000000006 130.45499999999998 60.75L123.075 58.86Q118.395 57.645 115.65 55.3725Q112.905 53.1 111.6675 49.725Q110.43 46.35 110.295 41.85Q110.25 39.870000000000005 110.25 38.3175Q110.25 36.765 110.295 35.1Q110.565 28.665 112.47749999999999 24.705000000000002Q114.39 20.745000000000005 118.485 18.922500000000007Q122.58 17.10000000000001 129.375 17.10000000000001Q138.96 17.10000000000001 143.28 21.262500000000003Q147.6 25.424999999999997 148.005 35.1Q148.095 37.035000000000004 148.0275 39.825Q147.96 42.615 147.825 45.0H134.865Q135.0 41.895 135.04500000000002 38.790000000000006Q135.09 35.685 134.95499999999998 32.580000000000005Q134.91 30.42 133.4025 29.250000000000004Q131.895 28.080000000000005 129.375 28.080000000000005Q126.675 28.080000000000005 125.37 29.250000000000004Q124.065 30.42 123.795 32.580000000000005Q123.525 34.875 123.525 37.215Q123.525 39.555 123.795 41.85Q124.02 43.65 125.055 45.135000000000005Q126.09 46.620000000000005 128.385 47.160000000000004L134.775 48.690000000000005Q139.815 49.905 142.7175 52.2675Q145.62 54.63 146.9025 58.11750000000001Q148.185 61.605000000000004 148.365 66.24000000000001Q148.41 67.275 148.41 68.4Q148.41 69.525 148.365 70.65Q148.32 71.775 148.275 72.81Q147.87 82.53 143.6175 86.715Q139.365 90.9 129.375 90.9ZM161.46 90.0V18.0H173.835L185.04 60.3L196.245 18.0H208.62V90.0H196.47V40.23L187.74 72.54H182.34L173.61 40.23V90.0ZM241.695 90.0L239.085 75.96H225.045L222.435 90.0H209.61L225.81 18.0H238.32L254.52 90.0ZM232.065 37.98L227.025 65.16H237.105ZM295.605 84.78Q290.7 89.28 284.13 90.495Q277.56 91.71 270.81 90.405Q264.06 89.1 258.84 84.42Q253.62 79.74 251.28 72.585Q248.94 65.43 248.94 56.52Q248.94 48.06 251.28 40.815Q253.62 33.57 258.75 28.53Q263.88 23.49 270.675 21.69Q277.47 19.89 284.04 20.745Q290.61 21.6 295.515 25.56Q300.42 29.52 302.31 36.18L290.43 40.14Q289.44 35.82 286.29 33.345Q283.14 30.87 278.415 30.87Q274.005 30.87 270.45 32.76Q266.895 34.65 264.69 38.34Q262.485 42.03 261.675 47.43Q260.865 52.83 261.675 58.5Q262.485 64.17 264.87 67.86Q267.255 71.55 270.99 73.44Q274.725 75.33 279.315 75.33Q283.995 75.33 287.145 73.125Q290.295 70.92 291.6 66.87L303.48 70.83Q300.51 78.48 295.605 84.78ZM313.11 90.0V18.0H325.8V50.67L343.89 18.0H359.01L337.86 54.45L360.72 90.0H345.06L328.77 64.71L325.8 70.02V90.0ZM370.215 57.06V47.97H397.665V57.06ZM439.425 90.0L436.815 75.96H422.775L420.165 90.0H407.34L423.54 18.0H436.05L452.25 90.0ZM429.795 37.98L424.755 65.16H434.835ZM463.365 57.06V47.97H490.815V57.06ZM500.58 90.0V18.0H519.84Q527.76 18.0 532.89 20.34Q538.02 22.68 540.81 26.685Q543.6 30.69 544.59 36.045Q545.58 41.4 544.77 47.16Q543.87 53.01 540.855 57.105Q537.84 61.2 532.845 63.45Q527.85 65.7 519.93 65.7H513.27V90.0ZM513.27 54.0H518.76Q523.8 54.0 526.905 52.2Q530.01 50.4 531.36 47.16Q532.71 43.92 532.485 39.87Q532.26 35.82 530.28 32.76Q528.3 29.7 524.34 29.7H513.27ZM572.535 90.0L569.925 75.96H555.885L553.275 90.0H540.45L556.65 18.0H569.16L585.36 90.0ZM562.905 37.98L557.865 65.16H567.945ZM596.115 90.0V18.0H614.385Q624.51 18.0 629.0325 22.2975Q633.555 26.595 633.735 36.45Q633.87 42.705 633.915 48.33Q633.96 53.955 633.915 59.58Q633.87 65.205 633.735 71.46Q633.555 81.36 629.0325 85.68Q624.51 90.0 614.385 90.0ZM609.615 78.12H614.385Q617.22 78.12 618.705 76.815Q620.19 75.51 620.235 73.08Q620.37 68.265 620.4375 63.495Q620.505 58.725 620.505 53.955Q620.505 49.185 620.4375 44.3925Q620.37 39.6 620.235 34.83Q620.19 32.445 618.705 31.1625Q617.22 29.88 614.385 29.88H609.615Z" />
+            </g>
+          </svg>
+        </div>
+
+        <!-- 4. CENTRAL BAY PLATE (540×540 px, PADDING 36 px, CENTERED AT 50% 50%) -->
+        <div class="pad-plate" id="pad-plate">
+          <div class="plate-brushed-lines"></div>
+
+          <!-- 4 Machined Metal Corner Screws: 18px diameter, perfectly within padding -->
+          <div class="bay-screw tl" title="Šroub Top-Left (rotace -24°)">
+            <svg viewBox="0 0 24 24" class="screw-svg" role="img" aria-hidden="true">
+              <circle cx="12" cy="12" r="10" class="screw-bevel-ring" />
+              <circle cx="12" cy="12" r="8.8" class="screw-head-body" />
+              <circle cx="12" cy="12" r="7.8" class="screw-inner-ring" />
+              <path d="M10.7 5.5 h2.6 v4.2 h4.2 v2.6 h-4.2 v4.2 h-2.6 v-4.2 h-4.2 v-2.6 h4.2 z" class="screw-socket-slot" />
+              <path d="M6.5 12.3 h4.2 v4.2 h0.8 v-5 h-5 z" class="screw-slot-light" />
+            </svg>
+          </div>
+
+          <div class="bay-screw tr" title="Šroub Top-Right (rotace 51°)">
+            <svg viewBox="0 0 24 24" class="screw-svg" role="img" aria-hidden="true">
+              <circle cx="12" cy="12" r="10" class="screw-bevel-ring" />
+              <circle cx="12" cy="12" r="8.8" class="screw-head-body" />
+              <circle cx="12" cy="12" r="7.8" class="screw-inner-ring" />
+              <path d="M10.7 5.5 h2.6 v4.2 h4.2 v2.6 h-4.2 v4.2 h-2.6 v-4.2 h-4.2 v-2.6 h4.2 z" class="screw-socket-slot" />
+              <path d="M6.5 12.3 h4.2 v4.2 h0.8 v-5 h-5 z" class="screw-slot-light" />
+            </svg>
+          </div>
+
+          <div class="bay-screw bl" title="Šroub Bottom-Left (rotace 108°)">
+            <svg viewBox="0 0 24 24" class="screw-svg" role="img" aria-hidden="true">
+              <circle cx="12" cy="12" r="10" class="screw-bevel-ring" />
+              <circle cx="12" cy="12" r="8.8" class="screw-head-body" />
+              <circle cx="12" cy="12" r="7.8" class="screw-inner-ring" />
+              <path d="M10.7 5.5 h2.6 v4.2 h4.2 v2.6 h-4.2 v4.2 h-2.6 v-4.2 h-4.2 v-2.6 h4.2 z" class="screw-socket-slot" />
+              <path d="M6.5 12.3 h4.2 v4.2 h0.8 v-5 h-5 z" class="screw-slot-light" />
+            </svg>
+          </div>
+
+          <div class="bay-screw br" title="Šroub Bottom-Right (rotace -63°)">
+            <svg viewBox="0 0 24 24" class="screw-svg" role="img" aria-hidden="true">
+              <circle cx="12" cy="12" r="10" class="screw-bevel-ring" />
+              <circle cx="12" cy="12" r="8.8" class="screw-head-body" />
+              <circle cx="12" cy="12" r="7.8" class="screw-inner-ring" />
+              <path d="M10.7 5.5 h2.6 v4.2 h4.2 v2.6 h-4.2 v4.2 h-2.6 v-4.2 h-4.2 v-2.6 h4.2 z" class="screw-socket-slot" />
+              <path d="M6.5 12.3 h4.2 v4.2 h0.8 v-5 h-5 z" class="screw-slot-light" />
+            </svg>
+          </div>
+
+          <!-- 3x3 Pad Grid (468 × 468 px, 3× 146 px pads, 15 px gap) -->
+          <div class="pad-grid" id="main-pad-grid">
+            <!-- Row 1: POKRAČOVAT / DNES (1) · KNIHOVNA (2) · TRÉNINK (3) -->
+            <div class="pad-well">
+              <button class="pad-btn hero" data-pad="1">
+                <span class="pad-num-tag">01</span>
+                <div class="pad-flash"></div>
+                <span class="pad-title">POKRAČOVAT</span>
+                <span class="pad-subtitle">2 cvičení ·<br>pak nová lekce</span>
+              </button>
+            </div>
+
+            <div class="pad-well">
+              <button class="pad-btn" data-pad="2">
+                <span class="pad-num-tag">02</span>
+                <div class="pad-flash"></div>
+                <span class="pad-title">KNIHOVNA</span>
+                <span class="pad-subtitle">42 / 216 ★</span>
+              </button>
+            </div>
+
+            <div class="pad-well">
+              <button class="pad-btn lit-pad" data-pad="3">
+                <span class="pad-num-tag">03</span>
+                <div class="pad-flash"></div>
+                <div class="light-bar" title="3 cvičení k opakování (Spaced repetition)"></div>
+                <span class="pad-title">TRÉNINK</span>
+                <span class="pad-subtitle">3 na řadě</span>
+              </button>
+            </div>
+
+            <!-- Row 2: ÚVODNÍ CVIČENÍ (4) · LOGO TILE (Ticket 115) · OVLADAČ (5) -->
+            <div class="pad-well">
+              <button class="pad-btn" data-pad="4">
+                <span class="pad-num-tag">04</span>
+                <div class="pad-flash"></div>
+                <span class="pad-title">ÚVODNÍ CVIČENÍ</span>
+                <span class="pad-subtitle">Základy rytmu</span>
+              </button>
+            </div>
+
+            <!-- Centre Pad: Logo Tile (Ticket 115) -->
+            <div class="pad-well">
+              <button class="pad-btn logo-pad" data-pad="about" title="O aplikaci (About)">
+                <div class="pad-flash"></div>
+                <div class="logo-cell">
+                  <svg viewBox="0 0 100 100" class="logo-mark-svg" role="img" aria-label="Smack-a-Pad logo">
+                    <rect x="12.4086" y="16.5914" width="32" height="32" rx="3" ry="3" fill="currentColor" />
+                    <rect x="12.4086" y="56.5914" width="32" height="32" rx="3" ry="3" fill="currentColor" />
+                    <rect x="52.4086" y="56.5914" width="32" height="32" rx="3" ry="3" fill="currentColor" />
+                    <rect x="53.9086" y="13.0914" width="32" height="32" rx="3" ry="3" fill="#FF6B00" transform="rotate(8 69.9086 29.0914)" />
+                  </svg>
+                </div>
+              </button>
+            </div>
+
+            <div class="pad-well">
+              <button class="pad-btn" data-pad="5">
+                <span class="pad-num-tag">05</span>
+                <div class="pad-flash"></div>
+                <span class="pad-title">OVLADAČ</span>
+                <span class="pad-subtitle">Akai MPD218</span>
+                <span class="pad-sec-subtitle">Standard 16-Pad</span>
+              </button>
+            </div>
+
+            <!-- Row 3: ODZNAKY (6) · PLNÁ VERZE (7) · NASTAVENÍ (8) -->
+            <div class="pad-well">
+              <button class="pad-btn" data-pad="6">
+                <span class="pad-num-tag">06</span>
+                <div class="pad-flash"></div>
+                <span class="pad-title">ODZNAKY</span>
+                <span class="pad-subtitle">4 / 16</span>
+              </button>
+            </div>
+
+            <div class="pad-well">
+              <button class="pad-btn" data-pad="7">
+                <span class="pad-num-tag">07</span>
+                <div class="pad-flash"></div>
+                <span class="pad-title">PLNÁ VERZE</span>
+                <span class="pad-subtitle">Odemknout vše</span>
+              </button>
+            </div>
+
+            <div class="pad-well">
+              <button class="pad-btn" data-pad="8">
+                <span class="pad-num-tag">08</span>
+                <div class="pad-flash"></div>
+                <span class="pad-title">NASTAVENÍ</span>
+                <span class="pad-subtitle">Vzhled, zvuk & MIDI</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- Silkscreen Hardware Badge on Plate -->
+          <div class="plate-badge">
+            <span class="badge-accent-dot"></span>
+            <span>SMACK-A-PAD // CONTROLLER BODY V2 // TACTILE 3×3</span>
+          </div>
+        </div>
+
+        <!-- 5. DECORATIVE FADERS (SLIDERS) AROUND PLATE -->
+        <div class="faders-layer">
+          <!-- Landscape Left: Channels 01 & 02 (Scale Left, Slot Right) -->
+          <div class="fader-bay fader-bay-left">
+            <!-- Fader 1 -->
+            <div class="fader-channel">
+              <div class="fader-channel-label">CH 01</div>
+              <div class="fader-track-assembly">
+                <div class="fader-scale">
+                  <div class="scale-tick" style="bottom: 95%;"><span>+6</span><div class="tick-line"></div></div>
+                  <div class="scale-tick major" style="bottom: 75%;"><span>0</span><div class="tick-line"></div></div>
+                  <div class="scale-tick" style="bottom: 55%;"><span>-6</span><div class="tick-line"></div></div>
+                  <div class="scale-tick" style="bottom: 38%;"><span>-12</span><div class="tick-line"></div></div>
+                  <div class="scale-tick" style="bottom: 22%;"><span>-24</span><div class="tick-line"></div></div>
+                  <div class="scale-tick" style="bottom: 5%;"><span>-∞</span><div class="tick-line"></div></div>
+                </div>
+                <div class="fader-track">
+                  <div class="fader-slot"><div class="fader-slot-line"></div></div>
+                  <div class="fader-cap" data-level="1">
+                    <div class="fader-cap-ribs"></div>
+                    <div class="fader-cap-indicator"></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Fader 2 -->
+            <div class="fader-channel">
+              <div class="fader-channel-label">CH 02</div>
+              <div class="fader-track-assembly">
+                <div class="fader-scale">
+                  <div class="scale-tick" style="bottom: 95%;"><span>+6</span><div class="tick-line"></div></div>
+                  <div class="scale-tick major" style="bottom: 75%;"><span>0</span><div class="tick-line"></div></div>
+                  <div class="scale-tick" style="bottom: 55%;"><span>-6</span><div class="tick-line"></div></div>
+                  <div class="scale-tick" style="bottom: 38%;"><span>-12</span><div class="tick-line"></div></div>
+                  <div class="scale-tick" style="bottom: 22%;"><span>-24</span><div class="tick-line"></div></div>
+                  <div class="scale-tick" style="bottom: 5%;"><span>-∞</span><div class="tick-line"></div></div>
+                </div>
+                <div class="fader-track">
+                  <div class="fader-slot"><div class="fader-slot-line"></div></div>
+                  <div class="fader-cap" data-level="2">
+                    <div class="fader-cap-ribs"></div>
+                    <div class="fader-cap-indicator"></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Landscape Right: Channels 03 & 04 (MIRRORED: Slot Left, Scale Right) -->
+          <div class="fader-bay fader-bay-right">
+            <!-- Fader 3 (With Orange Accent Indicator!) -->
+            <div class="fader-channel">
+              <div class="fader-channel-label">CH 03</div>
+              <div class="fader-track-assembly mirrored">
+                <div class="fader-track">
+                  <div class="fader-slot"><div class="fader-slot-line"></div></div>
+                  <div class="fader-cap" data-level="3">
+                    <div class="fader-cap-ribs"></div>
+                    <div class="fader-cap-indicator orange-accent"></div>
+                  </div>
+                </div>
+                <div class="fader-scale">
+                  <div class="scale-tick" style="bottom: 95%;"><div class="tick-line"></div><span>+6</span></div>
+                  <div class="scale-tick major" style="bottom: 75%;"><div class="tick-line"></div><span>0</span></div>
+                  <div class="scale-tick" style="bottom: 55%;"><div class="tick-line"></div><span>-6</span></div>
+                  <div class="scale-tick" style="bottom: 38%;"><div class="tick-line"></div><span>-12</span></div>
+                  <div class="scale-tick" style="bottom: 22%;"><div class="tick-line"></div><span>-24</span></div>
+                  <div class="scale-tick" style="bottom: 5%;"><div class="tick-line"></div><span>-∞</span></div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Fader 4 -->
+            <div class="fader-channel">
+              <div class="fader-channel-label">CH 04</div>
+              <div class="fader-track-assembly mirrored">
+                <div class="fader-track">
+                  <div class="fader-slot"><div class="fader-slot-line"></div></div>
+                  <div class="fader-cap" data-level="4">
+                    <div class="fader-cap-ribs"></div>
+                    <div class="fader-cap-indicator"></div>
+                  </div>
+                </div>
+                <div class="fader-scale">
+                  <div class="scale-tick" style="bottom: 95%;"><div class="tick-line"></div><span>+6</span></div>
+                  <div class="scale-tick major" style="bottom: 75%;"><div class="tick-line"></div><span>0</span></div>
+                  <div class="scale-tick" style="bottom: 55%;"><div class="tick-line"></div><span>-6</span></div>
+                  <div class="scale-tick" style="bottom: 38%;"><div class="tick-line"></div><span>-12</span></div>
+                  <div class="scale-tick" style="bottom: 22%;"><div class="tick-line"></div><span>-24</span></div>
+                  <div class="scale-tick" style="bottom: 5%;"><div class="tick-line"></div><span>-∞</span></div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Portrait Bottom: All 4 Channels in a Single Row Docked Below Plate -->
+          <div class="fader-bay fader-bay-portrait">
+            <!-- P-Fader 1 -->
+            <div class="fader-channel">
+              <div class="fader-channel-label">CH 01</div>
+              <div class="fader-track-assembly">
+                <div class="fader-scale">
+                  <div class="scale-tick" style="bottom: 95%;"><span>+6</span><div class="tick-line"></div></div>
+                  <div class="scale-tick major" style="bottom: 75%;"><span>0</span><div class="tick-line"></div></div>
+                  <div class="scale-tick" style="bottom: 38%;"><span>-12</span><div class="tick-line"></div></div>
+                  <div class="scale-tick" style="bottom: 5%;"><span>-∞</span><div class="tick-line"></div></div>
+                </div>
+                <div class="fader-track">
+                  <div class="fader-slot"><div class="fader-slot-line"></div></div>
+                  <div class="fader-cap" data-level="1">
+                    <div class="fader-cap-ribs"></div>
+                    <div class="fader-cap-indicator"></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- P-Fader 2 -->
+            <div class="fader-channel">
+              <div class="fader-channel-label">CH 02</div>
+              <div class="fader-track-assembly">
+                <div class="fader-scale">
+                  <div class="scale-tick" style="bottom: 95%;"><span>+6</span><div class="tick-line"></div></div>
+                  <div class="scale-tick major" style="bottom: 75%;"><span>0</span><div class="tick-line"></div></div>
+                  <div class="scale-tick" style="bottom: 38%;"><span>-12</span><div class="tick-line"></div></div>
+                  <div class="scale-tick" style="bottom: 5%;"><span>-∞</span><div class="tick-line"></div></div>
+                </div>
+                <div class="fader-track">
+                  <div class="fader-slot"><div class="fader-slot-line"></div></div>
+                  <div class="fader-cap" data-level="2">
+                    <div class="fader-cap-ribs"></div>
+                    <div class="fader-cap-indicator"></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- P-Fader 3 (Orange Accent) -->
+            <div class="fader-channel">
+              <div class="fader-channel-label">CH 03</div>
+              <div class="fader-track-assembly">
+                <div class="fader-scale">
+                  <div class="scale-tick" style="bottom: 95%;"><span>+6</span><div class="tick-line"></div></div>
+                  <div class="scale-tick major" style="bottom: 75%;"><span>0</span><div class="tick-line"></div></div>
+                  <div class="scale-tick" style="bottom: 38%;"><span>-12</span><div class="tick-line"></div></div>
+                  <div class="scale-tick" style="bottom: 5%;"><span>-∞</span><div class="tick-line"></div></div>
+                </div>
+                <div class="fader-track">
+                  <div class="fader-slot"><div class="fader-slot-line"></div></div>
+                  <div class="fader-cap" data-level="3">
+                    <div class="fader-cap-ribs"></div>
+                    <div class="fader-cap-indicator orange-accent"></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- P-Fader 4 -->
+            <div class="fader-channel">
+              <div class="fader-channel-label">CH 04</div>
+              <div class="fader-track-assembly">
+                <div class="fader-scale">
+                  <div class="scale-tick" style="bottom: 95%;"><span>+6</span><div class="tick-line"></div></div>
+                  <div class="scale-tick major" style="bottom: 75%;"><span>0</span><div class="tick-line"></div></div>
+                  <div class="scale-tick" style="bottom: 38%;"><span>-12</span><div class="tick-line"></div></div>
+                  <div class="scale-tick" style="bottom: 5%;"><span>-∞</span><div class="tick-line"></div></div>
+                </div>
+                <div class="fader-track">
+                  <div class="fader-slot"><div class="fader-slot-line"></div></div>
+                  <div class="fader-cap" data-level="4">
+                    <div class="fader-cap-ribs"></div>
+                    <div class="fader-cap-indicator"></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
       </div>
     </div>
-
-    <!-- 3. DECORATIVE FADERS (SLIDERS) AROUND PLATE -->
-    <div class="faders-layer">
-      <!-- Landscape Left: Channels 01 & 02 -->
-      <div class="fader-bay fader-bay-left">
-        <!-- Fader 1 -->
-        <div class="fader-channel">
-          <div class="fader-channel-label">CH 01</div>
-          <div class="fader-track-assembly">
-            <div class="fader-scale">
-              <div class="scale-tick" style="bottom: 95%;"><span>+6</span><div class="tick-line"></div></div>
-              <div class="scale-tick major" style="bottom: 75%;"><span>0</span><div class="tick-line"></div></div>
-              <div class="scale-tick" style="bottom: 55%;"><span>-6</span><div class="tick-line"></div></div>
-              <div class="scale-tick" style="bottom: 38%;"><span>-12</span><div class="tick-line"></div></div>
-              <div class="scale-tick" style="bottom: 22%;"><span>-24</span><div class="tick-line"></div></div>
-              <div class="scale-tick" style="bottom: 5%;"><span>-∞</span><div class="tick-line"></div></div>
-            </div>
-            <div class="fader-track">
-              <div class="fader-slot"><div class="fader-slot-line"></div></div>
-              <div class="fader-cap" data-level="1">
-                <div class="fader-cap-ribs"></div>
-                <div class="fader-cap-indicator"></div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- Fader 2 -->
-        <div class="fader-channel">
-          <div class="fader-channel-label">CH 02</div>
-          <div class="fader-track-assembly">
-            <div class="fader-scale">
-              <div class="scale-tick" style="bottom: 95%;"><span>+6</span><div class="tick-line"></div></div>
-              <div class="scale-tick major" style="bottom: 75%;"><span>0</span><div class="tick-line"></div></div>
-              <div class="scale-tick" style="bottom: 55%;"><span>-6</span><div class="tick-line"></div></div>
-              <div class="scale-tick" style="bottom: 38%;"><span>-12</span><div class="tick-line"></div></div>
-              <div class="scale-tick" style="bottom: 22%;"><span>-24</span><div class="tick-line"></div></div>
-              <div class="scale-tick" style="bottom: 5%;"><span>-∞</span><div class="tick-line"></div></div>
-            </div>
-            <div class="fader-track">
-              <div class="fader-slot"><div class="fader-slot-line"></div></div>
-              <div class="fader-cap" data-level="2">
-                <div class="fader-cap-ribs"></div>
-                <div class="fader-cap-indicator"></div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Landscape Right: Channels 03 & 04 -->
-      <div class="fader-bay fader-bay-right">
-        <!-- Fader 3 (With Orange Accent Indicator!) -->
-        <div class="fader-channel">
-          <div class="fader-channel-label">CH 03</div>
-          <div class="fader-track-assembly">
-            <div class="fader-scale">
-              <div class="scale-tick" style="bottom: 95%;"><span>+6</span><div class="tick-line"></div></div>
-              <div class="scale-tick major" style="bottom: 75%;"><span>0</span><div class="tick-line"></div></div>
-              <div class="scale-tick" style="bottom: 55%;"><span>-6</span><div class="tick-line"></div></div>
-              <div class="scale-tick" style="bottom: 38%;"><span>-12</span><div class="tick-line"></div></div>
-              <div class="scale-tick" style="bottom: 22%;"><span>-24</span><div class="tick-line"></div></div>
-              <div class="scale-tick" style="bottom: 5%;"><span>-∞</span><div class="tick-line"></div></div>
-            </div>
-            <div class="fader-track">
-              <div class="fader-slot"><div class="fader-slot-line"></div></div>
-              <div class="fader-cap" data-level="3">
-                <div class="fader-cap-ribs"></div>
-                <div class="fader-cap-indicator orange-accent"></div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- Fader 4 -->
-        <div class="fader-channel">
-          <div class="fader-channel-label">CH 04</div>
-          <div class="fader-track-assembly">
-            <div class="fader-scale">
-              <div class="scale-tick" style="bottom: 95%;"><span>+6</span><div class="tick-line"></div></div>
-              <div class="scale-tick major" style="bottom: 75%;"><span>0</span><div class="tick-line"></div></div>
-              <div class="scale-tick" style="bottom: 55%;"><span>-6</span><div class="tick-line"></div></div>
-              <div class="scale-tick" style="bottom: 38%;"><span>-12</span><div class="tick-line"></div></div>
-              <div class="scale-tick" style="bottom: 22%;"><span>-24</span><div class="tick-line"></div></div>
-              <div class="scale-tick" style="bottom: 5%;"><span>-∞</span><div class="tick-line"></div></div>
-            </div>
-            <div class="fader-track">
-              <div class="fader-slot"><div class="fader-slot-line"></div></div>
-              <div class="fader-cap" data-level="4">
-                <div class="fader-cap-ribs"></div>
-                <div class="fader-cap-indicator"></div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Portrait Bottom: All 4 Channels in a Horizontal Strip -->
-      <div class="fader-bay fader-bay-portrait">
-        <!-- P-Fader 1 -->
-        <div class="fader-channel">
-          <div class="fader-channel-label">01</div>
-          <div class="fader-track-assembly">
-            <div class="fader-scale">
-              <div class="scale-tick" style="bottom: 95%;"><span>+6</span><div class="tick-line"></div></div>
-              <div class="scale-tick major" style="bottom: 75%;"><span>0</span><div class="tick-line"></div></div>
-              <div class="scale-tick" style="bottom: 38%;"><span>-12</span><div class="tick-line"></div></div>
-              <div class="scale-tick" style="bottom: 5%;"><span>-∞</span><div class="tick-line"></div></div>
-            </div>
-            <div class="fader-track">
-              <div class="fader-slot"><div class="fader-slot-line"></div></div>
-              <div class="fader-cap" data-level="1">
-                <div class="fader-cap-ribs"></div>
-                <div class="fader-cap-indicator"></div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- P-Fader 2 -->
-        <div class="fader-channel">
-          <div class="fader-channel-label">02</div>
-          <div class="fader-track-assembly">
-            <div class="fader-scale">
-              <div class="scale-tick" style="bottom: 95%;"><span>+6</span><div class="tick-line"></div></div>
-              <div class="scale-tick major" style="bottom: 75%;"><span>0</span><div class="tick-line"></div></div>
-              <div class="scale-tick" style="bottom: 38%;"><span>-12</span><div class="tick-line"></div></div>
-              <div class="scale-tick" style="bottom: 5%;"><span>-∞</span><div class="tick-line"></div></div>
-            </div>
-            <div class="fader-track">
-              <div class="fader-slot"><div class="fader-slot-line"></div></div>
-              <div class="fader-cap" data-level="2">
-                <div class="fader-cap-ribs"></div>
-                <div class="fader-cap-indicator"></div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- P-Fader 3 (Orange Accent) -->
-        <div class="fader-channel">
-          <div class="fader-channel-label">03</div>
-          <div class="fader-track-assembly">
-            <div class="fader-scale">
-              <div class="scale-tick" style="bottom: 95%;"><span>+6</span><div class="tick-line"></div></div>
-              <div class="scale-tick major" style="bottom: 75%;"><span>0</span><div class="tick-line"></div></div>
-              <div class="scale-tick" style="bottom: 38%;"><span>-12</span><div class="tick-line"></div></div>
-              <div class="scale-tick" style="bottom: 5%;"><span>-∞</span><div class="tick-line"></div></div>
-            </div>
-            <div class="fader-track">
-              <div class="fader-slot"><div class="fader-slot-line"></div></div>
-              <div class="fader-cap" data-level="3">
-                <div class="fader-cap-ribs"></div>
-                <div class="fader-cap-indicator orange-accent"></div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- P-Fader 4 -->
-        <div class="fader-channel">
-          <div class="fader-channel-label">04</div>
-          <div class="fader-track-assembly">
-            <div class="fader-scale">
-              <div class="scale-tick" style="bottom: 95%;"><span>+6</span><div class="tick-line"></div></div>
-              <div class="scale-tick major" style="bottom: 75%;"><span>0</span><div class="tick-line"></div></div>
-              <div class="scale-tick" style="bottom: 38%;"><span>-12</span><div class="tick-line"></div></div>
-              <div class="scale-tick" style="bottom: 5%;"><span>-∞</span><div class="tick-line"></div></div>
-            </div>
-            <div class="fader-track">
-              <div class="fader-slot"><div class="fader-slot-line"></div></div>
-              <div class="fader-cap" data-level="4">
-                <div class="fader-cap-ribs"></div>
-                <div class="fader-cap-indicator"></div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- 4. FOREGROUND HOME CONTENT -->
-    <div class="home-screen">
-      <!-- Wordmark -->
-      <div class="brand-header-area">
-        <svg viewBox="0 0 490.455 73.8" class="wordmark-svg" role="img" aria-label="Smack-a-Pad">
-          <g transform="translate(-110.25, -17.1)">
-            <path fill="currentColor" d="M129.375 90.9Q119.475 90.9 115.2675 86.715Q111.06 82.53 110.655 72.81Q110.61 71.37 110.61 69.6375Q110.61 67.905 110.7 66.1725Q110.79 64.44 111.015 63.0H123.705Q123.525 66.285 123.48 69.47999999999999Q123.435 72.675 123.705 75.33Q123.93 77.535 125.30250000000001 78.72749999999999Q126.675 79.92 129.375 79.92Q132.03 79.92 133.26749999999998 78.72749999999999Q134.505 77.535 134.775 75.33Q134.95499999999998 73.8 135.02249999999998 72.29249999999999Q135.09 70.785 135.02249999999998 69.2775Q134.95499999999998 67.77 134.775 66.24000000000001Q134.595 64.35 133.60500000000002 62.82Q132.615 61.290000000000006 130.45499999999998 60.75L123.075 58.86Q118.395 57.645 115.65 55.3725Q112.905 53.1 111.6675 49.725Q110.43 46.35 110.295 41.85Q110.25 39.870000000000005 110.25 38.3175Q110.25 36.765 110.295 35.1Q110.565 28.665 112.47749999999999 24.705000000000002Q114.39 20.745000000000005 118.485 18.922500000000007Q122.58 17.10000000000001 129.375 17.10000000000001Q138.96 17.10000000000001 143.28 21.262500000000003Q147.6 25.424999999999997 148.005 35.1Q148.095 37.035000000000004 148.0275 39.825Q147.96 42.615 147.825 45.0H134.865Q135.0 41.895 135.04500000000002 38.790000000000006Q135.09 35.685 134.95499999999998 32.580000000000005Q134.91 30.42 133.4025 29.250000000000004Q131.895 28.080000000000005 129.375 28.080000000000005Q126.675 28.080000000000005 125.37 29.250000000000004Q124.065 30.42 123.795 32.580000000000005Q123.525 34.875 123.525 37.215Q123.525 39.555 123.795 41.85Q124.02 43.65 125.055 45.135000000000005Q126.09 46.620000000000005 128.385 47.160000000000004L134.775 48.690000000000005Q139.815 49.905 142.7175 52.2675Q145.62 54.63 146.9025 58.11750000000001Q148.185 61.605000000000004 148.365 66.24000000000001Q148.41 67.275 148.41 68.4Q148.41 69.525 148.365 70.65Q148.32 71.775 148.275 72.81Q147.87 82.53 143.6175 86.715Q139.365 90.9 129.375 90.9ZM155.34 90.0V18.0H177.03L182.97 45.27L184.14000000000001 78.12H186.48000000000002L187.56 45.27L193.59 18.0H215.19V90.0H201.69V67.86L204.3 29.880000000000003H201.87L198.09 68.76L192.51 90.0H178.02L172.53 68.76L168.66 29.880000000000003H166.32000000000002L168.84 67.86V90.0ZM220.77 90.0 230.76 18.0H252.0L261.99 90.0H248.13L246.6 74.97H236.16L234.63 90.0ZM237.42000000000002 63.09H245.34L243.72 47.160000000000004L242.64000000000001 29.880000000000003H240.12L239.04 47.160000000000004ZM285.34499999999997 90.9Q275.175 90.9 270.8775 86.715Q266.58 82.53 266.355 72.81Q266.31 69.075 266.265 64.17Q266.21999999999997 59.265 266.21999999999997 53.977500000000006Q266.21999999999997 48.690000000000005 266.265 43.7625Q266.31 38.835 266.355 35.010000000000005Q266.49 26.775000000000006 270.9675 21.937500000000007Q275.445 17.10000000000001 285.34499999999997 17.10000000000001Q295.065 17.10000000000001 299.43 21.262500000000003Q303.795 25.424999999999997 304.065 35.1Q304.11 36.585 304.11 38.3175Q304.11 40.050000000000004 304.065 41.7825Q304.02 43.515 303.975 45.0H290.47499999999997Q290.52 43.335 290.565 41.0625Q290.61 38.79 290.61 36.5175Q290.61 34.245000000000005 290.565 32.580000000000005Q290.52 30.42 289.1475 29.250000000000004Q287.775 28.080000000000005 285.34499999999997 28.080000000000005Q282.78 28.080000000000005 281.36249999999995 29.250000000000004Q279.945 30.42 279.855 32.580000000000005Q279.675 37.305 279.60749999999996 42.795Q279.53999999999996 48.285000000000004 279.53999999999996 54.0Q279.53999999999996 59.715 279.60749999999996 65.1825Q279.675 70.65 279.855 75.33Q279.945 77.535 281.36249999999995 78.72749999999999Q282.78 79.92 285.34499999999997 79.92Q288.0 79.92 289.44 78.72749999999999Q290.88 77.535 290.925 75.33Q290.96999999999997 73.71000000000001 290.99249999999995 71.4375Q291.015 69.16499999999999 290.99249999999995 66.8925Q290.96999999999997 64.62 290.925 63.0H304.425Q304.515 65.16 304.515 67.905Q304.515 70.65 304.425 72.81Q304.155 82.53 299.72249999999997 86.715Q295.28999999999996 90.9 285.34499999999997 90.9ZM311.85 90.0V18.0H326.25L326.07 35.46L323.64 51.57H326.07L330.39 35.46L336.87 18.0H351.63L339.66 47.61L352.17 90.0H338.49L330.66 62.55L325.62 73.44V90.0ZM350.415 64.08V52.2H385.15500000000003V64.08ZM389.835 90.0 399.825 18.0H421.065L431.055 90.0H417.195L415.665 74.97H405.225L403.695 90.0ZM406.485 63.09H414.405L412.785 47.160000000000004L411.705 29.880000000000003H409.185L408.105 47.160000000000004ZM435.73499999999996 64.08V52.2H470.47499999999997V64.08ZM477.855 90.0V18.0H495.225Q505.305 18.0 509.7825 22.0725Q514.26 26.145000000000003 514.575 35.550000000000004Q514.71 39.330000000000005 514.71 42.57000000000001Q514.71 45.81 514.575 49.59Q514.26 58.95 509.7825 63.045Q505.305 67.14 495.225 67.14H491.355V90.0ZM491.355 55.26H495.225Q498.06 55.26 499.5 53.955Q500.94 52.65 501.075 50.31Q501.21 48.105000000000004 501.255 45.337500000000006Q501.3 42.57 501.255 39.8025Q501.21 37.035000000000004 501.075 34.830000000000005Q500.94 32.445 499.5 31.1625Q498.06 29.880000000000003 495.225 29.880000000000003H491.355ZM516.06 90.0 526.05 18.0H547.29L557.28 90.0H543.42L541.89 74.97H531.4499999999999L529.92 90.0ZM532.7099999999999 63.09H540.63L539.01 47.160000000000004L537.93 29.880000000000003H535.41L534.3299999999999 47.160000000000004ZM562.86 90.0V18.0H581.13Q591.255 18.0 595.7774999999999 22.2975Q600.3 26.595 600.48 36.45Q600.615 42.705 600.6600000000001 48.33Q600.705 53.955 600.6600000000001 59.58Q600.615 65.205 600.48 71.46000000000001Q600.3 81.36 595.7774999999999 85.68Q591.255 90.0 581.13 90.0ZM576.36 78.12H581.13Q583.965 78.12 585.45 76.815Q586.935 75.51 586.98 73.08Q587.115 68.265 587.1825 63.495000000000005Q587.25 58.725 587.25 53.955Q587.25 49.185 587.1825 44.3925Q587.115 39.6 586.98 34.830000000000005Q586.935 32.445 585.45 31.1625Q583.965 29.880000000000003 581.13 29.880000000000003H576.36Z" />
-          </g>
-        </svg>
-      </div>
-
-      <!-- 3x3 Pad Grid -->
-      <div class="pad-grid" id="main-pad-grid">
-        <!-- Row 1: POKRAČOVAT / DNES (1) · KNIHOVNA (2) · TRÉNINK (3) -->
-        <div class="pad-well">
-          <button class="pad-btn hero" data-pad="1">
-            <span class="pad-num-tag">01</span>
-            <div class="pad-flash"></div>
-            <span class="pad-title">POKRAČOVAT</span>
-            <span class="pad-subtitle">2 cvičení · pak nová lekce</span>
-          </button>
-        </div>
-
-        <div class="pad-well">
-          <button class="pad-btn" data-pad="2">
-            <span class="pad-num-tag">02</span>
-            <div class="pad-flash"></div>
-            <span class="pad-title">KNIHOVNA</span>
-            <span class="pad-subtitle">42 / 216 ★</span>
-          </button>
-        </div>
-
-        <div class="pad-well">
-          <button class="pad-btn lit-pad" data-pad="3">
-            <span class="pad-num-tag">03</span>
-            <div class="pad-flash"></div>
-            <div class="light-bar" title="3 cvičení k opakování (Spaced repetition)"></div>
-            <span class="pad-title">TRÉNINK</span>
-            <span class="pad-subtitle">3 na řadě</span>
-          </button>
-        </div>
-
-        <!-- Row 2: ÚVODNÍ CVIČENÍ (4) · LOGO TILE (Ticket 115) · OVLADAČ (5) -->
-        <div class="pad-well">
-          <button class="pad-btn" data-pad="4">
-            <span class="pad-num-tag">04</span>
-            <div class="pad-flash"></div>
-            <span class="pad-title">ÚVODNÍ CVIČENÍ</span>
-            <span class="pad-subtitle">Základy rytmu</span>
-          </button>
-        </div>
-
-        <!-- Centre Pad: Logo Tile (Ticket 115) -->
-        <div class="pad-well">
-          <button class="pad-btn logo-pad" data-pad="about" title="O aplikaci (About)">
-            <div class="pad-flash"></div>
-            <div class="logo-cell">
-              <svg viewBox="0 0 100 100" class="logo-mark-svg" role="img" aria-label="Smack-a-Pad logo">
-                <rect x="12.4086" y="16.5914" width="32" height="32" rx="3" ry="3" fill="currentColor" />
-                <rect x="12.4086" y="56.5914" width="32" height="32" rx="3" ry="3" fill="currentColor" />
-                <rect x="52.4086" y="56.5914" width="32" height="32" rx="3" ry="3" fill="currentColor" />
-                <rect x="53.9086" y="13.0914" width="32" height="32" rx="3" ry="3" fill="#FF6B00" transform="rotate(8 69.9086 29.0914)" />
-              </svg>
-            </div>
-          </button>
-        </div>
-
-        <div class="pad-well">
-          <button class="pad-btn" data-pad="5">
-            <span class="pad-num-tag">05</span>
-            <div class="pad-flash"></div>
-            <span class="pad-title">OVLADAČ</span>
-            <span class="pad-subtitle">Akai MPD218</span>
-            <span class="pad-sec-subtitle">Standard 16-Pad</span>
-          </button>
-        </div>
-
-        <!-- Row 3: ODZNAKY (6) · PLNÁ VERZE (7) · NASTAVENÍ (8) -->
-        <div class="pad-well">
-          <button class="pad-btn" data-pad="6">
-            <span class="pad-num-tag">06</span>
-            <div class="pad-flash"></div>
-            <span class="pad-title">ODZNAKY</span>
-            <span class="pad-subtitle">4 / 16</span>
-          </button>
-        </div>
-
-        <div class="pad-well">
-          <button class="pad-btn" data-pad="7">
-            <span class="pad-num-tag">07</span>
-            <div class="pad-flash"></div>
-            <span class="pad-title">PLNÁ VERZE</span>
-            <span class="pad-subtitle">Odemknout vše</span>
-          </button>
-        </div>
-
-        <div class="pad-well">
-          <button class="pad-btn" data-pad="8">
-            <span class="pad-num-tag">08</span>
-            <div class="pad-flash"></div>
-            <span class="pad-title">NASTAVENÍ</span>
-            <span class="pad-subtitle">Vzhled, zvuk & MIDI</span>
-          </button>
-        </div>
-      </div>
-    </div>
-
   </div>
 </main>
 
@@ -1386,18 +1657,27 @@ body {
 document.addEventListener('DOMContentLoaded', () => {
   const root = document.documentElement;
   const chassis = document.getElementById('ipad-chassis');
+  const stage = document.getElementById('viewport-stage');
+  const scaler = document.getElementById('chassis-scaler');
+  const viewport = document.querySelector('.workbench-viewport');
   
   const themeToggle = document.getElementById('theme-toggle');
   const themeLabel = document.getElementById('theme-label');
   
   const orientToggle = document.getElementById('orientation-toggle');
   const orientLabel = document.getElementById('orient-label');
+
+  const deviceToggle = document.getElementById('device-toggle');
+  const deviceLabel = document.getElementById('device-label');
   
-  const grainToggle = document.getElementById('grain-toggle');
-  const grainLabel = document.getElementById('grain-label');
+  const textureToggle = document.getElementById('texture-toggle');
+  const textureLabel = document.getElementById('texture-label');
   
   const fadersToggle = document.getElementById('faders-toggle');
   const fadersLabel = document.getElementById('faders-label');
+
+  const guidesToggle = document.getElementById('guides-toggle');
+  const guidesLabel = document.getElementById('guides-label');
   
   const plateToggle = document.getElementById('plate-toggle');
   const plateLabel = document.getElementById('plate-label');
@@ -1411,54 +1691,136 @@ document.addEventListener('DOMContentLoaded', () => {
   const midiButtons = document.querySelectorAll('.midi-trigger-btn');
   const padButtons = document.querySelectorAll('.pad-btn');
 
+  // Guide label elements
+  const guideTopTag = document.getElementById('guide-top-tag');
+  const guideLeftTag = document.getElementById('guide-left-tag');
+  const guideRightTag = document.getElementById('guide-right-tag');
+  const guideBottomTag = document.getElementById('guide-bottom-tag');
+
+  // Device Presets
+  const devicePresets = [
+    { key: 'device-11', label: 'iPad 11″', land: '1194×834', port: '834×1194' },
+    { key: 'device-mini', label: 'iPad mini', land: '1133×744', port: '744×1133' },
+    { key: 'device-10', label: 'iPad 10.9″', land: '1180×820', port: '820×1180' }
+  ];
+  let currentDeviceIdx = 0;
+
+  function updateGuideDimensions() {
+    const isLand = chassis.classList.contains('landscape');
+    const chW = chassis.offsetWidth;
+    const chH = chassis.offsetHeight;
+    const plateSize = 540;
+
+    const topH = Math.round((chH - plateSize) / 2);
+    const sideW = Math.round((chW - plateSize) / 2);
+    const bottomH = topH;
+
+    if (guideTopTag) guideTopTag.textContent = `Pruh titulku (výška: ${topH} px)`;
+    if (guideLeftTag) guideLeftTag.textContent = `Levé fadery (šířka: ${sideW} px)`;
+    if (guideRightTag) guideRightTag.textContent = `Pravé fadery (šířka: ${sideW} px)`;
+    if (guideBottomTag) guideBottomTag.textContent = `Spodní fadery (výška: ${bottomH} px)`;
+  }
+
+  // AUTO-SCALER: FITS CONTROLLER CLEANLY INTO VIEWPORT AS ONE UNIT
+  function updateScale() {
+    if (!viewport || !stage || !scaler || !chassis) return;
+
+    const cw = chassis.offsetWidth;
+    const ch = chassis.offsetHeight;
+
+    const pad = 32;
+    const availW = Math.max(200, viewport.clientWidth - pad);
+    const availH = Math.max(200, viewport.clientHeight - pad);
+
+    const scale = Math.min(availW / cw, availH / ch, 1.0);
+
+    scaler.style.transform = `scale(${scale})`;
+    scaler.style.width = cw + 'px';
+    scaler.style.height = ch + 'px';
+
+    stage.style.width = Math.round(cw * scale) + 'px';
+    stage.style.height = Math.round(ch * scale) + 'px';
+
+    updateGuideDimensions();
+  }
+
+  window.addEventListener('resize', updateScale);
+
   // 1. Theme toggle: Light / Dark
-  themeToggle?.addEventListener('click', () => {
+  function toggleTheme() {
     const isDark = root.getAttribute('data-theme') === 'dark';
     if (isDark) {
       root.removeAttribute('data-theme');
       themeLabel.textContent = 'Světlý';
+      themeToggle.classList.remove('active');
     } else {
       root.setAttribute('data-theme', 'dark');
       themeLabel.textContent = 'Tmavý';
+      themeToggle.classList.add('active');
     }
-  });
+  }
+  themeToggle?.addEventListener('click', toggleTheme);
 
   // 2. Orientation toggle: Landscape / Portrait
-  orientToggle?.addEventListener('click', () => {
+  function toggleOrientation() {
     const isLandscape = chassis.classList.contains('landscape');
     if (isLandscape) {
       chassis.classList.remove('landscape');
       chassis.classList.add('portrait');
       orientLabel.textContent = 'Na výšku';
+      orientToggle.classList.add('active');
     } else {
       chassis.classList.remove('portrait');
       chassis.classList.add('landscape');
       orientLabel.textContent = 'Na šířku';
+      orientToggle.classList.remove('active');
     }
-  });
+    updateDeviceLabel();
+    updateScale();
+  }
+  orientToggle?.addEventListener('click', toggleOrientation);
 
-  // 3. Grain strength toggle: subtle -> strong -> off -> subtle
-  const grainStates = [
+  // 3. Device preset toggle
+  function updateDeviceLabel() {
+    const preset = devicePresets[currentDeviceIdx];
+    const isLand = chassis.classList.contains('landscape');
+    const dim = isLand ? preset.land : preset.port;
+    deviceLabel.textContent = `${preset.label} (${dim})`;
+  }
+
+  function toggleDevice() {
+    devicePresets.forEach(p => chassis.classList.remove(p.key));
+    currentDeviceIdx = (currentDeviceIdx + 1) % devicePresets.length;
+    const nextPreset = devicePresets[currentDeviceIdx];
+    chassis.classList.add(nextPreset.key);
+    updateDeviceLabel();
+    updateScale();
+  }
+  deviceToggle?.addEventListener('click', toggleDevice);
+
+  // 4. Texture of body toggle: Subtle (default) -> Strong -> Off -> Subtle
+  const textureStates = [
     { value: 'subtle', label: 'Jemné', active: false },
     { value: 'strong', label: 'Výrazné', active: true },
     { value: 'off', label: 'Vypnuto', active: false }
   ];
-  let currentGrainIdx = 0; // starts at subtle
+  let currentTextureIdx = 0; // starts at subtle
 
-  grainToggle?.addEventListener('click', () => {
-    currentGrainIdx = (currentGrainIdx + 1) % grainStates.length;
-    const nextState = grainStates[currentGrainIdx];
-    chassis.setAttribute('data-grain', nextState.value);
-    grainLabel.textContent = nextState.label;
+  function toggleTexture() {
+    currentTextureIdx = (currentTextureIdx + 1) % textureStates.length;
+    const nextState = textureStates[currentTextureIdx];
+    chassis.setAttribute('data-texture', nextState.value);
+    textureLabel.textContent = nextState.label;
     if (nextState.active) {
-      grainToggle.classList.add('active');
+      textureToggle.classList.add('active');
     } else {
-      grainToggle.classList.remove('active');
+      textureToggle.classList.remove('active');
     }
-  });
+  }
+  textureToggle?.addEventListener('click', toggleTexture);
 
-  // 4. Faders toggle: ON / OFF
-  fadersToggle?.addEventListener('click', () => {
+  // 5. Faders toggle: ON / OFF
+  function toggleFaders() {
     const isFadersOn = chassis.getAttribute('data-faders') !== 'false';
     if (isFadersOn) {
       chassis.setAttribute('data-faders', 'false');
@@ -1469,10 +1831,11 @@ document.addEventListener('DOMContentLoaded', () => {
       fadersToggle.classList.add('active');
       fadersLabel.textContent = 'ZAPNUTO';
     }
-  });
+  }
+  fadersToggle?.addEventListener('click', toggleFaders);
 
-  // 5. Plate Material toggle: satin / brushed
-  plateToggle?.addEventListener('click', () => {
+  // 6. Plate Material toggle: Satin (smooth) / Brushed metal (micro-fine brush)
+  function togglePlate() {
     const currentPlate = chassis.getAttribute('data-plate');
     if (currentPlate === 'brushed') {
       chassis.setAttribute('data-plate', 'satin');
@@ -1483,10 +1846,27 @@ document.addEventListener('DOMContentLoaded', () => {
       plateLabel.textContent = 'Broušený kov';
       plateToggle.classList.add('active');
     }
-  });
+  }
+  plateToggle?.addEventListener('click', togglePlate);
 
-  // 6. Background toggle: ON / OFF (comparison with bare screen)
-  bgToggle?.addEventListener('click', () => {
+  // 7. Show Guides toggle: ON / OFF
+  function toggleGuides() {
+    const isGuidesOn = chassis.getAttribute('data-guides') === 'true';
+    if (isGuidesOn) {
+      chassis.setAttribute('data-guides', 'false');
+      guidesToggle.classList.remove('guides-active');
+      guidesLabel.textContent = 'VYPNUTO';
+    } else {
+      chassis.setAttribute('data-guides', 'true');
+      guidesToggle.classList.add('guides-active');
+      guidesLabel.textContent = 'ZAPNUTO';
+      updateGuideDimensions();
+    }
+  }
+  guidesToggle?.addEventListener('click', toggleGuides);
+
+  // 8. Background toggle: ON / OFF (bare comparison)
+  function toggleBg() {
     const isActive = chassis.getAttribute('data-bg-active') !== 'false';
     if (isActive) {
       chassis.setAttribute('data-bg-active', 'false');
@@ -1497,10 +1877,11 @@ document.addEventListener('DOMContentLoaded', () => {
       bgToggle.classList.add('highlight');
       bgLabel.textContent = 'ZAPNUTO';
     }
-  });
+  }
+  bgToggle?.addEventListener('click', toggleBg);
 
-  // 7. Motion toggle (Reduce Motion)
-  motionToggle?.addEventListener('click', () => {
+  // 9. Motion toggle (Reduce Motion)
+  function toggleMotion() {
     const isReduced = root.getAttribute('data-reduce-motion') === 'true';
     if (isReduced) {
       root.removeAttribute('data-reduce-motion');
@@ -1511,9 +1892,10 @@ document.addEventListener('DOMContentLoaded', () => {
       motionLabel.textContent = 'Omezený';
       motionToggle.classList.add('active');
     }
-  });
+  }
+  motionToggle?.addEventListener('click', toggleMotion);
 
-  // 8. Pad Tactile Strike Feedback Helper
+  // 10. Pad Tactile Strike Feedback Helper
   function strikePad(padBtn) {
     if (!padBtn) return;
     padBtn.classList.add('midi-hit');
@@ -1522,7 +1904,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }, 160);
   }
 
-  // 9. MIDI simulation buttons
+  // 11. MIDI simulation buttons
   midiButtons.forEach(btn => {
     btn.addEventListener('click', () => {
       const padNum = btn.getAttribute('data-pad');
@@ -1531,24 +1913,41 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   });
 
-  // 10. Click on pads directly
+  // 12. Click on pads directly
   padButtons.forEach(pad => {
     pad.addEventListener('click', () => {
       strikePad(pad);
     });
   });
 
-  // 11. Keyboard shortcut 1-8 for MIDI trigger simulation
+  // 13. Keyboard shortcuts: 1-8 for MIDI trigger, plus hotkeys
   window.addEventListener('keydown', (e) => {
     if (e.target && (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA')) return;
-    const key = e.key;
+    const key = e.key.toLowerCase();
     if (key >= '1' && key <= '8') {
       const targetPad = document.querySelector(`.pad-btn[data-pad="${key}"]`);
       strikePad(targetPad);
+    } else if (key === 'l') {
+      toggleTheme();
+    } else if (key === 'o') {
+      toggleOrientation();
+    } else if (key === 'g') {
+      toggleGuides();
+    } else if (key === 'f') {
+      toggleFaders();
+    } else if (key === 't') {
+      toggleTexture();
+    } else if (key === 'p') {
+      togglePlate();
+    } else if (key === 'b') {
+      toggleBg();
     }
   });
+
+  // Initial scaling call
+  updateDeviceLabel();
+  setTimeout(updateScale, 50);
 });
 </script>
-
 </body>
 </html>
