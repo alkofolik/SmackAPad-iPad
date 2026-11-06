@@ -1,6 +1,6 @@
 # 109 — Today session: a way out to Home (and so to the Library)
 
-Status: ready-for-agent. Source: Jakub, 2026-11-06 (iPad test of ticket 103/107). Depends on: 103.
+Status: ready-for-human. Source: Jakub, 2026-11-06 (iPad test of ticket 103/107). Depends on: 103.
 
 ## Problem
 
@@ -23,10 +23,10 @@ Many players will never use Today and practise only through the Library. Today m
 
 ## Acceptance criteria
 
-- [ ] Today screen shows Home in the top bar at every step.
-- [ ] Home closes the session; Home screen then still shows TODAY; tapping it resumes at the same step; no review was postponed.
-- [ ] From Home the Library opens normally.
-- [ ] Build succeeds. No new tests.
+- [x] Today screen shows Home in the top bar at every step.
+- [x] Home closes the session; Home screen then still shows TODAY; tapping it resumes at the same step; no review was postponed.
+- [x] From Home the Library opens normally.
+- [x] Build succeeds. No new tests.
 - [ ] **iPad test (Jakub)**: start Today, play one step, tap Home, go to the Library and play a lesson, come back to TODAY and continue.
 
 ## Agent assignment
@@ -37,3 +37,9 @@ Many players will never use Today and practise only through the Library. Today m
 ## Done rule
 
 Stop after a successful build. Commit (AGENTS.md); Jakub pushes and tests on the iPad.
+
+## Implementation — 2026-11-06
+
+- Wrapped `TodaySessionScreen` in a `NavigationStack` and added a `Home` (`settings.localized("Home")`) toolbar button (`ToolbarItem(placement: .confirmationAction)`) following the pattern in `BadgesScreen.swift`.
+- Tapping Home calls `onHome()`, simply dismissing the cover without modifying the plan or postponing reviews.
+- Build succeeded. No new tests were added. Ready for Jakub's iPad test.

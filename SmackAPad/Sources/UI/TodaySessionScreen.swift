@@ -91,46 +91,53 @@ struct TodaySessionScreen: View {
     }
 
     var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: Theme.Space.page) {
-                Text(settings.localized(coordinator.plan.finished ? "That's enough for today" : "Today"))
-                    .font(Theme.screenTitle)
-                    .accessibilityAddTraits(.isHeader)
+        NavigationStack {
+            ScrollView {
                 VStack(alignment: .leading, spacing: Theme.Space.page) {
-                    if coordinator.plan.finished {
-                        summary
-                        Button(settings.localized("Home"), action: onHome)
-                            .buttonStyle(InstrumentButtonStyle(filled: true, main: true))
-                    } else {
-                        if let index = coordinator.plan.lastPlayedIndex {
-                            outcomeCard(coordinator.plan.steps[index])
-                        }
-                        if let step = coordinator.currentStep {
-                            Text(nextText(step))
-                                .font(Theme.rowTitle)
-                                .fixedSize(horizontal: false, vertical: true)
-                        }
-                        VStack(alignment: .leading, spacing: Theme.Space.small) {
-                            Button(settings.localized("Continue")) { openPractice() }
+                    Text(settings.localized(coordinator.plan.finished ? "That's enough for today" : "Today"))
+                        .font(Theme.screenTitle)
+                        .accessibilityAddTraits(.isHeader)
+                    VStack(alignment: .leading, spacing: Theme.Space.page) {
+                        if coordinator.plan.finished {
+                            summary
+                            Button(settings.localized("Home"), action: onHome)
                                 .buttonStyle(InstrumentButtonStyle(filled: true, main: true))
-                            Button(settings.localized("Skip")) { coordinator.skip(progress: progress) }
-                                .buttonStyle(InstrumentButtonStyle())
-                            Button(settings.localized("Done for today")) { coordinator.finish(progress: progress) }
-                                .buttonStyle(InstrumentButtonStyle())
+                        } else {
+                            if let index = coordinator.plan.lastPlayedIndex {
+                                outcomeCard(coordinator.plan.steps[index])
+                            }
+                            if let step = coordinator.currentStep {
+                                Text(nextText(step))
+                                    .font(Theme.rowTitle)
+                                    .fixedSize(horizontal: false, vertical: true)
+                            }
+                            VStack(alignment: .leading, spacing: Theme.Space.small) {
+                                Button(settings.localized("Continue")) { openPractice() }
+                                    .buttonStyle(InstrumentButtonStyle(filled: true, main: true))
+                                Button(settings.localized("Skip")) { coordinator.skip(progress: progress) }
+                                    .buttonStyle(InstrumentButtonStyle())
+                                Button(settings.localized("Done for today")) { coordinator.finish(progress: progress) }
+                                    .buttonStyle(InstrumentButtonStyle())
+                            }
                         }
                     }
+                    .padding(Theme.Space.page)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .background(Theme.surface)
+                    .overlay(Rectangle().stroke(Theme.hairline, lineWidth: 1))
                 }
                 .padding(Theme.Space.page)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .background(Theme.surface)
-                .overlay(Rectangle().stroke(Theme.hairline, lineWidth: 1))
+                .frame(maxWidth: 760, alignment: .leading)
+                .frame(maxWidth: .infinity)
             }
-            .padding(Theme.Space.page)
-            .frame(maxWidth: 760, alignment: .leading)
-            .frame(maxWidth: .infinity)
+            .foregroundStyle(Theme.ink)
+            .background(Theme.background.ignoresSafeArea())
+            .toolbar {
+                ToolbarItem(placement: .confirmationAction) {
+                    Button(settings.localized("Home"), action: onHome)
+                }
+            }
         }
-        .foregroundStyle(Theme.ink)
-        .background(Theme.background.ignoresSafeArea())
         .task {
             if coordinator.plan.day != AppCalendar.today() { onHome() }
             else if coordinator.plan.phase == .practice { openPractice() }
