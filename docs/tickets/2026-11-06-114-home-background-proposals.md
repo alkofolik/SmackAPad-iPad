@@ -1,6 +1,6 @@
 # 114 — Home background like a pad-controller surface: design proposals (no app code)
 
-Status: ready-for-agent. Source: Jakub, 2026-11-06: "I'd like the Home screen to have some structure in the background, so it looks like the surface of a pad MIDI controller." Follows tickets 111 (chosen proposal A), 112 (pad look). Follow-up: an implementation ticket after Jakub chooses.
+Status: proposals-ready (2026-11-06). Source: Jakub, 2026-11-06: "I'd like the Home screen to have some structure in the background, so it looks like the surface of a pad MIDI controller." Follows tickets 111 (chosen proposal A), 112 (pad look). Follow-up: an implementation ticket after Jakub chooses.
 
 ## Goal
 
@@ -32,11 +32,11 @@ Folder `docs/design/2026-11-06-home-background/`:
 
 ## Acceptance criteria
 
-- [ ] Three clearly different proposals, all readable and in the app palette.
-- [ ] Each runs offline with all switches.
-- [ ] Each says how it would be built in SwiftUI and what it costs.
-- [ ] Czech README with a recommendation.
-- [ ] No file outside `docs/design/2026-11-06-home-background/`, this ticket and the README table changed.
+- [x] Three clearly different proposals, all readable and in the app palette.
+- [x] Each runs offline with all switches.
+- [x] Each says how it would be built in SwiftUI and what it costs.
+- [x] Czech README with a recommendation.
+- [x] No file outside `docs/design/2026-11-06-home-background/`, this ticket and the README table changed.
 
 ## Agent assignment
 
