@@ -143,3 +143,4 @@ Source: Jakub, retention and memory discussion; legacy "Trénink" concept 2026-1
 | 114 | Proposals: Home background like a pad-controller surface (HTML previews, no code) | Gemini 3.8 Flash, high (fallback Codex Sol, high) | any time (needs 112 look only as reference); implementation after Jakub chooses and after 113 |
 | 115 | Centre logo tile becomes a pad that opens About | Gemini 3.8 Flash, high (fallback Codex Sol, high) | after 112 and 113 |
 | 116 | Home pads: text is never cut off ("…") | Gemini 3.8 Flash, medium (fallback Codex Sol, medium) | after 112 (same HomePadView) |
+| 117 | Home background v2: real-looking controller body, one design, HTML preview (no code) | Gemini 3.8 Flash, high (fallback Codex Sol, high) | any time; implementation after Jakub approves |

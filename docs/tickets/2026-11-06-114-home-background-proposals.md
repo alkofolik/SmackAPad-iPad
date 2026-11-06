@@ -46,3 +46,7 @@ Folder `docs/design/2026-11-06-home-background/`:
 ## Done rule
 
 Stop when the files are written. Commit (AGENTS.md); Jakub opens the previews and chooses.
+
+## Comments
+
+- 2026-11-06 (Jakub): none of A/B/C chosen; wants a screwed-in plate with faders and grainy plastic, light and dark. Continued in ticket 117.
