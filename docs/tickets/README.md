@@ -134,3 +134,4 @@ Source: Jakub, retention and memory discussion; legacy "Trénink" concept 2026-1
 | 100 | Training: Mix of learned lessons | Codex GPT-6.1 Sol, high (fallback Gemini 3.8 Pro, high) | after 98 |
 | 101 | Play after me (call and response) | Codex GPT-6.1 Sol, high (fallback Gemini 3.8 Pro, high) | after 100 (same session file) |
 | 102 | Fix three outdated unit tests after 97–100 | Gemini 3.8 Flash, medium (fallback Codex Sol, medium) | any time |
+| 108 | Fix three failing tests (review stamp, After me scoring) | Gemini 3.8 Flash, high (fallback Codex Sol, high) | any time |
