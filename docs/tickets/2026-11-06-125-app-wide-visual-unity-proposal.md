@@ -1,6 +1,6 @@
 # 125 — Proposal: whole app looks like one piece with the Home screen (HTML previews, no code)
 
-Status: ready-for-agent. Type: design proposal, **no Swift code**. Source: Jakub, 2026-11-06: "Make the rest of the app match the Home screen, which I want to keep — colour palette, graphics, animation. Keep the layouts and the orange colour of the pattern band, but every window should fit together visually, nothing should stand out, everything should form one whole."
+Status: resolved (Jakub chose variant B "Klidný satén"; layout of the preview rejected — see 126). Type: design proposal, **no Swift code**. Source: Jakub, 2026-11-06: "Make the rest of the app match the Home screen, which I want to keep — colour palette, graphics, animation. Keep the layouts and the orange colour of the pattern band, but every window should fit together visually, nothing should stand out, everything should form one whole."
 
 ## Goal
 

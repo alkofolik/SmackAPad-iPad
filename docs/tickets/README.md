@@ -152,3 +152,7 @@ Source: Jakub, retention and memory discussion; legacy "Trénink" concept 2026-1
 | 123 | Mode switch to/from After me: no jump, smooth animation | Gemini 3.8 Flash, high (fallback Codex Sol, high) | after 122 (same header) |
 | 124 | Pad layout toggle sometimes lags | Gemini 3.8 Flash, high (fallback Codex Sol, high) | any time |
 | 125 | Proposal: whole app matches Home (palette, graphics, motion), HTML previews, no code | Gemini 3.8 Flash, high (fallback Codex Sol, high) | any time; best after 122/123; implementation tickets after Jakub picks |
+| 126 | App skin 1: shared tokens and components, "Klidný satén" (skin only, no layout change) | Codex GPT-6.1 Sol, high (fallback Gemini 3.8 Pro, high) | 1st of the skin work |
+| 127 | App skin 2: Practice screen | Gemini 3.8 Flash, high (fallback Codex Sol, high) | after 126 and 124 |
+| 128 | App skin 3: Library, Training, Today | Gemini 3.8 Flash, high (fallback Codex Sol, high) | after 126 and 121 |
+| 129 | App skin 4: remaining screens and banners | Gemini 3.8 Flash, high (fallback Codex Sol, high) | after 126; parallel with 127/128 |
