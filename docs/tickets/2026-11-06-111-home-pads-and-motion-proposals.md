@@ -18,7 +18,7 @@ Each proposal covers both parts:
 - Pads should read as **controller pads**: material and depth (for example a soft inner shade, a raised edge, a thin LED or light strip), a clear lit state (Training pad when reviews are due, ticket 98), a hero pad (Continue / TODAY) that clearly stands out.
 - Press feedback like hitting a real pad: light-up flash, short squash, release. Optional: when the player hits a pad on the MIDI controller on Home, the matching screen pad lights for a moment (check what ticket 73 already does; build on it, do not duplicate).
 - Stay inside the brand: app palette only (cream / soft warm black, orange, ticket 92), IBM Plex type (ticket 39), logo unchanged. No purple, no glassy gradients, no glow blobs, no emoji.
-- Ticket 94 says Home tiles have **square corners**. A proposal may suggest an exception for the pads (real pads are slightly rounded), but must say so plainly and show it next to the square version.
+- **Decided (Jakub, 2026-11-06): Home pads may be slightly rounded**, like real controller pads. This is an exception to ticket 94 for the Home pads only; buttons, panels and cards stay square. Keep the radius modest (pad-like, not pill-like); each proposal states its radius as a named Theme token. No square-vs-rounded comparison needed.
 
 ### B. Motion and transitions (whole app chrome)
 

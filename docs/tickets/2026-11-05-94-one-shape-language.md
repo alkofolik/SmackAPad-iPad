@@ -28,3 +28,7 @@ Status: resolved. Source: Jakub, 2026-11-05 (agreed with Claude's review): the a
 ## Done rule
 
 Stop after successful build; do not commit. Jakub tests on iPad, Claude commits afterwards.
+
+## Comments
+
+- 2026-11-06 (Jakub): exception — Home pads may be slightly rounded like real controller pads (ticket 111). All other chrome stays square.
