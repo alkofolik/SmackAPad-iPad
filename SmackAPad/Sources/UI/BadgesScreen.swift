@@ -7,6 +7,7 @@ struct BadgesView: View {
     @Environment(ProgressionManager.self) private var progression
     @Environment(SettingsManager.self) private var settings
     @Environment(\.dismiss) private var dismiss
+    var onDismiss: (() -> Void)? = nil
 
     private var stats: BadgeProgressStats {
         BadgeEvaluator.evaluate(
@@ -44,7 +45,7 @@ struct BadgesView: View {
                 }
                 ToolbarItem(placement: .confirmationAction) {
                     Button(settings.localized("Done")) {
-                        dismiss()
+                        if let onDismiss { onDismiss() } else { dismiss() }
                     }
                 }
             }

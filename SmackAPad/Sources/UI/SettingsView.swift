@@ -34,7 +34,11 @@ public struct SettingsView: View {
         return name ?? settings.localized("Not connected")
     }
 
-    public init() {}
+    var onDismiss: (() -> Void)? = nil
+
+    public init(onDismiss: (() -> Void)? = nil) {
+        self.onDismiss = onDismiss
+    }
 
     public var body: some View {
         @Bindable var settings = settings
@@ -329,7 +333,7 @@ public struct SettingsView: View {
                 ToolbarItem(placement: .principal) { ScreenHeader(title: settings.localized("Settings")) }
                 ToolbarItem(placement: .confirmationAction) {
                     Button(settings.localized("Done")) {
-                        dismiss()
+                        if let onDismiss { onDismiss() } else { dismiss() }
                     }
                     .font(Theme.control)
                     .frame(minHeight: Theme.Size.touch)

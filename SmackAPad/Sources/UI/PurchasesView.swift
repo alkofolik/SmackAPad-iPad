@@ -90,6 +90,7 @@ struct PurchaseSheet: View {
     @Environment(SettingsManager.self) private var settings
     @Environment(\.dismiss) private var dismiss
     var access = "full"
+    var onDismiss: (() -> Void)? = nil
 
     private var owned: Bool {
         if access == "full" { return store.hasFullAccess }
@@ -133,7 +134,9 @@ struct PurchaseSheet: View {
             .background(Theme.background).foregroundStyle(Theme.ink).tint(Theme.ink)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button { dismiss() } label: {
+                    Button {
+                        if let onDismiss { onDismiss() } else { dismiss() }
+                    } label: {
                         Image(systemName: "xmark").frame(minWidth: Theme.Size.touch, minHeight: Theme.Size.touch)
                     }
                     .accessibilityLabel(settings.localized("Close"))

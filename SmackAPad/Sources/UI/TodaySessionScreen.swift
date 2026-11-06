@@ -81,6 +81,7 @@ struct TodaySessionScreen: View {
     @Environment(StoreManager.self) private var store
     @Environment(ProgressionManager.self) private var progression
     @Environment(\.scenePhase) private var scenePhase
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var coordinator: TodaySessionCoordinator
     @State private var showingPractice = false
     let onHome: () -> Void
@@ -91,15 +92,20 @@ struct TodaySessionScreen: View {
     }
 
     var body: some View {
+        let policy = Theme.Motion.Policy(reduced: reduceMotion)
+
         NavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: Theme.Space.regular) {
                     if coordinator.plan.finished {
                         endCard
+                            .transition(policy.cardStep)
                     } else {
                         handoffCard
                     }
                 }
+                .animation(policy.animation(Theme.Motion.cardStep), value: coordinator.plan.finished)
+                .animation(policy.animation(Theme.Motion.cardStep), value: coordinator.plan.index)
                 .padding(Theme.Space.handoff)
                 .frame(maxWidth: .infinity, alignment: .leading)
             }
@@ -129,7 +135,9 @@ struct TodaySessionScreen: View {
             }
         }
         .fullScreenCover(isPresented: $showingPractice, onDismiss: {
-            coordinator.leavePractice(progress: progress)
+            withAnimation(Theme.Motion.Policy(reduced: reduceMotion).animation(Theme.Motion.cardStep)) {
+                coordinator.leavePractice(progress: progress)
+            }
         }) {
             if let step = coordinator.currentStep,
                let lesson = step.lessonIDs.first.flatMap({ LessonStore.shared.lesson(for: $0) }) {
@@ -144,16 +152,33 @@ struct TodaySessionScreen: View {
 
     @ViewBuilder
     private var handoffCard: some View {
-        if let index = coordinator.plan.lastPlayedIndex, coordinator.plan.steps.indices.contains(index) {
-            let step = coordinator.plan.steps[index]
-            playedStepTag(step, index: index)
-            resultSentence(step)
-            metaLine(step)
-        }
+        let policy = Theme.Motion.Policy(reduced: reduceMotion)
 
-        if let step = coordinator.currentStep {
-            nextStepSection(step)
+        ZStack(alignment: .topLeading) {
+            handoffCardContent
+                .id(coordinator.plan.index)
+                .transition(policy.cardStep)
+        }
+        .frame(minHeight: 220, alignment: .topLeading)
+
+        if coordinator.currentStep != nil {
             buttonRow
+        }
+    }
+
+    @ViewBuilder
+    private var handoffCardContent: some View {
+        VStack(alignment: .leading, spacing: Theme.Space.regular) {
+            if let index = coordinator.plan.lastPlayedIndex, coordinator.plan.steps.indices.contains(index) {
+                let step = coordinator.plan.steps[index]
+                playedStepTag(step, index: index)
+                resultSentence(step)
+                metaLine(step)
+            }
+
+            if let step = coordinator.currentStep {
+                nextStepSection(step)
+            }
         }
     }
 
@@ -261,13 +286,21 @@ struct TodaySessionScreen: View {
     }
 
     private var skipButton: some View {
-        Button(settings.localized("Skip")) { coordinator.skip(progress: progress) }
-            .buttonStyle(InstrumentButtonStyle(customHeight: Theme.Size.touch))
+        Button(settings.localized("Skip")) {
+            withAnimation(Theme.Motion.Policy(reduced: reduceMotion).animation(Theme.Motion.cardStep)) {
+                coordinator.skip(progress: progress)
+            }
+        }
+        .buttonStyle(InstrumentButtonStyle(customHeight: Theme.Size.touch))
     }
 
     private var doneButton: some View {
-        Button(settings.localized("Done for today")) { coordinator.finish(progress: progress) }
-            .buttonStyle(InstrumentButtonStyle(customHeight: Theme.Size.touch))
+        Button(settings.localized("Done for today")) {
+            withAnimation(Theme.Motion.Policy(reduced: reduceMotion).animation(Theme.Motion.cardStep)) {
+                coordinator.finish(progress: progress)
+            }
+        }
+        .buttonStyle(InstrumentButtonStyle(customHeight: Theme.Size.touch))
     }
 
     @ViewBuilder

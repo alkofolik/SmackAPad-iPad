@@ -16,14 +16,16 @@ public struct ControllerSetupView: View {
     @Environment(\.dismiss) private var dismiss
 
     var showsDoneButton: Bool
+    var onDismiss: (() -> Void)? = nil
 
     @State private var showingMIDILearn = false
     @State private var profileToDelete: ControllerProfile?
     @State private var showingDeleteAlert = false
     @State private var showingControlPadWarning = false
 
-    public init(showsDoneButton: Bool = false) {
+    public init(showsDoneButton: Bool = false, onDismiss: (() -> Void)? = nil) {
         self.showsDoneButton = showsDoneButton
+        self.onDismiss = onDismiss
     }
 
     private var connectedControllerName: String? {
@@ -215,7 +217,7 @@ public struct ControllerSetupView: View {
             if showsDoneButton {
                 ToolbarItem(placement: .confirmationAction) {
                     Button(settings.localized("Done")) {
-                        dismiss()
+                        if let onDismiss { onDismiss() } else { dismiss() }
                     }
                     .font(Theme.control)
                     .frame(minHeight: Theme.Size.touch)

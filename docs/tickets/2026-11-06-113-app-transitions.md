@@ -24,10 +24,10 @@ Spec = `docs/design/2026-11-06-home-pads-and-motion/proposal-a.html` (zoom demo 
 
 ## Acceptance criteria
 
-- [ ] Each Home pad zooms into its screen and back (iOS 18); fade + scale on iOS 17.
-- [ ] Today hand-off steps in; buttons do not jump.
-- [ ] Reduce Motion: only short fades.
-- [ ] Build succeeds. No new tests.
+- [x] Each Home pad zooms into its screen and back (iOS 18); fade + scale on iOS 17.
+- [x] Today hand-off steps in; buttons do not jump.
+- [x] Reduce Motion: only short fades.
+- [x] Build succeeds. No new tests.
 - [ ] **iPad test (Jakub)**: open and close every Home pad; run a Today session; repeat with Reduce Motion on.
 
 ## Agent assignment
@@ -38,3 +38,12 @@ Spec = `docs/design/2026-11-06-home-pads-and-motion/proposal-a.html` (zoom demo 
 ## Done rule
 
 Stop after a successful build. Commit (AGENTS.md); Jakub pushes and tests on the iPad.
+
+## Implementation — 2026-11-06
+
+- Added motion tokens in `Theme.Motion`: `padZoom` (0.28 s spring), `padDismiss` (0.22 s ease-out), `cardStep` (0.24 s ease-out), and `cardStepRise` (20 pt). Updated `Policy` with `cardStep` transition and `Reduce Motion` fallback (pure opacity fade <= 0.2 s).
+- Extended Ticket 27's zoom transition helper into generic `PadZoomSource` and `PadPresentation` view modifiers in `Theme.swift`, providing iOS 18 native `.navigationTransition(.zoom)` with iOS 17 fallback (scale 0.98 + opacity fade) and Reduce Motion support.
+- Updated `HomeScreen.swift` and `LessonPicker.swift`: pads on the 3×3 grid act as zoom sources, opening destination screens (Library, Training, Badges, Settings, Today, Controller, Purchases) with zoom transition and returning on dismiss. Synchronized with `AppNavigation.shared`.
+- Enabled numeric text roll on Home Library star counter and Training due counter (`contentTransition(.numericText())` via `policy.numeric`).
+- Updated `TodaySessionScreen.swift`: hand-off card content steps in with 20 pt rise and fade over 0.24 s ease-out within a reserved 220 pt container so buttons row remains stable without jumping; in Reduce Motion it cleanly fades without vertical displacement.
+- Build succeeded. No new tests added. Ready for Jakub's iPad test.

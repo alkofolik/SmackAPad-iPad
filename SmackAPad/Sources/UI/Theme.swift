@@ -220,6 +220,12 @@ extension Theme {
         static let ledBreath = Animation.easeInOut(duration: 1.6).repeatForever(autoreverses: true)
         static let bootStagger = Duration.milliseconds(40)
 
+        /// App transitions motion tokens (ticket 113).
+        static let padZoom = Animation.spring(response: 0.28, dampingFraction: 0.82)
+        static let padDismiss = Animation.easeOut(duration: 0.22)
+        static let cardStep = Animation.easeOut(duration: 0.24)
+        static let cardStepRise: CGFloat = 20
+
         /// All accessibility decisions live here, including geometry and text effects.
         struct Policy {
             let reduced: Bool
@@ -240,6 +246,14 @@ extension Theme {
             }
             func breathingOpacity(animating: Bool) -> Double {
                 reduced ? 1.0 : (animating ? 1.0 : 0.45)
+            }
+            var cardStep: AnyTransition {
+                reduced
+                    ? .opacity
+                    : .asymmetric(
+                        insertion: .opacity.combined(with: .offset(y: cardStepRise)),
+                        removal: .opacity
+                    )
             }
         }
 
@@ -313,6 +327,25 @@ private struct LessonSource: ViewModifier {
     }
 }
 
+/// Generic source pad modifier for iOS 18 zoom navigation transition.
+public struct PadZoomSource<ID: Hashable>: ViewModifier {
+    let id: ID
+    let namespace: Namespace.ID?
+
+    public init(id: ID, namespace: Namespace.ID?) {
+        self.id = id
+        self.namespace = namespace
+    }
+
+    @ViewBuilder public func body(content: Content) -> some View {
+        if #available(iOS 18, *), let namespace {
+            content.matchedTransitionSource(id: id, in: namespace)
+        } else {
+            content
+        }
+    }
+}
+
 /// The iOS 17 overlay avoids the system cover's slide and supports reverse fading.
 private struct LessonPresentation<Destination: View>: ViewModifier {
     @Environment(\.accessibilityReduceMotion) private var reduced
@@ -325,6 +358,7 @@ private struct LessonPresentation<Destination: View>: ViewModifier {
                 destination(item).navigationTransition(.zoom(sourceID: item.id, in: namespace))
             }
         } else {
+            let policy = Theme.Motion.Policy(reduced: reduced)
             content
                 .allowsHitTesting(lesson == nil)
                 .accessibilityHidden(lesson != nil)
@@ -332,14 +366,52 @@ private struct LessonPresentation<Destination: View>: ViewModifier {
                     if let lesson {
                         destination(lesson)
                             .environment(\.dismissLesson, { self.lesson = nil })
-                            .transition(Theme.Motion.Policy(reduced: reduced).navigation)
+                            .transition(policy.navigation)
                             .zIndex(1)
                     }
                 }
-                .motion(Theme.Motion.standard, value: lesson?.id)
+                .animation(policy.animation(lesson != nil ? Theme.Motion.padZoom : Theme.Motion.padDismiss), value: lesson != nil)
         }
     }
 }
+
+/// Generic pad zoom presentation: iOS 18 native zoom from pad, iOS 17 fallback fade + scale 0.98.
+/// Reduce Motion: pure opacity change of <= 0.2 s (Theme.Motion.fast: 0.15 s).
+public struct PadPresentation<Item: Identifiable & Equatable, Destination: View>: ViewModifier where Item.ID: Hashable {
+    @Environment(\.accessibilityReduceMotion) private var reduced
+    @Binding var item: Item?
+    let namespace: Namespace.ID
+    let destination: (Item) -> Destination
+
+    public init(item: Binding<Item?>, namespace: Namespace.ID, @ViewBuilder destination: @escaping (Item) -> Destination) {
+        self._item = item
+        self.namespace = namespace
+        self.destination = destination
+    }
+
+    @ViewBuilder public func body(content: Content) -> some View {
+        if #available(iOS 18, *), !Theme.Motion.Policy(reduced: reduced).opacityOnly {
+            content.fullScreenCover(item: $item) { currentItem in
+                destination(currentItem)
+                    .navigationTransition(.zoom(sourceID: currentItem.id, in: namespace))
+            }
+        } else {
+            let policy = Theme.Motion.Policy(reduced: reduced)
+            content
+                .allowsHitTesting(item == nil)
+                .accessibilityHidden(item != nil)
+                .overlay {
+                    if let item {
+                        destination(item)
+                            .transition(policy.navigation)
+                            .zIndex(1)
+                    }
+                }
+                .animation(policy.animation(item != nil ? Theme.Motion.padZoom : Theme.Motion.padDismiss), value: item != nil)
+        }
+    }
+}
+
 private struct DismissLessonKey: EnvironmentKey {
     static let defaultValue: (() -> Void)? = nil
 }
@@ -354,6 +426,16 @@ extension View {
     func lessonPresentation<Destination: View>(lesson: Binding<Lesson?>, namespace: Namespace.ID,
                                                @ViewBuilder destination: @escaping (Lesson) -> Destination) -> some View {
         modifier(LessonPresentation(lesson: lesson, namespace: namespace, destination: destination))
+    }
+    public func padSource<ID: Hashable>(_ id: ID, in namespace: Namespace.ID?) -> some View {
+        modifier(PadZoomSource(id: id, namespace: namespace))
+    }
+    public func padPresentation<Item: Identifiable & Equatable, Destination: View>(
+        item: Binding<Item?>,
+        namespace: Namespace.ID,
+        @ViewBuilder destination: @escaping (Item) -> Destination
+    ) -> some View where Item.ID: Hashable {
+        modifier(PadPresentation(item: item, namespace: namespace, destination: destination))
     }
 }
 

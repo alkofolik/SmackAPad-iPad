@@ -74,11 +74,14 @@ struct PadLightBar: View {
 
 /// A tactile button pad on the Home screen.
 struct HomePadView: View {
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
     let title: String
     let subtitle: String?
     var subtitleVariants: [String]? = nil
     var secondarySubtitle: String? = nil
     var secondarySubtitleVariants: [String]? = nil
+    var numericTransitionValue: Int? = nil
     var accessibilityText: String? = nil
     var accessibilityValue: String? = nil
     var isLit: Bool = false
@@ -86,6 +89,8 @@ struct HomePadView: View {
     let action: () -> Void
 
     var body: some View {
+        let policy = Theme.Motion.Policy(reduced: reduceMotion)
+
         Button(action: action) {
             VStack(spacing: Theme.Space.tight) {
                 Spacer(minLength: 0)
@@ -108,12 +113,23 @@ struct HomePadView: View {
                         }
                     }
                 } else if let subtitle, !subtitle.isEmpty {
-                    Text(subtitle)
-                        .font(Theme.meta)
-                        .foregroundStyle(isHero ? Theme.black.opacity(0.8) : Theme.secondary)
-                        .multilineTextAlignment(.center)
-                        .lineLimit(nil)
-                        .minimumScaleFactor(0.75)
+                    if let numericTransitionValue {
+                        Text(subtitle)
+                            .font(Theme.meta)
+                            .foregroundStyle(isHero ? Theme.black.opacity(0.8) : Theme.secondary)
+                            .multilineTextAlignment(.center)
+                            .lineLimit(nil)
+                            .minimumScaleFactor(0.75)
+                            .contentTransition(policy.numeric)
+                            .motion(value: numericTransitionValue)
+                    } else {
+                        Text(subtitle)
+                            .font(Theme.meta)
+                            .foregroundStyle(isHero ? Theme.black.opacity(0.8) : Theme.secondary)
+                            .multilineTextAlignment(.center)
+                            .lineLimit(nil)
+                            .minimumScaleFactor(0.75)
+                    }
                 }
 
                 if let secondarySubtitleVariants, !secondarySubtitleVariants.isEmpty {
@@ -311,6 +327,34 @@ struct HomeWordmarkView: View {
 /// Home screen with a 3×3 pad grid and the Smack-a-Pad logo in the centre cell.
 /// On cold start, it plays the brand launch animation settling into the finished grid.
 @MainActor
+/// Destinations opened from Home pads with pad-to-screen zoom navigation transition (ticket 113).
+enum HomePadDestination: Identifiable, Equatable {
+    case today(TodayPlan)
+    case continueToLesson(Lesson)
+    case continueToLibrary
+    case library(LibraryLaunchTarget)
+    case training
+    case intro
+    case controller
+    case badges
+    case purchases
+    case settings
+
+    var id: String {
+        switch self {
+        case .today: return "pad-today"
+        case .continueToLesson, .continueToLibrary: return "pad-continue"
+        case .library: return "pad-library"
+        case .training: return "pad-training"
+        case .intro: return "pad-intro"
+        case .controller: return "pad-controller"
+        case .badges: return "pad-badges"
+        case .purchases: return "pad-purchases"
+        case .settings: return "pad-settings"
+        }
+    }
+}
+
 public struct HomeScreen: View {
     let isColdStart: Bool
     let onColdStartFinished: () -> Void
@@ -329,8 +373,8 @@ public struct HomeScreen: View {
     @AppStorage("smackapad.training.today") private var savedTodayPlan = ""
     @AppStorage("smackapad.training.dailyMixes") private var dailyMixes = "{}"
     @State private var calendarDay = AppCalendar.today()
-    @State private var showingToday = false
-    @State private var activeTodayPlan: TodayPlan?
+    @State private var activeDestination: HomePadDestination?
+    @Namespace private var homeNamespace
 
     @State private var lessonStore = LessonStore.shared
     @State private var containerOpacity: Double = 1.0
@@ -347,12 +391,6 @@ public struct HomeScreen: View {
     @State private var padVisible: [Bool]
     @State private var animationFinished: Bool
     @State private var animationTask: Task<Void, Never>?
-
-    // Sheet / Popover presentation states
-    @State private var showingSettings = false
-    @State private var showingControllerSetup = false
-    @State private var showingPurchases = false
-    @State private var showingBadges = false
 
     private static let cream = Color(red: 242 / 255.0, green: 240 / 255.0, blue: 234 / 255.0)
 
@@ -475,21 +513,14 @@ public struct HomeScreen: View {
                 startAnimation()
             }
         }
-        .sheet(isPresented: $showingSettings) {
-            SettingsView()
+        .padPresentation(item: $activeDestination, namespace: homeNamespace) { destination in
+            destinationView(for: destination)
         }
-        .sheet(isPresented: $showingControllerSetup) {
-            NavigationStack {
-                ControllerSetupView(showsDoneButton: true)
-            }
-            .environment(settings)
-            .environment(midi)
+        .onChange(of: AppNavigation.shared.route) { _, route in
+            syncWithNavigationRoute(route)
         }
-        .sheet(isPresented: $showingPurchases) {
-            PurchaseSheet()
-        }
-        .sheet(isPresented: $showingBadges) {
-            BadgesView()
+        .onAppear {
+            syncWithNavigationRoute(AppNavigation.shared.route)
         }
         .onChange(of: scenePhase) { _, phase in
             if phase == .active { calendarDay = AppCalendar.today() }
@@ -497,10 +528,170 @@ public struct HomeScreen: View {
         .onReceive(NotificationCenter.default.publisher(for: .NSCalendarDayChanged)) { _ in
             calendarDay = AppCalendar.today()
         }
-        .fullScreenCover(isPresented: $showingToday) {
-            if let plan = activeTodayPlan {
-                TodaySessionScreen(plan: plan) { showingToday = false }
+    }
+
+    // MARK: - Destination Views
+
+    @ViewBuilder
+    private func destinationView(for destination: HomePadDestination) -> some View {
+        switch destination {
+        case .today(let plan):
+            TodaySessionScreen(plan: plan) {
+                activeDestination = nil
             }
+            .environment(store)
+            .environment(settings)
+            .environment(progress)
+            .environment(progression)
+            .environment(badgeStore)
+            .environment(midi)
+
+        case .continueToLesson(let lesson):
+            LibraryScreen(
+                launchTarget: .lesson(lesson),
+                onHome: {
+                    activeDestination = nil
+                    AppNavigation.shared.openHome()
+                }
+            )
+            .environment(store)
+            .environment(settings)
+            .environment(progress)
+            .environment(progression)
+            .environment(badgeStore)
+            .environment(midi)
+
+        case .continueToLibrary:
+            LibraryScreen(
+                launchTarget: .none,
+                onHome: {
+                    activeDestination = nil
+                    AppNavigation.shared.openHome()
+                }
+            )
+            .environment(store)
+            .environment(settings)
+            .environment(progress)
+            .environment(progression)
+            .environment(badgeStore)
+            .environment(midi)
+
+        case .library(let target):
+            LibraryScreen(
+                launchTarget: target,
+                onHome: {
+                    activeDestination = nil
+                    AppNavigation.shared.openHome()
+                }
+            )
+            .environment(store)
+            .environment(settings)
+            .environment(progress)
+            .environment(progression)
+            .environment(badgeStore)
+            .environment(midi)
+
+        case .training:
+            TrainingScreen(
+                onHome: {
+                    activeDestination = nil
+                    AppNavigation.shared.openHome()
+                }
+            )
+            .environment(store)
+            .environment(settings)
+            .environment(progress)
+            .environment(progression)
+            .environment(badgeStore)
+            .environment(midi)
+
+        case .intro:
+            LibraryScreen(
+                launchTarget: .intro,
+                onHome: {
+                    activeDestination = nil
+                    AppNavigation.shared.openHome()
+                }
+            )
+            .environment(store)
+            .environment(settings)
+            .environment(progress)
+            .environment(progression)
+            .environment(badgeStore)
+            .environment(midi)
+
+        case .controller:
+            NavigationStack {
+                ControllerSetupView(showsDoneButton: true, onDismiss: {
+                    activeDestination = nil
+                })
+            }
+            .environment(store)
+            .environment(settings)
+            .environment(progress)
+            .environment(progression)
+            .environment(badgeStore)
+            .environment(midi)
+
+        case .badges:
+            BadgesView(onDismiss: {
+                activeDestination = nil
+            })
+            .environment(store)
+            .environment(settings)
+            .environment(progress)
+            .environment(progression)
+            .environment(badgeStore)
+            .environment(midi)
+
+        case .purchases:
+            PurchaseSheet(onDismiss: {
+                activeDestination = nil
+            })
+            .environment(store)
+            .environment(settings)
+            .environment(progress)
+            .environment(progression)
+            .environment(badgeStore)
+            .environment(midi)
+
+        case .settings:
+            SettingsView(onDismiss: {
+                activeDestination = nil
+            })
+            .environment(store)
+            .environment(settings)
+            .environment(progress)
+            .environment(progression)
+            .environment(badgeStore)
+            .environment(midi)
+        }
+    }
+
+    private func syncWithNavigationRoute(_ route: AppRoute) {
+        switch route {
+        case .home:
+            if activeDestination == .training || isLibraryDestination(activeDestination) {
+                activeDestination = nil
+            }
+        case .training:
+            if activeDestination != .training {
+                activeDestination = .training
+            }
+        case .library(let target):
+            if activeDestination != .library(target) {
+                activeDestination = .library(target)
+            }
+        }
+    }
+
+    private func isLibraryDestination(_ destination: HomePadDestination?) -> Bool {
+        guard let destination else { return false }
+        switch destination {
+        case .library, .continueToLesson, .continueToLibrary, .intro:
+            return true
+        default:
+            return false
         }
     }
 
@@ -512,29 +703,37 @@ public struct HomeScreen: View {
             // Row 0: Continue/Start (1) · Library (2) · Training (3)
             HStack(spacing: gap) {
                 bootPad(pad1, isVisible: padVisible[0])
+                    .padSource(todayPlan != nil ? "pad-today" : "pad-continue", in: homeNamespace)
                     .frame(width: cellSize, height: cellSize)
                 bootPad(pad2, isVisible: padVisible[1])
+                    .padSource("pad-library", in: homeNamespace)
                     .frame(width: cellSize, height: cellSize)
                 bootPad(pad3, isVisible: padVisible[2])
+                    .padSource("pad-training", in: homeNamespace)
                     .frame(width: cellSize, height: cellSize)
             }
             // Row 1: Intro (4) · [Centre Logo Placeholder] · Controller (5)
             HStack(spacing: gap) {
                 bootPad(pad4, isVisible: padVisible[3])
+                    .padSource("pad-intro", in: homeNamespace)
                     .frame(width: cellSize, height: cellSize)
                 Color.clear
                     .frame(width: cellSize, height: cellSize)
                     .accessibilityHidden(true)
                 bootPad(pad5, isVisible: padVisible[4])
+                    .padSource("pad-controller", in: homeNamespace)
                     .frame(width: cellSize, height: cellSize)
             }
             // Row 2: Badges (6) · Full Version (7) · Settings (8)
             HStack(spacing: gap) {
                 bootPad(pad6, isVisible: padVisible[5])
+                    .padSource("pad-badges", in: homeNamespace)
                     .frame(width: cellSize, height: cellSize)
                 bootPad(pad7, isVisible: padVisible[6])
+                    .padSource("pad-purchases", in: homeNamespace)
                     .frame(width: cellSize, height: cellSize)
                 bootPad(pad8, isVisible: padVisible[7])
+                    .padSource("pad-settings", in: homeNamespace)
                     .frame(width: cellSize, height: cellSize)
             }
         }
@@ -665,7 +864,6 @@ public struct HomeScreen: View {
                 accessibilityText: "\(label), \(subtitle)",
                 isHero: true
             ) {
-                activeTodayPlan = plan
                 // Keep the same Mix visible on Training even if reviews change recency first.
                 if let mix = plan.steps.first(where: { $0.kind == .mix }) {
                     var saved = (try? JSONDecoder().decode([String: [Int]].self, from: Data(dailyMixes.utf8))) ?? [:]
@@ -675,7 +873,7 @@ public struct HomeScreen: View {
                         dailyMixes = json
                     }
                 }
-                showingToday = true
+                activeDestination = .today(plan)
             })
         }
         let isFirstRun = settings.lastLessonID == 0
@@ -718,9 +916,13 @@ public struct HomeScreen: View {
             isHero: true
         ) {
             if let targetLesson {
+                activeDestination = .continueToLesson(targetLesson)
                 onNavigateToLibrary(.lesson(targetLesson))
+                AppNavigation.shared.openLibrary(.lesson(targetLesson))
             } else {
+                activeDestination = .continueToLibrary
                 onNavigateToLibrary(.none)
+                AppNavigation.shared.openLibrary(.none)
             }
         })
     }
@@ -735,8 +937,15 @@ public struct HomeScreen: View {
         let maxStars = allLessons.count * 3
         let subtitle = "\(earnedStars) / \(maxStars) ★"
 
-        return HomePadView(title: label, subtitle: subtitle, isHero: false) {
+        return HomePadView(
+            title: label,
+            subtitle: subtitle,
+            numericTransitionValue: earnedStars,
+            isHero: false
+        ) {
+            activeDestination = .library(.none)
             onNavigateToLibrary(.none)
+            AppNavigation.shared.openLibrary(.none)
         }
     }
 
@@ -751,19 +960,24 @@ public struct HomeScreen: View {
         return HomePadView(
             title: label,
             subtitle: subtitle,
+            numericTransitionValue: dueCount,
             accessibilityText: label,
             accessibilityValue: dueCount > 0 ? settings.localized("%lld due", dueCount) : nil,
             isLit: dueCount > 0,
             isHero: false
         ) {
+            activeDestination = .training
             onNavigateToTraining()
+            AppNavigation.shared.openTraining()
         }
     }
 
     private var pad4: some View {
         let label = settings.localized("Intro").uppercased(with: Locale(identifier: settings.languagePreference.rawValue))
         return HomePadView(title: label, subtitle: nil, isHero: false) {
+            activeDestination = .intro
             onNavigateToLibrary(.intro)
+            AppNavigation.shared.openLibrary(.intro)
         }
     }
 
@@ -794,7 +1008,7 @@ public struct HomeScreen: View {
             accessibilityText: voiceOverText,
             isHero: false
         ) {
-            showingControllerSetup = true
+            activeDestination = .controller
         }
     }
 
@@ -802,8 +1016,13 @@ public struct HomeScreen: View {
         let label = settings.localized("Badges").uppercased(with: Locale(identifier: settings.languagePreference.rawValue))
         let subtitle = "\(badgeStore.earnedCount) / \(badgeStore.totalCount)"
 
-        return HomePadView(title: label, subtitle: subtitle, isHero: false) {
-            showingBadges = true
+        return HomePadView(
+            title: label,
+            subtitle: subtitle,
+            numericTransitionValue: badgeStore.earnedCount,
+            isHero: false
+        ) {
+            activeDestination = .badges
         }
     }
 
@@ -812,14 +1031,14 @@ public struct HomeScreen: View {
         let subtitle = store.hasFullAccess ? settings.localized("Unlocked") : settings.localized("Unlock")
 
         return HomePadView(title: label, subtitle: subtitle, isHero: false) {
-            showingPurchases = true
+            activeDestination = .purchases
         }
     }
 
     private var pad8: some View {
         let label = settings.localized("Settings").uppercased(with: Locale(identifier: settings.languagePreference.rawValue))
         return HomePadView(title: label, subtitle: nil, isHero: false) {
-            showingSettings = true
+            activeDestination = .settings
         }
     }
 
