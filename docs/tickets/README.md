@@ -145,3 +145,4 @@ Source: Jakub, retention and memory discussion; legacy "Trénink" concept 2026-1
 | 116 | Home pads: text is never cut off ("…") | Gemini 3.8 Flash, medium (fallback Codex Sol, medium) | after 112 (same HomePadView) |
 | 117 | Home background v2: real-looking controller body, one design, HTML preview (no code) | Gemini 3.8 Flash, high (fallback Codex Sol, high) | any time; implementation after Jakub approves |
 | 118 | Controller body preview: ribbed body + smooth plate, centred layout, portrait fix (no code) | Gemini 3.8 Flash, high (fallback Codex Sol, high) | after 117 (same files); implementation ticket after Jakub approves |
+| 119 | Home controller body: ribbed body, smooth plate with screws, faders, real wordmark title | Codex GPT-6.1 Sol, high (fallback Gemini 3.8 Pro, high) | now (112, 113, 115, 116 are done) |

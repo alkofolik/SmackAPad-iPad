@@ -53,3 +53,7 @@ Status: ready-for-agent. Depends on: 117 (same folder, same file). Source: Jakub
 ## Done rule
 
 Stop when the files are written. Commit (AGENTS.md); Jakub opens the preview and decides.
+
+## Comments
+
+- 2026-11-06 (Jakub): preview approved except the title. Implementation: ticket 119.

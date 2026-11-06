@@ -73,3 +73,7 @@ Folder `docs/design/2026-11-06-home-controller-body/`:
 ## Done rule
 
 Stop when the files are written. Commit (AGENTS.md); Jakub opens the preview and decides.
+
+## Comments
+
+- 2026-11-06 (Jakub): preview approved except the title. Implementation: ticket 119.
