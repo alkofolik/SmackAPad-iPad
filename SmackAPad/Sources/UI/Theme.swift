@@ -98,6 +98,29 @@ enum Theme {
     enum Radius {
         /// Home pad radius (Akai MPC Tactile Rubber style, ticket 112).
         static let pad: CGFloat = 8
+        /// Controller plate at the reference pad size; scaled with the Home grid.
+        static let controllerPlate: CGFloat = 16
+    }
+
+    /// Home-only material tints from the controller preview (ticket 119).
+    enum HomeController {
+        static let bodyTop = adaptive(light: UIColor(hex: 0xF5EFE5), dark: UIColor(hex: 0x24221E))
+        static let bodyBottom = adaptive(light: UIColor(hex: 0xE8E0D2), dark: UIColor(hex: 0x171513))
+        static let ribLight = adaptive(light: creamWhite.withAlphaComponent(0.55), dark: creamWhite.withAlphaComponent(0.06))
+        static let ribShadow = adaptive(light: softBlack.withAlphaComponent(0.08), dark: softBlack.withAlphaComponent(0.45))
+        static let plateTop = adaptive(light: UIColor(hex: 0xE6DFD4), dark: UIColor(hex: 0x2C2924))
+        static let plateShade = adaptive(light: UIColor(hex: 0xD5CDC0), dark: UIColor(hex: 0x1D1B18))
+        static let plateLight = adaptive(light: UIColor(hex: 0xECE5DC), dark: UIColor(hex: 0x312E28))
+        static let plateBottom = adaptive(light: UIColor(hex: 0xDDD5C8), dark: UIColor(hex: 0x201E1B))
+        static let screwTop = adaptive(light: creamWhite, dark: UIColor(hex: 0x555047))
+        static let screwMiddle = adaptive(light: UIColor(hex: 0xDCD6CA), dark: UIColor(hex: 0x32302B))
+        static let screwShade = adaptive(light: UIColor(hex: 0xACA597), dark: UIColor(hex: 0x1E1C19))
+        static let screwBottom = adaptive(light: UIColor(hex: 0x7E786B), dark: UIColor(hex: 0x100F0E))
+        static let slot = adaptive(light: UIColor(hex: 0x1A1816), dark: UIColor(hex: 0x0C0B0A))
+        static let capTop = adaptive(light: UIColor(hex: 0xF3ECE2), dark: UIColor(hex: 0x3A3731))
+        static let capMiddle = adaptive(light: UIColor(hex: 0xD7D0C5), dark: UIColor(hex: 0x262420))
+        static let capShade = adaptive(light: UIColor(hex: 0xC5BEB2), dark: UIColor(hex: 0x1D1C18))
+        static let capBottom = adaptive(light: UIColor(hex: 0xDFD8CC), dark: UIColor(hex: 0x2F2C26))
     }
 
     static func display(_ size: CGFloat = Size.title) -> Font {

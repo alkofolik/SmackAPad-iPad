@@ -1,5 +1,260 @@
 import SwiftUI
 
+/// One proportional coordinate system for the grid, title and decorative hardware.
+private struct HomeControllerLayout: Equatable {
+    let size: CGSize
+    let cellSize: CGFloat
+
+    init(size: CGSize) {
+        self.size = size
+        let shorterSide = min(size.width, size.height)
+        // Preserve the existing grid ceiling; reserve 35% of the short axis for the body.
+        let maxCellSize = (680 - 2 * Theme.Space.regular) / 3
+        let plateInCells: CGFloat = 3 + 2 * (15.0 / 146) + 2 * (36.0 / 146)
+        cellSize = max(0, floor(min(maxCellSize, shorterSide * 0.65 / plateInCells)))
+    }
+
+    var unit: CGFloat { cellSize / 146 }
+    var gap: CGFloat { 15 * unit }
+    var gridSize: CGFloat { 3 * cellSize + 2 * gap }
+    var plateSize: CGFloat { gridSize + 72 * unit }
+    var plate: CGRect {
+        CGRect(x: (size.width - plateSize) / 2, y: (size.height - plateSize) / 2,
+               width: plateSize, height: plateSize)
+    }
+    var landscape: Bool { size.width >= size.height }
+    var margin: CGFloat { min(size.width, size.height) * 0.025 }
+    var wordmarkWidth: CGFloat {
+        let desired = plateSize * (landscape ? 292.0 / 540 : 332.0 / 540)
+        // Keep equal clear space above and below the real wordmark, including small windows.
+        return min(desired, max(0, plate.minY - 2 * margin) * (490.455 / 73.8))
+    }
+    var wordmarkY: CGFloat { plate.minY / 2 }
+}
+
+/// Static moulded plastic. Equatable isolates the rasterised surface from Home's launch/pad states.
+private struct HomeControllerBody: View, Equatable {
+    let darkAppearance: Bool
+
+    var body: some View {
+        Canvas { context, size in
+            let bounds = CGRect(origin: .zero, size: size)
+            context.fill(Path(bounds), with: .linearGradient(
+                Gradient(colors: [Theme.HomeController.bodyTop, Theme.HomeController.bodyBottom]),
+                startPoint: .zero, endPoint: CGPoint(x: size.width * 0.14, y: size.height)
+            ))
+            // Strong preview variant: a top highlight and lower shadow at a fixed 4 pt pitch.
+            for y in stride(from: CGFloat(0), to: size.height, by: 4) {
+                let groove = CGRect(x: 0, y: y + 2, width: size.width, height: 2)
+                context.fill(Path(groove), with: .linearGradient(
+                    Gradient(stops: [
+                        .init(color: .clear, location: 0),
+                        .init(color: Theme.HomeController.ribLight, location: 0.25),
+                        .init(color: Theme.HomeController.ribShadow, location: 0.75),
+                        .init(color: .clear, location: 1)
+                    ]), startPoint: CGPoint(x: 0, y: groove.minY),
+                    endPoint: CGPoint(x: 0, y: groove.maxY)
+                ))
+            }
+            // An elliptical vignette follows the screen instead of darkening the title band.
+            var vignette = context
+            vignette.scaleBy(x: size.width, y: size.height)
+            vignette.fill(Path(CGRect(x: 0, y: 0, width: 1, height: 1)), with: .radialGradient(
+                Gradient(colors: [.clear, Theme.black.opacity(darkAppearance ? 0.35 : 0.07)]),
+                center: CGPoint(x: 0.5, y: 0.5), startRadius: 0.35, endRadius: 0.8
+            ))
+        }
+        .drawingGroup()
+        .allowsHitTesting(false)
+        .accessibilityHidden(true)
+    }
+}
+
+/// The brushed plate, screws and faders share one static raster, separate from interactive pads.
+private struct HomeControllerHardware: View, Equatable {
+    let layout: HomeControllerLayout
+    let darkAppearance: Bool
+
+    var body: some View {
+        Canvas { context, _ in
+            guard layout.unit > 0 else { return }
+            drawPlate(in: &context)
+            drawFaders(in: &context)
+        }
+        .drawingGroup()
+        .allowsHitTesting(false)
+        .accessibilityHidden(true)
+    }
+
+    private func drawPlate(in context: inout GraphicsContext) {
+        let u = layout.unit
+        let rect = layout.plate
+        let radius = Theme.Radius.controllerPlate * u
+        let plate = Path(roundedRect: rect, cornerRadius: radius)
+        context.drawLayer { layer in
+            layer.addFilter(.shadow(color: Theme.black.opacity(darkAppearance ? 0.55 : 0.09),
+                                    radius: 20 * u, x: 0, y: 6 * u))
+            layer.fill(plate, with: plateGradient(in: rect))
+        }
+        var brushed = context
+        brushed.clip(to: plate)
+        for x in stride(from: rect.minX, to: rect.maxX, by: 2 * u) {
+            brushed.fill(Path(CGRect(x: x, y: rect.minY, width: 0.5 * u, height: rect.height)),
+                         with: .color(Theme.white.opacity(0.035)))
+            brushed.fill(Path(CGRect(x: x + u, y: rect.minY, width: 0.5 * u, height: rect.height)),
+                         with: .color(Theme.black.opacity(0.035)))
+        }
+        // Clipped offset outlines leave a narrow highlight above and a dark bevel below.
+        brushed.stroke(Path(roundedRect: rect.offsetBy(dx: 0, dy: 1.5 * u), cornerRadius: radius),
+                       with: .color(Theme.white.opacity(darkAppearance ? 0.24 : 0.85)), lineWidth: 1.5 * u)
+        brushed.stroke(Path(roundedRect: rect.offsetBy(dx: 0, dy: -1.5 * u), cornerRadius: radius),
+                       with: .color(Theme.black.opacity(darkAppearance ? 0.7 : 0.2)), lineWidth: 1.5 * u)
+        context.stroke(plate, with: .color(Theme.ink.opacity(darkAppearance ? 0.18 : 0.22)), lineWidth: u)
+
+        let inset = 18 * u
+        let screws: [(CGPoint, Double)] = [
+            (CGPoint(x: rect.minX + inset, y: rect.minY + inset), -24),
+            (CGPoint(x: rect.maxX - inset, y: rect.minY + inset), 51),
+            (CGPoint(x: rect.minX + inset, y: rect.maxY - inset), 108),
+            (CGPoint(x: rect.maxX - inset, y: rect.maxY - inset), -63)
+        ]
+        for (point, angle) in screws {
+            drawScrew(in: context, at: point, angle: angle)
+        }
+    }
+
+    private func plateGradient(in rect: CGRect) -> GraphicsContext.Shading {
+        .linearGradient(Gradient(stops: [
+            .init(color: Theme.HomeController.plateTop, location: 0),
+            .init(color: Theme.HomeController.plateShade, location: 0.38),
+            .init(color: Theme.HomeController.plateLight, location: 0.62),
+            .init(color: Theme.HomeController.plateBottom, location: 1)
+        ]), startPoint: CGPoint(x: rect.minX, y: rect.minY),
+            endPoint: CGPoint(x: rect.minX + rect.width * 0.18, y: rect.maxY))
+    }
+
+    private func drawScrew(in context: GraphicsContext, at point: CGPoint, angle: Double) {
+        let u = layout.unit
+        var head = context
+        head.translateBy(x: point.x, y: point.y)
+        let rect = CGRect(x: -9 * u, y: -9 * u, width: 18 * u, height: 18 * u)
+        let circle = Path(ellipseIn: rect)
+        head.drawLayer { layer in
+            layer.addFilter(.shadow(color: Theme.black.opacity(0.32), radius: 1.5 * u, x: 0, y: u))
+            layer.fill(circle, with: .linearGradient(Gradient(stops: [
+                .init(color: Theme.HomeController.screwTop, location: 0),
+                .init(color: Theme.HomeController.screwMiddle, location: 0.35),
+                .init(color: Theme.HomeController.screwShade, location: 0.7),
+                .init(color: Theme.HomeController.screwBottom, location: 1)
+            ]), startPoint: rect.origin, endPoint: CGPoint(x: rect.maxX, y: rect.maxY)))
+        }
+        head.stroke(circle, with: .color(Theme.ink.opacity(0.28)), lineWidth: u)
+        head.stroke(Path(ellipseIn: rect.insetBy(dx: 1.5 * u, dy: 1.5 * u)),
+                    with: .color(Theme.white.opacity(darkAppearance ? 0.15 : 0.35)), lineWidth: 0.6 * u)
+        head.rotate(by: .degrees(angle))
+        let slot = CGRect(x: -6 * u, y: -1.3 * u, width: 12 * u, height: 2.6 * u)
+        head.fill(Path(roundedRect: slot.offsetBy(dx: 0, dy: 0.7 * u), cornerRadius: 0.6 * u),
+                  with: .color(Theme.white.opacity(darkAppearance ? 0.2 : 0.6)))
+        head.fill(Path(roundedRect: slot, cornerRadius: 0.6 * u), with: .color(Theme.HomeController.slot))
+    }
+
+    private func drawFaders(in context: inout GraphicsContext) {
+        if layout.landscape {
+            let bayWidth = layout.plate.minX
+            let u = min(layout.unit, max(0, bayWidth - 2 * layout.margin) / 134)
+            guard u > 0 else { return }
+            let height = 217 * u
+            for channel in 0..<4 {
+                let right = channel >= 2
+                let centerX = right ? layout.size.width - bayWidth / 2 : bayWidth / 2
+                let x = centerX - 67 * u + CGFloat(channel % 2) * 78 * u
+                drawFader(in: context, channel: channel, unit: u,
+                          rect: CGRect(x: x, y: (layout.size.height - height) / 2, width: 56 * u, height: height),
+                          mirrored: right, portrait: false)
+            }
+        } else {
+            let u = min(layout.unit, max(0, layout.size.width - 2 * layout.margin) / 316)
+            let bayHeight = layout.size.height - layout.plate.maxY
+            let height = min(142 * u, max(0, bayHeight - 2 * layout.margin))
+            // Compress the travel first, then omit channels in unusually short portrait windows.
+            let travel = height - 17 * u
+            let count = travel >= 64 * u ? 4 : (travel >= 48 * u ? 2 : 0)
+            guard u > 0, count > 0 else { return }
+            let width = CGFloat(count) * 52 * u + CGFloat(count - 1) * 36 * u
+            for channel in 0..<count {
+                let rect = CGRect(x: (layout.size.width - width) / 2 + CGFloat(channel) * 88 * u,
+                                  y: layout.plate.maxY + (bayHeight - height) / 2,
+                                  width: 52 * u, height: height)
+                drawFader(in: context, channel: channel, unit: u, rect: rect, mirrored: false, portrait: true)
+            }
+        }
+    }
+
+    private func drawFader(in context: GraphicsContext, channel: Int, unit u: CGFloat,
+                           rect: CGRect, mirrored: Bool, portrait: Bool) {
+        engraved(String(format: "CH %02d", channel + 1), in: context,
+                 at: CGPoint(x: rect.midX, y: rect.minY + 4.5 * u), size: 9 * u)
+        let trackTop = rect.minY + 17 * u
+        let travel = rect.maxY - trackTop
+        let trackWidth: CGFloat = (portrait ? 26 : 28) * u
+        let trackX = mirrored ? rect.minX + trackWidth / 2 : rect.maxX - trackWidth / 2
+        let slot = CGRect(x: trackX - 3 * u, y: trackTop, width: 6 * u, height: travel)
+        context.fill(Path(roundedRect: slot.offsetBy(dx: 0, dy: u), cornerRadius: 3 * u),
+                     with: .color(Theme.white.opacity(darkAppearance ? 0.08 : 0.65)))
+        context.fill(Path(roundedRect: slot, cornerRadius: 3 * u), with: .color(Theme.HomeController.slot))
+        context.fill(Path(CGRect(x: trackX, y: trackTop + u, width: 0.6 * u, height: travel - 2 * u)),
+                     with: .color(Theme.white.opacity(0.15)))
+
+        let labels = ["+6", "0", "-6", "-12", "-24", "-∞"]
+        let levels: [CGFloat] = [0.95, 0.75, 0.55, 0.38, 0.22, 0.05]
+        for index in labels.indices {
+            let y = rect.maxY - travel * levels[index]
+            let major = index == 1
+            let length: CGFloat = (major ? 8 : 5) * u
+            let tickX = mirrored ? trackX + trackWidth / 2 + 4 * u : trackX - trackWidth / 2 - 4 * u - length
+            context.fill(Path(CGRect(x: tickX, y: y, width: length, height: (major ? 1.5 : 1) * u)),
+                         with: .color(Theme.ink.opacity(major ? 0.65 : 0.32)))
+            engraved(labels[index], in: context,
+                     at: CGPoint(x: mirrored ? tickX + length + 3 * u : tickX - 3 * u, y: y),
+                     size: 8 * u, anchor: mirrored ? .leading : .trailing, prominent: major)
+        }
+
+        let capLevels: [CGFloat] = [0.72, 0.48, 0.88, 0.28]
+        let capWidth: CGFloat = (portrait ? 24 : 26) * u
+        let capHeight: CGFloat = (portrait ? 28 : 34) * u
+        let capY = min(rect.maxY - capHeight / 2, max(trackTop + capHeight / 2, rect.maxY - travel * capLevels[channel]))
+        let cap = CGRect(x: trackX - capWidth / 2, y: capY - capHeight / 2, width: capWidth, height: capHeight)
+        let shape = Path(roundedRect: cap, cornerRadius: 3 * u)
+        context.drawLayer { layer in
+            layer.addFilter(.shadow(color: Theme.black.opacity(darkAppearance ? 0.6 : 0.22),
+                                    radius: 4 * u, x: 0, y: 4 * u))
+            layer.fill(shape, with: .linearGradient(Gradient(stops: [
+                .init(color: Theme.HomeController.capTop, location: 0),
+                .init(color: Theme.HomeController.capMiddle, location: 0.48),
+                .init(color: Theme.HomeController.capShade, location: 0.52),
+                .init(color: Theme.HomeController.capBottom, location: 1)
+            ]), startPoint: cap.origin, endPoint: CGPoint(x: cap.minX, y: cap.maxY)))
+        }
+        context.stroke(shape, with: .color(Theme.black.opacity(darkAppearance ? 0.65 : 0.32)), lineWidth: u)
+        context.fill(Path(CGRect(x: cap.minX + 3 * u, y: cap.minY + u, width: cap.width - 6 * u, height: u)),
+                     with: .color(Theme.white.opacity(darkAppearance ? 0.2 : 0.75)))
+        for offset in [-6.0, -2, 2, 6] {
+            context.fill(Path(CGRect(x: cap.midX - 8 * u, y: cap.midY + offset * u, width: 16 * u, height: u)),
+                         with: .color(Theme.black.opacity(darkAppearance ? 0.5 : 0.28)))
+        }
+        context.fill(Path(CGRect(x: cap.minX + 3 * u, y: cap.midY - u, width: cap.width - 6 * u, height: 2 * u)),
+                     with: .color(channel == 2 ? Theme.orange : Theme.ink))
+    }
+
+    private func engraved(_ text: String, in context: GraphicsContext, at point: CGPoint,
+                          size: CGFloat, anchor: UnitPoint = .center, prominent: Bool = false) {
+        let label = Text(verbatim: text).font(Theme.canvasDisplay(size).monospacedDigit())
+        context.draw(label.foregroundColor(Theme.white.opacity(darkAppearance ? 0.08 : 0.6)),
+                     at: CGPoint(x: point.x, y: point.y + layout.unit * 0.6), anchor: anchor)
+        context.draw(label.foregroundColor(prominent ? Theme.ink : Theme.secondary), at: point, anchor: anchor)
+    }
+}
+
 /// Tactile pad press animation style (scale 0.965 and 1.5 pt down, 60 ms light flash, spring back in 0.18 s).
 /// Reduce Motion: darker fill only (0.1 s), no scale or movement.
 struct TactilePadButtonStyle: ButtonStyle {
@@ -85,6 +340,7 @@ struct HomePadView: View {
     var accessibilityText: String? = nil
     var accessibilityValue: String? = nil
     var isLit: Bool = false
+    var padNumber: Int? = nil
     let isHero: Bool
     let action: () -> Void
 
@@ -106,7 +362,7 @@ struct HomePadView: View {
                         ForEach(subtitleVariants, id: \.self) { variant in
                             Text(variant)
                                 .font(Theme.meta)
-                                .foregroundStyle(isHero ? Theme.black.opacity(0.8) : Theme.secondary)
+                                .foregroundStyle(isHero ? Theme.black : Theme.secondary)
                                 .multilineTextAlignment(.center)
                                 .lineLimit(nil)
                                 .minimumScaleFactor(0.75)
@@ -116,7 +372,7 @@ struct HomePadView: View {
                     if let numericTransitionValue {
                         Text(subtitle)
                             .font(Theme.meta)
-                            .foregroundStyle(isHero ? Theme.black.opacity(0.8) : Theme.secondary)
+                            .foregroundStyle(isHero ? Theme.black : Theme.secondary)
                             .multilineTextAlignment(.center)
                             .lineLimit(nil)
                             .minimumScaleFactor(0.75)
@@ -125,7 +381,7 @@ struct HomePadView: View {
                     } else {
                         Text(subtitle)
                             .font(Theme.meta)
-                            .foregroundStyle(isHero ? Theme.black.opacity(0.8) : Theme.secondary)
+                            .foregroundStyle(isHero ? Theme.black : Theme.secondary)
                             .multilineTextAlignment(.center)
                             .lineLimit(nil)
                             .minimumScaleFactor(0.75)
@@ -137,7 +393,7 @@ struct HomePadView: View {
                         ForEach(secondarySubtitleVariants, id: \.self) { variant in
                             Text(variant)
                                 .font(Theme.meta)
-                                .foregroundStyle(Theme.secondary.opacity(0.8))
+                                .foregroundStyle(Theme.secondary)
                                 .multilineTextAlignment(.center)
                                 .lineLimit(nil)
                                 .minimumScaleFactor(0.75)
@@ -146,7 +402,7 @@ struct HomePadView: View {
                 } else if let secondarySubtitle, !secondarySubtitle.isEmpty {
                     Text(secondarySubtitle)
                         .font(Theme.meta)
-                        .foregroundStyle(Theme.secondary.opacity(0.8))
+                        .foregroundStyle(Theme.secondary)
                         .multilineTextAlignment(.center)
                         .lineLimit(nil)
                         .minimumScaleFactor(0.75)
@@ -154,6 +410,9 @@ struct HomePadView: View {
                 Spacer(minLength: 0)
             }
             .padding(.horizontal, Theme.Space.small)
+            // Reserve the engraving band before text fitting chooses subtitle variants.
+            .padding(.top, padNumber == nil ? 0 : 22)
+            .padding(.bottom, Theme.Space.small)
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .background(
                 RoundedRectangle(cornerRadius: Theme.Radius.pad)
@@ -196,6 +455,18 @@ struct HomePadView: View {
             .overlay {
                 if isLit {
                     PadLightBar()
+                }
+            }
+            .overlay(alignment: .topLeading) {
+                if let padNumber {
+                    Text(verbatim: String(format: "%02d", padNumber))
+                        .font(Theme.canvasDisplay(9).monospacedDigit())
+                        .foregroundStyle(isHero ? Theme.black : Theme.secondary)
+                        .shadow(color: Theme.white.opacity(isHero ? 0.3 : 0.45), radius: 0, y: 0.6)
+                        .padding(.leading, 8)
+                        .padding(.top, 7)
+                        .allowsHitTesting(false)
+                        .accessibilityHidden(true)
                 }
             }
             .contentShape(RoundedRectangle(cornerRadius: Theme.Radius.pad))
@@ -379,7 +650,7 @@ public struct HomeScreen: View {
     @Namespace private var homeNamespace
 
     @State private var lessonStore = LessonStore.shared
-    @State private var containerOpacity: Double = 1.0
+    @State private var gridOpacity: Double = 1.0
 
     // Launch animation sequence states
     @State private var pad1Popped: Bool
@@ -428,32 +699,14 @@ public struct HomeScreen: View {
             let containerW = proxy.size.width
             let containerH = proxy.size.height
             let shorterSide = min(containerW, containerH)
-
-            let gap = Theme.Space.regular // 16
-            let minMargin: CGFloat = 20
-
-            let availableW = max(0, containerW - 2 * minMargin)
-            let availableH = max(0, containerH - 2 * minMargin)
-
+            let layout = HomeControllerLayout(size: proxy.size)
+            let gap = layout.gap
             let aspectRatio: CGFloat = 490.455 / 73.8
-            let settledWordmarkW = min(availableW * 0.55, 360)
-            let settledWordmarkH = settledWordmarkW / aspectRatio
-            let wordmarkSpacing: CGFloat = 28
-
-            let maxGridWidth: CGFloat = 680
-            let maxCellSize: CGFloat = (maxGridWidth - 2 * gap) / 3
-
-            let availableGridH = max(0, availableH - (settledWordmarkH + wordmarkSpacing))
-            let maxCellW = (availableW - 2 * gap) / 3
-            let maxCellH = (availableGridH - 2 * gap) / 3
-            let cellSize = max(0, floor(min(maxCellW, maxCellH, maxCellSize)))
-            let gridSize = 3 * cellSize + 2 * gap
-
-            let totalH = settledWordmarkH + wordmarkSpacing + gridSize
-            let layoutTopY = (containerH - totalH) / 2
-
-            let settledWordmarkY = layoutTopY + settledWordmarkH / 2
-            let settledGridCenterY = layoutTopY + settledWordmarkH + wordmarkSpacing + gridSize / 2
+            let settledWordmarkW = layout.wordmarkWidth
+            let cellSize = layout.cellSize
+            let gridSize = layout.gridSize
+            let settledWordmarkY = layout.wordmarkY
+            let settledGridCenterY = containerH / 2
 
             // Initial animation geometry (centered on screen)
             let initialLogoSize = shorterSide * 0.28
@@ -468,18 +721,29 @@ public struct HomeScreen: View {
             let darkLogo = isSettled && (colorScheme == .dark)
 
             ZStack {
-                // Background: fades from solid cream to Theme.background during settlement
+                // Home-only body: the launch cream clears before the static hardware appears.
                 Theme.background
                     .ignoresSafeArea()
+
+                HomeControllerBody(darkAppearance: colorScheme == .dark)
+                    .equatable()
+                    .opacity(isSettled ? 1 : 0)
+                    .animation(reduceMotion ? nil : .easeOut(duration: 0.2), value: isSettled)
 
                 Self.cream
                     .ignoresSafeArea()
                     .opacity(isSettled ? 0.0 : 1.0)
 
+                HomeControllerHardware(layout: layout, darkAppearance: colorScheme == .dark)
+                    .equatable()
+                    .opacity(plateVisible ? 1 : 0)
+                    .animation(reduceMotion ? nil : .easeOut(duration: 0.2), value: plateVisible)
+
                 // 3x3 Pad Grid (outer pads + centre logo pad)
                 gridContent(cellSize: cellSize, gap: gap)
                     .frame(width: gridSize, height: gridSize)
                     .position(x: containerW / 2, y: settledGridCenterY)
+                    .opacity(gridOpacity)
 
                 // Floating Centre Logo Mark (only during launch animation until landed)
                 if !logoInPad {
@@ -508,7 +772,6 @@ public struct HomeScreen: View {
                 .position(x: containerW / 2, y: isSettled ? settledWordmarkY : initialWordmarkY)
             }
             .frame(width: containerW, height: containerH)
-            .opacity(containerOpacity)
             .contentShape(Rectangle())
             .onTapGesture {
                 if !animationFinished {
@@ -884,6 +1147,7 @@ public struct HomeScreen: View {
                 subtitle: subtitle,
                 subtitleVariants: variants,
                 accessibilityText: "\(label), \(subtitle)",
+                padNumber: 1,
                 isHero: true
             ) {
                 // Keep the same Mix visible on Training even if reviews change recency first.
@@ -935,6 +1199,7 @@ public struct HomeScreen: View {
             subtitle: subtitle,
             subtitleVariants: variants,
             accessibilityText: accessibility,
+            padNumber: 1,
             isHero: true
         ) {
             if let targetLesson {
@@ -963,6 +1228,7 @@ public struct HomeScreen: View {
             title: label,
             subtitle: subtitle,
             numericTransitionValue: earnedStars,
+            padNumber: 2,
             isHero: false
         ) {
             activeDestination = .library(.none)
@@ -986,6 +1252,7 @@ public struct HomeScreen: View {
             accessibilityText: label,
             accessibilityValue: dueCount > 0 ? settings.localized("%lld due", dueCount) : nil,
             isLit: dueCount > 0,
+            padNumber: 3,
             isHero: false
         ) {
             activeDestination = .training
@@ -996,7 +1263,7 @@ public struct HomeScreen: View {
 
     private var pad4: some View {
         let label = settings.localized("Intro").uppercased(with: Locale(identifier: settings.languagePreference.rawValue))
-        return HomePadView(title: label, subtitle: nil, isHero: false) {
+        return HomePadView(title: label, subtitle: nil, padNumber: 4, isHero: false) {
             activeDestination = .intro
             onNavigateToLibrary(.intro)
             AppNavigation.shared.openLibrary(.intro)
@@ -1028,6 +1295,7 @@ public struct HomeScreen: View {
             secondarySubtitle: profileName,
             secondarySubtitleVariants: profileVariants,
             accessibilityText: voiceOverText,
+            padNumber: 5,
             isHero: false
         ) {
             activeDestination = .controller
@@ -1042,6 +1310,7 @@ public struct HomeScreen: View {
             title: label,
             subtitle: subtitle,
             numericTransitionValue: badgeStore.earnedCount,
+            padNumber: 6,
             isHero: false
         ) {
             activeDestination = .badges
@@ -1052,14 +1321,14 @@ public struct HomeScreen: View {
         let label = settings.localized("Full version").uppercased(with: Locale(identifier: settings.languagePreference.rawValue))
         let subtitle = store.hasFullAccess ? settings.localized("Unlocked") : settings.localized("Unlock")
 
-        return HomePadView(title: label, subtitle: subtitle, isHero: false) {
+        return HomePadView(title: label, subtitle: subtitle, padNumber: 7, isHero: false) {
             activeDestination = .purchases
         }
     }
 
     private var pad8: some View {
         let label = settings.localized("Settings").uppercased(with: Locale(identifier: settings.languagePreference.rawValue))
-        return HomePadView(title: label, subtitle: nil, isHero: false) {
+        return HomePadView(title: label, subtitle: nil, padNumber: 8, isHero: false) {
             activeDestination = .settings
         }
     }
@@ -1123,14 +1392,14 @@ public struct HomeScreen: View {
             let policy = Theme.Motion.Policy(reduced: reduceMotion)
             if policy.reduced {
                 skipAnimation()
-                containerOpacity = 0.0
+                gridOpacity = 0
                 withAnimation(.easeOut(duration: 0.2)) {
-                    containerOpacity = 1.0
+                    gridOpacity = 1
                 }
                 return
             }
 
-            containerOpacity = 1.0
+            gridOpacity = 1.0
 
             // 0.00–0.45 s: three black pads appear 0.12 s apart
             withAnimation(.spring(response: 0.22, dampingFraction: 0.65)) {
@@ -1247,7 +1516,7 @@ public struct HomeScreen: View {
     private func skipAnimation() {
         guard !animationFinished else { return }
         animationTask?.cancel()
-        withAnimation(.easeOut(duration: 0.15)) {
+        withAnimation(reduceMotion ? nil : .easeOut(duration: 0.15)) {
             pad1Popped = true
             pad2Popped = true
             pad3Popped = true

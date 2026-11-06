@@ -1,6 +1,6 @@
 # 119 — Home: the controller body (ribbed body, smooth plate with screws, faders)
 
-Status: ready-for-agent. Depends on: 112, 113, 115, 116 (all done). Source: Jakub, 2026-11-06: approved the preview of ticket 118 ("I like it like this") **except the title**.
+Status: implemented; build OK; ready for iPad test. Depends on: 112, 113, 115, 116 (all done). Source: Jakub, 2026-11-06: approved the preview of ticket 118 ("I like it like this") **except the title**.
 
 Spec = the preview `docs/design/2026-11-06-home-controller-body/index.html` (open it in a browser; keys G = guides, O = orientation, L = light/dark) and `README.md` in the same folder (layout numbers, build recipe, contrast table). Build exactly that, in SwiftUI, for the Home screen only.
 
@@ -33,10 +33,10 @@ Spec = the preview `docs/design/2026-11-06-home-controller-body/index.html` (ope
 ## Acceptance criteria
 
 - [ ] Light and dark, landscape and portrait: ribbed body, smooth plate with four visible screws, faders as specified, everything centred, nothing overlapping or cut off.
-- [ ] Title is the real wordmark in its own band; launch animation still ends in the right place.
+- [x] Title is the real wordmark in its own band; launch animation still ends in the right place.
 - [ ] No hard-coded 1194×834 numbers; proportions hold on iPad mini and the largest iPad.
-- [ ] Only Home has the new background.
-- [ ] Build succeeds. No new tests.
+- [x] Only Home has the new background.
+- [x] Build succeeds. No new tests.
 - [ ] **iPad test (Jakub)**: cold start and return to Home, both orientations and appearances, rotate while on Home, check scrolling/rotation smoothness.
 
 ## Agent assignment
@@ -47,3 +47,13 @@ Spec = the preview `docs/design/2026-11-06-home-controller-body/index.html` (ope
 ## Done rule
 
 Stop after a successful build. Commit (AGENTS.md); Jakub pushes and tests on the iPad.
+
+## Implementation — 2026-11-06
+
+- Added a shared proportional Home layout: the plate and pad grid share the screen centre; the plate occupies about 65% of the shorter screen axis, subject to the existing grid ceiling. Gap, plate padding, hardware and wordmark sizes derive from the computed cell size. The real `LaunchWordmark` occupies the centre of the upper band, and the launch animation uses the same final coordinates.
+- Added two isolated, equatable, rasterised Canvas views: the strong 4 pt ribbed body with vignette, and the brushed plate with bevel, shadow, four slotted screws and decorative faders. No images, service label, surface animation, new localisation or accessibility elements were added.
+- Landscape has mirrored pairs of faders, centred beside the plate. Portrait has four faders centred in the lower band; travel shortens with available height, then channels are omitted in unusually short windows. Channel 03 has the orange indicator.
+- Added engraved numbers 01–08 inside the action pads, reserving a separate top band before the existing text fitting. Hero subtitles and secondary subtitles now use full-opacity palette text to preserve AA contrast. Pad edges, Training rim/light bar and the logo tile's About behaviour were retained; no compensating plate adjustment was needed.
+- Reduce Motion shows the body and hardware immediately; the grid retains its 0.2 s opacity-only entrance. Normal launch settlement fades in the static hardware over 0.2 s after the logo lands.
+- Validation: Debug build for generic iOS Simulator succeeded with `CODE_SIGNING_ALLOWED=NO`. The initial sandboxed build could not launch compiler macros; the build succeeded with the required system access. No tests were added or run. Existing warnings remain in `ReviewReminderScheduler`, `PatternField` and `HomePadDestination`.
+- Pending human verification: light/dark, both orientations on iPad mini and the largest iPad, long pad text, cold start, return to Home, rotation and smoothness. Visual/device acceptance boxes remain open until Jakub checks them.
