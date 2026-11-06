@@ -255,7 +255,7 @@ final class PracticeSession {
     }
 
     public var isDueReview: Bool {
-        !afterMe && progress.progress(for: lesson.id)?.reviewSchedule.isDue(on: currentDay()) == true
+        !afterMe && !isMix && progress.progress(for: lesson.id)?.reviewSchedule.isDue(on: currentDay()) == true
     }
 
     public var reviewStep: Int {
@@ -264,11 +264,7 @@ final class PracticeSession {
 
     public func reviewStatusText(settings: SettingsManager) -> String {
         let step = reviewStep
-        if settings.languagePreference == .czech {
-            return String(format: "Opakování · krok %lld ze 4 · zpaměti při %lld BPM, 80 %%", step, lesson.targetBpm)
-        } else {
-            return String(format: "Review · step %lld of 4 · from memory at %lld BPM, 80 %%", step, lesson.targetBpm)
-        }
+        return settings.localized("Review · step %lld of 4", step)
     }
 
     public var showsMemoryFadePhase: Bool {

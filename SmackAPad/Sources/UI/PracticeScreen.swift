@@ -189,6 +189,7 @@ struct PracticeScreen: View {
             lessonSubtitle
         }
         .frame(maxWidth: .infinity, alignment: .leading)
+        .layoutPriority(1)
     }
 
     private var lessonSubtitle: some View {
@@ -212,6 +213,8 @@ struct PracticeScreen: View {
                 .accessibilityLabel(settings.localized("Difficulty %lld of 5, %@", session.lesson.level, localizedBarCount(session.lesson.bars)))
             }
         }
+        .lineLimit(1)
+        .minimumScaleFactor(0.85)
     }
 
     private var difficultyDots: some View {

@@ -657,7 +657,7 @@
 "Nothing to review today. Next: %@" = "Nothing to review today. Next: %@";
 "Reviews start once a lesson has two stars." = "Reviews start once a lesson has two stars.";
 "Settled" = "Settled";
-"Review · step %lld of 4 · from memory at %lld BPM, 80 %%" = "Review · step %lld of 4 · from memory at %lld BPM, 80 %";
+"Review · step %lld of 4" = "Review · step %lld of 4";
 "Review passed · next in %lld days" = "Review passed · next in %lld days";
 "Review passed · next in 1 day" = "Review passed · next in 1 day";
 "Lesson settled" = "Lesson settled";
