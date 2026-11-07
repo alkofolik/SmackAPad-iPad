@@ -1,6 +1,6 @@
 # 121 — Training: pad opens after ~5 s, lessons do not start from Training
 
-Status: ready-for-human. Implementation built; original iPad symptoms and before/after timing remain unverified. Source: Jakub, 2026-11-06 (iPad).
+Status: ready-for-human. Implementation built and post-change simulator timings recorded; original iPad symptoms remain unverified. Source: Jakub, 2026-11-06 (iPad).
 
 ## Problem
 
@@ -68,3 +68,28 @@ The Training first-lesson button previously used the **review** constructor (`in
 ### Handoff
 
 The performance and lesson-start acceptance criteria remain open. Jakub must open Training on the iPad, capture the two debug timings, start a new lesson, a due review, Mix, After me and Today, and confirm the controls work. If the original non-start symptom persists, its cause remains to be diagnosed against that device/progress state. This report deliberately does not mark the original bug proven fixed.
+
+
+## Authorized post-build measurement — 2026-11-07
+
+Jakub explicitly authorized simulator measurement after the successful build. No source changes, additional builds or automated tests were made for this follow-up.
+
+Installed the already-built `b74fa1e` app on the same iPad Pro 11-inch (M5), iPadOS 27.0 simulator. After Home → Training, the accessibility tree contained the complete Training screen, including Today, Memory, Next 7 days, Due now, Mix, After me and badges.
+
+| Measurement | Before | After | Interpretation |
+| --- | --- | --- | --- |
+| Physical iPad, reported open delay | Approximately 5 s | Not measured | Physical-device verification remains with Jakub. |
+| Simulator, automation click plus returned Training tree | 2.56 s | 2.79 s | Includes automation overhead; does not demonstrate a speedup. |
+| Simulator, internal tap → shell `onAppear` | Not instrumented | **335.8 ms** | Direct app measurement; not a GPU first-frame timestamp. |
+| Simulator, internal derived-data refresh | Not instrumented | **3.9 ms** | Direct app measurement with this simulator's sparse progress data. |
+
+The first console capture buffered stdout. Reconnected using `simctl launch --console-pty` and captured the following from a fresh app launch and Training open:
+
+```text
+[TrainingOpen] tap to shell 335.8 ms
+[TrainingOpen] data refresh 3.9 ms
+```
+
+Local evidence: `.build/ticket121/after-console-pty.log`. The existing 50 ms cancellable scheduling yield precedes the refresh and is not included in its 3.9 ms duration. These values must not be combined into a claimed exact tap-to-render duration or compared as a speedup against the different physical device.
+
+Post-change simulator measurement is complete. A controlled internal before/after comparison, the original iPad non-start cause, all offered Training launch modes and physical-iPad acceptance remain unverified. The earlier “not measured” and “no post-change simulator acceptance” entries describe the initial stop after the successful build; this authorized follow-up supersedes them only for opening Training and recording the two timings above.
