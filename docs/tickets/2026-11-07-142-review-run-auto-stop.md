@@ -1,39 +1,53 @@
-# 142 — A review run stops by itself and shows its verdict
+# 142 — A review is decided by 2 of 3 hidden passes and stops only on success
 
 Status: ready-for-agent. Source: Jakub, 2026-11-07. Proposal: `docs/2026-11-07-training-stop-star-list-badges-proposal.md` §1.
 
 ## Problem
 
-Practice stops automatically only when star 2 or 3 is freshly earned (`stopAfterStar`, `StarAward.shouldStop`). A due review usually earns no star, so the lesson keeps looping. The review verdict (`reviewFeedback`, `PracticeSession.swift` ~899–925) is decided after the first hidden pass, but the player sees it only after pressing STOP.
+Today a due review is decided by a single hidden pass (`ReviewScheduler.evaluate`, `PracticeSession.swift` ~899–925), and the player sees the verdict only after pressing STOP, because Practice stops by itself only for a fresh star 2 or 3 (`stopAfterStar`). One pass is too fragile (one slip = failed review), and a stop after every verdict would break the playing flow.
 
 ## Rules
 
-1. When a due review gets the outcome `passed`, `settled` or `failed`, stop at the end of that pass through the existing `stopAfterStar` path (do not invent a second stop path; a shared flag such as `stopAfterVerdict` checked at the same places is fine).
-2. `doesNotCount` never stops.
-3. Not in Mix (Mix keeps its own flow) and not in After me.
-4. The result card shows the review sentence first and larger than the score (existing texts: "Review passed · next in %lld days", "Lesson settled", "Review not passed · again tomorrow"). Buttons: "Play on" / "Hrát dál" (starts again as ordinary practice; the review for today is already used) and the existing back control to Training.
-5. If the same pass also earns a fresh star, the star animation plays as today; one stop only.
-6. In the Today session the stop leads to the existing hand-off to the next step.
-7. No changes to scoring, timing, `ReviewScheduler`, stars or the schedule.
+1. **Review window.** A review is decided over the first **3 counted passes** of the day: full runs (no section loop), From memory, at ≥ goal tempo, hidden (with fading notes on: pass ≥ 3, as today). Passes that do not count (`doesNotCount`) are skipped and do not use up the window.
+2. **Pass = 2 of 3** with score ≥ 80 %. The outcome is decided as soon as it is certain:
+   - 2 successes → **passed** (or **settled** on the last step). Stop at the end of that pass through the existing `stopAfterStar` path (one shared stop path; a flag like `stopAfterVerdict` checked at the same places is fine).
+   - 2 failures → **failed** (one step back, due tomorrow). **No stop.** Playing continues as ordinary practice; the status line quietly switches to "Review not passed · again tomorrow · practice goes on" / "Opakování nesplněno · znovu zítra · hraješ dál".
+3. While the window is open, the status line shows progress: "Review · 1 of 2 passed" / "Opakování · splněno 1 ze 2" (and a fail count only if useful: keep one short line).
+4. STOP before the outcome is certain → nothing is recorded, schedule unchanged (the window starts again next time today). Overdue reviews carry no penalty, so this is acceptable.
+5. Still one review per lesson per day: after a decided outcome, further runs that day are ordinary practice.
+6. Result card after the success stop: review sentence first and larger than the score ("Review passed · next in %lld days" / "Lesson settled"), buttons "Play on" / "Hrát dál" (practice only) and the existing back control. A fresh star in the same pass plays its animation; one stop only.
+7. Today session: the success stop leads to the existing hand-off. A failed review does not stop; the hand-off button stays available as today.
+8. Mix: each appearance of a due lesson in a Mix is one counted pass of that lesson's window (the window lives across rounds that day). Mix never stops for a review; its round result shows the review line per lesson. After me unchanged (never a review).
+9. No changes to scoring, timing, review gaps or star thresholds.
+
+## Implementation notes
+
+- Keep the window state per lesson per day in the session (lesson id → successes, failures); for Mix keep it across rounds in the same session. No persistence needed (rule 4).
+- `ReviewScheduler` gets a pure function: window state + one pass result → new window state + optional final outcome. **Use the tdd skill** (it decides a review).
 
 ## Files to read
 
-`AGENTS.md`, this ticket, `SmackAPad/Sources/UI/PracticeSession.swift` (~160–170, ~555–630, ~640–665, ~785–800, ~895–1025), `SmackAPad/Sources/UI/StarAward.swift`, `SmackAPad/Sources/UI/PracticeScreen.swift` (result card, ~120–140), `SmackAPad/Sources/UI/TodaySessionScreen.swift` (hand-off only), both `Localizable.strings`.
+`AGENTS.md`, this ticket, `SmackAPad/Sources/Progression/ReviewScheduler.swift`, `SmackAPad/Sources/UI/PracticeSession.swift` (~160–170, ~230–270, ~555–665, ~785–800, ~895–1025), `SmackAPad/Sources/UI/StarAward.swift`, `SmackAPad/Sources/UI/PracticeScreen.swift` (status line, result card ~120–140), `SmackAPad/Sources/UI/TodaySessionScreen.swift` (hand-off only), both `Localizable.strings`.
+
+## Tests (only these)
+
+Pure window function: S S → passed after 2 passes; F F → failed after 2; S F S → passed after 3; F S F → failed after 3; `doesNotCount` does not advance the window; last step + 2 successes → settled.
 
 ## Acceptance criteria
 
-- [ ] Due review, From memory at goal tempo: after the counted pass the lesson stops and the card says passed / failed / settled.
-- [ ] Below goal tempo or From memory off: no stop, status line unchanged.
-- [ ] "Play on" restarts as practice; no second review is recorded that day.
-- [ ] Today session continues to the next step after the stop.
-- [ ] Czech and English texts. Build succeeds; existing tests still pass, no new tests.
-- [ ] **iPad test (Jakub)**: one passed and one failed review with the MIDI controller.
+- [ ] Due review: two good hidden passes → lesson stops, card says passed (or settled).
+- [ ] Two bad hidden passes → no stop, line says not passed, playing goes on; review is due tomorrow.
+- [ ] Below goal tempo / From memory off / section loop: window does not move.
+- [ ] STOP mid-window records nothing.
+- [ ] Mix records the window per lesson and never stops for it.
+- [ ] Czech and English texts. Tests pass, build succeeds.
+- [ ] **iPad test (Jakub)**: one passed and one failed review with the MIDI controller; is the flow uninterrupted enough?
 
 ## Agent assignment
 
-- **Agent**: Gemini 3.8 Flash, **high**. Fallback: Codex GPT-6.1 Sol, medium.
-- **Reasoning**: small, but it touches the stop timing inside the practice session.
+- **Agent**: Codex GPT-6.1 Sol, **high**. Fallback: Gemini 3.8 Pro, high.
+- **Reasoning**: changes how a review is decided and the stop timing inside the practice session, including Mix.
 
 ## Done rule
 
-Stop after a successful build. Commit (AGENTS.md); Jakub pushes and tests on the iPad.
+Run before ticket 143. Stop after successful build and tests. Commit (AGENTS.md); Jakub pushes and tests on the iPad.

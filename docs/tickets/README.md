@@ -167,4 +167,5 @@ Source: Jakub, retention and memory discussion; legacy "Trénink" concept 2026-1
 | 138 | Library and Intro: all filters visible, no grey band behind rows | Gemini 3.8 Flash, high (fallback Codex Sol, medium) | after 133 |
 | 139 | Practice: back button fix, review line only in details, no arrow on Next lesson | Gemini 3.8 Flash, medium (fallback Codex Sol, medium) | after 136 |
 | 140 | Home pad titles: Barlow Condensed ExtraBold | Gemini 3.8 Flash, medium (fallback Codex Sol, medium) | after 135 |
-| 142 | Review run stops by itself and shows its verdict | Gemini 3.8 Flash, high (fallback Codex Sol, medium) | any time |
+| 142 | Review decided by 2 of 3 hidden passes; stops only on success | Codex GPT-6.1 Sol, high (fallback Gemini 3.8 Pro, high) | any time |
+| 143 | Star 3 earned by two passed reviews in Training | Gemini 3.8 Flash, high (fallback Codex Sol, high) | after 142 |

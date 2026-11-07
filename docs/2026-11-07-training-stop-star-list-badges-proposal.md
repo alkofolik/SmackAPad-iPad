@@ -1,6 +1,6 @@
 # Proposal — Review auto-stop, third star through Training, Training list order, badge images
 
-Status: proposal for Jakub, 2026-11-07. Auto-stop is ticketed now (142); the rest waits for Jakub's decisions (§6).
+Status: proposal for Jakub, 2026-11-07. Tickets 142 and 143 written; §3 and §4 wait for decisions (§6).
 
 ## 1. Review runs stop by themselves (ticket 142)
 
@@ -84,3 +84,9 @@ Source: SF Symbols (free, sharp, consistent, no licence work) as the default; cu
 1. Star 3: A, B (recommended) or C?
 2. List: is "first 5 + show all" enough, or more/less? Step chips yes/no?
 3. Badges: mockup first (recommended) — yes/no?
+
+## 7. Decided (Jakub, 2026-11-07)
+
+- Star 3: **option B** (two passed reviews) → ticket 143.
+- Auto-stop rethought to keep the flow: a review is decided by **2 of 3** counted hidden passes. Success stops the lesson (a natural end, like star 2); a failed review does **not** stop, playing simply goes on as practice. Stop before the outcome records nothing. → ticket 142 rewritten.
+- Still open: §3 list details, §4 badge mockup.
