@@ -103,7 +103,7 @@
 "This custom profile will be permanently deleted." = "Tento vlastní profil bude trvale smazán.";
 "Learn new profile (MIDI learn)" = "Naučit nový profil (MIDI learn)";
 "Library" = "Knihovna";
-"Intro" = "Úvodní cvičení";
+"Intro" = "Intro";
 "Progression categories" = "Kategorie postupu";
 "%lld exercises · always open" = "%lld cvičení · vždy přístupné";
 "%lld/%lld · soft unlocked" = "%lld/%lld · odemčeno ručně";
@@ -184,7 +184,7 @@
 "Appearance" = "Vzhled";
 "Dark" = "Tmavý";
 "Light" = "Světlý";
-"System" = "Podle systému";
+"System" = "Systém";
 "Choose light, dark or follow your system appearance." = "Zvol světlý či tmavý vzhled nebo vzhled podle systému.";
 "MIDI and controller" = "MIDI a ovladač";
 "All 8 kits are bundled with the app for practice and playback." = "Všech 8 sad je součástí aplikace. Používají se při cvičení i přehrávání.";
@@ -212,7 +212,7 @@
 "Dynamics, open hi-hat and rests · lessons 17–21" = "Dynamika, otevřený hi-hat a pauzy · lekce 17–21";
 "Snare and tom fills with clean return · lessons 22–25" = "Přechody na snare a tomy s návratem · lekce 22–25";
 "Other Intro Exercises" = "Další úvodní cvičení";
-"Intro Exercises" = "Úvodní cvičení";
+"Intro Exercises" = "Intro";
 "Intro section rules" = "Pravidla úvodní sekce";
 "STRICTER RULES" = "PŘÍSNĚJŠÍ LIMITY";
 "Intro exercises build foundational motor habits and steady timing. They are always accessible without unlock requirements, but enforce stricter scoring limits than standard lessons:" = "Úvodní cvičení slouží k osvojení základních motorických návyků a stabilního timingu. Jsou vždy odemčená bez nutnosti postupu, ale platí pro ně přísnější limity hodnocení než pro běžné lekce:";
@@ -231,7 +231,7 @@
 "Swing & shuffle" = "Swing a shuffle";
 "World rhythms" = "Světové rytmy";
 "Fills" = "Přechody";
-"Intro exercises" = "Úvodní cvičení";
+"Intro exercises" = "Intro";
 "You can practice any category at any time." = "Můžeš trénovat jakoukoli kategorii kdykoliv.";
 "High tom" = "Vysoký tom";
 "Low tom" = "Hluboký tom";
