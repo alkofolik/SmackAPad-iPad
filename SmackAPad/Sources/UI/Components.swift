@@ -673,6 +673,49 @@ struct FilterChip: View {
     }
 }
 
+/// A flexible flowing layout that places views horizontally and wraps to subsequent rows when space runs out.
+struct FlowLayout: Layout {
+    var spacing: CGFloat = 8
+
+    func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
+        let maxAllowedWidth = proposal.width ?? .infinity
+        var totalHeight: CGFloat = 0
+        var currentRowWidth: CGFloat = 0
+        var currentRowHeight: CGFloat = 0
+
+        for subview in subviews {
+            let size = subview.sizeThatFits(.unspecified)
+            if currentRowWidth + size.width > maxAllowedWidth, currentRowWidth > 0 {
+                totalHeight += currentRowHeight + spacing
+                currentRowWidth = 0
+                currentRowHeight = 0
+            }
+            currentRowWidth += size.width + spacing
+            currentRowHeight = max(currentRowHeight, size.height)
+        }
+        totalHeight += currentRowHeight
+        return CGSize(width: maxAllowedWidth.isFinite ? maxAllowedWidth : currentRowWidth, height: totalHeight)
+    }
+
+    func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) {
+        var x = bounds.minX
+        var y = bounds.minY
+        var currentRowHeight: CGFloat = 0
+
+        for subview in subviews {
+            let size = subview.sizeThatFits(.unspecified)
+            if x + size.width > bounds.maxX, x > bounds.minX {
+                x = bounds.minX
+                y += currentRowHeight + spacing
+                currentRowHeight = 0
+            }
+            subview.place(at: CGPoint(x: x, y: y), proposal: ProposedViewSize(size))
+            x += size.width + spacing
+            currentRowHeight = max(currentRowHeight, size.height)
+        }
+    }
+}
+
 struct InfoBanner: View {
     let text: String
     var symbol = "info.circle"
@@ -754,7 +797,7 @@ struct StarsView: View {
                                         .font(Theme.control).frame(minWidth: 28, minHeight: 32)
                                         .foregroundStyle(earned[index] ? Theme.starColor(for: index + 1) : Theme.starColor(for: 0))
                                     Text(StarRequirement.requirementText(for: index, lesson: lesson,
-                                        padCount: settings.activeProfile().padCount, settings: settings))
+                                        progress: record, padCount: settings.activeProfile().padCount, settings: settings))
                                         .font(Theme.control).fixedSize(horizontal: false, vertical: true)
                                 }
                                 .accessibilityElement(children: .combine)

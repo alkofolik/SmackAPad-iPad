@@ -649,8 +649,7 @@
 "Run %lld" = "Run %lld";
 "Last run %lld percent, %lld BPM, %@" = "Last run %lld percent, %lld BPM, %@";
 "Result %lld percent, %lld of 3 stars, %@" = "Result %lld percent, %lld of 3 stars, %@";
-"From memory: from tomorrow. Today it is practice." = "From memory: from tomorrow. Today it is practice.";
-"Star 3: from tomorrow." = "Star 3: from tomorrow.";
+"Star 3: two reviews in Training · %lld of 2" = "Star 3: two reviews in Training · %lld of 2";
 
 "Training" = "Training";
 "%lld due" = "%lld due";
@@ -808,3 +807,16 @@
 "New lesson · %lld BPM · %lld bars" = "New lesson · %lld BPM · %lld bars";
 "New lesson · %lld BPM · 1 bar" = "New lesson · %lld BPM · 1 bar";
 "Daily mix · %lld lessons" = "Daily mix · %lld lessons";
+
+/* Ticket 144: Training order, step filter, waiting boxes, settled box */
+"Step 4" = "Step 4";
+"Show all (%lld)" = "Show all (%lld)";
+"Show fewer" = "Show fewer";
+"Tomorrow (%lld)" = "Tomorrow (%lld)";
+"In 2–3 days (%lld)" = "In 2–3 days (%lld)";
+"In 4–7 days (%lld)" = "In 4–7 days (%lld)";
+"Later (%lld)" = "Later (%lld)";
+"Review tomorrow · practice only" = "Review tomorrow · practice only";
+"Review in %lld days · practice only" = "Review in %lld days · practice only";
+"Settled (%lld)" = "Settled (%lld)";
+"No lessons for this step." = "No lessons for this step.";

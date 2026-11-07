@@ -129,6 +129,25 @@ public struct ReviewScheduler: Sendable {
         return WindowOutcome(window: next, outcome: next.isDecided ? passResult : nil)
     }
 
+    /// Ticket 143: Decides whether a review outcome earns Star 3.
+    /// Star 3 is earned when a review outcome is passed/settled and the lesson
+    /// has now passed two reviews in total (reviewStep reaches >= 2 or is settled).
+    public static func mayEarnStar3(outcome: Outcome?, progress: LessonProgress?) -> Bool {
+        guard let outcome, let feedback = outcome.feedback else { return false }
+        guard progress?.memory != true else { return false }
+        switch feedback {
+        case .passed, .settled:
+            let step = outcome.newSchedule.reviewStep ?? 0
+            return step >= 2 || outcome.newSchedule.isSettled
+        case .failed, .doesNotCount:
+            return false
+        }
+    }
+
+    public static func mayEarnStar3(outcome: Outcome, progress: LessonProgress?) -> Bool {
+        mayEarnStar3(outcome: Optional(outcome), progress: progress)
+    }
+
     /// Pure function: schedule + run result + today → new schedule and feedback.
     /// Under ticket 99, when fadeNotes is on, only hidden passes (pass >= 3) count as reviews.
     public static func evaluate(

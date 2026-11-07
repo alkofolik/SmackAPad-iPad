@@ -460,21 +460,6 @@ final class PracticeSession {
         let passedRequired = StarStreak.requiredRuns(expectedHits: hitsCount)
         let saved = progress.progress(for: lesson.id)
         if saved?.passed != true { return (starStreak.passedRuns, passedRequired, "Passed", 0) }
-        if fromMemory, saved?.memory != true {
-            if StarStreak.mayEarnMemoryCredit(
-                progress: saved,
-                today: currentDay(),
-                fromMemory: true,
-                bpm: lesson.targetBpm,
-                targetBpm: lesson.targetBpm,
-                score: 1.0,
-                pass: passNumber,
-                fadeNotes: settings.fadeMemoryNotes
-            ) {
-                return (starStreak.memoryRuns, required, "From memory", 2)
-            }
-            return nil
-        }
         if saved?.mastery != true { return (starStreak.masteryRuns, required, "Goal tempo", 1) }
         return nil
     }
@@ -959,6 +944,23 @@ final class PracticeSession {
                             if !isMix {
                                 stopAfterPass = true
                                 finishedByReview = true
+                            }
+                            if ReviewScheduler.mayEarnStar3(outcome: outcome, progress: currentProgress) {
+                                earnedMemory = true
+                                finishedByStar = 3
+                                let award = StarAward(previous: currentProgress,
+                                                      passed: currentProgress.passed,
+                                                      mastery: currentProgress.mastery,
+                                                      memory: true)
+                                progress.recordResult(lessonId: lesson.id,
+                                                      passed: currentProgress.passed,
+                                                      mastery: currentProgress.mastery,
+                                                      bpm: result.bpm,
+                                                      score: Float(result.score),
+                                                      memory: true,
+                                                      autoSave: false,
+                                                      today: today)
+                                starEvent = StarEvent(award: award)
                             }
                         case .failed:
                             progress.recordReviewRun(lessonId: lesson.id, passed: false, today: today, autoSave: false)

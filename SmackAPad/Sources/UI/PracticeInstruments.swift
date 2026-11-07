@@ -273,8 +273,6 @@ struct ResultCard: View {
     let announcement: String
     var reviewMessage: String? = nil
     var badgeText: String? = nil
-    var firstStar2Notice: String? = nil
-    var memoryNotice: String? = nil
     let cardWidth: CGFloat
     let cardHeight: CGFloat
     let openRules: () -> Void
@@ -316,10 +314,11 @@ struct ResultCard: View {
         let count = runs.count
         let runPart: String
         let noticePart: String = {
-            var parts: [String] = []
-            if let firstStar2Notice { parts.append(firstStar2Notice) }
-            if let memoryNotice { parts.append(memoryNotice) }
-            return parts.isEmpty ? "" : ", " + parts.joined(separator: ", ")
+            if let badgeText { return ", " + badgeText }
+            if saved?.memory != true && (saved?.mastery == true || summary.mastery) {
+                return ", " + StarRequirement.requirementText(for: 2, progress: saved, language: settings.languagePreference)
+            }
+            return ""
         }()
         if settings.languagePreference == .czech {
             let runsWord: String
@@ -397,11 +396,19 @@ struct ResultCard: View {
     private var starsColumn: some View {
         VStack(spacing: 2) {
             Button(action: openRules) {
-                StarBurst(
-                    earned: [saved?.passed == true, saved?.mastery == true, saved?.memory == true],
-                    event: event,
-                    announcement: announcement
-                )
+                HStack(spacing: Theme.Space.tight) {
+                    if saved?.reviewSchedule.isSettled == true {
+                        Image(systemName: "checkmark")
+                            .font(Theme.meta)
+                            .foregroundStyle(Theme.secondary)
+                            .accessibilityLabel(settings.localized("Settled"))
+                    }
+                    StarBurst(
+                        earned: [saved?.passed == true, saved?.mastery == true, saved?.memory == true],
+                        event: event,
+                        announcement: announcement
+                    )
+                }
                 .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
@@ -411,19 +418,13 @@ struct ResultCard: View {
                 }
             }
 
-            if let firstStar2Notice {
-                Text(firstStar2Notice)
-                    .font(Theme.meta)
-                    .foregroundStyle(Theme.secondary)
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.8)
-            } else if let badgeText {
+            if let badgeText {
                 Text(badgeText)
                     .font(Theme.meta)
                     .foregroundStyle(Theme.secondary)
                     .lineLimit(1)
-            } else if let memoryNotice {
-                Text(memoryNotice)
+            } else if saved?.memory != true && (saved?.mastery == true || summary.mastery) {
+                Text(StarRequirement.requirementText(for: 2, progress: saved, language: settings.languagePreference))
                     .font(Theme.meta)
                     .foregroundStyle(Theme.secondary)
                     .lineLimit(1)

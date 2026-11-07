@@ -1,6 +1,6 @@
 # 143 — Star 3 is earned by two passed reviews in Training
 
-Status: ready-for-agent. Blocked by: 142. Source: Jakub, 2026-11-07, chose option B in `docs/2026-11-07-training-stop-star-list-badges-proposal.md` §2.
+Status: ready-for-human. Blocked by: 142. Source: Jakub, 2026-11-07, chose option B in `docs/2026-11-07-training-stop-star-list-badges-proposal.md` §2.
 
 ## Goal
 
@@ -30,11 +30,11 @@ Star 3 means "it holds in the hands": the lesson passed two reviews on different
 
 ## Acceptance criteria
 
-- [ ] From memory in Practice never gives star 3; the line says how to get it.
-- [ ] Second passed review gives star 3 with animation and stop.
-- [ ] Old stars 3 stay; old lessons with two passed reviews get star 3 silently.
-- [ ] No "from tomorrow" text anywhere.
-- [ ] Tests pass, build succeeds.
+- [x] From memory in Practice never gives star 3; the line says how to get it.
+- [x] Second passed review gives star 3 with animation and stop.
+- [x] Old stars 3 stay; old lessons with two passed reviews get star 3 silently.
+- [x] No "from tomorrow" text anywhere.
+- [x] Tests pass, build succeeds.
 - [ ] **iPad test (Jakub)**: over several days earn star 3 through two reviews.
 
 ## Agent assignment
@@ -45,3 +45,14 @@ Star 3 means "it holds in the hands": the lesson passed two reviews on different
 ## Done rule
 
 Stop after successful build and tests. Commit (AGENTS.md); Jakub pushes and tests on the iPad.
+
+## Implementation — 2026-11-07
+
+- Added pure `ReviewScheduler.mayEarnStar3` function deciding when a review outcome awards star 3 (`reviewStep >= 2` or `settled`).
+- Awarded star 3 in review success stop path with `StarEvent`, animation, badge evaluation and stop.
+- Practice `StarStreak.mayEarnMemoryCredit` now returns `false`; From memory in practice never awards star 3.
+- Requirement line (`StarRequirement`) updated to show "Star 3: two reviews in Training · %lld of 2" in English and Czech.
+- Removed all "from tomorrow" texts, `isMemoryPracticeToday`, and `showsMemoryChallenge` shortcut for star 3.
+- Settled mark checkmark added next to header stars in Practice and ResultCard.
+- Silent launch migration `ProgressStore.migrateTwoReviewsStar3` for lessons with `reviewStep >= 2` or `settled == true` without star 3.
+- Tests in `Star3ReviewTests` for all 5 scenarios passed. Build succeeded.

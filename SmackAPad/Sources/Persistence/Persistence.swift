@@ -314,6 +314,9 @@ public final class SettingsManager: @unchecked Sendable {
     public var libraryStarFilters: [String] {
         didSet { userDefaults.set(libraryStarFilters, forKey: "smackapad.library.stars") }
     }
+    public var trainingDueStepFilter: String {
+        didSet { userDefaults.set(trainingDueStepFilter, forKey: "smackapad.training.dueStepFilter") }
+    }
     public var nextLessonSource: String {
         didSet { userDefaults.set(nextLessonSource, forKey: "smackapad.library.nextSource") }
     }
@@ -452,6 +455,7 @@ public final class SettingsManager: @unchecked Sendable {
         practiceMode = PracticeMode(rawValue: userDefaults.string(forKey: SettingsKey.practiceMode.rawValue) ?? "") ?? .learning
         libraryView = LibraryViewMode(rawValue: userDefaults.string(forKey: "smackapad.library.view") ?? "")?.rawValue ?? "path"
         libraryStarFilters = userDefaults.stringArray(forKey: "smackapad.library.stars") ?? LibraryStarFilter.allCases.map(\.rawValue)
+        trainingDueStepFilter = userDefaults.string(forKey: "smackapad.training.dueStepFilter") ?? "all"
         nextLessonSource = NextLessonSource(rawValue: userDefaults.string(forKey: "smackapad.library.nextSource") ?? "")?.rawValue ?? "path"
         lastLessonID = userDefaults.integer(forKey: "smackapad.library.lastLesson")
 
@@ -762,6 +766,8 @@ public final class SettingsManager: @unchecked Sendable {
         self.playPadsWithKeyboard = true
         self.reviewReminderEnabled = false
         self.reviewReminderTime = Self.defaultReminderTime()
+        userDefaults.removeObject(forKey: "smackapad.training.dueStepFilter")
+        self.trainingDueStepFilter = "all"
         userDefaults.removeObject(forKey: "smackapad.library.hideCompleted")
         self.hideCompletedLessons = true
         for mode in ["path", "genre", "technique"] {
@@ -1074,6 +1080,9 @@ public final class ProgressStore: @unchecked Sendable {
             if migrateLegacyMasteredReviewSchedule() {
                 didMigrate = true
             }
+            if migrateTwoReviewsStar3() {
+                didMigrate = true
+            }
             if didMigrate {
                 // Atomic saving leaves the original file intact on failure. Keep merged
                 // progress in memory for the next normal save; do not treat it as a decode error.
@@ -1121,6 +1130,26 @@ public final class ProgressStore: @unchecked Sendable {
                 updated.reviewStep = migrated.reviewStep
                 updated.reviewDueDay = migrated.reviewDueDay
                 updated.settled = migrated.settled
+                records[id] = updated
+                changed = true
+            }
+        }
+        return changed
+    }
+
+    private func migrateTwoReviewsStar3() -> Bool {
+        Self.migrateTwoReviewsStar3(in: &records)
+    }
+
+    /// Ticket 143: lessons with reviewStep >= 2 or settled == true get star 3 silently.
+    @discardableResult
+    public static func migrateTwoReviewsStar3(in records: inout [Int: LessonProgress]) -> Bool {
+        var changed = false
+        for (id, record) in records {
+            let passedTwoReviews = (record.reviewStep ?? 0) >= 2 || record.settled == true
+            if passedTwoReviews && !record.memory {
+                var updated = record
+                updated.memory = true
                 records[id] = updated
                 changed = true
             }

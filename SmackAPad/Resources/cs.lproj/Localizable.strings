@@ -652,8 +652,7 @@
 "Run %lld" = "Běh %lld";
 "Last run %lld percent, %lld BPM, %@" = "Poslední běh %lld procent, %lld BPM, %@";
 "Result %lld percent, %lld of 3 stars, %@" = "Výsledek %lld procent, %lld ze 3 hvězd, %@";
-"From memory: from tomorrow. Today it is practice." = "Zpaměti: od zítřka. Dnes je to jen cvičení.";
-"Star 3: from tomorrow." = "Třetí hvězda: od zítřka.";
+"Star 3: two reviews in Training · %lld of 2" = "Třetí hvězda: dvě opakování v Tréninku · %lld ze 2";
 
 "Training" = "Trénink";
 "%lld due" = "%lld na řadě";
@@ -813,3 +812,15 @@
 "New lesson · %lld BPM · %lld bars" = "Nová lekce · %lld BPM · %lld takty";
 "New lesson · %lld BPM · 1 bar" = "Nová lekce · %lld BPM · 1 takt";
 "Daily mix · %lld lessons" = "Denní mix · %lld skladby";
+
+/* Ticket 144: Training order, step filter, waiting boxes, settled box */
+"Step 4" = "Krok 4";
+"Show all (%lld)" = "Zobrazit vše (%lld)";
+"Show fewer" = "Zobrazit méně";
+"Tomorrow (%lld)" = "Zítra (%lld)";
+"In 2–3 days (%lld)" = "Za 2–3 dny (%lld)";
+"In 4–7 days (%lld)" = "Za 4–7 dní (%lld)";
+"Later (%lld)" = "Později (%lld)";
+"Review tomorrow · practice only" = "Opakování zítra · jen cvičení";
+"Settled (%lld)" = "Upevněné (%lld)";
+"No lessons for this step." = "Pro tento krok nejsou žádné lekce.";

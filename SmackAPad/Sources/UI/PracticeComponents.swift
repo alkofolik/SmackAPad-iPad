@@ -491,9 +491,6 @@ struct SummaryStrip: View {
                 }
             }
             if summary.firstStar2 {
-                Text(settings.localized("Star 3: from tomorrow."))
-                    .font(Theme.meta)
-                    .foregroundStyle(Theme.secondary)
                 Text(settings.localized("Comes back tomorrow for a review"))
                     .font(Theme.meta)
                     .foregroundStyle(Theme.secondary)

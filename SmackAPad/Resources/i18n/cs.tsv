@@ -2607,8 +2607,7 @@ Hide “%@”? You can show it again at the bottom of the list.	Skrýt „%@“?
 Hide	Skrýt
 Show	Zobrazit
 Hidden categories (%lld)	Skryté kategorie (%lld)
-From memory: from tomorrow. Today it is practice.	Zpaměti: od zítřka. Dnes je to jen cvičení.
-Star 3: from tomorrow.	Třetí hvězda: od zítřka.
+Star 3: two reviews in Training · %lld of 2	Třetí hvězda: dvě opakování v Tréninku · %lld ze 2
 Training	Trénink
 %lld due	%lld na řadě
 Due	Na řadě
@@ -2630,3 +2629,13 @@ Due for review	Na řadě k opakování
 Review reminder	Připomínka opakování
 Time	Čas
 Notifications are turned off in iPad Settings.	Upozornění jsou vypnutá v Nastavení iPadu.
+Step 4	Krok 4
+Show all (%lld)	Zobrazit vše (%lld)
+Show fewer	Zobrazit méně
+Tomorrow (%lld)	Zítra (%lld)
+In 2–3 days (%lld)	Za 2–3 dny (%lld)
+In 4–7 days (%lld)	Za 4–7 dní (%lld)
+Later (%lld)	Později (%lld)
+Review tomorrow · practice only	Opakování zítra · jen cvičení
+Settled (%lld)	Upevněné (%lld)
+No lessons for this step.	Pro tento krok nejsou žádné lekce.

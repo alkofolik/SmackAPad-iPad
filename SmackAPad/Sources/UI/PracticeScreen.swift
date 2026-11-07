@@ -231,15 +231,33 @@ struct PracticeScreen: View {
 
     private var titleAndSubtitle: some View {
         VStack(alignment: .leading, spacing: Theme.Space.tight) {
-            Text(session.isMix
-                 ? settings.localized("Mix · %lld of %lld · %@", session.mixIndex + 1, session.mixLessons.count, settings.localized(session.lesson.title))
-                 : settings.localized(session.lesson.title))
-                .font(Theme.rowTitle)
-                .fixedSize(horizontal: false, vertical: true)
+            HStack(alignment: .firstTextBaseline, spacing: Theme.Space.small) {
+                Text(session.isMix
+                     ? settings.localized("Mix · %lld of %lld · %@", session.mixIndex + 1, session.mixLessons.count, settings.localized(session.lesson.title))
+                     : settings.localized(session.lesson.title))
+                    .font(Theme.rowTitle)
+                    .fixedSize(horizontal: false, vertical: true)
+                if !session.isMix {
+                    headerStars
+                }
+            }
             lessonSubtitle
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .layoutPriority(1)
+    }
+
+    @ViewBuilder
+    private var headerStars: some View {
+        HStack(spacing: Theme.Space.tight) {
+            if session.savedProgress?.reviewSchedule.isSettled == true {
+                Image(systemName: "checkmark")
+                    .font(Theme.meta)
+                    .foregroundStyle(Theme.secondary)
+                    .accessibilityLabel(settings.localized("Settled"))
+            }
+            StarsView(record: session.savedProgress)
+        }
     }
 
     @ScaledMetric(relativeTo: .body) private var subtitleHeight: CGFloat = 22
@@ -255,6 +273,8 @@ struct PracticeScreen: View {
             Group {
                 if session.showsReviewStatus {
                     Text(session.reviewStatusText(settings: settings))
+                } else if session.fromMemory && session.savedProgress?.memory != true {
+                    Text(StarRequirement.requirementText(for: 2, progress: session.savedProgress, language: settings.languagePreference))
                 } else {
                     HStack(spacing: 0) {
                         difficultyDots
@@ -568,8 +588,6 @@ struct PracticeScreen: View {
                     announcement: resultAnnouncement,
                     reviewMessage: session.finishedByReview ? session.reviewFeedback?.message(language: settings.languagePreference) : nil,
                     badgeText: session.badgeSummaryMessage(settings: settings),
-                    firstStar2Notice: summary.firstStar2 ? settings.localized("Star 3: from tomorrow.") : nil,
-                    memoryNotice: (session.fromMemory && session.isMemoryPracticeToday) ? settings.localized("Star 3: from tomorrow.") : nil,
                     cardWidth: resultCardWidth,
                     cardHeight: s,
                     openRules: {
@@ -800,36 +818,6 @@ struct PracticeScreen: View {
                     .frame(height: buttonHeight)
             }
             .buttonStyle(PadPrimaryButtonStyle())
-        } else if showsMemoryChallenge {
-            Menu {
-                Button(action: startMemoryChallenge) {
-                    Label(settings.localized("From memory for ★3"), systemImage: "eye.slash")
-                }
-                if let next = nextLesson {
-                    Button {
-                        openNextLesson(next)
-                    } label: {
-                        if store.isUnlocked(next) {
-                            Text(settings.localized("Next lesson"))
-                        } else {
-                            Label(settings.localized("Next lesson"), systemImage: "lock")
-                        }
-                    }
-                }
-            } label: {
-                Text(settings.localized("Memory ★3"))
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.7)
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
-            } primaryAction: {
-                startMemoryChallenge()
-            }
-            .buttonStyle(MemoryChallengeButtonStyle(customHeight: buttonHeight))
-            .accessibilityLabel(settings.localized("From memory for ★3"))
-            .accessibilityHint(settings.localized("Starts Play from memory for the 3rd star"))
-            .accessibilityAction(named: settings.localized("Next lesson")) {
-                if let next = nextLesson { openNextLesson(next) }
-            }
         } else if session.savedProgress?.passed == true {
             nextLessonButton(buttonHeight: buttonHeight)
         }
@@ -937,26 +925,9 @@ struct PracticeScreen: View {
             if !stars.isEmpty { parts.append(stars) }
         }
         if session.summary?.firstStar2 == true {
-            parts.append(settings.localized("Star 3: from tomorrow."))
             parts.append(settings.localized("Comes back tomorrow for a review"))
-        } else if session.fromMemory && session.isMemoryPracticeToday {
-            parts.append(settings.localized("Star 3: from tomorrow."))
         }
         return parts.joined(separator: ". ")
-    }
-
-    /// After the 2nd star and until the 3rd: a direct way into the from-memory run.
-    private var showsMemoryChallenge: Bool {
-        session.ready && session.available && session.savedProgress?.mastery == true
-            && session.savedProgress?.memory != true
-    }
-
-    private func startMemoryChallenge() {
-        showingInfo = false
-        session.dismissSummary()
-        session.listen = false
-        session.fromMemory = true
-        session.start()
     }
 
     private var nextLesson: Lesson? {
@@ -1053,11 +1024,8 @@ struct PracticeScreen: View {
                         Text(settings.localized(star == 3
                             ? "Run finished: star 3 earned, from memory"
                             : "Run finished: star 2 earned, goal tempo"))
-                    } else if session.fromMemory && session.isMemoryPracticeToday {
-                        Text(settings.localized("Star 3: from tomorrow."))
                     }
                     if summary.firstStar2 {
-                        Text(settings.localized("Star 3: from tomorrow."))
                         Text(settings.localized("Comes back tomorrow for a review"))
                     }
                     Text("\(summary.bpm) BPM · \(settings.localized("%lld completed passes", summary.passes))")
@@ -1097,8 +1065,8 @@ struct PracticeScreen: View {
                             .frame(width: 24, height: 24)
                             .accessibilityHidden(true)
                         Text(StarRequirement.requirementText(for: index, lesson: session.lesson,
-                            padCount: midi.activeProfile.padCount, settings: settings,
-                            isMemoryPracticeToday: session.isMemoryPracticeToday))
+                            progress: session.savedProgress,
+                            padCount: midi.activeProfile.padCount, settings: settings))
                             .fixedSize(horizontal: false, vertical: true)
                     }
                     .font(Theme.control)
@@ -1225,9 +1193,9 @@ struct PracticeScreen: View {
                         let reqText = StarRequirement.requirementText(
                             for: index,
                             lesson: session.lesson,
+                            progress: session.savedProgress,
                             padCount: midi.activeProfile.padCount,
-                            settings: settings,
-                            isMemoryPracticeToday: session.isMemoryPracticeToday
+                            settings: settings
                         )
                         HStack(alignment: .top, spacing: Theme.Space.small) {
                             StarShape()

@@ -20,8 +20,8 @@ public struct StarStreak: Codable, Equatable, Hashable, Sendable {
     }
 
     /// Decides whether a run qualifies to earn memory credit toward Star 3.
-    /// Star 3 can only be earned on a calendar day strictly after the day Star 2 (goal tempo) was earned.
-    /// Under ticket 99, when fadeNotes is on, only hidden passes (pass >= 3) qualify.
+    /// Under ticket 143, Star 3 is earned exclusively through Training reviews (two passed reviews).
+    /// Practice From memory never grants Star 3.
     public static func mayEarnMemoryCredit(
         masteryDay: String?,
         wasMastered: Bool,
@@ -34,11 +34,7 @@ public struct StarStreak: Codable, Equatable, Hashable, Sendable {
         pass: Int = 3,
         fadeNotes: Bool = true
     ) -> Bool {
-        guard !isSectionLoop && fromMemory && bpm >= targetBpm && score >= 0.8 else { return false }
-        if fadeNotes && pass < 3 { return false }
-        guard wasMastered else { return false }
-        guard let masteryDay else { return true }
-        return today > masteryDay
+        false
     }
 
     /// Convenience overload using LessonProgress before the run.
