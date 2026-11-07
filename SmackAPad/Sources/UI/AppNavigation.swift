@@ -6,6 +6,7 @@
 //
 
 import Foundation
+import SwiftUI
 import Observation
 
 /// Global app navigation state managing top-level routes.
@@ -30,5 +31,88 @@ public final class AppNavigation {
 
     public func openLibrary(_ target: LibraryLaunchTarget = .none) {
         route = .library(target)
+    }
+}
+
+/// One session setup for Library and Training; only explicit training modes override defaults.
+enum LessonLaunch: Identifiable {
+    case lesson(Lesson)
+    case review(Lesson)
+    case afterMe(Lesson)
+    case mix(Lesson, lessons: [Lesson], fromMemory: Bool)
+
+    var lesson: Lesson {
+        switch self {
+        case .lesson(let lesson), .review(let lesson), .afterMe(let lesson), .mix(let lesson, _, _):
+            return lesson
+        }
+    }
+
+    var id: Int { lesson.id }
+}
+
+@MainActor
+struct PracticeLessonDestination: View {
+    let launch: LessonLaunch
+    @Environment(SettingsManager.self) private var settings
+    @Environment(ProgressStore.self) private var progress
+    @Environment(MIDIInput.self) private var midi
+
+    var body: some View {
+        switch launch {
+        case .lesson(let lesson):
+            PracticeScreen(lesson: lesson, settings: settings, progress: progress, midi: midi)
+        case .review(let lesson):
+            PracticeScreen(lesson: lesson, settings: settings, progress: progress, midi: midi,
+                           initialFromMemory: true, initialBpm: lesson.targetBpm)
+        case .afterMe(let lesson):
+            PracticeScreen(lesson: lesson, settings: settings, progress: progress, midi: midi,
+                           initialAfterMe: true)
+        case .mix(let lesson, let lessons, let fromMemory):
+            PracticeScreen(lesson: lesson, settings: settings, progress: progress, midi: midi,
+                           initialFromMemory: fromMemory, mixLessons: lessons)
+        }
+    }
+}
+
+private struct PracticeLessonPresentation: ViewModifier {
+    @Binding var launch: LessonLaunch?
+    let namespace: Namespace.ID
+
+    func body(content: Content) -> some View {
+        content.lessonPresentation(lesson: Binding(
+            get: { launch?.lesson },
+            set: { if $0 == nil { launch = nil } }
+        ), namespace: namespace) { lesson in
+            PracticeLessonDestination(launch: launch ?? .lesson(lesson))
+        }
+    }
+}
+
+extension View {
+    func practiceLessonPresentation(launch: Binding<LessonLaunch?>, namespace: Namespace.ID) -> some View {
+        modifier(PracticeLessonPresentation(launch: launch, namespace: namespace))
+    }
+}
+
+/// Debug-only tap-to-presentation measurement, shared across the Home/Training boundary.
+@MainActor
+enum TrainingOpenMeasurement {
+    #if DEBUG
+    private static var started: TimeInterval?
+    #endif
+
+    static func begin() {
+        #if DEBUG
+        started = Date.timeIntervalSinceReferenceDate
+        #endif
+    }
+
+    static func appeared() {
+        #if DEBUG
+        guard let started else { return }
+        print(String(format: "[TrainingOpen] tap to shell %.1f ms", (Date.timeIntervalSinceReferenceDate - started) * 1000))
+        self.started = nil
+        #endif
     }
 }

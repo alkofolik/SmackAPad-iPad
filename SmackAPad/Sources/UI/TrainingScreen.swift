@@ -8,6 +8,7 @@
 //
 
 import SwiftUI
+import Observation
 
 /// Training screen presenting the daily Today plan, memory progression meter,
 /// upcoming review forecast, due lessons, Mix, Play after me, and Training badges.
@@ -23,10 +24,15 @@ public struct TrainingScreen: View {
     @Environment(MIDIInput.self) private var midi
 
     @State private var lessonStore = LessonStore.shared
-    @State private var selectedLesson: Lesson?
+    @State private var selectedLesson: LessonLaunch?
     @State private var selectedAfterMeLesson: Lesson?
     @State private var afterMeLessonID: Int?
-    @State private var mixLessonIDs: [Int] = []
+    @State private var data: TrainingData?
+    @State private var refreshID = UUID()
+    @State private var isVisible = false
+    @State private var loadedDailyMixes = ""
+    @State private var calendarDay = AppCalendar.today()
+    @Environment(\.scenePhase) private var scenePhase
     @State private var playingMix: [Lesson] = []
     @State private var showingMix = false
     @State private var mixFromMemory = false
@@ -42,39 +48,28 @@ public struct TrainingScreen: View {
         self.onHome = onHome
     }
 
-    private var today: String {
-        AppCalendar.today()
+    /// Derived data is built once per input change, never while evaluating the view tree.
+    private struct TrainingData {
+        let dueLessons: [Lesson]
+        let nextLesson: Lesson?
+        var currentPlan: TodayPlan?
+        let mixCandidates: [Lesson]
+        let openLessonIDs: Set<Int>
+        var mixLessons: [Lesson]
+        let afterMeCandidates: [Lesson]
+        let memoryCounts: [Int]
+        let forecast: [(day: String, count: Int)]
+        let stats: BadgeProgressStats
+        let badges: [BadgeDefinition]
+        let hasMasteredLesson: Bool
+        let nearestDueDay: String?
     }
 
-    private var dueLessons: [Lesson] {
-        let ids = progress.dueLessonIds(today: today)
-        return ids.compactMap { lessonStore.lesson(for: $0) }
-    }
-
-    private var nextLesson: Lesson? {
-        let source = NextLessonSource(rawValue: settings.nextLessonSource) ?? .path
-        return progression.nextLesson(after: lessonStore.lesson(for: settings.lastLessonID), source: source)
-            ?? progression.catalog.path.first
-    }
-
-    private var currentPlan: TodayPlan? {
-        if let saved = TodayPlan.decode(savedTodayPlan, today: today) {
-            return saved
-        }
-        return TodayPlan.make(
-            day: today,
-            dueLessonIDs: dueLessons.map(\.id),
-            nextLessonID: nextLesson?.id,
-            mixLessonIDs: mixLessons.map(\.id)
-        )
-    }
-
-    private var isPlanFinished: Bool {
-        if let saved = TodayPlan.decode(savedTodayPlan, today: today), saved.finished {
-            return true
-        }
-        return false
-    }
+    private var today: String { calendarDay }
+    private var dueLessons: [Lesson] { data?.dueLessons ?? [] }
+    private var nextLesson: Lesson? { data?.nextLesson }
+    private var currentPlan: TodayPlan? { data?.currentPlan }
+    private var isPlanFinished: Bool { currentPlan?.finished == true }
 
     public var body: some View {
         NavigationStack {
@@ -83,35 +78,41 @@ public struct TrainingScreen: View {
 
                 ScrollView {
                     VStack(alignment: .leading, spacing: Theme.Space.page) {
-                        todayBand
+                        if data == nil {
+                            ProgressView()
+                                .frame(maxWidth: .infinity, minHeight: 160)
+                                .accessibilityLabel(settings.localized("Training"))
+                        } else {
+                            todayBand
 
-                        if isLandscape {
-                            HStack(alignment: .top, spacing: Theme.Space.page) {
+                            if isLandscape {
+                                HStack(alignment: .top, spacing: Theme.Space.page) {
+                                    memoryMeterPanel
+                                        .frame(maxWidth: .infinity)
+                                    next7DaysPanel
+                                        .frame(maxWidth: .infinity)
+                                }
+                            } else {
                                 memoryMeterPanel
-                                    .frame(maxWidth: .infinity)
                                 next7DaysPanel
-                                    .frame(maxWidth: .infinity)
                             }
-                        } else {
-                            memoryMeterPanel
-                            next7DaysPanel
-                        }
 
-                        dueNowPanel
+                            dueNowPanel
 
-                        if isLandscape {
-                            HStack(alignment: .top, spacing: Theme.Space.page) {
+                            if isLandscape {
+                                HStack(alignment: .top, spacing: Theme.Space.page) {
+                                    mixPanel
+                                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                                    afterMePanel
+                                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                                }
+                            } else {
                                 mixPanel
-                                    .frame(maxWidth: .infinity, maxHeight: .infinity)
                                 afterMePanel
-                                    .frame(maxWidth: .infinity, maxHeight: .infinity)
                             }
-                        } else {
-                            mixPanel
-                            afterMePanel
-                        }
 
-                        trainingBadgesPanel(isLandscape: isLandscape)
+                            trainingBadgesPanel(isLandscape: isLandscape)
+                        }
 
                         Spacer(minLength: Theme.Space.page)
                     }
@@ -134,16 +135,34 @@ public struct TrainingScreen: View {
                     .buttonStyle(PadSecondaryButtonStyle())
                 }
             }
-            .task(id: mixContext) { refreshMix() }
-            .task(id: afterMeContext) { chooseAfterMeLesson() }
+            .task(id: refreshID) {
+                // Let the lightweight shell and pad zoom reach the screen before loading data.
+                do { try await Task.sleep(for: .milliseconds(50)) }
+                catch { return }
+                refreshTrainingData()
+            }
+            .onAppear {
+                isVisible = true
+                refreshID = UUID()
+                TrainingOpenMeasurement.appeared()
+            }
+            .onDisappear { isVisible = false }
+            .onChange(of: savedTodayPlan) { _, _ in refreshID = UUID() }
+            .onChange(of: dailyMixes) { _, value in
+                if value != loadedDailyMixes { refreshID = UUID() }
+            }
+            .onChange(of: scenePhase) { _, phase in
+                if phase == .active { refreshCalendarDay() }
+            }
+            .onReceive(NotificationCenter.default.publisher(for: .NSCalendarDayChanged)) { _ in
+                refreshCalendarDay()
+            }
             .fullScreenCover(item: $selectedAfterMeLesson) { lesson in
-                PracticeScreen(lesson: lesson, settings: settings, progress: progress, midi: midi,
-                               initialAfterMe: true)
+                PracticeLessonDestination(launch: .afterMe(lesson))
             }
             .fullScreenCover(isPresented: $showingMix) {
                 if let first = playingMix.first {
-                    PracticeScreen(lesson: first, settings: settings, progress: progress, midi: midi,
-                                   initialFromMemory: mixFromMemory, mixLessons: playingMix)
+                    PracticeLessonDestination(launch: .mix(first, lessons: playingMix, fromMemory: mixFromMemory))
                 }
             }
             .fullScreenCover(isPresented: $showingToday) {
@@ -154,18 +173,9 @@ public struct TrainingScreen: View {
             .sheet(isPresented: $showingBadges) {
                 BadgesView()
             }
-            .environment(\.lessonNamespace, lessonNamespace)
-            .lessonPresentation(lesson: $selectedLesson, namespace: lessonNamespace) { lesson in
-                PracticeScreen(
-                    lesson: lesson,
-                    settings: settings,
-                    progress: progress,
-                    midi: midi,
-                    initialFromMemory: true,
-                    initialBpm: lesson.targetBpm
-                )
-            }
         }
+        .environment(\.lessonNamespace, lessonNamespace)
+        .practiceLessonPresentation(launch: $selectedLesson, namespace: lessonNamespace)
     }
 
     // MARK: - 1. Today Band
@@ -173,7 +183,7 @@ public struct TrainingScreen: View {
     @ViewBuilder
     private var todayBand: some View {
         let finished = isPlanFinished
-        let isEmptyFirstRun = !progress.hasAnyMasteredLesson && dueLessons.isEmpty
+        let isEmptyFirstRun = data?.hasMasteredLesson != true && dueLessons.isEmpty
 
         VStack(alignment: .leading, spacing: Theme.Space.regular) {
             // Band Header
@@ -279,7 +289,7 @@ public struct TrainingScreen: View {
 
     private var emptyFirstRunBlock: some View {
         Button {
-            selectedLesson = nextLesson
+            if let nextLesson { selectedLesson = .lesson(nextLesson) }
         } label: {
             HStack(spacing: Theme.Space.regular) {
                 VStack(alignment: .leading, spacing: Theme.Space.tight) {
@@ -305,6 +315,7 @@ public struct TrainingScreen: View {
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
+        .lessonSource(nextLesson?.id ?? 0)
     }
 
     private var reviewStepBlock: some View {
@@ -525,11 +536,9 @@ public struct TrainingScreen: View {
     // MARK: - 2. Memory Meter & Next 7 Days
 
     private var memoryMeterPanel: some View {
-        let learned = progress.records.values.filter { $0.mastery && !($0.settled ?? false) && ($0.reviewStep ?? 0) == 0 }.count
-        let step1 = progress.records.values.filter { $0.mastery && !($0.settled ?? false) && $0.reviewStep == 1 }.count
-        let step2 = progress.records.values.filter { $0.mastery && !($0.settled ?? false) && $0.reviewStep == 2 }.count
-        let step3 = progress.records.values.filter { $0.mastery && !($0.settled ?? false) && $0.reviewStep == 3 }.count
-        let settled = progress.records.values.filter { $0.settled == true }.count
+        let counts = data?.memoryCounts ?? [0, 0, 0, 0, 0]
+        let learned = counts[0], step1 = counts[1], step2 = counts[2]
+        let step3 = counts[3], settled = counts[4]
 
         let largest = max(1, max(learned, max(step1, max(step2, max(step3, settled)))))
 
@@ -602,7 +611,7 @@ public struct TrainingScreen: View {
     }
 
     private var next7DaysPanel: some View {
-        let forecast = ReviewForecast.dueCounts(progress.records, from: today, days: 7)
+        let forecast = data?.forecast ?? []
         let offColor = Theme.ledOff
 
         return VStack(alignment: .leading, spacing: Theme.Space.regular) {
@@ -684,11 +693,11 @@ public struct TrainingScreen: View {
             panelHeader(settings.localized("Due now"))
 
             VStack(spacing: 0) {
-                if !progress.hasAnyMasteredLesson {
+                if data?.hasMasteredLesson != true {
                     emptyCardText(settings.localized("Reviews start once a lesson has two stars."))
                 } else if dueLessons.isEmpty {
                     let nextDateFormatted: String = {
-                        if let nearest = progress.nearestDueDay(today: today) {
+                        if let nearest = data?.nearestDueDay {
                             return formattedDate(from: nearest)
                         } else {
                             return "—"
@@ -725,7 +734,7 @@ public struct TrainingScreen: View {
         let lateness = latenessText(for: record?.reviewDueDay)
 
         return Button {
-            selectedLesson = lesson
+            selectedLesson = .review(lesson)
         } label: {
             HStack(alignment: .center, spacing: Theme.Space.regular) {
                 Text(settings.localized(lesson.title))
@@ -752,7 +761,7 @@ public struct TrainingScreen: View {
             .frame(minHeight: 52)
             .overlay(alignment: .bottom) {
                 if record?.reviewDueDay != nil {
-                    HardwareLightBar(active: true, breathes: true)
+                    HardwareLightBar(active: true, breathes: false)
                 }
             }
             .contentShape(Rectangle())
@@ -782,22 +791,9 @@ public struct TrainingScreen: View {
 
     // MARK: - 4. Mix & Play after me
 
-    private var mixCandidates: [Lesson] {
-        TrainingMix.candidates(lessons: progression.catalog.lessons, progress: progress.records,
-            padCount: midi.activeProfile.padCount, openLessonIDs: openMixLessonIDs)
-    }
-
-    private var openMixLessonIDs: Set<Int> {
-        Set(progression.catalog.lessons.filter { store.isUnlocked($0) && progression.isLessonOpen($0) }.map(\.id))
-    }
-
-    private var mixContext: String {
-        "\(today):\(midi.activeProfile.padCount):" + mixCandidates.map(\.id).sorted().map(String.init).joined(separator: ",")
-    }
-
-    private var mixLessons: [Lesson] {
-        mixLessonIDs.compactMap { id in mixCandidates.first { $0.id == id } }
-    }
+    private var mixCandidates: [Lesson] { data?.mixCandidates ?? [] }
+    private var openMixLessonIDs: Set<Int> { data?.openLessonIDs ?? [] }
+    private var mixLessons: [Lesson] { data?.mixLessons ?? [] }
 
     private var mixPanel: some View {
         VStack(alignment: .leading, spacing: Theme.Space.regular) {
@@ -854,14 +850,6 @@ public struct TrainingScreen: View {
     }
 
     private func refreshMix(newDraw: Bool = false) {
-        let key = "\(today):\(midi.activeProfile.padCount)"
-        var saved = (try? JSONDecoder().decode([String: [Int]].self, from: Data(dailyMixes.utf8))) ?? [:]
-        let eligible = Set(mixCandidates.map(\.id))
-        if !newDraw, let cached = saved[key], cached.count >= 2,
-           cached.allSatisfy({ eligible.contains($0) }) {
-            mixLessonIDs = cached
-            return
-        }
         func draw(_ seed: UInt64) -> [Int] {
             TrainingMix.select(lessons: progression.catalog.lessons, progress: progress.records,
                 padCount: midi.activeProfile.padCount, openLessonIDs: openMixLessonIDs,
@@ -871,37 +859,20 @@ public struct TrainingScreen: View {
             : TrainingMix.dailySelection(lessons: progression.catalog.lessons, progress: progress.records,
                 padCount: midi.activeProfile.padCount, openLessonIDs: openMixLessonIDs,
                 day: today, savedJSON: dailyMixes).map(\.id)
-        if newDraw, Set(chosen) == Set(mixLessonIDs) {
+        if newDraw, Set(chosen) == Set(mixLessons.map(\.id)) {
             for seed in 1...50 {
                 let alternative = draw(UInt64(seed))
-                if Set(alternative) != Set(mixLessonIDs) { chosen = alternative; break }
+                if Set(alternative) != Set(mixLessons.map(\.id)) { chosen = alternative; break }
             }
-            if chosen == mixLessonIDs, let first = chosen.first {
+            if chosen == mixLessons.map(\.id), let first = chosen.first {
                 chosen = Array(chosen.dropFirst()) + [first]
             }
         }
-        mixLessonIDs = chosen
-        saved = saved.filter { $0.key.hasPrefix(today + ":") }
-        saved[key] = chosen
-        if let data = try? JSONEncoder().encode(saved), let json = String(data: data, encoding: .utf8) {
-            dailyMixes = json
-        }
+        updateMix(chosen)
+        saveMix(chosen)
     }
 
-    private var afterMeCandidates: [Lesson] {
-        let openIDs = openMixLessonIDs
-        return progression.catalog.lessons.filter { lesson in
-            guard let record = progress.progress(for: lesson.id), record.passed || record.mastery || record.memory,
-                  openIDs.contains(lesson.id) else { return false }
-            return midi.activeProfile.padCount == 16 || EightPadLayout.slots(for: lesson) != nil
-        }.sorted {
-            let leftMemory = progress.progress(for: $0.id)?.memory == true
-            let rightMemory = progress.progress(for: $1.id)?.memory == true
-            return leftMemory != rightMemory ? !leftMemory : $0.id < $1.id
-        }
-    }
-
-    private var afterMeContext: [Int] { afterMeCandidates.map(\.id) }
+    private var afterMeCandidates: [Lesson] { data?.afterMeCandidates ?? [] }
 
     private func chooseAfterMeLesson(another: Bool = false) {
         let candidates = afterMeCandidates
@@ -967,17 +938,7 @@ public struct TrainingScreen: View {
 
     // MARK: - 5. Training Badges
 
-    private var trainingStats: BadgeProgressStats {
-        BadgeEvaluator.evaluate(
-            progress: progress.records,
-            catalog: progression.catalog,
-            definitions: badgeStore.definitions,
-            currentlyEarned: Set(badgeStore.records.keys),
-            trainingLog: progress.trainingLog
-        ).stats
-    }
-
-    private var displayedTrainingBadges: [BadgeDefinition] {
+    private var availableTrainingBadges: [BadgeDefinition] {
         let allTraining = badgeStore.definitions.filter { $0.group == .training }
         let unearned = allTraining.filter { !badgeStore.isEarned(badgeId: $0.id) }
         if !unearned.isEmpty {
@@ -993,8 +954,7 @@ public struct TrainingScreen: View {
     }
 
     private func trainingBadgesPanel(isLandscape: Bool) -> some View {
-        let badges = displayedTrainingBadges
-        let stats = trainingStats
+        let badges = data?.badges ?? []
 
         return VStack(alignment: .leading, spacing: Theme.Space.regular) {
             HStack(alignment: .firstTextBaseline) {
@@ -1014,15 +974,19 @@ public struct TrainingScreen: View {
             if isLandscape {
                 HStack(alignment: .top, spacing: Theme.Space.regular) {
                     ForEach(badges) { badge in
-                        badgeCell(badge: badge, stats: stats)
-                            .frame(maxWidth: .infinity, alignment: .leading)
+                        if let stats = data?.stats {
+                            badgeCell(badge: badge, stats: stats)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                        }
                     }
                 }
             } else {
                 VStack(alignment: .leading, spacing: Theme.Space.regular) {
                     ForEach(badges) { badge in
-                        badgeCell(badge: badge, stats: stats)
-                            .frame(maxWidth: .infinity, alignment: .leading)
+                        if let stats = data?.stats {
+                            badgeCell(badge: badge, stats: stats)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                        }
                     }
                 }
             }
@@ -1087,6 +1051,107 @@ public struct TrainingScreen: View {
             }
         }
         .accessibilityElement(children: .combine)
+    }
+
+    // MARK: - Refresh
+
+    private func refreshCalendarDay() {
+        calendarDay = AppCalendar.today()
+        refreshID = UUID()
+    }
+
+    private func refreshTrainingData() {
+        guard isVisible else { return }
+        let generation = refreshID
+        let started = Date.timeIntervalSinceReferenceDate
+        // Observation invalidates this snapshot once when an actual input changes.
+        // It does not enumerate candidates to manufacture a task identifier on each render.
+        let snapshot = withObservationTracking {
+            makeTrainingData()
+        } onChange: {
+            Task { @MainActor in
+                guard isVisible, refreshID == generation else { return }
+                refreshID = UUID()
+            }
+        }
+        data = snapshot
+        chooseAfterMeLesson()
+        saveMix(snapshot.mixLessons.map(\.id))
+        #if DEBUG
+        print(String(format: "[TrainingOpen] data refresh %.1f ms", (Date.timeIntervalSinceReferenceDate - started) * 1000))
+        #endif
+    }
+
+    private func makeTrainingData() -> TrainingData {
+        let records = progress.records
+        let lessons = progression.catalog.lessons
+        let padCount = midi.activeProfile.padCount
+        // Neither Mix nor After me can offer an unplayed lesson. Avoid expensive
+        // progression checks for the rest of the catalogue, especially on first launch.
+        let practiced = lessons.filter { lesson in
+            guard let record = records[lesson.id] else { return false }
+            return record.passed || record.mastery || record.memory
+        }
+        let openIDs = Set(practiced.filter { store.isUnlocked($0) && progression.isLessonOpen($0) }.map(\.id))
+        let candidates = TrainingMix.candidates(lessons: lessons, progress: records,
+            padCount: padCount, openLessonIDs: openIDs)
+        let mix = TrainingMix.dailySelection(lessons: lessons, progress: records,
+            padCount: padCount, openLessonIDs: openIDs, day: today, savedJSON: dailyMixes)
+        let due = progress.dueLessonIds(today: today).compactMap { lessonStore.lesson(for: $0) }
+        let source = NextLessonSource(rawValue: settings.nextLessonSource) ?? .path
+        let next = progression.nextLesson(after: lessonStore.lesson(for: settings.lastLessonID), source: source)
+            ?? progression.catalog.path.first
+        let plan = TodayPlan.decode(savedTodayPlan, today: today) ?? TodayPlan.make(
+            day: today, dueLessonIDs: due.map(\.id), nextLessonID: next?.id, mixLessonIDs: mix.map(\.id))
+        let afterMe = lessons.filter { lesson in
+            guard let record = records[lesson.id], record.passed || record.mastery || record.memory,
+                  openIDs.contains(lesson.id) else { return false }
+            return padCount == 16 || EightPadLayout.slots(for: lesson) != nil
+        }.sorted {
+            let leftMemory = records[$0.id]?.memory == true
+            let rightMemory = records[$1.id]?.memory == true
+            return leftMemory != rightMemory ? !leftMemory : $0.id < $1.id
+        }
+        var counts = [0, 0, 0, 0, 0]
+        for record in records.values {
+            if record.settled == true { counts[4] += 1 }
+            else if record.mastery {
+                let step = record.reviewStep ?? 0
+                if (0...3).contains(step) { counts[step] += 1 }
+            }
+        }
+        return TrainingData(dueLessons: due, nextLesson: next, currentPlan: plan,
+            mixCandidates: candidates, openLessonIDs: openIDs, mixLessons: mix,
+            afterMeCandidates: afterMe, memoryCounts: counts,
+            forecast: ReviewForecast.dueCounts(records, from: today, days: 7).map { ($0.day, $0.count) },
+            stats: BadgeEvaluator.evaluate(progress: records, catalog: progression.catalog,
+                definitions: badgeStore.definitions, currentlyEarned: Set(badgeStore.records.keys),
+                trainingLog: progress.trainingLog).stats,
+            badges: availableTrainingBadges, hasMasteredLesson: progress.hasAnyMasteredLesson,
+            nearestDueDay: progress.nearestDueDay(today: today))
+    }
+
+    private func updateMix(_ ids: [Int]) {
+        guard var snapshot = data else { return }
+        let byID = Dictionary(uniqueKeysWithValues: snapshot.mixCandidates.map { ($0.id, $0) })
+        snapshot.mixLessons = ids.compactMap { byID[$0] }
+        snapshot.currentPlan = TodayPlan.decode(savedTodayPlan, today: today) ?? TodayPlan.make(
+            day: today, dueLessonIDs: snapshot.dueLessons.map(\.id),
+            nextLessonID: snapshot.nextLesson?.id, mixLessonIDs: ids)
+        data = snapshot
+    }
+
+    private func saveMix(_ ids: [Int]) {
+        var saved = (try? JSONDecoder().decode([String: [Int]].self, from: Data(dailyMixes.utf8))) ?? [:]
+        saved = saved.filter { $0.key.hasPrefix(today + ":") }
+        saved["\(today):\(midi.activeProfile.padCount)"] = ids
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = .sortedKeys
+        if let encoded = try? encoder.encode(saved), let json = String(data: encoded, encoding: .utf8),
+           json != dailyMixes {
+            dailyMixes = json
+        }
+        loadedDailyMixes = dailyMixes
     }
 
     // MARK: - Helpers

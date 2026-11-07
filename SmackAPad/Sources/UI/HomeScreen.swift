@@ -1257,6 +1257,7 @@ public struct HomeScreen: View {
             padNumber: 3,
             isHero: false
         ) {
+            TrainingOpenMeasurement.begin()
             activeDestination = .training
             onNavigateToTraining()
             AppNavigation.shared.openTraining()

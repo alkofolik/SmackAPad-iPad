@@ -24,7 +24,7 @@ struct LibraryScreen: View {
     @State private var showingIntro = false
     @State private var cross = ""
     @State private var query = ""
-    @State private var selectedLesson: Lesson?
+    @State private var selectedLesson: LessonLaunch?
     @Namespace private var lessonNamespace
     @State private var starsBefore: [Bool] = []
     @State private var practicedID: Int?
@@ -57,7 +57,7 @@ struct LibraryScreen: View {
         self.onHome = onHome
         _showingIntro = State(initialValue: launchTarget == .intro)
         if case .lesson(let lesson) = launchTarget {
-            _selectedLesson = State(initialValue: lesson)
+            _selectedLesson = State(initialValue: .lesson(lesson))
         } else {
             _selectedLesson = State(initialValue: nil)
         }
@@ -204,9 +204,7 @@ struct LibraryScreen: View {
             consumedStarLessons.insert(id)
             return fresh
         })
-        .lessonPresentation(lesson: $selectedLesson, namespace: lessonNamespace) { lesson in
-            PracticeScreen(lesson: lesson, settings: settings, progress: progress, midi: midi)
-        }
+        .practiceLessonPresentation(launch: $selectedLesson, namespace: lessonNamespace)
         .onChange(of: selectedLesson?.id) { _, id in
             if let id {
                 practicedID = id
@@ -904,7 +902,7 @@ struct LibraryScreen: View {
             purchaseAccess = lesson.access ?? "full"
             return
         }
-        if progression.isLessonOpen(lesson) { selectedLesson = lesson; return }
+        if progression.isLessonOpen(lesson) { selectedLesson = .lesson(lesson); return }
         guard let stage = catalog.stage(for: lesson) else { return }
         settings.libraryView = LibraryViewMode.path.id
         selections[LibraryViewMode.path.id] = stage.id
