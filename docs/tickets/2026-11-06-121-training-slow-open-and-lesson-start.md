@@ -32,3 +32,10 @@ Status: ready-for-agent. Source: Jakub, 2026-11-06 (iPad).
 ## Done rule
 
 Stop after a successful build. Commit (AGENTS.md); Jakub pushes and tests on the iPad.
+
+## Update 2026-11-07 (still open — never implemented)
+
+No commit exists for this ticket; ticket 128 (skin) was built on top of it anyway, and Jakub still sees the ~5 s delay. Do ticket 130 first (it may already remove part of the lag), then measure again. Extra hypotheses from the read-only review of `TrainingScreen.swift`:
+- `dueLessons` and `currentPlan` are computed properties used ~8× per render; each call scans all progress records, looks up lessons, and `currentPlan` also decodes JSON and builds the mix. Compute once per refresh into `@State`, not per `body`.
+- Ticket 128 added `satinPlate()` (two blurred shadows) to every card and an infinitely breathing `HardwareLightBar` on every due row; with the pad-zoom transition this may block the first frame. Test by disabling them (bisect), report the numbers.
+- `.task(id: mixContext)` and `.task(id: afterMeContext)` run `refreshMix` / `chooseAfterMeLesson` on the main thread at open.

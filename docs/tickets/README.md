@@ -156,3 +156,5 @@ Source: Jakub, retention and memory discussion; legacy "Trénink" concept 2026-1
 | 127 | App skin 2: Practice screen | Gemini 3.8 Flash, high (fallback Codex Sol, high) | after 126 and 124 |
 | 128 | App skin 3: Library, Training, Today | Gemini 3.8 Flash, high (fallback Codex Sol, high) | after 126 and 121 |
 | 129 | App skin 4: remaining screens and banners | Gemini 3.8 Flash, high (fallback Codex Sol, high) | after 126; parallel with 127/128 |
+| 130 | Buttons react again: hit areas after the satin skin, Library lessons open | Codex GPT-6.1 Sol, high (fallback Gemini 3.8 Pro, high) | 1st (before 121 and 131) |
+| 131 | Proposal: one button system for the whole app (HTML previews, no code) | Gemini 3.8 Flash, high (fallback Codex Sol, high) | after 130; implementation ticket after Jakub chooses |
