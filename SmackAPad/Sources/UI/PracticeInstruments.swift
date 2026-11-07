@@ -274,7 +274,6 @@ struct ResultCard: View {
     var badgeText: String? = nil
     var firstStar2Notice: String? = nil
     var memoryNotice: String? = nil
-    var reviewMessage: String? = nil
     let cardWidth: CGFloat
     let cardHeight: CGFloat
     let openRules: () -> Void
@@ -318,7 +317,6 @@ struct ResultCard: View {
         let noticePart: String = {
             var parts: [String] = []
             if let firstStar2Notice { parts.append(firstStar2Notice) }
-            if let reviewMessage { parts.append(reviewMessage) }
             if let memoryNotice { parts.append(memoryNotice) }
             return parts.isEmpty ? "" : ", " + parts.joined(separator: ", ")
         }()
@@ -410,12 +408,6 @@ struct ResultCard: View {
 
             if let firstStar2Notice {
                 Text(firstStar2Notice)
-                    .font(Theme.meta)
-                    .foregroundStyle(Theme.secondary)
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.8)
-            } else if let reviewMessage {
-                Text(reviewMessage)
                     .font(Theme.meta)
                     .foregroundStyle(Theme.secondary)
                     .lineLimit(1)

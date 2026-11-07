@@ -145,24 +145,57 @@ private struct PadLabelLayout: Layout {
     var horizontalPadding: CGFloat
 
     func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
-        guard let label = subviews.first else { return .zero }
-        let labelProposal = ProposedViewSize(
-            width: proposal.width.map { max(0, $0 - horizontalPadding * 2) },
+        guard !subviews.isEmpty else { return .zero }
+        if subviews.count == 1, let label = subviews.first {
+            let labelProposal = ProposedViewSize(
+                width: proposal.width.map { max(0, $0 - horizontalPadding * 2) },
+                height: proposal.height
+            )
+            let ideal = label.sizeThatFits(.unspecified)
+            let fitted = label.sizeThatFits(labelProposal)
+            return CGSize(
+                width: max(Theme.Size.touch, max(ideal.width, fitted.width) + horizontalPadding * 2),
+                height: max(Theme.Size.touch, max(ideal.height, fitted.height))
+            )
+        }
+        let totalSpacing = Theme.Space.small * CGFloat(subviews.count - 1)
+        let innerProposal = ProposedViewSize(
+            width: proposal.width.map { max(0, $0 - horizontalPadding * 2 - totalSpacing) },
             height: proposal.height
         )
-        let ideal = label.sizeThatFits(.unspecified)
-        let fitted = label.sizeThatFits(labelProposal)
+        let ideals = subviews.map { $0.sizeThatFits(.unspecified) }
+        let fitteds = subviews.map { $0.sizeThatFits(innerProposal) }
+        let totalIdealWidth = ideals.map(\.width).reduce(0, +) + totalSpacing
+        let totalFittedWidth = fitteds.map(\.width).reduce(0, +) + totalSpacing
+        let maxHeight = (ideals + fitteds).map(\.height).max() ?? 0
         return CGSize(
-            width: max(Theme.Size.touch, max(ideal.width, fitted.width) + horizontalPadding * 2),
-            height: max(Theme.Size.touch, max(ideal.height, fitted.height))
+            width: max(Theme.Size.touch, max(totalIdealWidth, totalFittedWidth) + horizontalPadding * 2),
+            height: max(Theme.Size.touch, maxHeight)
         )
     }
 
     func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) {
-        subviews.first?.place(
-            at: CGPoint(x: bounds.midX, y: bounds.midY), anchor: .center,
-            proposal: ProposedViewSize(width: max(0, bounds.width - horizontalPadding * 2), height: bounds.height)
-        )
+        guard !subviews.isEmpty else { return }
+        if subviews.count == 1, let label = subviews.first {
+            label.place(
+                at: CGPoint(x: bounds.midX, y: bounds.midY), anchor: .center,
+                proposal: ProposedViewSize(width: max(0, bounds.width - horizontalPadding * 2), height: bounds.height)
+            )
+            return
+        }
+        let totalSpacing = Theme.Space.small * CGFloat(subviews.count - 1)
+        let sizes = subviews.map { $0.sizeThatFits(.unspecified) }
+        let totalContentWidth = sizes.map(\.width).reduce(0, +) + totalSpacing
+        var currentX = bounds.midX - totalContentWidth / 2
+        for (index, subview) in subviews.enumerated() {
+            let size = sizes[index]
+            subview.place(
+                at: CGPoint(x: currentX + size.width / 2, y: bounds.midY),
+                anchor: .center,
+                proposal: ProposedViewSize(size)
+            )
+            currentX += size.width + Theme.Space.small
+        }
     }
 }
 
@@ -181,7 +214,10 @@ private struct PadControlBody<Label: View>: View {
         let policy = Theme.Motion.Policy(reduced: reduced)
         let shape = RoundedRectangle(cornerRadius: Theme.Skin.Pad.radius)
         PadLabelLayout(horizontalPadding: horizontalPadding) {
-            label.lineLimit(1)
+            HStack(spacing: Theme.Space.small) {
+                label
+            }
+            .lineLimit(1)
         }
             .foregroundStyle(foregroundColor)
             .background {

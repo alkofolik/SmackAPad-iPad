@@ -228,12 +228,9 @@ struct PracticeScreen: View {
         } label: {
             Label(settings.localized(onStepResult != nil ? "Today" : (session.isMix ? "Training" : "Library")), systemImage: "square.grid.2x2")
                 .font(Theme.control)
-                .padding(.horizontal, Theme.Space.regular)
-                .frame(minHeight: Theme.Size.touch)
-                .lineLimit(1)
-                .fixedSize(horizontal: true, vertical: false)
         }
         .buttonStyle(PadSecondaryButtonStyle())
+        .fixedSize(horizontal: true, vertical: false)
     }
 
     private var titleAndSubtitle: some View {
@@ -576,7 +573,6 @@ struct PracticeScreen: View {
                     badgeText: session.badgeSummaryMessage(settings: settings),
                     firstStar2Notice: summary.firstStar2 ? settings.localized("Star 3: from tomorrow.") : nil,
                     memoryNotice: (session.fromMemory && session.isMemoryPracticeToday) ? settings.localized("Star 3: from tomorrow.") : nil,
-                    reviewMessage: session.reviewFeedback?.message(language: settings.languagePreference),
                     cardWidth: resultCardWidth,
                     cardHeight: s,
                     openRules: {
@@ -809,7 +805,11 @@ struct PracticeScreen: View {
                     Button {
                         openNextLesson(next)
                     } label: {
-                        Label(settings.localized("Next lesson"), systemImage: store.isUnlocked(next) ? "arrow.right" : "lock")
+                        if store.isUnlocked(next) {
+                            Text(settings.localized("Next lesson"))
+                        } else {
+                            Label(settings.localized("Next lesson"), systemImage: "lock")
+                        }
                     }
                 }
             } label: {
@@ -837,10 +837,13 @@ struct PracticeScreen: View {
                 openNextLesson(next)
             }
         } label: {
-            Label(
-                settings.localized("Next lesson"),
-                systemImage: nextLesson.map { store.isUnlocked($0) ? "arrow.right" : "lock" } ?? "arrow.right"
-            )
+            Group {
+                if let next = nextLesson, !store.isUnlocked(next) {
+                    Label(settings.localized("Next lesson"), systemImage: "lock")
+                } else {
+                    Text(settings.localized("Next lesson"))
+                }
+            }
             .font(Theme.action)
             .lineLimit(1)
             .minimumScaleFactor(0.8)
@@ -1039,6 +1042,9 @@ struct PracticeScreen: View {
                 }
 
                 VStack(alignment: .leading, spacing: Theme.Space.regular) {
+                    if let reviewMessage = session.reviewFeedback?.message(language: settings.languagePreference) {
+                        Text(reviewMessage)
+                    }
                     if let star = summary.finishedByStar {
                         Text(settings.localized(star == 3
                             ? "Run finished: star 3 earned, from memory"

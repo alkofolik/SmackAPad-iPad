@@ -1,6 +1,6 @@
 # 139 — Practice: fix the back button, quieter result card, no arrow on "Další lekce"
 
-Status: ready-for-agent. Type: implementation. Depends on: 136 (button padding). Source: Jakub, 2026-11-07 (Practice screenshots, Rock 1).
+Status: ready-for-human. Type: implementation. Depends on: 136 (button padding). Source: Jakub, 2026-11-07 (Practice screenshots, Rock 1).
 
 ## Problems and rules
 
@@ -11,9 +11,9 @@ Status: ready-for-agent. Type: implementation. Depends on: 136 (button padding).
 ## Acceptance criteria
 
 - [ ] Back button fully visible, never overlaps the title, all three variants, both orientations.
-- [ ] Review line gone from the card, present in details.
-- [ ] "Další lekce" has no arrow; locked state still shows the lock.
-- [ ] Build succeeds. No new tests.
+- [x] Review line gone from the card, present in details.
+- [x] "Další lekce" has no arrow; locked state still shows the lock.
+- [x] Build succeeds. No new tests.
 
 ## Agent assignment
 
@@ -22,3 +22,11 @@ Status: ready-for-agent. Type: implementation. Depends on: 136 (button padding).
 ## Done rule
 
 Stop after successful build. Commit (AGENTS.md); Jakub tests on the iPad.
+
+## Implementation — 2026-11-07
+
+- Enhanced `PadLabelLayout` and `PadControlBody` to support multi-subview labels such as `Label` with icon + title, calculating proper bounds and spacing so icons and titles stay enclosed with 16 pt pad margins.
+- Cleaned up `libraryButton` in `PracticeScreen.swift` by removing duplicate inner padding and fixedSize, locking the button to its intrinsic width so it never gets squeezed or overlaps the lesson title (maintaining 16 pt gap).
+- Removed review status text from `ResultCard` (card remains focused on score and stars) and added it to the session run details sheet.
+- Removed `arrow.right` icon from "Další lekce" / "Next lesson" buttons in both the memory challenge menu and post-run button, preserving the `lock` icon when the next lesson is locked.
+- Build verified with Xcode simulator build without errors.
