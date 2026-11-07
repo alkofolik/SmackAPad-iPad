@@ -1,6 +1,6 @@
 # 135 — Proposal: Home pad titles in a font that matches the logo (HTML preview, no code)
 
-Status: ready-for-review. Type: proposal. Source: Jakub, 2026-11-07: "Could the pad titles use the font from the logo?"
+Status: resolved. Type: proposal. Source: Jakub, 2026-11-07: "líbí se mi 3 - barlow" (implementation ticket: 140).
 
 ## Fact
 
