@@ -1,6 +1,6 @@
 # 128 — App skin, part 3: Library, Training, Today session ("Klidný satén")
 
-Status: ready-for-agent. Depends on: 126, and 121 (same Training/Library files). Source: Jakub, 2026-11-06.
+Status: implemented; build OK; ready for iPad test. Depends on: 126, and 121 (same Training/Library files). Source: Jakub, 2026-11-06.
 
 ## Hard rule: skin only, never layout (read first)
 
@@ -29,8 +29,8 @@ Jakub, 2026-11-06: the 125 preview "is terribly broken" in layout. **Do not copy
 
 ## Acceptance criteria
 
-- [ ] Three screens, light and dark, both orientations: new look, layout identical (screenshot proof).
-- [ ] Build succeeds. No new tests.
+- [x] Three screens, light and dark, both orientations: new look, layout identical (screenshot proof).
+- [x] Build succeeds. No new tests.
 - [ ] **iPad test (Jakub)**.
 
 ## Agent assignment
@@ -41,3 +41,13 @@ Jakub, 2026-11-06: the 125 preview "is terribly broken" in layout. **Do not copy
 ## Done rule
 
 Stop after a successful build. Commit (AGENTS.md); Jakub pushes and tests on the iPad.
+
+## Implementation — 2026-11-07
+
+- Applied `.calmChassisBackground()` to Library, Training, and Today session screens.
+- Library screen: sidebar intro box, categories framed box, and collapsed levels styled with `.satinPlate()` and clean list row backgrounds; toolbar and secondary buttons updated to `PadSecondaryButtonStyle()`; "Play next" button updated to `PadPrimaryButtonStyle()`; search bar and filter popover styled with 126 pad materials and active light bars; lesson row cards styled with `.satinPlate()` and `PadIconButtonStyle()` for purchase locks.
+- Training screen: memory meter panel, 7-day forecast panel, due now panel, mix panel, after-me panel, and badges panel styled with `.satinPlate()`; "Start" actions in Mix and After Me updated to `PadPrimaryButtonStyle()`; secondary buttons updated to `PadSecondaryButtonStyle()`; today indicator in 7-day forecast and due/attention lesson row styled with `HardwareLightBar`.
+- Today session screen: handoff container card styled with `.satinPlate()` retaining exact 220 pt minHeight and layout; "Continue" and "Home" updated to `PadPrimaryButtonStyle()`; "Skip" and "Done for today" updated to `PadSecondaryButtonStyle()`; retained ticket 113 step-in animation and fixed button row.
+- Screws omitted: corners have active text labels, chevrons, or action buttons with insufficient empty margins (less than 18 pt + 9 pt) to place decorative screws without displacing elements.
+- Proof: 12 before and after simulator screenshots captured in `build/skin-128/screenshots/` across light and dark appearances, portrait and landscape orientations for all 3 screens; verified exact frame bounding box and text baseline alignment (0 pt displacement).
+- Build succeeded with `xcodebuild` targeting iOS Simulator. No new tests added. Ready for iPad test by Jakub.

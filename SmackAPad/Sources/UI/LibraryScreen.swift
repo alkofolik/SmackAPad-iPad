@@ -180,13 +180,17 @@ struct LibraryScreen: View {
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
                     Button(settings.localized("Settings")) { showingSettings = true }
-                        .font(Theme.control).frame(minHeight: Theme.Size.touch)
+                        .font(Theme.control)
+                        .padding(.horizontal, Theme.Space.small)
+                        .frame(minHeight: Theme.Size.touch)
+                        .buttonStyle(PadSecondaryButtonStyle())
                 }
             }
         }
         .navigationSplitViewStyle(.balanced)
         .font(Theme.control)
-        .background(Theme.background).foregroundStyle(Theme.ink).tint(Theme.orange)
+        .calmChassisBackground()
+        .foregroundStyle(Theme.ink).tint(Theme.orange)
         .sheet(isPresented: $showingSettings) { SettingsView() }
         .sheet(isPresented: Binding(get: { purchaseAccess != nil }, set: { if !$0 { purchaseAccess = nil } })) {
             PurchaseSheet(access: purchaseAccess ?? "full")
@@ -258,7 +262,6 @@ struct LibraryScreen: View {
             overallCourseProgress
                 .padding(.horizontal, Theme.Space.regular)
                 .padding(.vertical, Theme.Space.small)
-                .background(Theme.background)
             Rectangle()
                 .fill(Theme.hairline)
                 .frame(height: 1)
@@ -294,7 +297,7 @@ struct LibraryScreen: View {
             .font(Theme.control)
             .environment(\.defaultMinListRowHeight, Theme.Size.touch)
             .listRowInsets(EdgeInsets(top: 0, leading: Theme.Space.regular, bottom: 0, trailing: Theme.Space.regular))
-            .listStyle(.sidebar).scrollContentBackground(.hidden).background(Theme.background)
+            .listStyle(.sidebar).scrollContentBackground(.hidden)
         }
         .navigationTitle(settings.localized("Library"))
         .navigationBarTitleDisplayMode(.inline)
@@ -303,8 +306,10 @@ struct LibraryScreen: View {
                 Button(action: onHome) {
                     Text(settings.localized("Home"))
                         .font(Theme.control)
+                        .padding(.horizontal, Theme.Space.small)
                         .frame(minHeight: Theme.Size.touch)
                 }
+                .buttonStyle(PadSecondaryButtonStyle())
             }
         }
     }
@@ -320,18 +325,13 @@ struct LibraryScreen: View {
             .padding(.horizontal, Theme.Space.regular)
             .padding(.vertical, Theme.Space.tight)
             .frame(maxWidth: .infinity, alignment: .leading)
-            .background(showingIntro ? Theme.surface : Theme.background)
+            .satinPlate()
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
-        .clipShape(Rectangle())
-        .overlay(
-            Rectangle()
-                .stroke(Theme.hairline, lineWidth: 1)
-        )
         .listRowInsets(EdgeInsets(top: Theme.Space.tight, leading: Theme.Space.regular, bottom: Theme.Space.tight, trailing: Theme.Space.regular))
         .listRowSeparator(.hidden)
-        .listRowBackground(Theme.background)
+        .listRowBackground(Color.clear)
         .contextMenu {
             Button {
                 pendingCategoryToHide = PendingHideTarget(id: "intro", title: title)
@@ -350,7 +350,7 @@ struct LibraryScreen: View {
             ), options: LibraryViewMode.allCases.map { ($0.id, settings.localized($0.title)) }, fitsColumn: true)
                 .listRowInsets(EdgeInsets(top: Theme.Space.small, leading: Theme.Space.regular, bottom: Theme.Space.small, trailing: Theme.Space.regular))
                 .listRowSeparator(.hidden)
-                .listRowBackground(Theme.background)
+                .listRowBackground(Color.clear)
             if mode == .path {
                 pathLevelsList
             } else {
@@ -359,7 +359,7 @@ struct LibraryScreen: View {
                     categoriesFramedBox(items: nonPathGroups)
                         .listRowInsets(EdgeInsets(top: Theme.Space.tight, leading: Theme.Space.regular, bottom: Theme.Space.tight, trailing: Theme.Space.regular))
                         .listRowSeparator(.hidden)
-                        .listRowBackground(Theme.background)
+                        .listRowBackground(Color.clear)
                 }
             }
         } header: { SectionHeader(title: settings.localized("Organise by")) }
@@ -415,7 +415,7 @@ struct LibraryScreen: View {
             .padding(.vertical, Theme.Space.tight)
             .listRowInsets(EdgeInsets(top: Theme.Space.tight, leading: Theme.Space.regular, bottom: Theme.Space.small, trailing: Theme.Space.regular))
             .listRowSeparator(.hidden)
-            .listRowBackground(Theme.background)
+            .listRowBackground(Color.clear)
         } else {
             Button {
                 expandedLevels.insert(level)
@@ -432,15 +432,10 @@ struct LibraryScreen: View {
                 .padding(.horizontal, Theme.Space.regular)
                 .padding(.vertical, Theme.Space.tight)
                 .frame(maxWidth: .infinity, alignment: .leading)
-                .background(Theme.background)
+                .satinPlate()
                 .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
-            .clipShape(Rectangle())
-            .overlay(
-                Rectangle()
-                    .stroke(Theme.hairline, lineWidth: 1)
-            )
             .accessibilityValue(settings.localized("Collapsed"))
             .contextMenu {
                 Button {
@@ -454,7 +449,7 @@ struct LibraryScreen: View {
             }
             .listRowInsets(EdgeInsets(top: Theme.Space.tight, leading: Theme.Space.regular, bottom: Theme.Space.tight, trailing: Theme.Space.regular))
             .listRowSeparator(.hidden)
-            .listRowBackground(Theme.background)
+            .listRowBackground(Color.clear)
         }
     }
 
@@ -469,12 +464,7 @@ struct LibraryScreen: View {
                 sidebarRow(item)
             }
         }
-        .background(Theme.background)
-        .clipShape(Rectangle())
-        .overlay(
-            Rectangle()
-                .stroke(Theme.hairline, lineWidth: 1)
-        )
+        .satinPlate()
     }
 
     @ViewBuilder
@@ -485,7 +475,7 @@ struct LibraryScreen: View {
                 categoriesFramedBox(items: visibleExtensions)
                     .listRowInsets(EdgeInsets(top: Theme.Space.tight, leading: Theme.Space.regular, bottom: Theme.Space.tight, trailing: Theme.Space.regular))
                     .listRowSeparator(.hidden)
-                    .listRowBackground(Theme.background)
+                    .listRowBackground(Color.clear)
             } header: { SectionHeader(title: settings.localized("Extensions · outside the Path")) }
         }
     }
@@ -512,7 +502,7 @@ struct LibraryScreen: View {
                 }
                 .buttonStyle(.plain)
                 .accessibilityValue(settings.localized(isHiddenExpanded ? "Expanded" : "Collapsed"))
-                .listRowBackground(Theme.background)
+                .listRowBackground(Color.clear)
 
                 if isHiddenExpanded {
                     ForEach(hiddenItems) { item in
@@ -594,21 +584,15 @@ struct LibraryScreen: View {
             } label: {
                 Text(settings.localized("Show"))
                     .font(Theme.meta)
-                    .foregroundStyle(Theme.ink)
                     .padding(.horizontal, Theme.Space.small)
                     .frame(minHeight: Theme.Size.touch)
-                    .background(Theme.surface)
-                    .overlay(
-                        Rectangle()
-                            .stroke(Theme.hairline, lineWidth: 1)
-                    )
             }
-            .buttonStyle(.plain)
+            .buttonStyle(PadSecondaryButtonStyle())
             .accessibilityLabel(settings.localized("Show category"))
         }
         .foregroundStyle(Theme.secondary)
         .opacity(0.7)
-        .listRowBackground(Theme.background)
+        .listRowBackground(Color.clear)
         .contextMenu {
             Button {
                 unhideCategory(item.id)
@@ -692,9 +676,11 @@ struct LibraryScreen: View {
             } ?? settings.localized(group.title)) {
                 courseProgressIndicator(group: group, shown: filtered.count, total: group.lessons.count)
                 Button(settings.localized("Play next")) { if let next { open(next) } }
-                    .font(Theme.control).padding(.horizontal, Theme.Space.small)
+                    .font(Theme.control)
+                    .padding(.horizontal, Theme.Space.small)
                     .frame(minHeight: Theme.Size.touch)
-                    .foregroundStyle(Theme.black).background(Theme.orange).disabled(next == nil)
+                    .buttonStyle(PadPrimaryButtonStyle())
+                    .disabled(next == nil)
             }
             .padding(.bottom, Theme.Space.small)
             if let stage = group.stage, !progression.isStageOpen(stage) || progression.canRelockStage(stage) {
@@ -706,7 +692,7 @@ struct LibraryScreen: View {
                     allCompletedRow
                 } else if filtered.isEmpty {
                     Text(settings.localized("No matching lessons")).font(Theme.control)
-                        .listRowBackground(Theme.background)
+                        .listRowBackground(Color.clear)
                 } else {
                     ForEach(filtered) { lesson in
                         LibraryLessonRow(lesson: lesson, settings: settings, progress: progress,
@@ -727,7 +713,6 @@ struct LibraryScreen: View {
             .motion(Theme.Motion.standard, value: filtered.map(\.id))
         }
         .padding(.horizontal, Theme.Space.page).padding(.top, Theme.Space.small)
-        .background(Theme.background)
         .motion(Theme.Motion.standard, value: group.stage.map { progression.isStageOpen($0) })
     }
 
@@ -741,21 +726,15 @@ struct LibraryScreen: View {
             } label: {
                 Text(settings.localized("Show completed"))
                     .font(Theme.meta)
-                    .foregroundStyle(Theme.ink)
                     .padding(.horizontal, Theme.Space.small)
                     .frame(minHeight: Theme.Size.touch)
-                    .background(Theme.surface)
-                    .overlay(
-                        Rectangle()
-                            .stroke(Theme.hairline, lineWidth: 1)
-                    )
             }
-            .buttonStyle(.plain)
+            .buttonStyle(PadSecondaryButtonStyle())
             .accessibilityLabel(settings.localized("Show completed"))
         }
         .padding(.vertical, Theme.Space.small)
         .listRowInsets(EdgeInsets())
-        .listRowBackground(Theme.background)
+        .listRowBackground(Color.clear)
     }
 
     private func courseProgressIndicator(group: LibraryGroup, shown: Int, total: Int) -> some View {
@@ -792,11 +771,21 @@ struct LibraryScreen: View {
                 .padding(.horizontal, Theme.Space.small)
                 .frame(minWidth: 100, idealWidth: 140, maxWidth: 170)
                 .frame(height: Theme.Size.touch)
-                .background(Theme.surface)
-                .overlay(
-                    Rectangle()
-                        .stroke(Theme.hairline, lineWidth: 1)
-                )
+                .background {
+                    RoundedRectangle(cornerRadius: Theme.Skin.Pad.radius)
+                        .fill(Theme.Skin.Pad.fill)
+                        .overlay {
+                            SkinBevel(radius: Theme.Skin.Pad.radius,
+                                      highlight: Theme.Skin.Pad.highlight,
+                                      shade: Theme.Skin.Pad.shade,
+                                      top: Theme.Skin.Pad.topBevel,
+                                      bottom: Theme.Skin.Pad.bottomBevel)
+                        }
+                        .overlay {
+                            RoundedRectangle(cornerRadius: Theme.Skin.Pad.radius)
+                                .strokeBorder(Theme.hairline, lineWidth: 1)
+                        }
+                }
                 .accessibilityLabel(settings.localized("Search"))
 
                 Menu {
@@ -816,11 +805,27 @@ struct LibraryScreen: View {
                     .font(Theme.meta).lineLimit(1)
                     .padding(.horizontal, Theme.Space.small)
                     .frame(height: Theme.Size.touch)
-                    .background(cross.isEmpty ? Theme.background : Theme.surface)
-                    .overlay(
-                        Rectangle()
-                            .stroke(cross.isEmpty ? Theme.hairline : Theme.ink, lineWidth: 1)
-                    )
+                    .background {
+                        RoundedRectangle(cornerRadius: Theme.Skin.Pad.radius)
+                            .fill(cross.isEmpty ? Theme.Skin.Pad.fill : Theme.surface)
+                            .overlay {
+                                SkinBevel(radius: Theme.Skin.Pad.radius,
+                                          highlight: Theme.Skin.Pad.highlight,
+                                          shade: Theme.Skin.Pad.shade,
+                                          top: Theme.Skin.Pad.topBevel,
+                                          bottom: Theme.Skin.Pad.bottomBevel)
+                            }
+                            .overlay {
+                                RoundedRectangle(cornerRadius: Theme.Skin.Pad.radius)
+                                    .strokeBorder(cross.isEmpty ? Theme.hairline : Theme.ink, lineWidth: 1)
+                            }
+                            .overlay(alignment: .bottom) {
+                                if !cross.isEmpty {
+                                    HardwareLightBar(active: true)
+                                        .clipShape(RoundedRectangle(cornerRadius: Theme.Skin.Pad.radius))
+                                }
+                            }
+                    }
                 }
                 .accessibilityValue(crossTitle)
 
@@ -844,13 +849,8 @@ struct LibraryScreen: View {
                     }
                     .padding(.horizontal, Theme.Space.small)
                     .frame(height: Theme.Size.touch)
-                    .background(Theme.surface)
-                    .overlay(
-                        Rectangle()
-                            .stroke(Theme.hairline, lineWidth: 1)
-                    )
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(PadSecondaryButtonStyle())
                 .accessibilityLabel(settings.localized("Clear filters"))
             }
         }
@@ -966,7 +966,7 @@ struct LibraryLessonRow: View {
                     Image(systemName: "lock").font(Theme.meta).foregroundStyle(Theme.secondary)
                         .frame(minWidth: Theme.Size.touch, minHeight: Theme.Size.touch)
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(PadIconButtonStyle())
                 .accessibilityLabel(settings.localized("Purchase required"))
             }
             if introGoal == nil {
@@ -992,14 +992,7 @@ struct LibraryLessonRow: View {
             }
         }
         .padding(.horizontal, Theme.Space.regular)
-        .background(
-            Rectangle()
-                .fill(Theme.surface)
-        )
-        .overlay(
-            Rectangle()
-                .stroke(Theme.hairline, lineWidth: 1)
-        )
+        .satinPlate()
         .lessonSource(lesson.id)
     }
 

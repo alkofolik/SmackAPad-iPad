@@ -111,10 +111,14 @@ struct TodaySessionScreen: View {
             }
             .scrollBounceBehavior(.basedOnSize)
             .foregroundStyle(Theme.ink)
-            .background(Theme.background.ignoresSafeArea())
+            .calmChassisBackground()
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) {
                     Button(settings.localized("Home"), action: onHome)
+                        .font(Theme.control)
+                        .padding(.horizontal, Theme.Space.small)
+                        .frame(minHeight: Theme.Size.touch)
+                        .buttonStyle(PadSecondaryButtonStyle())
                 }
             }
         }
@@ -160,6 +164,7 @@ struct TodaySessionScreen: View {
                 .transition(policy.cardStep)
         }
         .frame(minHeight: 220, alignment: .topLeading)
+        .satinPlate()
 
         if coordinator.currentStep != nil {
             buttonRow
@@ -282,7 +287,10 @@ struct TodaySessionScreen: View {
 
     private var continueButton: some View {
         Button(settings.localized("Continue")) { openPractice() }
-            .buttonStyle(InstrumentButtonStyle(filled: true, main: true, customHeight: Theme.Size.touch))
+            .font(Theme.action)
+            .padding(.horizontal, Theme.Space.regular)
+            .frame(height: Theme.Size.touch)
+            .buttonStyle(PadPrimaryButtonStyle())
     }
 
     private var skipButton: some View {
@@ -291,7 +299,10 @@ struct TodaySessionScreen: View {
                 coordinator.skip(progress: progress)
             }
         }
-        .buttonStyle(InstrumentButtonStyle(customHeight: Theme.Size.touch))
+        .font(Theme.control)
+        .padding(.horizontal, Theme.Space.regular)
+        .frame(height: Theme.Size.touch)
+        .buttonStyle(PadSecondaryButtonStyle())
     }
 
     private var doneButton: some View {
@@ -300,7 +311,10 @@ struct TodaySessionScreen: View {
                 coordinator.finish(progress: progress)
             }
         }
-        .buttonStyle(InstrumentButtonStyle(customHeight: Theme.Size.touch))
+        .font(Theme.control)
+        .padding(.horizontal, Theme.Space.regular)
+        .frame(height: Theme.Size.touch)
+        .buttonStyle(PadSecondaryButtonStyle())
     }
 
     @ViewBuilder
@@ -335,7 +349,10 @@ struct TodaySessionScreen: View {
         }
 
         Button(settings.localized("Home"), action: onHome)
-            .buttonStyle(InstrumentButtonStyle(filled: true, main: true, customHeight: Theme.Size.touch))
+            .font(Theme.action)
+            .padding(.horizontal, Theme.Space.regular)
+            .frame(height: Theme.Size.touch)
+            .buttonStyle(PadPrimaryButtonStyle())
             .padding(.top, Theme.Space.small)
     }
 

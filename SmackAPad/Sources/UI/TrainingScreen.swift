@@ -120,7 +120,7 @@ public struct TrainingScreen: View {
                     .frame(maxWidth: .infinity)
                 }
             }
-            .background(Theme.background.ignoresSafeArea())
+            .calmChassisBackground()
             .navigationTitle(settings.localized("Training"))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -128,8 +128,10 @@ public struct TrainingScreen: View {
                     Button(action: onHome) {
                         Text(settings.localized("Home"))
                             .font(Theme.control)
+                            .padding(.horizontal, Theme.Space.small)
                             .frame(minHeight: Theme.Size.touch)
                     }
+                    .buttonStyle(PadSecondaryButtonStyle())
                 }
             }
             .task(id: mixContext) { refreshMix() }
@@ -213,12 +215,9 @@ public struct TrainingScreen: View {
                             postponeTodayReviews()
                         }
                         .font(Theme.strong(18))
-                        .foregroundStyle(Theme.black)
                         .padding(.horizontal, 18)
                         .frame(minHeight: Theme.Size.touch)
-                        .background(Color.clear)
-                        .overlay(Rectangle().stroke(Theme.black, lineWidth: 2))
-                        .contentShape(Rectangle())
+                        .buttonStyle(PadSecondaryButtonStyle())
                         .disabled(dueLessons.isEmpty)
                         .opacity(dueLessons.isEmpty ? 0.4 : 1.0)
 
@@ -226,12 +225,9 @@ public struct TrainingScreen: View {
                             startTodayTraining()
                         }
                         .font(Theme.strong(18))
-                        .foregroundStyle(Theme.white)
                         .padding(.horizontal, 22)
                         .frame(minHeight: Theme.Size.touch)
-                        .background(Theme.black)
-                        .overlay(Rectangle().stroke(Theme.black, lineWidth: 2))
-                        .contentShape(Rectangle())
+                        .buttonStyle(PadSecondaryButtonStyle())
                     }
                 }
             } else if finished {
@@ -551,8 +547,7 @@ public struct TrainingScreen: View {
         }
         .padding(Theme.Space.regular)
         .frame(maxWidth: .infinity, alignment: .topLeading)
-        .background(Theme.surface)
-        .overlay(Rectangle().stroke(Theme.ink, lineWidth: 2))
+        .satinPlate()
     }
 
     private func meterColumn(label: String, count: Int, largest: Int, isSettled: Bool, accessibilityPrefix: String) -> some View {
@@ -634,8 +629,13 @@ public struct TrainingScreen: View {
                     .padding(.vertical, 8)
                     .padding(.horizontal, 2)
                     .frame(maxWidth: .infinity)
-                    .background(isToday ? Theme.background : Color.clear)
+                    .background(isToday ? Theme.surface : Color.clear)
                     .overlay(Rectangle().stroke(isToday ? Theme.ink : Theme.hairline, lineWidth: 2))
+                    .overlay(alignment: .bottom) {
+                        if isToday {
+                            HardwareLightBar(active: true, breathes: false)
+                        }
+                    }
                     .accessibilityElement(children: .ignore)
                     .accessibilityLabel("\(fullName), \(countPlural)")
                 }
@@ -647,8 +647,7 @@ public struct TrainingScreen: View {
         }
         .padding(Theme.Space.regular)
         .frame(maxWidth: .infinity, alignment: .topLeading)
-        .background(Theme.surface)
-        .overlay(Rectangle().stroke(Theme.ink, lineWidth: 2))
+        .satinPlate()
     }
 
     private func weekdayNames(from dayString: String) -> (short: String, full: String) {
@@ -706,8 +705,7 @@ public struct TrainingScreen: View {
         }
         .padding(Theme.Space.regular)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Theme.surface)
-        .overlay(Rectangle().stroke(Theme.ink, lineWidth: 2))
+        .satinPlate()
     }
 
     private func emptyCardText(_ text: String) -> some View {
@@ -748,6 +746,11 @@ public struct TrainingScreen: View {
             }
             .padding(.vertical, 8)
             .frame(minHeight: 52)
+            .overlay(alignment: .bottom) {
+                if record?.reviewDueDay != nil {
+                    HardwareLightBar(active: true, breathes: true)
+                }
+            }
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
@@ -821,20 +824,25 @@ public struct TrainingScreen: View {
                     playingMix = mixLessons
                     showingMix = true
                 }
-                .buttonStyle(InstrumentButtonStyle(filled: true, main: true))
+                .font(Theme.action)
+                .padding(.horizontal, Theme.Space.regular)
+                .frame(minHeight: Theme.Size.control)
+                .buttonStyle(PadPrimaryButtonStyle())
                 .disabled(mixLessons.count < 2)
 
                 Button(settings.localized("New mix")) {
                     refreshMix(newDraw: true)
                 }
-                .buttonStyle(InstrumentButtonStyle())
+                .font(Theme.control)
+                .padding(.horizontal, Theme.Space.regular)
+                .frame(minHeight: Theme.Size.touch)
+                .buttonStyle(PadSecondaryButtonStyle())
                 .disabled(mixLessons.count < 2)
             }
         }
         .padding(Theme.Space.regular)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Theme.surface)
-        .overlay(Rectangle().stroke(Theme.ink, lineWidth: 2))
+        .satinPlate()
     }
 
     private func refreshMix(newDraw: Bool = false) {
@@ -920,12 +928,18 @@ public struct TrainingScreen: View {
                     Button(settings.localized("Start")) {
                         selectedAfterMeLesson = lesson
                     }
-                    .buttonStyle(InstrumentButtonStyle(filled: true, main: true))
+                    .font(Theme.action)
+                    .padding(.horizontal, Theme.Space.regular)
+                    .frame(minHeight: Theme.Size.control)
+                    .buttonStyle(PadPrimaryButtonStyle())
 
                     Button(settings.localized("Another lesson")) {
                         chooseAfterMeLesson(another: true)
                     }
-                    .buttonStyle(InstrumentButtonStyle())
+                    .font(Theme.control)
+                    .padding(.horizontal, Theme.Space.regular)
+                    .frame(minHeight: Theme.Size.touch)
+                    .buttonStyle(PadSecondaryButtonStyle())
                     .disabled(afterMeCandidates.count < 2)
                 }
             } else {
@@ -936,8 +950,7 @@ public struct TrainingScreen: View {
         }
         .padding(Theme.Space.regular)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Theme.surface)
-        .overlay(Rectangle().stroke(Theme.ink, lineWidth: 2))
+        .satinPlate()
     }
 
     // MARK: - 5. Training Badges
@@ -1004,8 +1017,7 @@ public struct TrainingScreen: View {
         }
         .padding(Theme.Space.regular)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Theme.surface)
-        .overlay(Rectangle().stroke(Theme.ink, lineWidth: 2))
+        .satinPlate()
     }
 
     private func badgeCell(badge: BadgeDefinition, stats: BadgeProgressStats) -> some View {
