@@ -222,7 +222,9 @@ final class PracticeSession {
 
         func acceptsInput(at time: Double) -> Bool {
             guard let responseStart else { return true }
-            return time >= responseStart && time < start + duration
+            // Host-clock round trips can land a hit that is exactly on the boundary a
+            // few nanoseconds early, so the response start gets a 0.1 ms tolerance.
+            return time >= responseStart - 0.0001 && time < start + duration
         }
     }
 
