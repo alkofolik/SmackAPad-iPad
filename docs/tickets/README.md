@@ -160,3 +160,9 @@ Source: Jakub, retention and memory discussion; legacy "Trénink" concept 2026-1
 | 131 | Proposal: one button system for the whole app (HTML previews, no code) | Gemini 3.8 Flash, high (fallback Codex Sol, high) | done (Jakub chose Var B + full pads + flash) |
 | 132 | Announce in advance that the third star unlocks the next day | Gemini 3.8 Flash, medium (fallback Codex Sol, medium) | any time (Practice files; not Training/Library while 121 runs) |
 | 133 | Implement unified button system (Variant B + full toolbar pads + flash) | Codex GPT-6.1 Sol, high (fallback Gemini 3.8 Flash, high) | after 131 (ready) |
+| 134 | Shorter Czech labels: "Intro", "Systém" | Gemini 3.8 Flash, low (fallback Codex Sol, low) | any time |
+| 135 | Proposal: Home pad titles in a logo-like font (HTML preview, no code) | Gemini 3.8 Flash, medium (fallback Codex Sol, medium) | any time; implementation after Jakub picks |
+| 136 | Buttons: inner padding, no outline underneath, "Domů" never wraps | Codex GPT-6.1 Sol, high (fallback Gemini 3.8 Flash, high) | right after 133 (same files) |
+| 137 | Proposal: Today session screen redesign (HTML previews, no code) | Gemini 3.8 Flash, high (fallback Codex Sol, high) | any time; implementation after Jakub picks |
+| 138 | Library and Intro: all filters visible, no grey band behind rows | Gemini 3.8 Flash, high (fallback Codex Sol, medium) | after 133 |
+| 139 | Practice: back button fix, review line only in details, no arrow on Next lesson | Gemini 3.8 Flash, medium (fallback Codex Sol, medium) | after 136 |
