@@ -414,10 +414,10 @@ final class PracticeSession {
         return denominator > 0 ? Double(matches) / Double(denominator) : nil
     }
     var patternHits: [LessonHit] { practiceLesson.hits(forPadCount: midi.activeProfile.padCount) }
-    /// True when From memory is active on the same calendar day as the goal-tempo star (Star 2).
+    /// True on the same calendar day as the goal-tempo star (Star 2).
     /// Star 3 cannot be earned today; today From memory is practice only.
     var isMemoryPracticeToday: Bool {
-        guard fromMemory, !listen, !afterMe else { return false }
+        guard !listen, !afterMe else { return false }
         let saved = progress.progress(for: lesson.id)
         guard let saved, saved.mastery, !saved.memory else { return false }
         if let masteryDay = saved.masteryDay {

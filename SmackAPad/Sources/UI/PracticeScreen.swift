@@ -574,8 +574,8 @@ struct PracticeScreen: View {
                     event: session.starEvent,
                     announcement: resultAnnouncement,
                     badgeText: session.badgeSummaryMessage(settings: settings),
-                    firstStar2Notice: summary.firstStar2 ? settings.localized("Comes back tomorrow for a review") : nil,
-                    memoryNotice: session.isMemoryPracticeToday ? settings.localized("From memory: from tomorrow. Today it is practice.") : nil,
+                    firstStar2Notice: summary.firstStar2 ? settings.localized("Star 3: from tomorrow.") : nil,
+                    memoryNotice: (session.fromMemory && session.isMemoryPracticeToday) ? settings.localized("Star 3: from tomorrow.") : nil,
                     reviewMessage: session.reviewFeedback?.message(language: settings.languagePreference),
                     cardWidth: resultCardWidth,
                     cardHeight: s,
@@ -927,10 +927,10 @@ struct PracticeScreen: View {
             if !stars.isEmpty { parts.append(stars) }
         }
         if session.summary?.firstStar2 == true {
+            parts.append(settings.localized("Star 3: from tomorrow."))
             parts.append(settings.localized("Comes back tomorrow for a review"))
-        }
-        if session.isMemoryPracticeToday {
-            parts.append(settings.localized("From memory: from tomorrow. Today it is practice."))
+        } else if session.fromMemory && session.isMemoryPracticeToday {
+            parts.append(settings.localized("Star 3: from tomorrow."))
         }
         if let reviewMessage = session.reviewFeedback?.message(language: settings.languagePreference) {
             parts.append(reviewMessage)
@@ -1043,10 +1043,11 @@ struct PracticeScreen: View {
                         Text(settings.localized(star == 3
                             ? "Run finished: star 3 earned, from memory"
                             : "Run finished: star 2 earned, goal tempo"))
-                    } else if session.isMemoryPracticeToday {
-                        Text(settings.localized("From memory: from tomorrow. Today it is practice."))
+                    } else if session.fromMemory && session.isMemoryPracticeToday {
+                        Text(settings.localized("Star 3: from tomorrow."))
                     }
                     if summary.firstStar2 {
+                        Text(settings.localized("Star 3: from tomorrow."))
                         Text(settings.localized("Comes back tomorrow for a review"))
                     }
                     Text("\(summary.bpm) BPM · \(settings.localized("%lld completed passes", summary.passes))")
@@ -1215,7 +1216,8 @@ struct PracticeScreen: View {
                             for: index,
                             lesson: session.lesson,
                             padCount: midi.activeProfile.padCount,
-                            settings: settings
+                            settings: settings,
+                            isMemoryPracticeToday: session.isMemoryPracticeToday
                         )
                         HStack(alignment: .top, spacing: Theme.Space.small) {
                             StarShape()

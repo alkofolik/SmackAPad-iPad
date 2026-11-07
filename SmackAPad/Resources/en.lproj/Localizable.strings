@@ -649,6 +649,7 @@
 "Last run %lld percent, %lld BPM, %@" = "Last run %lld percent, %lld BPM, %@";
 "Result %lld percent, %lld of 3 stars, %@" = "Result %lld percent, %lld of 3 stars, %@";
 "From memory: from tomorrow. Today it is practice." = "From memory: from tomorrow. Today it is practice.";
+"Star 3: from tomorrow." = "Star 3: from tomorrow.";
 
 "Training" = "Training";
 "%lld due" = "%lld due";

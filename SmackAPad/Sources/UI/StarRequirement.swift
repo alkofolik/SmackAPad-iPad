@@ -21,9 +21,6 @@ public enum StarRequirement {
         mode: PracticeMode = .learning,
         isMemoryPracticeToday: Bool = false
     ) -> String {
-        if starIndex == 2 && isMemoryPracticeToday {
-            return language.localized("From memory: from tomorrow. Today it is practice.")
-        }
         switch starIndex {
         case 0:
             if requiredRuns > 1 {
@@ -46,19 +43,24 @@ public enum StarRequirement {
                 }
             }
         case 2:
+            let base: String
             if let bpm = targetBpm {
                 if requiredRuns > 1 {
-                    return language.localized(mode == .challenge ? "Play it from memory at %lld BPM, 80 %% or better, %lld times in a row" : "Play it from memory at %lld BPM, 80 %% or better, %lld times", bpm, requiredRuns)
+                    base = language.localized(mode == .challenge ? "Play it from memory at %lld BPM, 80 %% or better, %lld times in a row" : "Play it from memory at %lld BPM, 80 %% or better, %lld times", bpm, requiredRuns)
                 } else {
-                    return language.localized("Play it from memory at %lld BPM, 80 %% or better", bpm)
+                    base = language.localized("Play it from memory at %lld BPM, 80 %% or better", bpm)
                 }
             } else {
                 if requiredRuns > 1 {
-                    return language.localized(mode == .challenge ? "Play it from memory at goal tempo, 80 %% or better, %lld times in a row" : "Play it from memory at goal tempo, 80 %% or better, %lld times", requiredRuns)
+                    base = language.localized(mode == .challenge ? "Play it from memory at goal tempo, 80 %% or better, %lld times in a row" : "Play it from memory at goal tempo, 80 %% or better, %lld times", requiredRuns)
                 } else {
-                    return language.localized("Play it from memory at goal tempo, 80 % or better")
+                    base = language.localized("Play it from memory at goal tempo, 80 % or better")
                 }
             }
+            if isMemoryPracticeToday {
+                return "\(base) · \(language.localized("Star 3: from tomorrow."))"
+            }
+            return base
         default:
             return ""
         }

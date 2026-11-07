@@ -1,6 +1,6 @@
 # 132 — Announce in advance that the third star unlocks the next day
 
-Status: ready-for-agent. Source: Jakub, 2026-11-07. He thought the third star was broken at 100 %; it was the ticket 97 rule (star 3 only on a day after star 2). Not a bug; the player must be told earlier.
+Status: ready-for-human. Source: Jakub, 2026-11-07. He thought the third star was broken at 100 %; it was the ticket 97 rule (star 3 only on a day after star 2). Not a bug; the player must be told earlier.
 
 ## Problem
 
@@ -20,11 +20,11 @@ The sentence "From memory: from tomorrow. Today it is practice." only appears af
 
 ## Acceptance criteria
 
-- [ ] Run that earns star 2 shows "Star 3: from tomorrow."
-- [ ] Same day, From memory off: star 3 requirement line already says it.
-- [ ] Next day (clock changed): line is gone; star 3 can be earned as before.
-- [ ] Czech and English texts; both orientations, no layout shift.
-- [ ] Build succeeds. No new tests, existing ones still pass.
+- [x] Run that earns star 2 shows "Star 3: from tomorrow."
+- [x] Same day, From memory off: star 3 requirement line already says it.
+- [x] Next day (clock changed): line is gone; star 3 can be earned as before.
+- [x] Czech and English texts; both orientations, no layout shift.
+- [x] Build succeeds. No new tests, existing ones still pass.
 - [ ] **iPad test (Jakub)**: earn star 2, read the line; next day it is gone.
 
 ## Agent assignment

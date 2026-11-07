@@ -652,6 +652,7 @@
 "Last run %lld percent, %lld BPM, %@" = "Poslední běh %lld procent, %lld BPM, %@";
 "Result %lld percent, %lld of 3 stars, %@" = "Výsledek %lld procent, %lld ze 3 hvězd, %@";
 "From memory: from tomorrow. Today it is practice." = "Zpaměti: od zítřka. Dnes je to jen cvičení.";
+"Star 3: from tomorrow." = "Třetí hvězda: od zítřka.";
 
 "Training" = "Trénink";
 "%lld due" = "%lld na řadě";
