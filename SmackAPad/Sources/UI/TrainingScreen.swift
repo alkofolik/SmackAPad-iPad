@@ -964,22 +964,19 @@ public struct TrainingScreen: View {
                 .buttonStyle(.plain)
             }
 
-            if isLandscape {
-                HStack(alignment: .top, spacing: Theme.Space.regular) {
-                    ForEach(badges) { badge in
-                        if let stats = data?.stats {
-                            badgeCell(badge: badge, stats: stats)
-                                .frame(maxWidth: .infinity, alignment: .leading)
-                        }
-                    }
-                }
-            } else {
-                VStack(alignment: .leading, spacing: Theme.Space.regular) {
-                    ForEach(badges) { badge in
-                        if let stats = data?.stats {
-                            badgeCell(badge: badge, stats: stats)
-                                .frame(maxWidth: .infinity, alignment: .leading)
-                        }
+            LazyVGrid(
+                columns: [GridItem(.adaptive(minimum: 120, maximum: 160), spacing: 14)],
+                alignment: .leading,
+                spacing: 14
+            ) {
+                ForEach(badges) { badge in
+                    if let stats = data?.stats {
+                        BadgeTile(
+                            badge: badge,
+                            stats: stats,
+                            earnedDate: badgeStore.earnedDate(for: badge.id),
+                            compact: true
+                        )
                     }
                 }
             }
@@ -987,63 +984,6 @@ public struct TrainingScreen: View {
         .padding(Theme.Space.regular)
         .frame(maxWidth: .infinity, alignment: .leading)
         .satinPlate()
-    }
-
-    private func badgeCell(badge: BadgeDefinition, stats: BadgeProgressStats) -> some View {
-        let isEarned = badgeStore.isEarned(badgeId: badge.id)
-        let goal = BadgeEvaluator.targetGoal(for: badge, in: stats)
-        let current = BadgeEvaluator.currentProgress(for: badge, in: stats)
-        let done = min(goal, current)
-        let offColor = Theme.ledOff
-
-        return HStack(alignment: .center, spacing: 12) {
-            // Medal circle (44x44)
-            ZStack {
-                Circle()
-                    .stroke(Theme.ink, lineWidth: 2)
-                    .frame(width: 44, height: 44)
-
-                if isEarned {
-                    Image(systemName: "checkmark")
-                        .font(Theme.strong(16))
-                        .foregroundStyle(Theme.orange)
-                } else {
-                    Text("\(done)")
-                        .font(Theme.strong(15).monospacedDigit())
-                        .foregroundStyle(Theme.ink)
-                }
-            }
-            .frame(width: 44, height: 44)
-
-            VStack(alignment: .leading, spacing: 4) {
-                Text(settings.localized(badge.name))
-                    .font(Theme.strong(17))
-                    .foregroundStyle(Theme.ink)
-                    .lineLimit(1)
-
-                Text(isEarned ? "\(settings.localized(badge.condition)) · \(settings.localized("Earned"))"
-                              : "\(settings.localized(badge.condition)) · \(done) / \(goal)")
-                    .font(Theme.text(13))
-                    .foregroundStyle(Theme.secondary)
-                    .lineLimit(1)
-
-                // 8pt progress bar
-                GeometryReader { barGeom in
-                    let w = barGeom.size.width
-                    let fraction = goal > 0 ? min(1.0, max(0.0, Double(done) / Double(goal))) : 0.0
-                    ZStack(alignment: .leading) {
-                        Rectangle()
-                            .fill(offColor)
-                            .frame(width: w, height: 8)
-                        Rectangle()
-                            .fill(isEarned ? Theme.orange : Theme.ink)
-                            .frame(width: w * fraction, height: 8)
-                    }
-                }
-                .frame(height: 8)
-            }
-        }
-        .accessibilityElement(children: .combine)
     }
 
     // MARK: - Refresh

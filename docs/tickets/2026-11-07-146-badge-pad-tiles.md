@@ -1,6 +1,6 @@
 # 146 — Badges as pad tiles with icons (variant B)
 
-Status: ready-for-agent. Source: Jakub, 2026-11-07, chose variant B in ticket 145. Preview: `docs/design/2026-11-07-badge-images/badge-images.html` (section "Varianta B"); open it in a browser, light and dark.
+Status: done. Source: Jakub, 2026-11-07, chose variant B in ticket 145. Preview: `docs/design/2026-11-07-badge-images/badge-images.html` (section "Varianta B"); open it in a browser, light and dark.
 
 ## Goal
 
@@ -49,11 +49,11 @@ The Badges screen becomes a grid of square pad-style tiles, each with an icon. A
 
 ## Acceptance criteria
 
-- [ ] Every badge shows its icon; earned tiles light up, unearned tiles are dim with progress.
-- [ ] Tap shows the condition and progress or date.
-- [ ] Banner shows the icon.
-- [ ] Light and dark mode, landscape and portrait, Czech names fit in 2 lines (longest: "Dvě stě padesát v tempu", "Jazz a New Orleans – hotovo").
-- [ ] Build succeeds. No new tests.
+- [x] Every badge shows its icon; earned tiles light up, unearned tiles are dim with progress.
+- [x] Tap shows the condition and progress or date.
+- [x] Banner shows the icon.
+- [x] Light and dark mode, landscape and portrait, Czech names fit in 2 lines (longest: "Dvě stě padesát v tempu", "Jazz a New Orleans – hotovo").
+- [x] Build succeeds. No new tests.
 - [ ] **iPad test (Jakub)**: open Badges, tap a few tiles, earn a badge and see the banner.
 
 ## Agent assignment

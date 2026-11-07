@@ -6,7 +6,8 @@
     "metric": "passed",
     "goal": 1,
     "tier": 1,
-    "group": "passed"
+    "group": "passed",
+    "icon": "pad"
   },
   {
     "id": "groove-builder",
@@ -15,7 +16,8 @@
     "metric": "passed",
     "goal": 10,
     "tier": 2,
-    "group": "passed"
+    "group": "passed",
+    "icon": "pad"
   },
   {
     "id": "groove-veteran",
@@ -24,7 +26,8 @@
     "metric": "passed",
     "goal": 50,
     "tier": 3,
-    "group": "passed"
+    "group": "passed",
+    "icon": "pad"
   },
   {
     "id": "hundred-grooves",
@@ -33,7 +36,8 @@
     "metric": "passed",
     "goal": 100,
     "tier": 3,
-    "group": "passed"
+    "group": "passed",
+    "icon": "pad"
   },
   {
     "id": "two-fifty-grooves",
@@ -42,7 +46,8 @@
     "metric": "passed",
     "goal": 250,
     "tier": 3,
-    "group": "passed"
+    "group": "passed",
+    "icon": "pad"
   },
   {
     "id": "almost-all",
@@ -51,7 +56,8 @@
     "metric": "passed",
     "goal": 500,
     "tier": 3,
-    "group": "passed"
+    "group": "passed",
+    "icon": "pad"
   },
   {
     "id": "every-lesson",
@@ -60,7 +66,8 @@
     "metric": "passed",
     "goal": "catalogue",
     "tier": 3,
-    "group": "passed"
+    "group": "passed",
+    "icon": "pad"
   },
   {
     "id": "goal-tempo",
@@ -69,7 +76,8 @@
     "metric": "mastered",
     "goal": 1,
     "tier": 1,
-    "group": "mastered"
+    "group": "mastered",
+    "icon": "metronome"
   },
   {
     "id": "ten",
@@ -78,7 +86,8 @@
     "metric": "mastered",
     "goal": 10,
     "tier": 2,
-    "group": "mastered"
+    "group": "mastered",
+    "icon": "metronome"
   },
   {
     "id": "quarter-hundred-tempo",
@@ -87,7 +96,8 @@
     "metric": "mastered",
     "goal": 25,
     "tier": 2,
-    "group": "mastered"
+    "group": "mastered",
+    "icon": "metronome"
   },
   {
     "id": "fifty",
@@ -96,7 +106,8 @@
     "metric": "mastered",
     "goal": 50,
     "tier": 3,
-    "group": "mastered"
+    "group": "mastered",
+    "icon": "metronome"
   },
   {
     "id": "hundred-tempo",
@@ -105,7 +116,8 @@
     "metric": "mastered",
     "goal": 100,
     "tier": 3,
-    "group": "mastered"
+    "group": "mastered",
+    "icon": "metronome"
   },
   {
     "id": "two-fifty-tempo",
@@ -114,7 +126,8 @@
     "metric": "mastered",
     "goal": 250,
     "tier": 3,
-    "group": "mastered"
+    "group": "mastered",
+    "icon": "metronome"
   },
   {
     "id": "all-at-tempo",
@@ -123,7 +136,8 @@
     "metric": "mastered",
     "goal": "catalogue",
     "tier": 3,
-    "group": "mastered"
+    "group": "mastered",
+    "icon": "metronome"
   },
   {
     "id": "by-heart",
@@ -132,7 +146,8 @@
     "metric": "memory",
     "goal": 1,
     "tier": 1,
-    "group": "memory"
+    "group": "memory",
+    "icon": "eye"
   },
   {
     "id": "memory-player",
@@ -141,7 +156,8 @@
     "metric": "memory",
     "goal": 5,
     "tier": 2,
-    "group": "memory"
+    "group": "memory",
+    "icon": "eye"
   },
   {
     "id": "memory-master",
@@ -150,7 +166,8 @@
     "metric": "memory",
     "goal": 20,
     "tier": 3,
-    "group": "memory"
+    "group": "memory",
+    "icon": "eye"
   },
   {
     "id": "memory-fifty",
@@ -159,7 +176,8 @@
     "metric": "memory",
     "goal": 50,
     "tier": 3,
-    "group": "memory"
+    "group": "memory",
+    "icon": "eye"
   },
   {
     "id": "memory-hundred",
@@ -168,7 +186,8 @@
     "metric": "memory",
     "goal": 100,
     "tier": 3,
-    "group": "memory"
+    "group": "memory",
+    "icon": "eye"
   },
   {
     "id": "course-done",
@@ -177,7 +196,8 @@
     "metric": "courses",
     "goal": 1,
     "tier": 1,
-    "group": "courses"
+    "group": "courses",
+    "icon": "flag"
   },
   {
     "id": "course-collector",
@@ -186,7 +206,8 @@
     "metric": "courses",
     "goal": 3,
     "tier": 2,
-    "group": "courses"
+    "group": "courses",
+    "icon": "flag"
   },
   {
     "id": "course-master",
@@ -195,7 +216,8 @@
     "metric": "courses",
     "goal": 5,
     "tier": 3,
-    "group": "courses"
+    "group": "courses",
+    "icon": "flag"
   },
   {
     "id": "half-of-courses",
@@ -204,7 +226,8 @@
     "metric": "courses",
     "goal": 12,
     "tier": 3,
-    "group": "courses"
+    "group": "courses",
+    "icon": "flag"
   },
   {
     "id": "all-courses",
@@ -213,7 +236,8 @@
     "metric": "courses",
     "goal": 23,
     "tier": 3,
-    "group": "courses"
+    "group": "courses",
+    "icon": "flag"
   },
   {
     "id": "level-1-done",
@@ -222,7 +246,8 @@
     "metric": "level-1",
     "goal": "group",
     "tier": 2,
-    "group": "levels"
+    "group": "levels",
+    "icon": "stairs"
   },
   {
     "id": "level-2-done",
@@ -231,7 +256,8 @@
     "metric": "level-2",
     "goal": "group",
     "tier": 2,
-    "group": "levels"
+    "group": "levels",
+    "icon": "stairs"
   },
   {
     "id": "level-3-done",
@@ -240,7 +266,8 @@
     "metric": "level-3",
     "goal": "group",
     "tier": 2,
-    "group": "levels"
+    "group": "levels",
+    "icon": "stairs"
   },
   {
     "id": "level-4-done",
@@ -249,7 +276,8 @@
     "metric": "level-4",
     "goal": "group",
     "tier": 2,
-    "group": "levels"
+    "group": "levels",
+    "icon": "stairs"
   },
   {
     "id": "level-5-done",
@@ -258,7 +286,8 @@
     "metric": "level-5",
     "goal": "group",
     "tier": 2,
-    "group": "levels"
+    "group": "levels",
+    "icon": "stairs"
   },
   {
     "id": "genre-rock",
@@ -267,7 +296,8 @@
     "metric": "genre-rock",
     "goal": "group",
     "tier": 2,
-    "group": "genres"
+    "group": "genres",
+    "icon": "bolt"
   },
   {
     "id": "genre-funk",
@@ -276,7 +306,8 @@
     "metric": "genre-funk",
     "goal": "group",
     "tier": 2,
-    "group": "genres"
+    "group": "genres",
+    "icon": "sine"
   },
   {
     "id": "genre-jazz",
@@ -285,7 +316,8 @@
     "metric": "genre-jazz",
     "goal": "group",
     "tier": 2,
-    "group": "genres"
+    "group": "genres",
+    "icon": "note"
   },
   {
     "id": "genre-hiphop",
@@ -294,7 +326,8 @@
     "metric": "genre-hiphop",
     "goal": "group",
     "tier": 2,
-    "group": "genres"
+    "group": "genres",
+    "icon": "mic"
   },
   {
     "id": "genre-world",
@@ -303,7 +336,8 @@
     "metric": "genre-world",
     "goal": "group",
     "tier": 2,
-    "group": "genres"
+    "group": "genres",
+    "icon": "globe"
   },
   {
     "id": "genre-electronic",
@@ -312,7 +346,8 @@
     "metric": "genre-electronic",
     "goal": "group",
     "tier": 2,
-    "group": "genres"
+    "group": "genres",
+    "icon": "square"
   },
   {
     "id": "genre-pop",
@@ -321,7 +356,8 @@
     "metric": "genre-pop",
     "goal": "group",
     "tier": 2,
-    "group": "genres"
+    "group": "genres",
+    "icon": "heart"
   },
   {
     "id": "tech-basic",
@@ -330,7 +366,8 @@
     "metric": "tech-groove",
     "goal": "group",
     "tier": 2,
-    "group": "techniques"
+    "group": "techniques",
+    "icon": "four"
   },
   {
     "id": "tech-sixteenths",
@@ -339,7 +376,8 @@
     "metric": "tech-sixteenths",
     "goal": "group",
     "tier": 2,
-    "group": "techniques"
+    "group": "techniques",
+    "icon": "sixteen"
   },
   {
     "id": "tech-ghost",
@@ -348,7 +386,8 @@
     "metric": "tech-ghost",
     "goal": "group",
     "tier": 2,
-    "group": "techniques"
+    "group": "techniques",
+    "icon": "ghost"
   },
   {
     "id": "tech-swing",
@@ -357,7 +396,8 @@
     "metric": "tech-swing",
     "goal": "group",
     "tier": 2,
-    "group": "techniques"
+    "group": "techniques",
+    "icon": "triplet"
   },
   {
     "id": "tech-fills",
@@ -366,7 +406,8 @@
     "metric": "tech-fills",
     "goal": "group",
     "tier": 2,
-    "group": "techniques"
+    "group": "techniques",
+    "icon": "tom"
   },
   {
     "id": "review-first",
@@ -375,7 +416,8 @@
     "metric": "reviewsPassed",
     "goal": 1,
     "tier": 1,
-    "group": "training"
+    "group": "training",
+    "icon": "review"
   },
   {
     "id": "review-ten",
@@ -384,7 +426,8 @@
     "metric": "reviewsPassed",
     "goal": 10,
     "tier": 2,
-    "group": "training"
+    "group": "training",
+    "icon": "review"
   },
   {
     "id": "review-fifty",
@@ -393,7 +436,8 @@
     "metric": "reviewsPassed",
     "goal": 50,
     "tier": 3,
-    "group": "training"
+    "group": "training",
+    "icon": "review"
   },
   {
     "id": "settled-first",
@@ -402,7 +446,8 @@
     "metric": "settled",
     "goal": 1,
     "tier": 1,
-    "group": "training"
+    "group": "training",
+    "icon": "lock"
   },
   {
     "id": "settled-ten",
@@ -411,7 +456,8 @@
     "metric": "settled",
     "goal": 10,
     "tier": 2,
-    "group": "training"
+    "group": "training",
+    "icon": "lock"
   },
   {
     "id": "settled-fifty",
@@ -420,7 +466,8 @@
     "metric": "settled",
     "goal": 50,
     "tier": 3,
-    "group": "training"
+    "group": "training",
+    "icon": "lock"
   },
   {
     "id": "bounce-back",
@@ -429,7 +476,8 @@
     "metric": "bounceBacks",
     "goal": 1,
     "tier": 1,
-    "group": "training"
+    "group": "training",
+    "icon": "bounce"
   },
   {
     "id": "mix-first",
@@ -438,7 +486,8 @@
     "metric": "mixRounds",
     "goal": 1,
     "tier": 1,
-    "group": "training"
+    "group": "training",
+    "icon": "shuffle"
   },
   {
     "id": "mix-memory",
@@ -447,7 +496,8 @@
     "metric": "mixMemoryRounds",
     "goal": 1,
     "tier": 2,
-    "group": "training"
+    "group": "training",
+    "icon": "shuffle"
   },
   {
     "id": "mix-twenty",
@@ -456,7 +506,8 @@
     "metric": "mixRounds",
     "goal": 20,
     "tier": 3,
-    "group": "training"
+    "group": "training",
+    "icon": "shuffle"
   },
   {
     "id": "after-me-first",
@@ -465,7 +516,8 @@
     "metric": "afterMeLessons",
     "goal": 1,
     "tier": 1,
-    "group": "training"
+    "group": "training",
+    "icon": "ear"
   },
   {
     "id": "after-me-ten",
@@ -474,7 +526,8 @@
     "metric": "afterMeLessons",
     "goal": 10,
     "tier": 2,
-    "group": "training"
+    "group": "training",
+    "icon": "ear"
   },
   {
     "id": "training-days-10",
@@ -483,7 +536,8 @@
     "metric": "trainingDays",
     "goal": 10,
     "tier": 2,
-    "group": "training"
+    "group": "training",
+    "icon": "calendar"
   },
   {
     "id": "training-days-50",
@@ -492,6 +546,7 @@
     "metric": "trainingDays",
     "goal": 50,
     "tier": 3,
-    "group": "training"
+    "group": "training",
+    "icon": "calendar"
   }
 ]

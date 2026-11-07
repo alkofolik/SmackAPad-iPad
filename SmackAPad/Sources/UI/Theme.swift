@@ -15,6 +15,7 @@ enum Theme {
     private static let cavityBlack = UIColor(hex: 0x0C0B0A)
 
     static let orange = Color(red: 1, green: 107.0 / 255, blue: 0)
+    static let cavity = Color(uiColor: cavityBlack)
     static let black = Color(uiColor: softBlack)
     /// Result marks on the orange band: correct, off the beat, wrong or missed.
     static let markCorrect = Color(red: 0.04, green: 0.34, blue: 0.15)

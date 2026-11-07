@@ -23,11 +23,15 @@ struct BadgeBanner: View {
 
     var body: some View {
         HStack(spacing: Theme.Space.small) {
-            Image(systemName: "rosette")
-                .font(.system(size: 22, weight: .semibold))
-                .foregroundStyle(Theme.orange)
-
             if event.badges.count == 1, let badge = event.badges.first {
+                Image(badge.iconAssetName)
+                    .renderingMode(.template)
+                    .resizable()
+                    .scaledToFit()
+                    .frame(width: 24, height: 24)
+                    .foregroundStyle(Theme.orange)
+                    .shadow(color: Theme.orange.opacity(0.6), radius: 3)
+
                 VStack(alignment: .leading, spacing: 1) {
                     Text(settings.localized("New badge"))
                         .font(Theme.text(12))
@@ -40,6 +44,11 @@ struct BadgeBanner: View {
                         .minimumScaleFactor(0.85)
                 }
             } else {
+                Image(systemName: "rosette")
+                    .font(.system(size: 22, weight: .semibold))
+                    .foregroundStyle(Theme.orange)
+                    .shadow(color: Theme.orange.opacity(0.6), radius: 3)
+
                 Text(settings.localized("Earned %lld new badges", event.badges.count))
                     .font(Theme.strong(18))
                     .foregroundStyle(Theme.ink)
