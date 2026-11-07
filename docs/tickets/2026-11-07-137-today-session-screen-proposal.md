@@ -1,6 +1,6 @@
 # 137 — Proposal: Today session screen redesign (HTML previews, no code)
 
-Status: ready-for-human. Type: proposal. Source: Jakub, 2026-11-07 (screenshot "Opakování 2 ze 2"): "The whole Today window is ugly: ugly text, not centred, empty, unfinished."
+Status: resolved. Type: proposal. Source: Jakub, 2026-11-07 (screenshot "Opakování 2 ze 2"): "The whole Today window is ugly: ugly text, not centred, empty, unfinished." Result: Jakub selected **Variant 1** (Satinová řídící konzole / Studio Console Plate) on 2026-11-07 ("líbí se mi 1"). Follow-up implementation ticket: 141.
 
 ## Today's state
 
