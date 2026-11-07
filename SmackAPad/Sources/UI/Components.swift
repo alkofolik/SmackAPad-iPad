@@ -139,6 +139,33 @@ struct HardwareLightBar: View {
     }
 }
 
+/// Preserve the label's natural width while allowing full-width labels to fill their proposal.
+/// Padding belongs to the face, so even a compressed toolbar cannot put text on its border.
+private struct PadLabelLayout: Layout {
+    var horizontalPadding: CGFloat
+
+    func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
+        guard let label = subviews.first else { return .zero }
+        let labelProposal = ProposedViewSize(
+            width: proposal.width.map { max(0, $0 - horizontalPadding * 2) },
+            height: proposal.height
+        )
+        let ideal = label.sizeThatFits(.unspecified)
+        let fitted = label.sizeThatFits(labelProposal)
+        return CGSize(
+            width: max(Theme.Size.touch, max(ideal.width, fitted.width) + horizontalPadding * 2),
+            height: max(Theme.Size.touch, max(ideal.height, fitted.height))
+        )
+    }
+
+    func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) {
+        subviews.first?.place(
+            at: CGPoint(x: bounds.midX, y: bounds.midY), anchor: .center,
+            proposal: ProposedViewSize(width: max(0, bounds.width - horizontalPadding * 2), height: bounds.height)
+        )
+    }
+}
+
 private struct PadControlBody<Label: View>: View {
     let label: Label
     let pressed: Bool
@@ -146,29 +173,30 @@ private struct PadControlBody<Label: View>: View {
     var destructive = false
     var selected: Bool? = nil
     var showLightBar = false
+    var horizontalPadding: CGFloat = 16
     @Environment(\.accessibilityReduceMotion) private var reduced
     @Environment(\.isEnabled) private var enabled
 
     var body: some View {
         let policy = Theme.Motion.Policy(reduced: reduced)
-        label
-            .frame(minWidth: Theme.Size.touch, minHeight: Theme.Size.touch)
+        let shape = RoundedRectangle(cornerRadius: Theme.Skin.Pad.radius)
+        PadLabelLayout(horizontalPadding: horizontalPadding) {
+            label.lineLimit(1)
+        }
             .foregroundStyle(foregroundColor)
             .background {
-                RoundedRectangle(cornerRadius: Theme.Skin.Pad.radius)
+                shape
                     .fill(backgroundColor)
                     .overlay {
-                        RoundedRectangle(cornerRadius: Theme.Skin.Pad.radius)
-                            .strokeBorder(borderColor, lineWidth: 1)
+                        shape.strokeBorder(borderColor, lineWidth: 1)
                     }
-                    .shadow(color: shadowColor, radius: shadowRadius, y: shadowY)
                     .allowsHitTesting(false)
             }
-            .contentShape(RoundedRectangle(cornerRadius: Theme.Skin.Pad.radius))
+            .contentShape(shape)
             .overlay(alignment: .bottom) {
                 if showLightBar, let selected {
                     Color.clear.overlay(alignment: .bottom) { HardwareLightBar(active: selected) }
-                        .clipShape(RoundedRectangle(cornerRadius: Theme.Skin.Pad.radius))
+                        .clipShape(shape)
                         .motion(Theme.Motion.fast, value: selected)
                         .allowsHitTesting(false)
                         .accessibilityHidden(true)
@@ -176,7 +204,7 @@ private struct PadControlBody<Label: View>: View {
             }
             .overlay {
                 if enabled {
-                    RoundedRectangle(cornerRadius: Theme.Skin.Pad.radius)
+                    shape
                         .fill(policy.reduced ? Color.black : Color.white)
                         .opacity(pressed ? (policy.reduced ? Theme.Skin.Pad.reducedPressOpacity : Theme.Skin.Pad.flashOpacity) : 0)
                         .animation(policy.reduced ? nil : policy.animation(Theme.Motion.padFlash), value: pressed)
@@ -186,7 +214,7 @@ private struct PadControlBody<Label: View>: View {
             .scaleEffect(enabled ? policy.scale(pressed ? Theme.Skin.Pad.pressedScale : 1) : 1)
             .offset(y: enabled ? policy.offset(pressed ? Theme.Skin.Pad.pressedY : 0) : 0)
             .animation(enabled ? policy.animation(pressed ? Theme.Motion.padFlash : Theme.Motion.padPress) : nil, value: pressed)
-        // Callers size the label; the style guarantees a matching minimum touch target.
+        // Face, border and press overlays use the same bounds; no offset shadow layer.
     }
 
     private var foregroundColor: Color {
@@ -226,25 +254,6 @@ private struct PadControlBody<Label: View>: View {
             return Theme.hairline
         }
     }
-
-    private var shadowColor: Color {
-        guard enabled else {
-            return Color.clear
-        }
-        if primary {
-            return Theme.orange.opacity(0.25)
-        } else {
-            return Theme.black.opacity(0.08)
-        }
-    }
-
-    private var shadowRadius: CGFloat {
-        primary ? 3 : 1.5
-    }
-
-    private var shadowY: CGFloat {
-        primary ? 2 : 1
-    }
 }
 
 struct PadPrimaryButtonStyle: ButtonStyle {
@@ -283,7 +292,8 @@ struct PadIconButtonStyle: ButtonStyle {
             pressed: configuration.isPressed,
             destructive: destructive || configuration.role == .destructive,
             selected: selected,
-            showLightBar: false
+            showLightBar: false,
+            horizontalPadding: 0
         )
     }
 }
@@ -297,9 +307,35 @@ struct HardwareKeyButtonStyle: ButtonStyle {
             label: configuration.label,
             pressed: configuration.isPressed,
             selected: isSelected,
-            showLightBar: isSelected
+            showLightBar: isSelected,
+            horizontalPadding: 12
         )
         .accessibilityAddTraits(isSelected ? .isSelected : [])
+    }
+}
+
+/// Custom pads provide their own face; hide the system's additional glass capsule.
+struct PadToolbarItem<Content: View>: ToolbarContent {
+    let placement: ToolbarItemPlacement
+    private let content: Content
+
+    init(placement: ToolbarItemPlacement, @ViewBuilder content: () -> Content) {
+        self.placement = placement
+        self.content = content()
+    }
+
+    @ToolbarContentBuilder
+    var body: some ToolbarContent {
+        if #available(iOS 26.0, *) {
+            ToolbarItem(placement: placement) {
+                content.fixedSize(horizontal: true, vertical: false)
+            }
+            .sharedBackgroundVisibility(.hidden)
+        } else {
+            ToolbarItem(placement: placement) {
+                content.fixedSize(horizontal: true, vertical: false)
+            }
+        }
     }
 }
 

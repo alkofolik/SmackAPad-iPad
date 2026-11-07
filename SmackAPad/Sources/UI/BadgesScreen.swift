@@ -43,7 +43,7 @@ struct BadgesView: View {
                 ToolbarItem(placement: .principal) {
                     ScreenHeader(title: settings.localized("Badges"))
                 }
-                ToolbarItem(placement: .confirmationAction) {
+                PadToolbarItem(placement: .confirmationAction) {
                     Button {
                         if let onDismiss { onDismiss() } else { dismiss() }
                     } label: {

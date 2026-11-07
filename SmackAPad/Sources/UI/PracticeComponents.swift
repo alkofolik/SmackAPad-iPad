@@ -207,9 +207,10 @@ struct TransportControls: View {
                                 .lineLimit(1)
                                 .fixedSize()
                         }
-                        .frame(width: s, height: buttonHeight)
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
                     }
                     .buttonStyle(PadSecondaryButtonStyle())
+                    .frame(width: s, height: buttonHeight)
                     .disabled(!enabled)
                     .opacity(enabled ? 1 : 0.5)
 
@@ -225,9 +226,10 @@ struct TransportControls: View {
                             .lineLimit(1)
                             .fixedSize()
                     }
-                    .frame(width: s, height: s)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
                 }
                 .buttonStyle(PadSecondaryButtonStyle())
+                .frame(width: s, height: s)
                 .disabled(!enabled)
                 .opacity(enabled ? 1 : 0.5)
             }
@@ -245,9 +247,10 @@ struct TransportControls: View {
                             .id(running ? "Stop" : "Start")
                             .transition(.opacity)
                     }
-                    .frame(width: s, height: buttonHeight)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
                 }
                 .buttonStyle(PadPrimaryButtonStyle())
+                .frame(width: s, height: buttonHeight)
                 .disabled(!running && !enabled)
                 .opacity(running || enabled ? 1 : 0.5)
 
@@ -259,9 +262,10 @@ struct TransportControls: View {
                             .lineLimit(1)
                             .fixedSize()
                     }
-                    .frame(width: s, height: buttonHeight)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
                 }
                 .buttonStyle(PadSecondaryButtonStyle())
+                .frame(width: s, height: buttonHeight)
                 .disabled(!enabled)
                 .opacity(enabled ? 1 : 0.5)
             }
@@ -279,7 +283,6 @@ struct TransportControls: View {
                         .font(Theme.action)
                         .lineLimit(1).fixedSize()
                 }
-                .padding(.horizontal, Theme.Space.regular)
                 .frame(height: Theme.Size.control)
                 .frame(maxWidth: .infinity)
             }
@@ -295,7 +298,6 @@ struct TransportControls: View {
                         .lineLimit(1).fixedSize()
                         .id(actionTitle).transition(.opacity)
                 }
-                .padding(.horizontal, Theme.Space.regular)
                 .frame(height: Theme.Size.control)
                 .frame(maxWidth: .infinity)
             }
@@ -309,7 +311,6 @@ struct TransportControls: View {
                     PracticeGlyph(kind: .restart).frame(width: 20, height: 20)
                     Text(settings.localized("Restart")).lineLimit(1).fixedSize()
                 }
-                .padding(.horizontal, Theme.Space.regular)
                 .frame(height: Theme.Size.control)
                 .frame(maxWidth: .infinity)
             }

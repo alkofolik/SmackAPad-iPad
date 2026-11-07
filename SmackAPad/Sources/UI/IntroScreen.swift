@@ -161,7 +161,7 @@ public struct IntroScreen: View {
         .toolbar {
             ToolbarItem(placement: .principal) { ScreenHeader(title: settings.localized("Intro Exercises")) }
             if hasAnyCompletedLesson {
-                ToolbarItem(placement: .topBarTrailing) {
+                PadToolbarItem(placement: .topBarTrailing) {
                     Button {
                         settings.hideCompletedLessons.toggle()
                     } label: {
@@ -172,7 +172,7 @@ public struct IntroScreen: View {
                         .font(Theme.control)
                         .frame(minHeight: Theme.Size.touch)
                     }
-                    .buttonStyle(PadIconButtonStyle())
+                    .buttonStyle(PadSecondaryButtonStyle())
                     .accessibilityLabel(settings.localized(settings.hideCompletedLessons ? "Show completed" : "Hide completed"))
                 }
             }
@@ -190,7 +190,6 @@ public struct IntroScreen: View {
             } label: {
                 Text(settings.localized("Show completed"))
                     .font(Theme.meta)
-                    .padding(.horizontal, Theme.Space.small)
                     .frame(minHeight: Theme.Size.touch)
             }
             .buttonStyle(PadSecondaryButtonStyle())

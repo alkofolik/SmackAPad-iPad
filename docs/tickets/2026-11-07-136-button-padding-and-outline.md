@@ -1,6 +1,6 @@
 # 136 — Buttons: room around the text, no second outline underneath, no wrapped labels
 
-Status: ready-for-agent. Type: implementation. Depends on: 133 (same files; do right after 133, or in the same session). Source: Jakub, 2026-11-07, 13 screenshots: "All buttons are ugly, text is tight, and there is some outline under them."
+Status: ready-for-human. Type: implementation. Depends on: 133 (same files; do right after 133, or in the same session). Source: Jakub, 2026-11-07, 13 screenshots: "All buttons are ugly, text is tight, and there is some outline under them."
 
 ## What is wrong (seen on the iPad)
 
@@ -25,8 +25,8 @@ Today session ("Domů", "Pokračovat", "Přeskočit", "Konec na dnes"), Library 
 - [ ] No label touches its border; no label wraps or shows "…", Czech and English.
 - [ ] No second outline/shadow under any button.
 - [ ] "Domů" on one line on all screens, both orientations.
-- [ ] Touch size ≥ 44 pt kept (ticket 130).
-- [ ] Build succeeds. No new tests.
+- [x] Touch size ≥ 44 pt kept (ticket 130).
+- [x] Build succeeds. No new tests.
 
 ## Agent assignment
 
@@ -36,3 +36,13 @@ Today session ("Domů", "Pokračovat", "Přeskočit", "Konec na dnes"), Library 
 ## Done rule
 
 Stop after successful build. Commit (AGENTS.md); Jakub tests on the iPad.
+
+
+## Implementation — 2026-11-07
+
+- Shared text pad styles now own 16 pt horizontal padding; compact hardware keys use 12 pt, and icon-only pads retain their existing size. A shared label layout preserves natural one-line width while allowing full-width buttons to expand. Minimum face size remains 48 pt.
+- Removed the pad drop shadow. Face, inset border, light bar clipping and press flash share the same bounds and 6 pt radius. `SkinBevel` is not used by these button styles and remains unchanged on structural plates.
+- Added `PadToolbarItem` for custom toolbar pads: intrinsic label width is preserved, and the system glass background is hidden on iOS 26 and later, with the existing toolbar behavior retained on earlier versions.
+- Removed duplicate caller padding in the affected screens. Controller mapping actions keep an 8 pt gap and move below their description when the row cannot fit. Practice transport frames now size the complete button, including its padding.
+- Validation: Debug simulator build succeeded with Xcode 27.1 (`generic/platform=iOS Simulator`, code signing disabled). The first sandboxed attempt could not launch Swift macro plugins; the retry outside the sandbox passed. No tests were added or run.
+- Pending Jakub's iPad check: Czech and English labels, both orientations, no wrapped or truncated titles, no extra toolbar capsule or outline, and controller mapping spacing. The visual acceptance boxes remain open until that check.

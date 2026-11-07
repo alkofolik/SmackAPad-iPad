@@ -149,7 +149,7 @@ struct PurchaseSheet: View {
             }
             .calmChassisBackground().foregroundStyle(Theme.ink).tint(Theme.ink)
             .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
+                PadToolbarItem(placement: .cancellationAction) {
                     Button {
                         if let onDismiss { onDismiss() } else { dismiss() }
                     } label: {

@@ -125,11 +125,10 @@ public struct TrainingScreen: View {
             .navigationTitle(settings.localized("Training"))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                ToolbarItem(placement: .topBarLeading) {
+                PadToolbarItem(placement: .topBarLeading) {
                     Button(action: onHome) {
                         Text(settings.localized("Home"))
                             .font(Theme.control)
-                            .padding(.horizontal, Theme.Space.small)
                             .frame(minHeight: Theme.Size.touch)
                     }
                     .buttonStyle(PadSecondaryButtonStyle())
@@ -226,7 +225,6 @@ public struct TrainingScreen: View {
                         } label: {
                             Text(settings.localized("Not today"))
                                 .font(Theme.strong(18))
-                                .padding(.horizontal, 18)
                                 .frame(minHeight: Theme.Size.touch)
                         }
                         .buttonStyle(PadSecondaryButtonStyle())
@@ -238,7 +236,6 @@ public struct TrainingScreen: View {
                         } label: {
                             Text(settings.localized("START TODAY'S TRAINING"))
                                 .font(Theme.strong(18))
-                                .padding(.horizontal, 22)
                                 .frame(minHeight: Theme.Size.touch)
                         }
                         .buttonStyle(PadSecondaryButtonStyle())
@@ -826,7 +823,6 @@ public struct TrainingScreen: View {
                 } label: {
                     Text(settings.localized("Start"))
                         .font(Theme.action)
-                        .padding(.horizontal, Theme.Space.regular)
                         .frame(minHeight: Theme.Size.control)
                 }
                 .buttonStyle(PadPrimaryButtonStyle())
@@ -837,7 +833,6 @@ public struct TrainingScreen: View {
                 } label: {
                     Text(settings.localized("New mix"))
                         .font(Theme.control)
-                        .padding(.horizontal, Theme.Space.regular)
                         .frame(minHeight: Theme.Size.touch)
                 }
                 .buttonStyle(PadSecondaryButtonStyle())
@@ -909,7 +904,6 @@ public struct TrainingScreen: View {
                     } label: {
                         Text(settings.localized("Start"))
                             .font(Theme.action)
-                            .padding(.horizontal, Theme.Space.regular)
                             .frame(minHeight: Theme.Size.control)
                     }
                     .buttonStyle(PadPrimaryButtonStyle())
@@ -919,7 +913,6 @@ public struct TrainingScreen: View {
                     } label: {
                         Text(settings.localized("Another lesson"))
                             .font(Theme.control)
-                            .padding(.horizontal, Theme.Space.regular)
                             .frame(minHeight: Theme.Size.touch)
                     }
                     .buttonStyle(PadSecondaryButtonStyle())

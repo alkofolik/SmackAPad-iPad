@@ -331,7 +331,7 @@ public struct SettingsView: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .principal) { ScreenHeader(title: settings.localized("Settings")) }
-                ToolbarItem(placement: .confirmationAction) {
+                PadToolbarItem(placement: .confirmationAction) {
                     Button {
                         if let onDismiss { onDismiss() } else { dismiss() }
                     } label: {

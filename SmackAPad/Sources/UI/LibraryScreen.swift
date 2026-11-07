@@ -178,11 +178,10 @@ struct LibraryScreen: View {
             }
             .motion(Theme.Motion.standard, value: showingIntro ? "intro" : mode.id + (group?.id ?? ""))
             .toolbar {
-                ToolbarItem(placement: .topBarTrailing) {
+                PadToolbarItem(placement: .topBarTrailing) {
                     Button { showingSettings = true } label: {
                         Text(settings.localized("Settings"))
                             .font(Theme.control)
-                            .padding(.horizontal, Theme.Space.small)
                             .frame(minHeight: Theme.Size.touch)
                     }
                     .buttonStyle(PadSecondaryButtonStyle())
@@ -302,11 +301,10 @@ struct LibraryScreen: View {
         .navigationTitle(settings.localized("Library"))
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
-            ToolbarItem(placement: .topBarLeading) {
+            PadToolbarItem(placement: .topBarLeading) {
                 Button(action: onHome) {
                     Text(settings.localized("Home"))
                         .font(Theme.control)
-                        .padding(.horizontal, Theme.Space.small)
                         .frame(minHeight: Theme.Size.touch)
                 }
                 .buttonStyle(PadSecondaryButtonStyle())
@@ -584,7 +582,6 @@ struct LibraryScreen: View {
             } label: {
                 Text(settings.localized("Show"))
                     .font(Theme.meta)
-                    .padding(.horizontal, Theme.Space.small)
                     .frame(minHeight: Theme.Size.touch)
             }
             .buttonStyle(PadSecondaryButtonStyle())
@@ -678,7 +675,6 @@ struct LibraryScreen: View {
                 Button { if let next { open(next) } } label: {
                     Text(settings.localized("Play next"))
                         .font(Theme.control)
-                        .padding(.horizontal, Theme.Space.small)
                         .frame(minHeight: Theme.Size.touch)
                 }
                 .buttonStyle(PadPrimaryButtonStyle())
@@ -728,7 +724,6 @@ struct LibraryScreen: View {
             } label: {
                 Text(settings.localized("Show completed"))
                     .font(Theme.meta)
-                    .padding(.horizontal, Theme.Space.small)
                     .frame(minHeight: Theme.Size.touch)
             }
             .buttonStyle(PadSecondaryButtonStyle())
@@ -829,7 +824,6 @@ struct LibraryScreen: View {
                         Image(systemName: "xmark").font(Theme.meta)
                         Text(settings.localized("Clear filters")).font(Theme.meta).fixedSize()
                     }
-                    .padding(.horizontal, Theme.Space.small)
                     .frame(height: Theme.Size.touch)
                 }
                 .buttonStyle(PadSecondaryButtonStyle())

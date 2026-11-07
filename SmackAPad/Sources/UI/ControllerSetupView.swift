@@ -219,7 +219,7 @@ public struct ControllerSetupView: View {
         .toolbar {
             ToolbarItem(placement: .principal) { ScreenHeader(title: settings.localized("Controller")) }
             if showsDoneButton {
-                ToolbarItem(placement: .confirmationAction) {
+                PadToolbarItem(placement: .confirmationAction) {
                     Button {
                         if let onDismiss { onDismiss() } else { dismiss() }
                     } label: {
@@ -378,26 +378,38 @@ struct ControllerMappingSections: View {
 
     @ViewBuilder
     private func mappingRow(title: String, signal: MIDIControlSignal?, target: MIDIControlLearnTarget) -> some View {
+        let description = VStack(alignment: .leading, spacing: Theme.Space.tight) {
+            Text(settings.localized(title)).font(Theme.control)
+            Text(mappingText(signal)).font(Theme.meta).foregroundStyle(Theme.secondary)
+        }
+        let actions = HStack(spacing: Theme.Space.small) {
+            Button { midi.startControlLearning(target) } label: {
+                Text(settings.localized("Learn"))
+                    .frame(minWidth: Theme.Size.touch, minHeight: Theme.Size.touch)
+            }
+            .buttonStyle(PadSecondaryButtonStyle())
+            .accessibilityLabel(settings.localized("Learn: %@", settings.localized(title)))
+            Button { midi.clearControlMapping(target) } label: {
+                Text(settings.localized("Clear"))
+                    .frame(minWidth: Theme.Size.touch, minHeight: Theme.Size.touch)
+            }
+            .buttonStyle(PadSecondaryButtonStyle())
+            .disabled(signal == nil)
+            .accessibilityLabel(settings.localized("Clear: %@", settings.localized(title)))
+        }
+        .fixedSize(horizontal: true, vertical: false)
+
         VStack(alignment: .leading, spacing: Theme.Space.small) {
-            HStack(spacing: Theme.Space.regular) {
-                VStack(alignment: .leading, spacing: Theme.Space.tight) {
-                    Text(settings.localized(title)).font(Theme.control)
-                    Text(mappingText(signal)).font(Theme.meta).foregroundStyle(Theme.secondary)
+            ViewThatFits(in: .horizontal) {
+                HStack(spacing: Theme.Space.regular) {
+                    description
+                    Spacer(minLength: 0)
+                    actions
                 }
-                Spacer()
-                Button { midi.startControlLearning(target) } label: {
-                    Text(settings.localized("Learn"))
-                        .frame(minWidth: Theme.Size.touch, minHeight: Theme.Size.touch)
+                VStack(alignment: .leading, spacing: Theme.Space.small) {
+                    description
+                    actions
                 }
-                .buttonStyle(PadSecondaryButtonStyle())
-                .accessibilityLabel(settings.localized("Learn: %@", settings.localized(title)))
-                Button { midi.clearControlMapping(target) } label: {
-                    Text(settings.localized("Clear"))
-                        .frame(minWidth: Theme.Size.touch, minHeight: Theme.Size.touch)
-                }
-                .buttonStyle(PadSecondaryButtonStyle())
-                .disabled(signal == nil)
-                .accessibilityLabel(settings.localized("Clear: %@", settings.localized(title)))
             }
             if midi.controlLearningTarget == target {
                 Text(settings.localized(midi.controlLearningNotice ?? (target == .knob

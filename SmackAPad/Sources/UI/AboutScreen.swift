@@ -43,7 +43,7 @@ public struct AboutDetailView: View {
         .toolbar {
             ToolbarItem(placement: .principal) { ScreenHeader(title: settings.localized("About")) }
             if showsDoneButton || onDismiss != nil {
-                ToolbarItem(placement: .confirmationAction) {
+                PadToolbarItem(placement: .confirmationAction) {
                     Button {
                         if let onDismiss { onDismiss() } else { dismiss() }
                     } label: {

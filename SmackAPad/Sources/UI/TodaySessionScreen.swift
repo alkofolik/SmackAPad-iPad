@@ -113,11 +113,10 @@ struct TodaySessionScreen: View {
             .foregroundStyle(Theme.ink)
             .calmChassisBackground()
             .toolbar {
-                ToolbarItem(placement: .confirmationAction) {
+                PadToolbarItem(placement: .confirmationAction) {
                     Button(action: onHome) {
                         Text(settings.localized("Home"))
                             .font(Theme.control)
-                            .padding(.horizontal, Theme.Space.small)
                             .frame(minHeight: Theme.Size.touch)
                     }
                     .buttonStyle(PadSecondaryButtonStyle())
@@ -291,7 +290,6 @@ struct TodaySessionScreen: View {
         Button { openPractice() } label: {
             Text(settings.localized("Continue"))
                 .font(Theme.action)
-                .padding(.horizontal, Theme.Space.regular)
                 .frame(minHeight: Theme.Size.touch)
         }
         .buttonStyle(PadPrimaryButtonStyle())
@@ -305,7 +303,6 @@ struct TodaySessionScreen: View {
         } label: {
             Text(settings.localized("Skip"))
                 .font(Theme.control)
-                .padding(.horizontal, Theme.Space.regular)
                 .frame(minHeight: Theme.Size.touch)
         }
         .buttonStyle(PadSecondaryButtonStyle())
@@ -319,7 +316,6 @@ struct TodaySessionScreen: View {
         } label: {
             Text(settings.localized("Done for today"))
                 .font(Theme.control)
-                .padding(.horizontal, Theme.Space.regular)
                 .frame(minHeight: Theme.Size.touch)
         }
         .buttonStyle(PadSecondaryButtonStyle())
@@ -359,7 +355,6 @@ struct TodaySessionScreen: View {
         Button(action: onHome) {
             Text(settings.localized("Home"))
                 .font(Theme.action)
-                .padding(.horizontal, Theme.Space.regular)
                 .frame(minHeight: Theme.Size.touch)
         }
         .buttonStyle(PadPrimaryButtonStyle())
