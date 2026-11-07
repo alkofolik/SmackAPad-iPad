@@ -1,6 +1,6 @@
 # 131 — Proposal: one button system for the whole app (HTML previews, no code)
 
-Status: ready-for-agent. Type: design proposal, **no Swift code**. Source: Jakub, 2026-11-07: "go through all the buttons; after the last graphic change most are misaligned and do not look good; this needs to be designed."
+Status: ready-for-human. Type: design proposal, **no Swift code**. Source: Jakub, 2026-11-07: "go through all the buttons; after the last graphic change most are misaligned and do not look good; this needs to be designed."
 
 ## Goal
 
@@ -19,10 +19,10 @@ Jakub wants the buttons to look right and consistent with the Home controller / 
 
 ## Acceptance criteria
 
-- [ ] Inventory table of all button kinds with screenshots.
-- [ ] Two variants as HTML previews, all states, light + dark.
-- [ ] Rules page per variant (see step 3).
-- [ ] No Swift changes. Report lists open questions for Jakub (max 3).
+- [x] Inventory table of all button kinds with screenshots.
+- [x] Two variants as HTML previews, all states, light + dark.
+- [x] Rules page per variant (see step 3).
+- [x] No Swift changes. Report lists open questions for Jakub (max 3).
 
 ## Agent assignment
 
@@ -32,3 +32,14 @@ Jakub wants the buttons to look right and consistent with the Home controller / 
 ## Done rule
 
 Stop after commit. Jakub chooses a variant; the implementation ticket is written afterwards.
+
+## Proposal notes — 2026-11-07
+
+- Performed a complete read-only audit of all button usages in `SmackAPad/Sources/UI/`, categorized into 9 distinct button kinds.
+- Captured high-resolution simulator screenshots (iPad Pro 11″, landscape and portrait, light and dark) of all relevant screens in `docs/design/2026-11-07-button-system/screenshots/`.
+- Designed two cohesive button system variants:
+  - **Variant A ("Haptický hardware")**: Akai MPC style, 8 pt corner radius, tactile bevels, recessed wells, orange LED breathing light bar, white pad flash.
+  - **Variant B ("Akustický minimalismus")**: Braun / studio console style, 6 pt corner radius, crisp 1 px hairline borders, flat satin finishes, instantaneous mechanical color darkening (no flash).
+- Delivered interactive offline HTML preview application in `docs/design/2026-11-07-button-system/index.html` with real screen simulations, side-by-side comparison, Web Audio haptic click feedback, and keyboard shortcuts (`L`, `V`, `M`).
+- Created dedicated rules documents (`rules-variant-a.html`, `rules-variant-b.html`, and `README.md`).
+- Zero Swift code changed. Ready for Jakub's decision.

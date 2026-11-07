@@ -1,0 +1,562 @@
+<!DOCTYPE html>
+<html lang="cs" data-theme="light">
+<head>
+  <meta charset="utf-8">
+  <title>Pravidla: Varianta B — Akustický minimalismus (Smack-a-Pad)</title>
+  <style>
+    
+:root {
+  /* Ticket 92 & 126 Light Theme */
+  --bg-app: #F4EFE6;
+  --chassis-top: #F5EFE5;
+  --chassis-bottom: #E8E0D2;
+  --chassis-angle: 175deg;
+  --chassis-rib-light: rgba(244, 239, 230, 0.55);
+  --chassis-rib-shadow: rgba(31, 29, 26, 0.08);
+  
+  --plate-top: #ECE5DC;
+  --plate-bottom: #DDD5C8;
+  --plate-angle: 165deg;
+  --plate-bevel-highlight: rgba(244, 239, 230, 0.85);
+  --plate-bevel-shade: rgba(31, 29, 26, 0.20);
+  --plate-shadow: 0 6px 12px rgba(31, 29, 26, 0.09);
+  --plate-contact: 0 1px 1.5px rgba(31, 29, 26, 0.06);
+  
+  --surface: #EBE5DA;
+  --ink: #1F1D1A;
+  --secondary: #5E5950;
+  --hairline: rgba(31, 29, 26, 0.15);
+  --slot: #1A1816;
+  --inset-display-fill: #151412;
+  --inset-display-ink: #F4EFE6;
+  
+  --orange: #FF6B00;
+  --orange-glow: rgba(255, 107, 0, 0.35);
+  --orange-subtle: rgba(255, 107, 0, 0.14);
+  
+  --destructive: #C0392B;
+  --destructive-ink: #F4EFE6;
+  --destructive-outline: rgba(192, 57, 43, 0.4);
+  
+  --star-gold: #FF6B00;
+  --star-empty: #D6D0C4;
+}
+
+[data-theme="dark"] {
+  /* Ticket 92 & 126 Dark Theme */
+  --bg-app: #1F1D1A;
+  --chassis-top: #24221E;
+  --chassis-bottom: #171513;
+  --chassis-angle: 175deg;
+  --chassis-rib-light: rgba(244, 239, 230, 0.06);
+  --chassis-rib-shadow: rgba(0, 0, 0, 0.45);
+  
+  --plate-top: #272521;
+  --plate-bottom: #1E1C19;
+  --plate-angle: 165deg;
+  --plate-bevel-highlight: rgba(244, 239, 230, 0.24);
+  --plate-bevel-shade: rgba(31, 29, 26, 0.70);
+  --plate-shadow: 0 6px 12px rgba(0, 0, 0, 0.55);
+  --plate-contact: 0 1px 1.5px rgba(0, 0, 0, 0.35);
+  
+  --surface: #2A2824;
+  --ink: #F4EFE6;
+  --secondary: #B3ADA2;
+  --hairline: rgba(244, 239, 230, 0.15);
+  --slot: #0C0B0A;
+  --inset-display-fill: #151412;
+  --inset-display-ink: #F4EFE6;
+  
+  --orange: #FF6B00;
+  --orange-glow: rgba(255, 107, 0, 0.45);
+  --orange-subtle: rgba(255, 107, 0, 0.20);
+  
+  --destructive: #E74C3C;
+  --destructive-ink: #F4EFE6;
+  --destructive-outline: rgba(231, 76, 60, 0.4);
+  
+  --star-gold: #FF6B00;
+  --star-empty: #3E3B36;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  -webkit-font-smoothing: antialiased;
+}
+
+body {
+  font-family: 'IBM Plex Sans', -apple-system, BlinkMacSystemFont, 'SF Pro Text', sans-serif;
+  background-color: var(--bg-app);
+  color: var(--ink);
+  line-height: 1.45;
+  transition: background-color 0.2s ease, color 0.2s ease;
+  overflow-x: hidden;
+}
+
+/* Background textures */
+.bg-plate {
+  background: linear-gradient(var(--plate-angle), var(--plate-top), var(--plate-bottom));
+  border: 1px solid var(--hairline);
+  box-shadow: var(--plate-shadow), var(--plate-contact);
+}
+
+.bg-chassis {
+  background: linear-gradient(var(--chassis-angle), var(--chassis-top), var(--chassis-bottom));
+  position: relative;
+}
+
+.bg-chassis::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: repeating-linear-gradient(
+    0deg,
+    var(--chassis-rib-light) 0px,
+    var(--chassis-rib-light) 2px,
+    var(--chassis-rib-shadow) 2px,
+    var(--chassis-rib-shadow) 4px
+  );
+  opacity: 0.05;
+  pointer-events: none;
+}
+
+.bg-dark-glass {
+  background: var(--inset-display-fill);
+  color: var(--inset-display-ink);
+  box-shadow: inset 0 2px 6px rgba(0, 0, 0, 0.85);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+/* Base button resets */
+button {
+  font-family: inherit;
+  border: none;
+  background: none;
+  cursor: pointer;
+  outline: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  text-decoration: none;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+  transition: transform 0.08s ease, box-shadow 0.08s ease, background 0.08s ease;
+  min-height: 48px;
+  min-width: 48px;
+}
+
+/* ==========================================================================
+   VARIANTA A: Haptický hardware (Akai MPC / Tactile Elastomer)
+   - Radius: 8pt
+   - Precision Bevels (1.5pt highlight, 2.0pt shadow)
+   - Recessed Well depth
+   - Motion: Scale 0.965, Y +1.5px, Pad Flash 120ms
+   ========================================================================== */
+.var-a .btn-base {
+  border-radius: 8px;
+  position: relative;
+  font-size: 16px;
+  font-weight: 600;
+  padding: 0 16px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.12);
+  border: 1px solid var(--hairline);
+}
+
+.var-a .btn-base::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 7px;
+  pointer-events: none;
+  border-top: 1.5px solid rgba(255,255,255,0.45);
+  border-bottom: 2.0px solid rgba(0,0,0,0.25);
+}
+
+/* A: Primary Action (Hero Pad) */
+.var-a .btn-primary {
+  background: var(--orange);
+  color: #1F1D1A;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.2), 0 0 16px var(--orange-glow);
+  border: 1px solid rgba(0,0,0,0.15);
+}
+.var-a .btn-primary::before {
+  border-top: 1.5px solid rgba(255,255,255,0.55);
+  border-bottom: 2.5px solid rgba(0,0,0,0.35);
+}
+
+/* A: Secondary Action */
+.var-a .btn-secondary {
+  background: var(--surface);
+  color: var(--ink);
+}
+
+/* A: Toolbar Button */
+.var-a .btn-toolbar {
+  min-height: 44px;
+  padding: 0 14px;
+  font-size: 15px;
+  background: var(--surface);
+  color: var(--ink);
+  border-radius: 8px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+}
+
+/* A: Icon Button */
+.var-a .btn-icon {
+  width: 48px;
+  height: 48px;
+  padding: 0;
+  background: var(--surface);
+  color: var(--ink);
+  border-radius: 8px;
+}
+.var-a .btn-icon svg {
+  width: 20px;
+  height: 20px;
+}
+
+/* A: Segmented Hardware Keys */
+.var-a .segmented-group {
+  display: inline-flex;
+  background: var(--slot);
+  padding: 3px;
+  border-radius: 10px;
+  border: 1px solid var(--hairline);
+  box-shadow: inset 0 2px 5px rgba(0,0,0,0.3);
+}
+
+.var-a .segmented-key {
+  border-radius: 7px;
+  background: var(--surface);
+  color: var(--ink);
+  padding: 0 18px;
+  min-height: 44px;
+  font-size: 15px;
+  font-weight: 600;
+  position: relative;
+  border: 1px solid transparent;
+  margin: 0 1px;
+}
+
+.var-a .segmented-key.active {
+  background: var(--surface);
+  box-shadow: 0 2px 4px rgba(0,0,0,0.15);
+  border-color: var(--hairline);
+}
+
+.var-a .segmented-key.active::after {
+  content: "";
+  position: absolute;
+  bottom: 0;
+  left: 6px;
+  right: 6px;
+  height: 2.5px;
+  background: var(--orange);
+  border-radius: 2px 2px 0 0;
+  box-shadow: 0 0 8px var(--orange);
+  animation: ledPulse 3s infinite ease-in-out;
+}
+
+/* A: Filter Chips */
+.var-a .filter-chip {
+  min-height: 38px;
+  padding: 0 14px;
+  font-size: 14px;
+  font-weight: 600;
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--secondary);
+  border: 1px solid var(--hairline);
+  box-shadow: 0 1px 2px rgba(0,0,0,0.06);
+}
+
+.var-a .filter-chip.active {
+  background: var(--surface);
+  color: var(--orange);
+  border: 1.5px solid var(--orange);
+  box-shadow: 0 0 8px var(--orange-subtle);
+}
+
+/* A: Destructive */
+.var-a .btn-destructive {
+  background: var(--destructive);
+  color: #F4EFE6;
+  border: 1px solid rgba(0,0,0,0.25);
+  box-shadow: 0 2px 5px rgba(192,57,43,0.3);
+}
+.var-a .btn-destructive::before {
+  border-top: 1.5px solid rgba(255,255,255,0.4);
+  border-bottom: 2.0px solid rgba(0,0,0,0.4);
+}
+
+/* A: Disabled */
+.var-a .btn-disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+  box-shadow: none !important;
+  transform: none !important;
+  filter: grayscale(0.5);
+}
+
+/* A: Interactive Press */
+.var-a button:not(.btn-disabled):active,
+.var-a .is-pressed {
+  transform: scale(0.965) translateY(1.5px) !important;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.2) !important;
+}
+
+.var-a button:not(.btn-disabled):active::after,
+.var-a .is-pressed::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: rgba(255,255,255,0.25);
+  pointer-events: none;
+  animation: flashFade 0.12s forwards ease-out;
+}
+
+/* ==========================================================================
+   VARIANTA B: Akustický minimalismus (Studio Console / Braun Precision)
+   - Radius: 6pt
+   - Crisp 1px hairline boundary, no heavy double-bevels
+   - Flat satin plates with mechanical contact edge
+   - Motion: Scale 0.985, Y +1.0px, instant tone step (no flash)
+   ========================================================================== */
+.var-b .btn-base {
+  border-radius: 6px;
+  position: relative;
+  font-size: 15px;
+  font-weight: 600;
+  padding: 0 16px;
+  border: 1px solid var(--hairline);
+  box-shadow: 0 1.5px 0 rgba(0,0,0,0.22);
+}
+
+/* B: Primary Action (Hero Pad) */
+.var-b .btn-primary {
+  background: var(--orange);
+  color: #1F1D1A;
+  border: 1px solid rgba(0,0,0,0.2);
+  box-shadow: 0 2px 0 rgba(0,0,0,0.25), 0 2px 8px var(--orange-glow);
+}
+
+/* B: Secondary Action */
+.var-b .btn-secondary {
+  background: var(--surface);
+  color: var(--ink);
+  box-shadow: 0 1.5px 0 rgba(0,0,0,0.18);
+}
+
+/* B: Toolbar Button */
+.var-b .btn-toolbar {
+  min-height: 44px;
+  padding: 0 14px;
+  font-size: 15px;
+  background: transparent;
+  color: var(--ink);
+  border: 1px solid var(--hairline);
+  border-radius: 6px;
+  box-shadow: none;
+}
+.var-b .btn-toolbar:hover {
+  background: var(--surface);
+}
+
+/* B: Icon Button */
+.var-b .btn-icon {
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  background: var(--surface);
+  color: var(--ink);
+  border-radius: 6px;
+  border: 1px solid var(--hairline);
+  box-shadow: 0 1px 0 rgba(0,0,0,0.15);
+}
+.var-b .btn-icon svg {
+  width: 18px;
+  height: 18px;
+}
+
+/* B: Segmented Hardware Keys */
+.var-b .segmented-group {
+  display: inline-flex;
+  background: var(--surface);
+  border: 1px solid var(--hairline);
+  border-radius: 8px;
+  padding: 2px;
+  box-shadow: 0 1.5px 0 rgba(0,0,0,0.15);
+}
+
+.var-b .segmented-key {
+  border-radius: 6px;
+  background: transparent;
+  color: var(--secondary);
+  padding: 0 16px;
+  min-height: 42px;
+  font-size: 14px;
+  font-weight: 600;
+  position: relative;
+  border: 1px solid transparent;
+}
+
+.var-b .segmented-key.active {
+  background: var(--bg-app);
+  color: var(--ink);
+  border-color: var(--hairline);
+  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+
+.var-b .segmented-key.active::after {
+  content: "";
+  position: absolute;
+  bottom: 2px;
+  left: 10px;
+  right: 10px;
+  height: 2.0px;
+  background: var(--orange);
+  border-radius: 1px;
+}
+
+/* B: Filter Chips */
+.var-b .filter-chip {
+  min-height: 36px;
+  padding: 0 12px;
+  font-size: 14px;
+  font-weight: 600;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--secondary);
+  border: 1px solid var(--hairline);
+}
+
+.var-b .filter-chip.active {
+  background: var(--ink);
+  color: var(--bg-app);
+  border-color: var(--ink);
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.var-b .filter-chip.active::before {
+  content: "";
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--orange);
+}
+
+/* B: Destructive */
+.var-b .btn-destructive {
+  background: var(--surface);
+  color: var(--destructive);
+  border: 1px solid var(--destructive-outline);
+  box-shadow: 0 1.5px 0 rgba(0,0,0,0.15);
+}
+
+/* B: Disabled */
+.var-b .btn-disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+  box-shadow: none !important;
+  transform: none !important;
+  border-color: var(--hairline) !important;
+  background: var(--surface) !important;
+  color: var(--secondary) !important;
+}
+
+/* B: Interactive Press */
+.var-b button:not(.btn-disabled):active,
+.var-b .is-pressed {
+  transform: scale(0.985) translateY(1.0px) !important;
+  box-shadow: 0 0.5px 0 rgba(0,0,0,0.2) !important;
+  filter: brightness(0.92);
+}
+
+/* Row Button / Lesson Row (Shared Structure) */
+.lesson-card-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 20px;
+  border-radius: 12px;
+  border: 1px solid var(--hairline);
+  background: var(--plate-top);
+  box-shadow: 0 2px 6px rgba(0,0,0,0.06);
+  min-height: 68px;
+  transition: transform 0.1s ease, box-shadow 0.1s ease;
+  cursor: pointer;
+  text-decoration: none;
+}
+.lesson-card-row:hover {
+  border-color: var(--orange);
+}
+.lesson-card-row:active {
+  transform: scale(0.995);
+}
+
+/* Animations */
+@keyframes ledPulse {
+  0%, 100% { opacity: 0.85; filter: drop-shadow(0 0 4px var(--orange)); }
+  50% { opacity: 1.0; filter: drop-shadow(0 0 9px var(--orange)); }
+}
+
+@keyframes flashFade {
+  0% { opacity: 0.3; }
+  100% { opacity: 0; }
+}
+
+/* Reduce Motion */
+[data-reduce-motion="true"] * {
+  animation: none !important;
+  transition: opacity 0.05s ease !important;
+  transform: none !important;
+}
+
+    body { max-width: 900px; margin: 40px auto; padding: 0 24px; line-height: 1.6; }
+    h1 { font-size: 28px; margin-bottom: 8px; }
+    h2 { font-size: 20px; margin-top: 32px; margin-bottom: 12px; border-bottom: 1px solid var(--hairline); padding-bottom: 8px; }
+    ul { margin-left: 24px; margin-bottom: 16px; }
+    li { margin-bottom: 8px; }
+    .rule-badge { background: var(--surface); border: 1px solid var(--hairline); padding: 2px 8px; border-radius: 4px; font-weight: 700; font-size: 12px; }
+  </style>
+</head>
+<body>
+  <p><a href="index.html" style="color:var(--orange); text-decoration:none; font-weight:600;">← Zpět na interaktivní náhled</a></p>
+  <h1 style="margin-top:16px;">Varianta B: Akustický minimalismus ("Studio Console / Braun")</h1>
+  <p style="color:var(--secondary);">Designový manuál a technická pravidla pro implementaci varianty B.</p>
+
+  <h2>1. Filozofie a charakter</h2>
+  <p>Varianta B vychází z klasických studiových rackových jednotek a designového jazyka Dietera Ramse (Braun). Eliminuje masivní plastické fazety ve prospěch precizních 1 px obvodových linek, plochých saténových materiálů a chirurgické čitelnosti.</p>
+
+  <h2>2. Geometrie a rozměry</h2>
+  <ul>
+    <li><span class="rule-badge">Rádius rohů:</span> <strong>Přesně 6 pt</strong> pro všechna funkční tlačítka v aplikaci. Tím se vytváří jasná hierarchie: 8 pt zůstává pro velké hrací pady na Home screenu, zatímco 6 pt patří precizním ovládacím prvkům.</li>
+    <li><span class="rule-badge">Minimální dotyková plocha:</span> <strong>48 × 48 pt</strong> (vždy &ge; 44 pt dle Apple HIG).</li>
+    <li><span class="rule-badge">Vnitřní odsazení:</span> Vždy uvnitř rámu tlačítka.</li>
+  </ul>
+
+  <h2>3. Hloubka a obvodová linka</h2>
+  <ul>
+    <li><strong>Žádné tlusté fazety:</strong> Tlačítka nemají 1.5 pt vnitřní rámečky. Místo toho mají ostrou 1 px obvodovou linku <code>Theme.hairline</code>.</li>
+    <li><strong>Spodní mechanická hrana:</strong> Přesný spodní kontakt <code>0 1.5px 0 rgba(0,0,0,0.22)</code>, který dává pocit fyzického mikrospínače.</li>
+    <li><strong>Hero Pad:</strong> Plochý oranžový satén s lehkým ambientním stínem <code>0 2px 8px rgba(255,107,0,0.25)</code>.</li>
+  </ul>
+
+  <h2>4. Použití světelné LED lišty</h2>
+  <ul>
+    <li>Pouze na přepínači režimů (Poslech/Hra/Po mně). Zde má lišta výšku 1.5 pt a čisté geometrické ohraničení bez rozmazané záře.</li>
+    <li>Filtrační čipy mají namísto lišty reverzní kontrastní tělo (černý inkoust) a 6 pt oranžový indikační bod.</li>
+  </ul>
+
+  <h2>5. Pohyb a odezva (Motion)</h2>
+  <ul>
+    <li><strong>Při stisku:</strong> Mikroskopický zdvih <code>translateY(1.0px)</code> a <code>scale(0.985)</code>, rychlá odezva 90 ms bez bílého záblesku (pouze okamžité ztmavení oranžové na sytý odstín <code>#E55A00</code>).</li>
+    <li><strong>Reduce Motion:</strong> 0 scale, 0 posun, okamžitý tónový skok.</li>
+  </ul>
+</body>
+</html>
