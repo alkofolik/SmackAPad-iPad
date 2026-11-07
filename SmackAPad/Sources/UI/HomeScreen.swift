@@ -341,6 +341,7 @@ struct HomePadView: View {
     var accessibilityValue: String? = nil
     var isLit: Bool = false
     var padNumber: Int? = nil
+    var cellSize: CGFloat = 146
     let isHero: Bool
     let action: () -> Void
 
@@ -350,8 +351,10 @@ struct HomePadView: View {
         Button(action: action) {
             VStack(spacing: Theme.Space.tight) {
                 Spacer(minLength: 0)
-                Text(title)
-                    .font(isHero ? Theme.strong(26) : Theme.action)
+                let titleSize = (isHero ? 19.0 : 16.0) * (cellSize / 146.0)
+                Text(title.uppercased())
+                    .font(Theme.padTitle(size: titleSize))
+                    .tracking(titleSize * 0.03)
                     .foregroundStyle(isHero ? Theme.black : Theme.ink)
                     .multilineTextAlignment(.center)
                     .lineLimit(1)
@@ -989,37 +992,37 @@ public struct HomeScreen: View {
         VStack(spacing: gap) {
             // Row 0: Continue/Start (1) · Library (2) · Training (3)
             HStack(spacing: gap) {
-                bootPad(pad1, isVisible: padVisible[0])
+                bootPad(pad1(cellSize: cellSize), isVisible: padVisible[0])
                     .padSource(todayPlan != nil ? "pad-today" : "pad-continue", in: homeNamespace)
                     .frame(width: cellSize, height: cellSize)
-                bootPad(pad2, isVisible: padVisible[1])
+                bootPad(pad2(cellSize: cellSize), isVisible: padVisible[1])
                     .padSource("pad-library", in: homeNamespace)
                     .frame(width: cellSize, height: cellSize)
-                bootPad(pad3, isVisible: padVisible[2])
+                bootPad(pad3(cellSize: cellSize), isVisible: padVisible[2])
                     .padSource("pad-training", in: homeNamespace)
                     .frame(width: cellSize, height: cellSize)
             }
             // Row 1: Intro (4) · Centre Logo Pad (About) · Controller (5)
             HStack(spacing: gap) {
-                bootPad(pad4, isVisible: padVisible[3])
+                bootPad(pad4(cellSize: cellSize), isVisible: padVisible[3])
                     .padSource("pad-intro", in: homeNamespace)
                     .frame(width: cellSize, height: cellSize)
                 centreLogoPad(cellSize: cellSize)
                     .padSource("pad-about", in: homeNamespace)
                     .frame(width: cellSize, height: cellSize)
-                bootPad(pad5, isVisible: padVisible[4])
+                bootPad(pad5(cellSize: cellSize), isVisible: padVisible[4])
                     .padSource("pad-controller", in: homeNamespace)
                     .frame(width: cellSize, height: cellSize)
             }
             // Row 2: Badges (6) · Full Version (7) · Settings (8)
             HStack(spacing: gap) {
-                bootPad(pad6, isVisible: padVisible[5])
+                bootPad(pad6(cellSize: cellSize), isVisible: padVisible[5])
                     .padSource("pad-badges", in: homeNamespace)
                     .frame(width: cellSize, height: cellSize)
-                bootPad(pad7, isVisible: padVisible[6])
+                bootPad(pad7(cellSize: cellSize), isVisible: padVisible[6])
                     .padSource("pad-purchases", in: homeNamespace)
                     .frame(width: cellSize, height: cellSize)
-                bootPad(pad8, isVisible: padVisible[7])
+                bootPad(pad8(cellSize: cellSize), isVisible: padVisible[7])
                     .padSource("pad-settings", in: homeNamespace)
                     .frame(width: cellSize, height: cellSize)
             }
@@ -1139,7 +1142,7 @@ public struct HomeScreen: View {
         return variants
     }
 
-    private var pad1: some View {
+    private func pad1(cellSize: CGFloat) -> some View {
         if let plan = todayPlan {
             let label = settings.localized("Today").uppercased(with: Locale(identifier: settings.languagePreference.rawValue))
             let subtitle = todaySubtitle(plan)
@@ -1150,6 +1153,7 @@ public struct HomeScreen: View {
                 subtitleVariants: variants,
                 accessibilityText: "\(label), \(subtitle)",
                 padNumber: 1,
+                cellSize: cellSize,
                 isHero: true
             ) {
                 // Keep the same Mix visible on Training even if reviews change recency first.
@@ -1202,6 +1206,7 @@ public struct HomeScreen: View {
             subtitleVariants: variants,
             accessibilityText: accessibility,
             padNumber: 1,
+            cellSize: cellSize,
             isHero: true
         ) {
             if let targetLesson {
@@ -1216,7 +1221,7 @@ public struct HomeScreen: View {
         })
     }
 
-    private var pad2: some View {
+    private func pad2(cellSize: CGFloat) -> some View {
         let label = settings.localized("Library").uppercased(with: Locale(identifier: settings.languagePreference.rawValue))
         let allLessons = progression.catalog.path
         let three = allLessons.filter { LibraryStarFilter.stars(progress.progress(for: $0.id)) == 3 }.count
@@ -1231,6 +1236,7 @@ public struct HomeScreen: View {
             subtitle: subtitle,
             numericTransitionValue: earnedStars,
             padNumber: 2,
+            cellSize: cellSize,
             isHero: false
         ) {
             activeDestination = .library(.none)
@@ -1239,7 +1245,7 @@ public struct HomeScreen: View {
         }
     }
 
-    private var pad3: some View {
+    private func pad3(cellSize: CGFloat) -> some View {
         let label = settings.localized("Training").uppercased(with: Locale(identifier: settings.languagePreference.rawValue))
         let dueCount = progress.dueLessonsCount(today: calendarDay)
         let subtitle: String? = {
@@ -1255,6 +1261,7 @@ public struct HomeScreen: View {
             accessibilityValue: dueCount > 0 ? settings.localized("%lld due", dueCount) : nil,
             isLit: dueCount > 0,
             padNumber: 3,
+            cellSize: cellSize,
             isHero: false
         ) {
             TrainingOpenMeasurement.begin()
@@ -1264,16 +1271,16 @@ public struct HomeScreen: View {
         }
     }
 
-    private var pad4: some View {
+    private func pad4(cellSize: CGFloat) -> some View {
         let label = settings.localized("Intro").uppercased(with: Locale(identifier: settings.languagePreference.rawValue))
-        return HomePadView(title: label, subtitle: nil, padNumber: 4, isHero: false) {
+        return HomePadView(title: label, subtitle: nil, padNumber: 4, cellSize: cellSize, isHero: false) {
             activeDestination = .intro
             onNavigateToLibrary(.intro)
             AppNavigation.shared.openLibrary(.intro)
         }
     }
 
-    private var pad5: some View {
+    private func pad5(cellSize: CGFloat) -> some View {
         let label = settings.localized("Controller").uppercased(with: Locale(identifier: settings.languagePreference.rawValue))
         let profileName = settings.activeProfile().profileName
 
@@ -1299,13 +1306,14 @@ public struct HomeScreen: View {
             secondarySubtitleVariants: profileVariants,
             accessibilityText: voiceOverText,
             padNumber: 5,
+            cellSize: cellSize,
             isHero: false
         ) {
             activeDestination = .controller
         }
     }
 
-    private var pad6: some View {
+    private func pad6(cellSize: CGFloat) -> some View {
         let label = settings.localized("Badges").uppercased(with: Locale(identifier: settings.languagePreference.rawValue))
         let subtitle = "\(badgeStore.earnedCount) / \(badgeStore.totalCount)"
 
@@ -1314,24 +1322,25 @@ public struct HomeScreen: View {
             subtitle: subtitle,
             numericTransitionValue: badgeStore.earnedCount,
             padNumber: 6,
+            cellSize: cellSize,
             isHero: false
         ) {
             activeDestination = .badges
         }
     }
 
-    private var pad7: some View {
+    private func pad7(cellSize: CGFloat) -> some View {
         let label = settings.localized("Full version").uppercased(with: Locale(identifier: settings.languagePreference.rawValue))
         let subtitle = store.hasFullAccess ? settings.localized("Unlocked") : settings.localized("Unlock")
 
-        return HomePadView(title: label, subtitle: subtitle, padNumber: 7, isHero: false) {
+        return HomePadView(title: label, subtitle: subtitle, padNumber: 7, cellSize: cellSize, isHero: false) {
             activeDestination = .purchases
         }
     }
 
-    private var pad8: some View {
+    private func pad8(cellSize: CGFloat) -> some View {
         let label = settings.localized("Settings").uppercased(with: Locale(identifier: settings.languagePreference.rawValue))
-        return HomePadView(title: label, subtitle: nil, padNumber: 8, isHero: false) {
+        return HomePadView(title: label, subtitle: nil, padNumber: 8, cellSize: cellSize, isHero: false) {
             activeDestination = .settings
         }
     }

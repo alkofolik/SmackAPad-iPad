@@ -490,6 +490,7 @@
 "Full version" = "Plná verze";
 "About" = "O aplikaci";
 "Font IBM Plex Sans, SIL OFL 1.1" = "Písmo IBM Plex Sans, SIL OFL 1.1";
+"Font Barlow Condensed, SIL OFL 1.1" = "Písmo Barlow Condensed, SIL OFL 1.1";
 "Version %@" = "Verze %@";
 
 // Controller and calibration (ticket 62)

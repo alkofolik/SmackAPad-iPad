@@ -2,7 +2,7 @@ import SwiftUI
 import UIKit
 
 /// Orange carries the score; black and white carry hand and hierarchy.
-/// IBM Plex Sans is bundled under the SIL Open Font License 1.1.
+/// IBM Plex Sans and Barlow Condensed are bundled under the SIL Open Font License 1.1.
 enum Theme {
     /// Base palette: cream white (#F4EFE6) and warm soft black (#1F1D1A).
     /// Adjust creamHex (or softBlackHex) here to tune warm/cool tone across the app.
@@ -242,14 +242,29 @@ enum Theme {
         return .custom("IBMPlexSans-Regular", fixedSize: size)
     }
 
+    /// Barlow Condensed ExtraBold pad title font for the Home screen action pads (ticket 140).
+    static func padTitle(size: CGFloat) -> Font {
+        _ = verifiedFonts
+        return .custom("BarlowCondensed-ExtraBold", size: size, relativeTo: .headline)
+    }
+
+    /// Fixed-size Barlow Condensed ExtraBold variant for geometric layouts.
+    static func canvasPadTitle(size: CGFloat) -> Font {
+        _ = verifiedFonts
+        return .custom("BarlowCondensed-ExtraBold", fixedSize: size)
+    }
+
     private static let verifiedFonts: Void = {
         for name in ["IBMPlexSans-Regular", "IBMPlexSans-Medium", "IBMPlexSans-SemiBold", "IBMPlexSans-Bold"] {
             precondition(UIFont(name: name, size: 32)?.familyName == "IBM Plex Sans",
                          "Missing bundled IBM Plex Sans face: \(name)")
         }
+        precondition(UIFont(name: "BarlowCondensed-ExtraBold", size: 32) != nil,
+                     "Missing bundled Barlow Condensed face: BarlowCondensed-ExtraBold")
         #if DEBUG
         assert(UIFont.familyNames.contains("IBM Plex Sans"))
         print("Typography: IBM Plex Sans loaded — \(UIFont.fontNames(forFamilyName: "IBM Plex Sans"))")
+        print("Typography: Barlow Condensed loaded — \(UIFont(name: "BarlowCondensed-ExtraBold", size: 32)?.fontName ?? "")")
         #endif
     }()
 

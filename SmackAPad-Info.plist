@@ -5,6 +5,7 @@
 	<key>UIAppFonts</key>
 	<array>
 		<string>IBMPlexSans[wdth,wght].ttf</string>
+		<string>BarlowCondensed-ExtraBold.ttf</string>
 	</array>
 	<key>UIFileSharingEnabled</key>
 	<true/>

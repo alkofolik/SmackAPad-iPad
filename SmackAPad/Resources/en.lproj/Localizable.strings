@@ -487,6 +487,7 @@
 "Full version" = "Full version";
 "About" = "About";
 "Font IBM Plex Sans, SIL OFL 1.1" = "Font IBM Plex Sans, SIL OFL 1.1";
+"Font Barlow Condensed, SIL OFL 1.1" = "Font Barlow Condensed, SIL OFL 1.1";
 "Version %@" = "Version %@";
 
 // Controller and calibration (ticket 62)

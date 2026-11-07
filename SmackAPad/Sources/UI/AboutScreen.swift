@@ -33,6 +33,9 @@ public struct AboutDetailView: View {
             Text(settings.localized("Font IBM Plex Sans, SIL OFL 1.1"))
                 .font(Theme.meta)
                 .foregroundStyle(Theme.secondary)
+            Text(settings.localized("Font Barlow Condensed, SIL OFL 1.1"))
+                .font(Theme.meta)
+                .foregroundStyle(Theme.secondary)
             Spacer()
         }
         .padding(Theme.Space.page)

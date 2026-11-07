@@ -1,6 +1,6 @@
 # 140 — Home pad titles: Barlow Condensed ExtraBold
 
-Status: ready-for-agent. Depends on: 119 (controller body), 135 (font proposal). Source: Jakub, 2026-11-07: selected Barlow Condensed ExtraBold from ticket 135 preview ("líbí se mi 3 - barlow").
+Status: implemented; build OK; ready for iPad test. Depends on: 119 (controller body), 135 (font proposal). Source: Jakub, 2026-11-07: selected Barlow Condensed ExtraBold from ticket 135 preview ("líbí se mi 3 - barlow").
 
 Spec = preview `docs/previews/135-pad-title-fonts.html` (candidate 3: Barlow Condensed ExtraBold).
 
@@ -37,12 +37,12 @@ Spec = preview `docs/previews/135-pad-title-fonts.html` (candidate 3: Barlow Con
 
 ## Acceptance criteria
 
-- [ ] `BarlowCondensed-ExtraBold.ttf` bundled and registered in `UIAppFonts`.
-- [ ] Home pad titles render in Barlow Condensed ExtraBold in both Light and Dark appearances.
-- [ ] Subtitles and pad numbers remain in IBM Plex Sans.
-- [ ] No "…" on any pad title in Czech or English, landscape and portrait.
-- [ ] Barlow Condensed licence listed in About/Licences.
-- [ ] Build succeeds. No new tests.
+- [x] `BarlowCondensed-ExtraBold.ttf` bundled and registered in `UIAppFonts`.
+- [x] Home pad titles render in Barlow Condensed ExtraBold in both Light and Dark appearances.
+- [x] Subtitles and pad numbers remain in IBM Plex Sans.
+- [x] No "…" on any pad title in Czech or English, landscape and portrait.
+- [x] Barlow Condensed licence listed in About/Licences.
+- [x] Build succeeds. No new tests.
 - [ ] **iPad test (Jakub)**: Check visual contrast and pad title appearance on iPad.
 
 ## Agent assignment
@@ -53,3 +53,12 @@ Spec = preview `docs/previews/135-pad-title-fonts.html` (candidate 3: Barlow Con
 ## Done rule
 
 Stop after a successful build. Commit (AGENTS.md); Jakub pushes and tests on the iPad.
+
+## Implementation — 2026-11-07
+
+- Extracted and verified `BarlowCondensed-ExtraBold.ttf` from `docs/previews/135-pad-title-fonts.html` (PostScript name confirmed as `BarlowCondensed-ExtraBold`, SIL OFL 1.1).
+- Added `barlowcondensed-OFL.txt` and bundled font registered under `UIAppFonts` in `SmackAPad-Info.plist`.
+- Added `Theme.padTitle(size:)` and `Theme.canvasPadTitle(size:)` tokens and verified font loading alongside IBM Plex Sans in `Theme.swift`.
+- Updated `HomePadView` pad titles to use Barlow Condensed ExtraBold with +0.03 em tracking and proportional sizing (~16 pt action pads, ~19 pt hero pad at 146 pt pad dimension), retaining IBM Plex Sans for subtitles and engraved numbers.
+- Added Barlow Condensed licence note in `AboutScreen.swift` and updated `Localizable.strings` (EN & CS).
+- Build succeeded with zero errors. No new tests added.
