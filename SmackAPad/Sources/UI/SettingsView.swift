@@ -337,6 +337,7 @@ public struct SettingsView: View {
                     }
                     .font(Theme.control)
                     .frame(minHeight: Theme.Size.touch)
+                    .buttonStyle(PadSecondaryButtonStyle())
                 }
             }
             .task {
@@ -434,7 +435,7 @@ private struct FontLicenceView: View {
                 .padding(Theme.Space.page)
                 .frame(maxWidth: .infinity)
         }
-        .background(Theme.background).foregroundStyle(Theme.ink)
+        .calmChassisBackground().foregroundStyle(Theme.ink)
         .navigationTitle("IBM Plex Sans")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {

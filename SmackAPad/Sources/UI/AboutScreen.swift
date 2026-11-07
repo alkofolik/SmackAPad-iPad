@@ -37,7 +37,7 @@ public struct AboutDetailView: View {
         }
         .padding(Theme.Space.page)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-        .background(Theme.background.ignoresSafeArea())
+        .calmChassisBackground()
         .navigationTitle(settings.localized("About"))
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
@@ -49,6 +49,7 @@ public struct AboutDetailView: View {
                     }
                     .font(Theme.control)
                     .frame(minHeight: Theme.Size.touch)
+                    .buttonStyle(PadSecondaryButtonStyle())
                 }
             }
         }

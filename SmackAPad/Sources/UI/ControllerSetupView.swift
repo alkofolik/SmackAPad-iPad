@@ -94,6 +94,7 @@ public struct ControllerSetupView: View {
                             .font(Theme.control)
                             .frame(minHeight: Theme.Size.touch)
                     }
+                    .buttonStyle(PadSecondaryButtonStyle())
 
                     if let error = midi.errorMessage {
                         Text(error)
@@ -103,6 +104,7 @@ public struct ControllerSetupView: View {
                             midi.stop()
                             midi.start()
                         }
+                        .buttonStyle(PadSecondaryButtonStyle())
                     }
                 }
 
@@ -221,6 +223,7 @@ public struct ControllerSetupView: View {
                     }
                     .font(Theme.control)
                     .frame(minHeight: Theme.Size.touch)
+                    .buttonStyle(PadSecondaryButtonStyle())
                 }
             }
         }
@@ -379,11 +382,11 @@ struct ControllerMappingSections: View {
                 }
                 Spacer()
                 Button(settings.localized("Learn")) { midi.startControlLearning(target) }
-                    .buttonStyle(.borderless)
+                    .buttonStyle(PadSecondaryButtonStyle())
                     .frame(minWidth: Theme.Size.touch, minHeight: Theme.Size.touch)
                     .accessibilityLabel(settings.localized("Learn: %@", settings.localized(title)))
                 Button(settings.localized("Clear")) { midi.clearControlMapping(target) }
-                    .buttonStyle(.borderless)
+                    .buttonStyle(PadSecondaryButtonStyle())
                     .frame(minWidth: Theme.Size.touch, minHeight: Theme.Size.touch)
                     .disabled(signal == nil)
                     .accessibilityLabel(settings.localized("Clear: %@", settings.localized(title)))
@@ -393,7 +396,7 @@ struct ControllerMappingSections: View {
                     ? "Turn the tempo knob slightly." : "Press the controller button once.")))
                     .font(Theme.meta).foregroundStyle(Theme.secondary)
                 Button(settings.localized("Cancel")) { midi.cancelControlLearning() }
-                    .buttonStyle(.borderless).frame(minHeight: Theme.Size.touch)
+                    .buttonStyle(PadSecondaryButtonStyle()).frame(minHeight: Theme.Size.touch)
             }
         }
     }

@@ -383,13 +383,13 @@ struct AppConfirmation<Actions: View>: View {
                 Text(message).font(Theme.navigation).lineSpacing(7)
                     .fixedSize(horizontal: false, vertical: true)
                 VStack(alignment: .leading, spacing: Theme.Space.regular) { actions }
-                    .buttonStyle(InstrumentButtonStyle(main: true))
+                    .buttonStyle(PadSecondaryButtonStyle())
             }
             .frame(maxWidth: 560, alignment: .leading)
             .padding(Theme.Space.page)
             .frame(maxWidth: .infinity)
         }
-        .background(Theme.background).foregroundStyle(Theme.ink)
+        .satinPlate().foregroundStyle(Theme.ink)
         .presentationDetents([.medium, .large])
         .presentationDragIndicator(.visible)
         .interactiveDismissDisabled()
@@ -464,13 +464,8 @@ struct FilterChip: View {
                 .motion(value: title)
                 .padding(.horizontal, Theme.Space.small)
                 .frame(minHeight: Theme.Size.touch)
-                .background(selected ? Theme.surface : Theme.background)
-                .overlay(
-                    Rectangle()
-                        .stroke(selected ? Theme.ink : Theme.hairline, lineWidth: 1)
-                )
         }
-        .buttonStyle(.plain).foregroundStyle(Theme.ink)
+        .buttonStyle(HardwareKeyButtonStyle(isSelected: selected))
         .accessibilityAddTraits(selected ? .isSelected : [])
         .motion(value: selected)
     }
@@ -564,7 +559,7 @@ struct StarsView: View {
                             }
                         }
                         .padding(Theme.Space.page).frame(maxWidth: 380)
-                        .foregroundStyle(Theme.ink).background(Theme.background)
+                        .foregroundStyle(Theme.ink).satinPlate()
                     }
                     .frame(idealWidth: 380, maxHeight: 560)
                 }
@@ -668,7 +663,7 @@ private struct AppFormStyle: ViewModifier {
             .listRowBackground(Theme.surface)
             .contentMargins(.horizontal, Theme.Space.page, for: .scrollContent)
             .scrollContentBackground(.hidden)
-            .background(Theme.background).foregroundStyle(Theme.ink).tint(Theme.orange)
+            .calmChassisBackground().foregroundStyle(Theme.ink).tint(Theme.orange)
             .transaction { transaction in
                 if transaction.animation != nil {
                     transaction.animation = Theme.Motion.Policy(reduced: reduced).opacityOnly ? nil : Theme.Motion.fast

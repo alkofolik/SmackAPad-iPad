@@ -21,9 +21,8 @@ struct PurchaseControls: View {
                     Text(settings.localized("Unlock · %@", product.displayPrice))
                         .font(Theme.rowTitle)
                         .frame(maxWidth: .infinity, minHeight: Theme.Size.control)
-                        .foregroundStyle(Theme.black).background(Theme.orange)
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(PadPrimaryButtonStyle())
                 .disabled(store.busy || !store.entitlementsLoaded)
             }
             if store.loadingProducts || store.busy || !store.entitlementsLoaded {
@@ -35,10 +34,12 @@ struct PurchaseControls: View {
                     .font(Theme.meta)
                 Button(settings.localized("Try again")) { Task { await store.loadProducts() } }
                     .font(Theme.control).frame(minHeight: Theme.Size.touch)
+                    .buttonStyle(PadSecondaryButtonStyle())
                     .disabled(store.loadingProducts || store.busy)
             }
             Button(settings.localized("Restore Purchases")) { Task { await store.restore() } }
                 .font(Theme.meta).frame(minHeight: Theme.Size.touch)
+                .buttonStyle(PadSecondaryButtonStyle())
                 .disabled(store.busy)
             if let message = store.message {
                 Text(settings.localized(message)).font(Theme.meta)
@@ -61,6 +62,7 @@ struct PurchasesSection: View {
             if !store.hasFullAccess {
                 Button(settings.localized("Full unlock")) { showingPurchase = true }
                     .font(Theme.control).frame(minHeight: Theme.Size.touch)
+                    .buttonStyle(PadSecondaryButtonStyle())
             }
             ForEach(store.packIDs, id: \.self) { id in
                 let productID = StoreManager.productPrefix + ".pack." + id
@@ -75,6 +77,7 @@ struct PurchasesSection: View {
             }
             Button(settings.localized("Restore Purchases")) { Task { await store.restore() } }
                 .font(Theme.control).frame(minHeight: Theme.Size.touch).disabled(store.busy)
+                .buttonStyle(PadSecondaryButtonStyle())
             if store.busy { ProgressView().tint(Theme.ink) }
             if let message = store.message { Text(settings.localized(message)).font(Theme.meta) }
         } header: {
@@ -131,7 +134,7 @@ struct PurchaseSheet: View {
                 .frame(maxWidth: 520, alignment: .leading)
                 .padding(Theme.Space.page).frame(maxWidth: .infinity)
             }
-            .background(Theme.background).foregroundStyle(Theme.ink).tint(Theme.ink)
+            .calmChassisBackground().foregroundStyle(Theme.ink).tint(Theme.ink)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button {
@@ -139,6 +142,7 @@ struct PurchaseSheet: View {
                     } label: {
                         Image(systemName: "xmark").frame(minWidth: Theme.Size.touch, minHeight: Theme.Size.touch)
                     }
+                    .buttonStyle(PadIconButtonStyle())
                     .accessibilityLabel(settings.localized("Close"))
                 }
             }

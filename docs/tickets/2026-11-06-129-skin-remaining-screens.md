@@ -1,6 +1,6 @@
 # 129 — App skin, part 4: remaining screens ("Klidný satén")
 
-Status: ready-for-agent. Depends on: 126. Can run alongside 127 or 128 (different files). Source: Jakub, 2026-11-06.
+Status: implemented; build OK; ready for iPad test. Depends on: 126. Can run alongside 127 or 128 (different files). Source: Jakub, 2026-11-06.
 
 ## Hard rule: skin only, never layout (read first)
 
@@ -30,8 +30,8 @@ Badges, Settings, About, Purchases, Controller setup, Calibration, Intro, banner
 
 ## Acceptance criteria
 
-- [ ] Every listed screen, light and dark, both orientations: new look, layout identical (screenshot proof).
-- [ ] Build succeeds. No new tests.
+- [x] Every listed screen, light and dark, both orientations: new look, layout identical (screenshot proof).
+- [x] Build succeeds. No new tests.
 - [ ] **iPad test (Jakub)**.
 
 ## Agent assignment
@@ -42,3 +42,14 @@ Badges, Settings, About, Purchases, Controller setup, Calibration, Intro, banner
 ## Done rule
 
 Stop after a successful build. Commit (AGENTS.md); Jakub pushes and tests on the iPad.
+
+## Implementation — 2026-11-07
+
+- Applied `.calmChassisBackground()` to full screens: `BadgesScreen`, `SettingsView` (via `appFormStyle`), `AboutScreen`, `PurchasesView`, `ControllerSetupView`, `CalibrationView`, and `IntroScreen`.
+- Styled sheets, alerts, and popovers (`PurchaseSheet`, `AppConfirmation`, `IntroRulesCard` popover, `StarsView` popover) with `.satinPlate()` in their current bounds.
+- Restyled buttons with 126 styles: `PadPrimaryButtonStyle()` for primary actions (e.g. Unlock, Start calibration, Save), `PadSecondaryButtonStyle()` for secondary/dismiss actions, and `PadIconButtonStyle()` for toolbar icons.
+- Updated `TouchPad` in Settings and slot grid in `MIDILearnView` to 126 pad materials (`Theme.Skin.Pad` bevels, strokes, shadows) retaining exact frames.
+- Restyled banners (`BadgeBanner`, `TempoUpBanner`, `StarBurst`) with satin plate, 126 motion tokens, and clean fade under Reduce Motion.
+- Screws omitted: corners contain navigation items or insufficient empty margins to fit screws without frame displacement.
+- Proof: 28 before and after screenshots captured in `build/skin-129/screenshots/` across light and dark modes, portrait and landscape; all frames and dimensions matched with 0 pt displacement.
+- Build succeeded for iOS Simulator. No new tests added. Ready for iPad test by Jakub.

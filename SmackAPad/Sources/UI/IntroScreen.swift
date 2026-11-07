@@ -105,6 +105,7 @@ public struct IntroScreen: View {
                                 Button(settings.localized("Close")) { showingRules = false }
                                     .font(Theme.control)
                                     .frame(minHeight: Theme.Size.touch)
+                                    .buttonStyle(PadSecondaryButtonStyle())
                             }
                             IntroRulesCard(passedCount: passedCount, masteredCount: masteredCount,
                                            totalCount: introLessons.count)
@@ -112,7 +113,7 @@ public struct IntroScreen: View {
                         .padding(Theme.Space.page)
                     }
                     .frame(width: 480, height: 580)
-                    .background(Theme.background)
+                    .satinPlate()
                     .foregroundStyle(Theme.ink)
                     .tint(Theme.orange)
                 }
@@ -152,7 +153,7 @@ public struct IntroScreen: View {
         .environment(\.defaultMinListRowHeight, 60)
         .listRowInsets(EdgeInsets(top: 0, leading: Theme.Space.page, bottom: 0, trailing: Theme.Space.page))
         .scrollContentBackground(.hidden)
-        .background(Theme.background).foregroundStyle(Theme.ink)
+        .calmChassisBackground().foregroundStyle(Theme.ink)
         .navigationTitle(settings.localized("Intro Exercises"))
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
@@ -169,6 +170,7 @@ public struct IntroScreen: View {
                         .font(Theme.control)
                         .frame(minHeight: Theme.Size.touch)
                     }
+                    .buttonStyle(PadIconButtonStyle())
                     .accessibilityLabel(settings.localized(settings.hideCompletedLessons ? "Show completed" : "Hide completed"))
                 }
             }
@@ -186,16 +188,10 @@ public struct IntroScreen: View {
             } label: {
                 Text(settings.localized("Show completed"))
                     .font(Theme.meta)
-                    .foregroundStyle(Theme.ink)
                     .padding(.horizontal, Theme.Space.small)
                     .frame(minHeight: Theme.Size.touch)
-                    .background(Theme.surface)
-                    .overlay(
-                        Rectangle()
-                            .stroke(Theme.hairline, lineWidth: 1)
-                    )
             }
-            .buttonStyle(.plain)
+            .buttonStyle(PadSecondaryButtonStyle())
             .accessibilityLabel(settings.localized("Show completed"))
         }
         .padding(.vertical, Theme.Space.small)

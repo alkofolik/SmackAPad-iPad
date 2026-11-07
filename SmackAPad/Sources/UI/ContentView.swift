@@ -66,13 +66,24 @@ struct MIDILearnView: View {
                                         }
                                     }
                                     .frame(maxWidth: .infinity, minHeight: 64)
-                                    .background(slot == midi.learnedNotes.count ? Theme.activeFill : Theme.surface,
-                                                in: Rectangle())
-                                    .overlay(
-                                        Rectangle()
-                                            .stroke(slot == midi.learnedNotes.count ? Theme.orange : Theme.hairline,
-                                                    lineWidth: slot == midi.learnedNotes.count ? Theme.Size.border : 1)
-                                    )
+                                    .background {
+                                        RoundedRectangle(cornerRadius: Theme.Skin.Pad.radius)
+                                            .fill(slot == midi.learnedNotes.count ? Theme.activeFill : Theme.Skin.Pad.fill)
+                                            .overlay {
+                                                SkinBevel(
+                                                    radius: Theme.Skin.Pad.radius,
+                                                    highlight: Theme.Skin.Pad.highlight,
+                                                    shade: Theme.Skin.Pad.shade,
+                                                    top: Theme.Skin.Pad.topBevel,
+                                                    bottom: Theme.Skin.Pad.bottomBevel
+                                                )
+                                            }
+                                            .overlay {
+                                                RoundedRectangle(cornerRadius: Theme.Skin.Pad.radius)
+                                                    .strokeBorder(slot == midi.learnedNotes.count ? Theme.orange : Theme.hairline,
+                                                                  lineWidth: slot == midi.learnedNotes.count ? Theme.Size.border : 1)
+                                            }
+                                    }
                                     .accessibilityAddTraits(slot == midi.learnedNotes.count ? .isSelected : [])
                                 }
                             }
@@ -88,12 +99,14 @@ struct MIDILearnView: View {
                             }
                             .font(Theme.control)
                             .frame(minHeight: Theme.Size.touch)
+                            .buttonStyle(PadSecondaryButtonStyle())
                         } else {
                             Button(settings.localized("Start MIDI learn")) {
                                 midi.startLearning(padCount: padCount)
                             }
                             .font(Theme.control)
                             .frame(minHeight: Theme.Size.touch)
+                            .buttonStyle(PadPrimaryButtonStyle())
                             .disabled(midi.sources.isEmpty)
 
                             if midi.sources.isEmpty {
@@ -126,6 +139,7 @@ struct MIDILearnView: View {
                     Button(settings.localized("Cancel")) { dismiss() }
                         .font(Theme.control)
                         .frame(minHeight: Theme.Size.touch)
+                        .buttonStyle(PadSecondaryButtonStyle())
                 }
                 ToolbarItem(placement: .confirmationAction) {
                     Button(settings.localized("Save")) {
@@ -133,6 +147,7 @@ struct MIDILearnView: View {
                     }
                     .font(Theme.control)
                     .frame(minHeight: Theme.Size.touch)
+                    .buttonStyle(PadPrimaryButtonStyle())
                     .disabled(!midi.learningComplete || trimmedName.isEmpty || nameExists)
                 }
             }
@@ -157,14 +172,26 @@ struct TouchPad: View {
                 .foregroundStyle(isActive ? Theme.orange : Theme.ink)
         }
         .frame(maxWidth: .infinity, minHeight: 72)
-        .background(isActive ? Theme.activeFill : Theme.surface,
-                    in: Rectangle())
-        .overlay(
-            Rectangle()
-                .stroke(isActive ? Theme.orange : Theme.hairline,
-                        lineWidth: isActive ? Theme.Size.border : 1)
-        )
-        .contentShape(Rectangle())
+        .background {
+            RoundedRectangle(cornerRadius: Theme.Skin.Pad.radius)
+                .fill(isActive ? Theme.activeFill : Theme.Skin.Pad.fill)
+                .overlay {
+                    SkinBevel(
+                        radius: Theme.Skin.Pad.radius,
+                        highlight: Theme.Skin.Pad.highlight,
+                        shade: Theme.Skin.Pad.shade,
+                        top: Theme.Skin.Pad.topBevel,
+                        bottom: Theme.Skin.Pad.bottomBevel
+                    )
+                }
+                .overlay {
+                    RoundedRectangle(cornerRadius: Theme.Skin.Pad.radius)
+                        .strokeBorder(isActive ? Theme.orange : Theme.hairline,
+                                      lineWidth: isActive ? Theme.Size.border : 1)
+                }
+                .shadow(color: Theme.black.opacity(0.08), radius: 2, y: 2)
+        }
+        .contentShape(RoundedRectangle(cornerRadius: Theme.Skin.Pad.radius))
         .overlay { PadPressSurface(onPress: onPress).accessibilityHidden(true) }
         .accessibilityElement(children: .combine)
         .accessibilityAddTraits(.isButton)

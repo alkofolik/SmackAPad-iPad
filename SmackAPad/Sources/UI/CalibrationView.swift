@@ -38,14 +38,33 @@ struct CalibrationView: View {
                     Text(status).font(Theme.control).accessibilityAddTraits(.updatesFrequently)
                     if session.busy {
                         ProgressView(value: Double(session.matchedClicks.count), total: 10)
+                            .tint(Theme.orange)
                         LabeledContent(settings.localized("Recorded taps"), value: "\(session.matchedClicks.count) / 10")
                     }
                     if session.deviceID == "touch" {
                         Text(settings.localized("Tap with the click"))
                             .font(Theme.rowTitle)
                             .frame(maxWidth: .infinity, minHeight: 140)
-                            .background(touching ? Theme.activeFill : Theme.background)
-                            .contentShape(Rectangle())
+                            .background {
+                                RoundedRectangle(cornerRadius: Theme.Skin.Pad.radius)
+                                    .fill(touching ? Theme.activeFill : Theme.Skin.Pad.fill)
+                                    .overlay {
+                                        SkinBevel(
+                                            radius: Theme.Skin.Pad.radius,
+                                            highlight: Theme.Skin.Pad.highlight,
+                                            shade: Theme.Skin.Pad.shade,
+                                            top: Theme.Skin.Pad.topBevel,
+                                            bottom: Theme.Skin.Pad.bottomBevel
+                                        )
+                                    }
+                                    .overlay {
+                                        RoundedRectangle(cornerRadius: Theme.Skin.Pad.radius)
+                                            .strokeBorder(touching ? Theme.orange : Theme.hairline,
+                                                          lineWidth: touching ? Theme.Size.border : 1)
+                                    }
+                                    .shadow(color: Theme.black.opacity(0.08), radius: 2, y: 2)
+                            }
+                            .contentShape(RoundedRectangle(cornerRadius: Theme.Skin.Pad.radius))
                             .gesture(DragGesture(minimumDistance: 0)
                                 .onChanged { _ in
                                     guard !touching else { return }
@@ -59,7 +78,24 @@ struct CalibrationView: View {
                         Text(settings.localized("Press any mapped key with the click"))
                             .font(Theme.rowTitle)
                             .frame(maxWidth: .infinity, minHeight: 80)
-                            .background(Theme.background)
+                            .background {
+                                RoundedRectangle(cornerRadius: Theme.Skin.Pad.radius)
+                                    .fill(Theme.Skin.Pad.fill)
+                                    .overlay {
+                                        SkinBevel(
+                                            radius: Theme.Skin.Pad.radius,
+                                            highlight: Theme.Skin.Pad.highlight,
+                                            shade: Theme.Skin.Pad.shade,
+                                            top: Theme.Skin.Pad.topBevel,
+                                            bottom: Theme.Skin.Pad.bottomBevel
+                                        )
+                                    }
+                                    .overlay {
+                                        RoundedRectangle(cornerRadius: Theme.Skin.Pad.radius)
+                                            .strokeBorder(Theme.hairline, lineWidth: 1)
+                                    }
+                                    .shadow(color: Theme.black.opacity(0.08), radius: 2, y: 2)
+                            }
                     }
                     if let result = session.result {
                         LabeledContent(settings.localized("Saved offset"), value: signed(result.offsetMilliseconds))
@@ -71,8 +107,14 @@ struct CalibrationView: View {
                     if let error = session.audioError { Text(error).font(Theme.meta).foregroundStyle(Theme.secondary) }
                     if session.busy {
                         Button(settings.localized("Cancel calibration"), role: .cancel) { session.cancel() }
+                            .font(Theme.control)
+                            .frame(minHeight: Theme.Size.touch)
+                            .buttonStyle(PadSecondaryButtonStyle())
                     } else {
                         Button(settings.localized("Start calibration")) { touching = false; session.start() }
+                            .font(Theme.control)
+                            .frame(minHeight: Theme.Size.touch)
+                            .buttonStyle(PadPrimaryButtonStyle())
                     }
                 } header: { SectionHeader(title: settings.localized("Calibration progress")) }
             }

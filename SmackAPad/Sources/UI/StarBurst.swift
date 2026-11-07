@@ -38,9 +38,9 @@ struct StarBurst: View {
             await Task.yield()
             guard !Task.isCancelled else { return }
             if !reduced {
-                withAnimation(.easeOut(duration: 0.18)) { revealed = true; scale = 1.08 }
+                withAnimation(Theme.Motion.fast) { revealed = true; scale = 1.08 }
                 do { try await Task.sleep(for: .milliseconds(180)) } catch { return }
-                withAnimation(.easeInOut(duration: 0.30)) { scale = 1 }
+                withAnimation(Theme.Motion.emphasis) { scale = 1 }
             }
             UIAccessibility.post(notification: .announcement, argument: announcement)
         }

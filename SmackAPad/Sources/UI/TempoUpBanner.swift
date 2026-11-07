@@ -18,14 +18,10 @@ struct TempoUpBanner: View {
         Text(label)
             .font(Theme.strong(28))
             .fixedSize(horizontal: false, vertical: true)
-            .foregroundStyle(Theme.black)
+            .foregroundStyle(Theme.orange)
             .padding(.horizontal, Theme.Space.regular)
             .padding(.vertical, Theme.Space.small)
-            .background(Theme.orange, in: Rectangle())
-            .overlay {
-                Rectangle()
-                    .strokeBorder(Theme.black, lineWidth: Theme.Size.border)
-            }
+            .satinPlate()
             .scaleEffect(motion.scale(pulse ? 1.08 : 1))
             .opacity(visible ? 1 : 0)
             .allowsHitTesting(false)

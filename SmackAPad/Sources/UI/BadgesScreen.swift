@@ -38,7 +38,7 @@ struct BadgesView: View {
                 .padding(.horizontal, Theme.Space.page)
                 .padding(.vertical, Theme.Space.regular)
             }
-            .background(Theme.background.ignoresSafeArea())
+            .calmChassisBackground()
             .toolbar {
                 ToolbarItem(placement: .principal) {
                     ScreenHeader(title: settings.localized("Badges"))
@@ -47,6 +47,9 @@ struct BadgesView: View {
                     Button(settings.localized("Done")) {
                         if let onDismiss { onDismiss() } else { dismiss() }
                     }
+                    .font(Theme.control)
+                    .frame(minHeight: Theme.Size.touch)
+                    .buttonStyle(PadSecondaryButtonStyle())
                 }
             }
         }

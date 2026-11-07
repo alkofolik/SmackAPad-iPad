@@ -31,28 +31,24 @@ struct BadgeBanner: View {
                 VStack(alignment: .leading, spacing: 1) {
                     Text(settings.localized("New badge"))
                         .font(Theme.text(12))
-                        .foregroundStyle(Theme.black.opacity(0.65))
+                        .foregroundStyle(Theme.secondary)
                         .lineLimit(1)
                     Text(settings.localized(badge.name))
                         .font(Theme.strong(18))
-                        .foregroundStyle(Theme.black)
+                        .foregroundStyle(Theme.ink)
                         .lineLimit(1)
                         .minimumScaleFactor(0.85)
                 }
             } else {
                 Text(settings.localized("Earned %lld new badges", event.badges.count))
                     .font(Theme.strong(18))
-                    .foregroundStyle(Theme.black)
+                    .foregroundStyle(Theme.ink)
                     .lineLimit(1)
             }
         }
         .padding(.horizontal, Theme.Space.regular)
         .padding(.vertical, Theme.Space.small)
-        .background(Theme.white, in: Rectangle())
-        .overlay {
-            Rectangle()
-                .strokeBorder(Theme.black, lineWidth: Theme.Size.border)
-        }
+        .satinPlate()
         .offset(y: visible ? 0 : motion.offset(-16))
         .opacity(visible ? 1 : 0)
         .allowsHitTesting(false)
