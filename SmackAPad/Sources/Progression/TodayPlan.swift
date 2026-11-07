@@ -22,7 +22,7 @@ struct TodayPlan: Codable, Equatable {
     var reviewCount: Int { steps.filter { $0.kind == .review }.count }
     var hasNewLesson: Bool { steps.contains { $0.kind == .newLesson } }
 
-    /// `dueLessonIDs` comes from ProgressStore.dueLessonIds, already ordered oldest first.
+    /// `dueLessonIDs` comes from `ReviewQueue.order`, already ordered by fragility (lowest reviewStep first, then most days late, then earlier masteryDay, then lesson id).
     static func make(day: String, dueLessonIDs: [Int], nextLessonID: Int?, mixLessonIDs: [Int]) -> TodayPlan? {
         guard !dueLessonIDs.isEmpty else { return nil }
         var steps = dueLessonIDs.prefix(2).map { Step(kind: .review, lessonIDs: [$0]) }

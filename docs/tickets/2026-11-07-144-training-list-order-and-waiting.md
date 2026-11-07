@@ -36,12 +36,12 @@ Review rules and schedule, Mix, Play after me, the Memory meter, badges, the pag
 
 ## Acceptance criteria
 
-- [ ] Due now: only lessons playable today in the current pad mode, step 1 first; 5 rows, then "Show all".
-- [ ] Step chips filter the list and are remembered; empty chips are disabled.
-- [ ] Waiting boxes show the right counts; tapping opens the lessons; strip days open their box.
-- [ ] Settled box lists settled lessons.
-- [ ] Daily session uses the new order.
-- [ ] Czech and English; landscape and portrait. Build succeeds. No new tests.
+- [x] Due now: only lessons playable today in the current pad mode, step 1 first; 5 rows, then "Show all".
+- [x] Step chips filter the list and are remembered; empty chips are disabled.
+- [x] Waiting boxes show the right counts; tapping opens the lessons; strip days open their box.
+- [x] Settled box lists settled lessons.
+- [x] Daily session uses the new order.
+- [x] Czech and English; landscape and portrait. Build succeeds. No new tests.
 - [ ] **iPad test (Jakub)**: with several learned lessons, check the order, the chips and the boxes.
 
 ## Agent assignment

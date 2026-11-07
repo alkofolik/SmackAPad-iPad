@@ -1049,10 +1049,16 @@ public struct HomeScreen: View {
         let openIDs = Set(progression.catalog.lessons.filter {
             store.isUnlocked($0) && progression.isLessonOpen($0)
         }.map(\.id))
+        let padCount = midi.activeProfile.padCount
         let mix = TrainingMix.dailySelection(lessons: progression.catalog.lessons, progress: progress.records,
-            padCount: midi.activeProfile.padCount, openLessonIDs: openIDs, day: calendarDay, savedJSON: dailyMixes)
+            padCount: padCount, openLessonIDs: openIDs, day: calendarDay, savedJSON: dailyMixes)
+        let dueCandidates = progress.dueLessonIds(today: calendarDay).compactMap { lessonStore.lesson(for: $0) }.filter { lesson in
+            guard openIDs.contains(lesson.id) else { return false }
+            return padCount == 16 || EightPadLayout.slots(for: lesson) != nil
+        }
+        let due = ReviewQueue.order(dueCandidates, records: progress.records, today: calendarDay)
         return TodayPlan.make(day: calendarDay,
-            dueLessonIDs: progress.dueLessonIds(today: calendarDay).filter { lessonStore.lesson(for: $0) != nil },
+            dueLessonIDs: due.map(\.id),
             nextLessonID: next?.id, mixLessonIDs: mix.map(\.id))
     }
 

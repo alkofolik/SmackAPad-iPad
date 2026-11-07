@@ -39,10 +39,52 @@ public struct TrainingScreen: View {
     @State private var showingBadges = false
     @State private var showingToday = false
     @State private var activeTodayPlan: TodayPlan?
+    @State private var isDueExpanded = false
+    @State private var expandedWaitingGroup: WaitingGroup?
+    @State private var isSettledExpanded = false
 
     @AppStorage(TodayPlan.storageKey) private var savedTodayPlan = ""
     @AppStorage("smackapad.training.dailyMixes") private var dailyMixes = "{}"
     @Namespace private var lessonNamespace
+
+    private enum WaitingGroup: String, CaseIterable, Identifiable {
+        case tomorrow
+        case in2to3Days
+        case in4to7Days
+        case later
+
+        var id: String { rawValue }
+    }
+
+    private enum DueStepFilter: String, CaseIterable, Identifiable {
+        case all = "all"
+        case step1 = "step1"
+        case step2 = "step2"
+        case step3 = "step3"
+        case step4 = "step4"
+
+        var id: String { rawValue }
+
+        var stepIndex: Int? {
+            switch self {
+            case .all: return nil
+            case .step1: return 0
+            case .step2: return 1
+            case .step3: return 2
+            case .step4: return 3
+            }
+        }
+
+        func title(settings: SettingsManager) -> String {
+            switch self {
+            case .all: return settings.localized("All")
+            case .step1: return settings.localized("Step 1")
+            case .step2: return settings.localized("Step 2")
+            case .step3: return settings.localized("Step 3")
+            case .step4: return settings.localized("Step 4")
+            }
+        }
+    }
 
     public init(onHome: @escaping () -> Void = {}) {
         self.onHome = onHome
@@ -63,6 +105,11 @@ public struct TrainingScreen: View {
         let badges: [BadgeDefinition]
         let hasMasteredLesson: Bool
         let nearestDueDay: String?
+        let waitingTomorrow: [Lesson]
+        let waitingIn2to3Days: [Lesson]
+        let waitingIn4to7Days: [Lesson]
+        let waitingLater: [Lesson]
+        let settledLessons: [Lesson]
     }
 
     private var today: String { calendarDay }
@@ -99,6 +146,8 @@ public struct TrainingScreen: View {
 
                             dueNowPanel
 
+                            waitingPanel
+
                             if isLandscape {
                                 HStack(alignment: .top, spacing: Theme.Space.page) {
                                     mixPanel
@@ -112,6 +161,8 @@ public struct TrainingScreen: View {
                             }
 
                             trainingBadgesPanel(isLandscape: isLandscape)
+
+                            settledPanel
                         }
 
                         Spacer(minLength: Theme.Space.page)
@@ -627,7 +678,17 @@ public struct TrainingScreen: View {
                         return entry.count == 1 ? settings.localized("1 lesson") : settings.localized("%lld lessons", entry.count)
                     }()
 
-                    VStack(spacing: 4) {
+                    let offset = AppCalendar.daysBetween(today, entry.day) ?? 0
+                    let targetGroup: WaitingGroup? = {
+                        guard offset > 0 else { return nil }
+                        if offset == 1 { return .tomorrow }
+                        if offset == 2 || offset == 3 { return .in2to3Days }
+                        if offset >= 4 && offset <= 7 { return .in4to7Days }
+                        return .later
+                    }()
+                    let isTappable = entry.count > 0 && targetGroup != nil
+
+                    let cellContent = VStack(spacing: 4) {
                         Text(shortName)
                             .font(Theme.text(13))
                             .foregroundStyle(Theme.secondary)
@@ -646,8 +707,27 @@ public struct TrainingScreen: View {
                             HardwareLightBar(active: true, breathes: false)
                         }
                     }
-                    .accessibilityElement(children: .ignore)
-                    .accessibilityLabel("\(fullName), \(countPlural)")
+                    .contentShape(Rectangle())
+
+                    if isTappable {
+                        Button {
+                            if let targetGroup {
+                                withAnimation(.easeInOut(duration: 0.2)) {
+                                    expandedWaitingGroup = targetGroup
+                                }
+                            }
+                        } label: {
+                            cellContent
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityElement(children: .ignore)
+                        .accessibilityLabel("\(fullName), \(countPlural)")
+                        .accessibilityAddTraits(.isButton)
+                    } else {
+                        cellContent
+                            .accessibilityElement(children: .ignore)
+                            .accessibilityLabel("\(fullName), \(countPlural)")
+                    }
                 }
             }
 
@@ -685,6 +765,51 @@ public struct TrainingScreen: View {
 
     // MARK: - 3. Due Now
 
+    private var currentStepFilter: DueStepFilter {
+        DueStepFilter(rawValue: settings.trainingDueStepFilter) ?? .all
+    }
+
+    private var filteredDueLessons: [Lesson] {
+        guard let targetIndex = currentStepFilter.stepIndex else {
+            return dueLessons
+        }
+        return dueLessons.filter { lesson in
+            let record = progress.progress(for: lesson.id)
+            let step = record?.reviewStep ?? 0
+            return step == targetIndex
+        }
+    }
+
+    private var stepFilterChips: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: Theme.Space.small) {
+                ForEach(DueStepFilter.allCases) { filter in
+                    let count: Int = {
+                        if let targetIndex = filter.stepIndex {
+                            return dueLessons.filter { (progress.progress(for: $0.id)?.reviewStep ?? 0) == targetIndex }.count
+                        } else {
+                            return dueLessons.count
+                        }
+                    }()
+                    let isSelected = (currentStepFilter == filter)
+                    let isDisabled = (count == 0)
+
+                    FilterChip(title: filter.title(settings: settings), selected: isSelected) {
+                        if isSelected && filter != .all {
+                            settings.trainingDueStepFilter = DueStepFilter.all.rawValue
+                        } else {
+                            settings.trainingDueStepFilter = filter.rawValue
+                        }
+                    }
+                    .disabled(isDisabled)
+                    .opacity(isDisabled ? 0.35 : 1.0)
+                }
+            }
+        }
+        .scrollBounceBehavior(.basedOnSize)
+        .frame(height: Theme.Size.touch)
+    }
+
     private var dueNowPanel: some View {
         VStack(alignment: .leading, spacing: Theme.Space.regular) {
             panelHeader(settings.localized("Due now"))
@@ -702,13 +827,42 @@ public struct TrainingScreen: View {
                     }()
                     emptyCardText(settings.localized("Nothing to review today. Next: %@", nextDateFormatted))
                 } else {
-                    ForEach(Array(dueLessons.enumerated()), id: \.element.id) { index, lesson in
-                        if index > 0 {
-                            Rectangle()
-                                .fill(Theme.hairline)
-                                .frame(height: 1)
+                    stepFilterChips
+                        .padding(.bottom, Theme.Space.small)
+
+                    let filtered = filteredDueLessons
+                    if filtered.isEmpty {
+                        emptyCardText(settings.localized("No lessons for this step."))
+                    } else {
+                        let displayed = isDueExpanded ? filtered : Array(filtered.prefix(5))
+                        VStack(spacing: 0) {
+                            ForEach(Array(displayed.enumerated()), id: \.element.id) { index, lesson in
+                                if index > 0 {
+                                    Rectangle()
+                                        .fill(Theme.hairline)
+                                        .frame(height: 1)
+                                }
+                                dueLessonRow(lesson)
+                            }
                         }
-                        dueLessonRow(lesson)
+
+                        if filtered.count > 5 {
+                            Button {
+                                withAnimation(.easeInOut(duration: 0.2)) {
+                                    isDueExpanded.toggle()
+                                }
+                            } label: {
+                                Text(isDueExpanded
+                                    ? settings.localized("Show fewer")
+                                    : settings.localized("Show all (%lld)", filtered.count))
+                                    .font(Theme.control)
+                                    .padding(.horizontal, Theme.Space.regular)
+                                    .frame(minHeight: Theme.Size.touch)
+                            }
+                            .buttonStyle(PadSecondaryButtonStyle())
+                            .frame(maxWidth: .infinity, alignment: .center)
+                            .padding(.top, Theme.Space.small)
+                        }
                     }
                 }
             }
@@ -783,6 +937,169 @@ public struct TrainingScreen: View {
             }
         } else {
             return settings.localized("%lld days late", diff)
+        }
+    }
+
+    // MARK: - 3b. Waiting (reviews not yet due)
+
+    @ViewBuilder
+    private var waitingPanel: some View {
+        let tomorrowLessons = data?.waitingTomorrow ?? []
+        let in2to3Lessons = data?.waitingIn2to3Days ?? []
+        let in4to7Lessons = data?.waitingIn4to7Days ?? []
+        let laterLessons = data?.waitingLater ?? []
+
+        let hasAny = !tomorrowLessons.isEmpty || !in2to3Lessons.isEmpty || !in4to7Lessons.isEmpty || !laterLessons.isEmpty
+
+        if hasAny {
+            VStack(alignment: .leading, spacing: Theme.Space.regular) {
+                panelHeader(settings.localized("Waiting"))
+
+                FlowLayout(spacing: 8) {
+                    if !tomorrowLessons.isEmpty {
+                        waitingBoxButton(
+                            group: .tomorrow,
+                            title: settings.localized("Tomorrow (%lld)", tomorrowLessons.count)
+                        )
+                    }
+                    if !in2to3Lessons.isEmpty {
+                        waitingBoxButton(
+                            group: .in2to3Days,
+                            title: settings.localized("In 2–3 days (%lld)", in2to3Lessons.count)
+                        )
+                    }
+                    if !in4to7Lessons.isEmpty {
+                        waitingBoxButton(
+                            group: .in4to7Days,
+                            title: settings.localized("In 4–7 days (%lld)", in4to7Lessons.count)
+                        )
+                    }
+                    if !laterLessons.isEmpty {
+                        waitingBoxButton(
+                            group: .later,
+                            title: settings.localized("Later (%lld)", laterLessons.count)
+                        )
+                    }
+                }
+
+                if let openGroup = expandedWaitingGroup {
+                    let lessons: [Lesson] = {
+                        switch openGroup {
+                        case .tomorrow: return tomorrowLessons
+                        case .in2to3Days: return in2to3Lessons
+                        case .in4to7Days: return in4to7Lessons
+                        case .later: return laterLessons
+                        }
+                    }()
+
+                    if !lessons.isEmpty {
+                        VStack(spacing: 0) {
+                            ForEach(Array(lessons.enumerated()), id: \.element.id) { index, lesson in
+                                if index > 0 {
+                                    Rectangle()
+                                        .fill(Theme.hairline)
+                                        .frame(height: 1)
+                                }
+                                waitingLessonRow(lesson)
+                            }
+                        }
+                        .padding(.top, Theme.Space.small)
+                    }
+                }
+            }
+            .padding(Theme.Space.regular)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .satinPlate()
+        }
+    }
+
+    private func waitingBoxButton(group: WaitingGroup, title: String) -> some View {
+        let isOpen = (expandedWaitingGroup == group)
+
+        return Button {
+            withAnimation(.easeInOut(duration: 0.2)) {
+                if expandedWaitingGroup == group {
+                    expandedWaitingGroup = nil
+                } else {
+                    expandedWaitingGroup = group
+                }
+            }
+        } label: {
+            HStack(spacing: 6) {
+                Text(title)
+                    .font(Theme.strong(15))
+                    .foregroundStyle(Theme.ink)
+                Image(systemName: isOpen ? "chevron.up" : "chevron.down")
+                    .font(.system(size: 11, weight: .bold))
+                    .foregroundStyle(isOpen ? Theme.orange : Theme.secondary)
+            }
+            .padding(.horizontal, 14)
+            .frame(minHeight: Theme.Size.touch)
+            .background(isOpen ? Theme.activeFill : Theme.surface)
+            .overlay(
+                RoundedRectangle(cornerRadius: Theme.Radius.button)
+                    .stroke(isOpen ? Theme.orange : Theme.hairline, lineWidth: isOpen ? 1.5 : 1)
+            )
+            .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.button))
+        }
+        .buttonStyle(.plain)
+        .accessibilityAddTraits(isOpen ? [.isSelected] : [])
+    }
+
+    private func waitingLessonRow(_ lesson: Lesson) -> some View {
+        let record = progress.progress(for: lesson.id)
+        let step = (record?.reviewStep ?? 0) + 1
+        let subtext = waitingSubtext(for: record?.reviewDueDay)
+
+        return Button {
+            selectedLesson = .lesson(lesson)
+        } label: {
+            HStack(alignment: .center, spacing: Theme.Space.regular) {
+                Text(settings.localized(lesson.title))
+                    .font(Theme.strong(20))
+                    .foregroundStyle(Theme.ink)
+                    .lineLimit(1)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+
+                StarsView(record: record, lesson: lesson)
+
+                Text(settings.localized("Step %lld of 4", step))
+                    .font(Theme.strong(12).monospaced())
+                    .foregroundStyle(Theme.ink)
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 3)
+                    .overlay(Rectangle().stroke(Theme.ink, lineWidth: 2))
+
+                Text(subtext)
+                    .font(Theme.text(14))
+                    .foregroundStyle(Theme.secondary)
+                    .fixedSize()
+            }
+            .padding(.vertical, 8)
+            .frame(minHeight: 52)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .lessonSource(lesson.id)
+    }
+
+    private func waitingSubtext(for dueDay: String?) -> String {
+        guard let dueDay else { return "" }
+        let diff = AppCalendar.daysBetween(today, dueDay) ?? 0
+        if settings.languagePreference == .czech {
+            if diff <= 1 {
+                return "Opakování zítra · jen cvičení"
+            } else if diff >= 2 && diff <= 4 {
+                return "Opakování za \(diff) dny · jen cvičení"
+            } else {
+                return "Opakování za \(diff) dní · jen cvičení"
+            }
+        } else {
+            if diff <= 1 {
+                return settings.localized("Review tomorrow · practice only")
+            } else {
+                return settings.localized("Review in %lld days · practice only", diff)
+            }
         }
     }
 
@@ -986,6 +1303,83 @@ public struct TrainingScreen: View {
         .satinPlate()
     }
 
+    // MARK: - 6. Settled
+
+    @ViewBuilder
+    private var settledPanel: some View {
+        let settled = data?.settledLessons ?? []
+        if !settled.isEmpty {
+            VStack(alignment: .leading, spacing: Theme.Space.regular) {
+                Button {
+                    withAnimation(.easeInOut(duration: 0.2)) {
+                        isSettledExpanded.toggle()
+                    }
+                } label: {
+                    HStack {
+                        Text(settings.localized("Settled (%lld)", settled.count))
+                            .font(Theme.strong(18))
+                            .foregroundStyle(Theme.ink)
+
+                        Spacer()
+
+                        Image(systemName: isSettledExpanded ? "chevron.up" : "chevron.down")
+                            .font(.system(size: 14, weight: .bold))
+                            .foregroundStyle(Theme.secondary)
+                    }
+                    .padding(Theme.Space.regular)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .background(Theme.surface)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: Theme.Radius.button)
+                            .stroke(isSettledExpanded ? Theme.orange : Theme.hairline, lineWidth: isSettledExpanded ? 1.5 : 1)
+                    )
+                    .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.button))
+                }
+                .buttonStyle(.plain)
+                .accessibilityAddTraits(isSettledExpanded ? [.isSelected] : [])
+
+                if isSettledExpanded {
+                    VStack(spacing: 0) {
+                        ForEach(Array(settled.enumerated()), id: \.element.id) { index, lesson in
+                            if index > 0 {
+                                Rectangle()
+                                    .fill(Theme.hairline)
+                                    .frame(height: 1)
+                            }
+                            settledLessonRow(lesson)
+                        }
+                    }
+                    .padding(.horizontal, Theme.Space.regular)
+                    .padding(.bottom, Theme.Space.small)
+                }
+            }
+            .satinPlate()
+        }
+    }
+
+    private func settledLessonRow(_ lesson: Lesson) -> some View {
+        let record = progress.progress(for: lesson.id)
+
+        return Button {
+            selectedLesson = .lesson(lesson)
+        } label: {
+            HStack(alignment: .center, spacing: Theme.Space.regular) {
+                Text(settings.localized(lesson.title))
+                    .font(Theme.strong(18))
+                    .foregroundStyle(Theme.ink)
+                    .lineLimit(1)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+
+                StarsView(record: record, lesson: lesson)
+            }
+            .padding(.vertical, 10)
+            .frame(minHeight: 48)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .lessonSource(lesson.id)
+    }
+
     // MARK: - Refresh
 
     private func refreshCalendarDay() {
@@ -1026,21 +1420,65 @@ public struct TrainingScreen: View {
             return record.passed || record.mastery || record.memory
         }
         let openIDs = Set(practiced.filter { store.isUnlocked($0) && progression.isLessonOpen($0) }.map(\.id))
+
+        let playableLessons = practiced.filter { lesson in
+            openIDs.contains(lesson.id) && (padCount == 16 || EightPadLayout.slots(for: lesson) != nil)
+        }
+        let playableIDs = Set(playableLessons.map(\.id))
+        let playableRecords = records.filter { playableIDs.contains($0.key) }
+
         let candidates = TrainingMix.candidates(lessons: lessons, progress: records,
             padCount: padCount, openLessonIDs: openIDs)
         let mix = TrainingMix.dailySelection(lessons: lessons, progress: records,
             padCount: padCount, openLessonIDs: openIDs, day: today, savedJSON: dailyMixes)
-        let due = progress.dueLessonIds(today: today).compactMap { lessonStore.lesson(for: $0) }
+
+        let dueCandidates = progress.dueLessonIds(today: today).compactMap { lessonStore.lesson(for: $0) }.filter {
+            playableIDs.contains($0.id)
+        }
+        let due = ReviewQueue.order(dueCandidates, records: records, today: today)
+
+        var tomorrowCandidates: [Lesson] = []
+        var in2to3Candidates: [Lesson] = []
+        var in4to7Candidates: [Lesson] = []
+        var laterCandidates: [Lesson] = []
+        var settledCandidates: [Lesson] = []
+
+        for lesson in playableLessons {
+            guard let record = records[lesson.id] else { continue }
+            if record.settled == true || record.reviewSchedule.isSettled {
+                settledCandidates.append(lesson)
+            } else if let dueDay = record.reviewDueDay, dueDay > today {
+                let offset = AppCalendar.daysBetween(today, dueDay) ?? 0
+                if offset == 1 {
+                    tomorrowCandidates.append(lesson)
+                } else if offset == 2 || offset == 3 {
+                    in2to3Candidates.append(lesson)
+                } else if offset >= 4 && offset <= 7 {
+                    in4to7Candidates.append(lesson)
+                } else if offset > 7 {
+                    laterCandidates.append(lesson)
+                }
+            }
+        }
+
+        let waitingTomorrow = ReviewQueue.orderWaiting(tomorrowCandidates, records: records, today: today)
+        let waitingIn2to3Days = ReviewQueue.orderWaiting(in2to3Candidates, records: records, today: today)
+        let waitingIn4to7Days = ReviewQueue.orderWaiting(in4to7Candidates, records: records, today: today)
+        let waitingLater = ReviewQueue.orderWaiting(laterCandidates, records: records, today: today)
+
+        let settledLessons = settledCandidates.sorted {
+            let t1 = settings.localized($0.title)
+            let t2 = settings.localized($1.title)
+            let cmp = t1.localizedCaseInsensitiveCompare(t2)
+            return cmp != .orderedSame ? cmp == .orderedAscending : $0.id < $1.id
+        }
+
         let source = NextLessonSource(rawValue: settings.nextLessonSource) ?? .path
         let next = progression.nextLesson(after: lessonStore.lesson(for: settings.lastLessonID), source: source)
             ?? progression.catalog.path.first
         let plan = TodayPlan.decode(savedTodayPlan, today: today) ?? TodayPlan.make(
             day: today, dueLessonIDs: due.map(\.id), nextLessonID: next?.id, mixLessonIDs: mix.map(\.id))
-        let afterMe = lessons.filter { lesson in
-            guard let record = records[lesson.id], record.passed || record.mastery || record.memory,
-                  openIDs.contains(lesson.id) else { return false }
-            return padCount == 16 || EightPadLayout.slots(for: lesson) != nil
-        }.sorted {
+        let afterMe = playableLessons.sorted {
             let leftMemory = records[$0.id]?.memory == true
             let rightMemory = records[$1.id]?.memory == true
             return leftMemory != rightMemory ? !leftMemory : $0.id < $1.id
@@ -1053,15 +1491,35 @@ public struct TrainingScreen: View {
                 if (0...3).contains(step) { counts[step] += 1 }
             }
         }
-        return TrainingData(dueLessons: due, nextLesson: next, currentPlan: plan,
-            mixCandidates: candidates, openLessonIDs: openIDs, mixLessons: mix,
-            afterMeCandidates: afterMe, memoryCounts: counts,
-            forecast: ReviewForecast.dueCounts(records, from: today, days: 7).map { ($0.day, $0.count) },
+
+        let nearestDueDay = playableRecords.values
+            .filter { !$0.reviewSchedule.isSettled }
+            .compactMap(\.reviewDueDay)
+            .filter { $0 > today }
+            .min()
+
+        return TrainingData(
+            dueLessons: due,
+            nextLesson: next,
+            currentPlan: plan,
+            mixCandidates: candidates,
+            openLessonIDs: openIDs,
+            mixLessons: mix,
+            afterMeCandidates: afterMe,
+            memoryCounts: counts,
+            forecast: ReviewForecast.dueCounts(playableRecords, from: today, days: 7).map { ($0.day, $0.count) },
             stats: BadgeEvaluator.evaluate(progress: records, catalog: progression.catalog,
                 definitions: badgeStore.definitions, currentlyEarned: Set(badgeStore.records.keys),
                 trainingLog: progress.trainingLog).stats,
-            badges: availableTrainingBadges, hasMasteredLesson: progress.hasAnyMasteredLesson,
-            nearestDueDay: progress.nearestDueDay(today: today))
+            badges: availableTrainingBadges,
+            hasMasteredLesson: progress.hasAnyMasteredLesson,
+            nearestDueDay: nearestDueDay,
+            waitingTomorrow: waitingTomorrow,
+            waitingIn2to3Days: waitingIn2to3Days,
+            waitingIn4to7Days: waitingIn4to7Days,
+            waitingLater: waitingLater,
+            settledLessons: settledLessons
+        )
     }
 
     private func updateMix(_ ids: [Int]) {
