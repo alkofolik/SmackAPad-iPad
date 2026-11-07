@@ -1,6 +1,6 @@
 # 135 — Proposal: Home pad titles in a font that matches the logo (HTML preview, no code)
 
-Status: ready-for-agent. Type: proposal. Source: Jakub, 2026-11-07: "Could the pad titles use the font from the logo?"
+Status: ready-for-review. Type: proposal. Source: Jakub, 2026-11-07: "Could the pad titles use the font from the logo?"
 
 ## Fact
 
@@ -20,3 +20,20 @@ The wordmark "SMACK-A-PAD" is a **vector drawing** (`HomeScreen.swift` ~573), no
 ## Done rule
 
 Stop when the HTML file opens offline. Commit (AGENTS.md).
+
+## Proposal results (2026-11-07)
+
+Offline preview generated at `docs/previews/135-pad-title-fonts.html` with all fonts base64-embedded (100% offline, zero network requests).
+
+1. **Candidates picked & verified**:
+   - **1. Anton** (Vernon Adams, SIL OFL 1.1): Closest visual weight to the vector logo mark, punchy advertising grotesque. Czech diacritics 100% OK. Longest title "PLNÁ VERZE" = 68.3 px (plenty of room on 146 px pad cell, no "…").
+   - **2. Bebas Neue** (Ryoichi Tsunekawa / Dharma Type, SIL OFL 1.1): Tall, clean, elegant condensed all-caps grotesque. Czech diacritics 100% OK. Longest title "PLNÁ VERZE" = 57.5 px (no "…").
+   - **3. Barlow Condensed ExtraBold 800** (Jeremy Tribby, SIL OFL 1.1): Technical hardware aesthetic with slightly rounded stroke terminals matching the 8 pt pad corner radii. Czech diacritics 100% OK. Longest title "PLNÁ VERZE" = 70.9 px (no "…").
+
+2. **Preview features**:
+   - Ticket 119 controller housing (ribbed body, brushed plate with 4 slotted screws, 3×3 pad grid).
+   - Real vector wordmark directly compared above the grids.
+   - Light and dark appearances (toggle button + 'L' key).
+   - Side-by-side, stacked, and tabs views.
+   - Subtitles stay IBM Plex Sans.
+
