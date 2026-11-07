@@ -21,9 +21,9 @@ Status: ready-for-agent. Type: implementation. Depends on: 133 (chip style). Sou
 
 ## Acceptance criteria
 
-- [ ] Every filter fully visible (landscape) or scrollable (portrait).
-- [ ] No grey band in Library or Intro, light and dark.
-- [ ] Build succeeds. No new tests.
+- [x] Every filter fully visible (landscape) or scrollable (portrait).
+- [x] No grey band in Library or Intro, light and dark.
+- [x] Build succeeds. No new tests.
 
 ## Agent assignment
 

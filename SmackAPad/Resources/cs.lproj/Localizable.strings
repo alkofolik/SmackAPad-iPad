@@ -112,7 +112,7 @@
 "Reload" = "Načíst znovu";
 "%lld / %lld PASSED" = "%lld / %lld SPLNĚNO";
 "No matching lessons" = "Žádné odpovídající lekce";
-"Clear filters" = "Vymazat";
+"Clear filters" = "Vymazat filtry";
 "Overall progress" = "Celkový postup";
 "Star requirements" = "Podmínky pro hvězdy";
 "%lld of %lld stars" = "%lld z %lld hvězd";
@@ -261,8 +261,8 @@
 "3★" = "3★";
 "2★" = "2★";
 "1★" = "1★";
-"In progress" = "Rozehráno";
-"Not started" = "Nezahájeno";
+"In progress" = "Začaté";
+"Not started" = "Nové";
 "Genre" = "Žánr";
 "Technique" = "Technika";
 "All (easiest first)" = "Vše (od nejlehčích)";

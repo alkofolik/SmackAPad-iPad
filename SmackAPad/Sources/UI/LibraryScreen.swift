@@ -176,6 +176,8 @@ struct LibraryScreen: View {
                 else if let group { detail(group).id(mode.id + group.id).transition(motion.transition) }
                 else { Text(settings.localized("No matching lessons")) }
             }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .calmChassisBackground()
             .motion(Theme.Motion.standard, value: showingIntro ? "intro" : mode.id + (group?.id ?? ""))
             .toolbar {
                 PadToolbarItem(placement: .topBarTrailing) {
@@ -706,11 +708,15 @@ struct LibraryScreen: View {
                 }
             }
             .environment(\.defaultMinListRowHeight, 60)
-            .listStyle(.plain).scrollContentBackground(.hidden)
+            .listStyle(.plain)
+            .listSectionSeparator(.hidden)
+            .scrollContentBackground(.hidden)
             .contentMargins(.vertical, 0, for: .scrollContent)
             .motion(Theme.Motion.standard, value: filtered.map(\.id))
         }
         .padding(.horizontal, Theme.Space.page).padding(.top, Theme.Space.small)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+        .calmChassisBackground()
         .motion(Theme.Motion.standard, value: group.stage.map { progression.isStageOpen($0) })
     }
 
@@ -731,6 +737,7 @@ struct LibraryScreen: View {
         }
         .padding(.vertical, Theme.Space.small)
         .listRowInsets(EdgeInsets())
+        .listRowSeparator(.hidden)
         .listRowBackground(Color.clear)
     }
 
@@ -816,22 +823,28 @@ struct LibraryScreen: View {
                     .frame(height: Theme.Size.touch)
                 }
 
-                Button {
-                    query = ""; cross = ""
-                    settings.libraryStarFilters = LibraryStarFilter.allCases.map(\.id)
-                } label: {
-                    HStack(spacing: Theme.Space.tight) {
+                if hasActiveFilter {
+                    Button {
+                        query = ""
+                        cross = ""
+                        settings.libraryStarFilters = LibraryStarFilter.allCases.map(\.id)
+                    } label: {
                         Image(systemName: "xmark").font(Theme.meta)
-                        Text(settings.localized("Clear filters")).font(Theme.meta).fixedSize()
+                            .frame(width: Theme.Size.touch, height: Theme.Size.touch)
                     }
-                    .frame(height: Theme.Size.touch)
+                    .buttonStyle(PadIconButtonStyle())
+                    .accessibilityLabel(settings.localized("Clear filters"))
                 }
-                .buttonStyle(PadSecondaryButtonStyle())
-                .accessibilityLabel(settings.localized("Clear filters"))
             }
         }
         .scrollBounceBehavior(.basedOnSize)
         .frame(height: Theme.Size.touch)
+    }
+
+    private var hasActiveFilter: Bool {
+        !query.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+            || !cross.isEmpty
+            || Set(settings.libraryStarFilters) != Set(LibraryStarFilter.allCases.map(\.id))
     }
 
     private var crossTitle: String {

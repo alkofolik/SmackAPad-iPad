@@ -120,12 +120,14 @@ public struct IntroScreen: View {
                     .tint(Theme.orange)
                 }
                 .listRowSeparator(.hidden)
-                .listRowBackground(Theme.background)
+                .listRowBackground(Color.clear)
             }
+            .listRowBackground(Color.clear)
             if isAllIntroCompleted && settings.hideCompletedLessons {
                 Section {
                     allCompletedRow
                 }
+                .listRowBackground(Color.clear)
             } else {
                 ForEach(IntroStage.allCases) { stage in
                     let stageLessons = introLessons.filter { $0.intro?.stage == stage.rawValue }
@@ -137,7 +139,10 @@ public struct IntroScreen: View {
                             SectionHeader(title: stage.title(language: settings.languagePreference),
                                           subtitle: stage.subtitle(language: settings.languagePreference))
                                 .padding(.top, Theme.Space.small)
+                                .listRowInsets(EdgeInsets(top: 0, leading: Theme.Space.page, bottom: 0, trailing: Theme.Space.page))
+                                .listRowBackground(Color.clear)
                         }
+                        .listRowBackground(Color.clear)
                     }
                 }
                 let remaining = introLessons.filter { lesson in
@@ -147,11 +152,17 @@ public struct IntroScreen: View {
                 if !visibleRemaining.isEmpty {
                     Section {
                         ForEach(visibleRemaining) { exerciseRow($0) }
-                    } header: { SectionHeader(title: settings.localized("Other Intro Exercises")) }
+                    } header: {
+                        SectionHeader(title: settings.localized("Other Intro Exercises"))
+                            .listRowInsets(EdgeInsets(top: 0, leading: Theme.Space.page, bottom: 0, trailing: Theme.Space.page))
+                            .listRowBackground(Color.clear)
+                    }
+                    .listRowBackground(Color.clear)
                 }
             }
         }
         .listStyle(.plain)
+        .listSectionSeparator(.hidden)
         .environment(\.defaultMinListRowHeight, 60)
         .listRowInsets(EdgeInsets(top: 0, leading: Theme.Space.page, bottom: 0, trailing: Theme.Space.page))
         .scrollContentBackground(.hidden)
@@ -197,7 +208,8 @@ public struct IntroScreen: View {
         }
         .padding(.vertical, Theme.Space.small)
         .listRowInsets(EdgeInsets(top: 0, leading: Theme.Space.page, bottom: 0, trailing: Theme.Space.page))
-        .listRowBackground(Theme.background)
+        .listRowSeparator(.hidden)
+        .listRowBackground(Color.clear)
     }
 
     private func exerciseRow(_ lesson: Lesson) -> some View {
@@ -207,8 +219,9 @@ public struct IntroScreen: View {
                          introGoal: (lesson.intro?.goal).map { settings.localized($0) }) {
             onSelect(lesson)
         }
-        .listRowInsets(EdgeInsets(top: 0, leading: Theme.Space.page, bottom: 0, trailing: Theme.Space.page))
-        .listRowBackground(Theme.background)
+        .listRowInsets(EdgeInsets(top: Theme.Space.tight, leading: Theme.Space.page, bottom: Theme.Space.tight, trailing: Theme.Space.page))
+        .listRowSeparator(.hidden)
+        .listRowBackground(Color.clear)
     }
 }
 
@@ -232,7 +245,8 @@ struct IntroRulesCard: View {
         }
         .padding(.vertical, Theme.Space.regular)
         .listRowInsets(EdgeInsets(top: 0, leading: Theme.Space.page, bottom: 0, trailing: Theme.Space.page))
-        .listRowBackground(Theme.background)
+        .listRowSeparator(.hidden)
+        .listRowBackground(Color.clear)
     }
 
     @ViewBuilder private var rules: some View {
