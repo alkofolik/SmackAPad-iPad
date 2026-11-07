@@ -158,4 +158,4 @@ Source: Jakub, retention and memory discussion; legacy "Trénink" concept 2026-1
 | 129 | App skin 4: remaining screens and banners | Gemini 3.8 Flash, high (fallback Codex Sol, high) | after 126; parallel with 127/128 |
 | 130 | Buttons react again: hit areas after the satin skin, Library lessons open | Codex GPT-6.1 Sol, high (fallback Gemini 3.8 Pro, high) | 1st (before 121 and 131) |
 | 131 | Proposal: one button system for the whole app (HTML previews, no code) | Gemini 3.8 Flash, high (fallback Codex Sol, high) | after 130; implementation ticket after Jakub chooses |
-| 132 | Third star not awarded at 100 % (find rule/bug, show the reason) | Codex GPT-6.1 Sol, high (fallback Gemini 3.8 Pro, high) | any time (PracticeSession files; not the Training/Library files of 121) |
+| 132 | Announce in advance that the third star unlocks the next day | Gemini 3.8 Flash, medium (fallback Codex Sol, medium) | any time (Practice files; not Training/Library while 121 runs) |
