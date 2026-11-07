@@ -1,6 +1,6 @@
 # 145 — Proposal: badge images (HTML preview, no code)
 
-Status: ready-for-human (Jakub picks a variant). Source: Jakub, 2026-11-07. Proposal: `docs/2026-11-07-training-stop-star-list-badges-proposal.md` §4.
+Status: resolved — Jakub chose variant B (pad tiles), 2026-11-07. Implementation: ticket 146. Source: Jakub, 2026-11-07. Proposal: `docs/2026-11-07-training-stop-star-list-badges-proposal.md` §4.
 
 ## Preview
 
