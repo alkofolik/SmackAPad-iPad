@@ -1,0 +1,228 @@
+<title>Smack-a-Pad Badge Images</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@700;800&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@500&display=swap">
+<style>
+/* Layout: one column like the iPad Badges sheet; icon sheet, then variant A (rows), then variant B (pad tiles). */
+:root {
+  --bg: #F4EFE6; --ink: #1F1D1A; --secondary: #5E5950; --surface: #EBE5DA;
+  --hairline: rgba(31,29,26,.15); --orange: #FF6B00; --cavity: #0C0B0A;
+  --bevel-top: #ECE5DC; --bevel-bottom: #DDD5C8; --led-off: #D6D0C4; --dim-icon: rgba(31,29,26,.38);
+  --display: "Barlow Condensed", "Arial Narrow", sans-serif;
+  --body: "IBM Plex Sans", -apple-system, "Helvetica Neue", sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #1F1D1A; --ink: #F4EFE6; --secondary: #B3ADA2; --surface: #2A2824;
+  --hairline: rgba(244,239,230,.15); --bevel-top: #34312C; --bevel-bottom: #262420; --led-off: #3E3B36; --dim-icon: rgba(244,239,230,.32);
+  color-scheme: dark; } }
+:root[data-theme="dark"] {
+  --bg: #1F1D1A; --ink: #F4EFE6; --secondary: #B3ADA2; --surface: #2A2824;
+  --hairline: rgba(244,239,230,.15); --bevel-top: #34312C; --bevel-bottom: #262420; --led-off: #3E3B36; --dim-icon: rgba(244,239,230,.32);
+  color-scheme: dark; }
+body { background: var(--bg); color: var(--ink); font-family: var(--body); font-size: 16px; line-height: 1.45; }
+.wrap { max-width: 980px; margin: 0 auto; padding-block: 32px 64px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
+  display: flex; flex-direction: column; gap: 48px; }
+h1, h2, h3 { font-family: var(--display); font-weight: 800; text-transform: uppercase; letter-spacing: .02em; margin: 0; text-wrap: balance; }
+h1 { font-size: clamp(36px, 6vw, 56px); line-height: .95; }
+h2 { font-size: 32px; line-height: 1; }
+h3 { font-size: 22px; color: var(--secondary); font-weight: 700; letter-spacing: .06em; }
+p { margin: 0; max-width: 65ch; }
+.lead { color: var(--secondary); }
+header { display: flex; flex-direction: column; gap: 14px; }
+.theme { display: flex; gap: 8px; flex-wrap: wrap; }
+.theme button { font: 500 15px var(--body); color: var(--ink); background: var(--surface); border: 2px solid var(--hairline);
+  border-radius: 0; padding: 8px 14px; min-height: 44px; cursor: pointer; }
+.theme button[aria-pressed="true"] { border-color: var(--orange); }
+button:focus-visible { outline: 3px solid var(--orange); outline-offset: 2px; }
+section { display: flex; flex-direction: column; gap: 20px; }
+.tag { font: 500 12px var(--mono); letter-spacing: .08em; text-transform: uppercase; color: var(--orange); }
+
+/* icon sheet */
+.sheet { display: grid; grid-template-columns: repeat(auto-fill, minmax(116px, 1fr)); gap: 12px; }
+.cell { display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 14px 6px; background: var(--surface); border: 1px solid var(--hairline); text-align: center; min-width: 0; }
+.cell svg { width: 36px; height: 36px; color: var(--ink); }
+.cell span { font-size: 13px; color: var(--secondary); line-height: 1.25; }
+
+svg.ic { fill: none; stroke: currentColor; stroke-width: 1.75; stroke-linecap: round; stroke-linejoin: round; display: block; }
+svg.ic .f { fill: currentColor; stroke: none; }
+
+/* Variant A: row with engraved plate */
+.group { display: flex; flex-direction: column; gap: 4px; }
+.rows { display: flex; flex-direction: column; }
+.row { display: flex; align-items: center; gap: 16px; min-height: 72px; padding-block: 10px; border-bottom: 1px solid var(--hairline); }
+.row:last-child { border-bottom: 0; }
+.plate { flex: none; width: 56px; height: 56px; border-radius: 8px; display: grid; place-items: center; position: relative;
+  background: linear-gradient(var(--bevel-top), var(--bevel-bottom)); box-shadow: inset 0 1px 0 rgba(255,255,255,.25), inset 0 -2px 0 rgba(0,0,0,.08); }
+.plate svg { width: 30px; height: 30px; color: var(--dim-icon); }
+.plate.on { background: var(--cavity); box-shadow: inset 0 2px 6px rgba(0,0,0,.6), 0 0 0 1px rgba(255,107,0,.35); }
+.plate.on svg { color: var(--orange); filter: drop-shadow(0 0 4px rgba(255,107,0,.55)); }
+.leds { position: absolute; bottom: 5px; left: 0; right: 0; display: flex; justify-content: center; gap: 3px; }
+.leds i { width: 5px; height: 5px; border-radius: 50%; background: var(--led-off); }
+.plate.on .leds i { background: var(--orange); }
+.plate:not(.on) .leds i { background: var(--hairline); }
+.txt { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.name { font: 500 20px var(--body); line-height: 1.2; }
+.row.off .name { color: var(--secondary); }
+.cond { font-size: 14px; color: var(--secondary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.right { flex: none; text-align: right; font-size: 14px; color: var(--secondary); font-variant-numeric: tabular-nums; display: flex; flex-direction: column; align-items: flex-end; gap: 6px; }
+.bar { width: 72px; height: 2px; background: var(--hairline); position: relative; }
+.bar b { position: absolute; inset: 0 auto 0 0; background: var(--orange); }
+
+/* Variant B: pad tiles */
+.tiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 14px; }
+.tile { position: relative; aspect-ratio: 1 / 1.08; max-width: 100%; border-radius: 14px; padding: 12px; min-width: 0;
+  display: flex; flex-direction: column; justify-content: space-between;
+  background: linear-gradient(var(--bevel-top), var(--bevel-bottom));
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.3), inset 0 -3px 0 rgba(0,0,0,.10), 0 1px 2px rgba(0,0,0,.12); }
+.tile .tl { display: flex; gap: 4px; }
+.tile .tl i { width: 7px; height: 7px; border-radius: 50%; background: var(--hairline); }
+.tile .ico { display: grid; place-items: center; }
+.tile .ico svg { width: 52px; height: 52px; color: var(--dim-icon); }
+.tile .nm { font: 600 15px var(--body); line-height: 1.2; color: var(--secondary); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.tile .pr { height: 3px; background: var(--hairline); margin-top: 8px; position: relative; }
+.tile .pr b { position: absolute; inset: 0 auto 0 0; background: var(--orange); }
+.tile.on { background: radial-gradient(120% 90% at 50% 40%, #2A1608 0%, var(--cavity) 70%);
+  box-shadow: 0 0 0 2px var(--orange), 0 0 18px rgba(255,107,0,.35), inset 0 2px 8px rgba(0,0,0,.6); }
+.tile.on .ico svg { color: var(--orange); filter: drop-shadow(0 0 6px rgba(255,107,0,.6)); }
+.tile.on .nm { color: #F4EFE6; }
+.tile.on .tl i { background: var(--orange); box-shadow: 0 0 5px rgba(255,107,0,.8); }
+.tile .dt { font: 500 11px var(--mono); color: rgba(244,239,230,.6); margin-top: 6px; letter-spacing: .04em; }
+
+.notes { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 16px; }
+.note { border-top: 2px solid var(--ink); padding-top: 12px; display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.note strong { font-family: var(--display); font-size: 22px; text-transform: uppercase; letter-spacing: .02em; }
+.note p, .note li { color: var(--secondary); font-size: 15px; }
+.note ul { margin: 0; padding-left: 18px; }
+@media (max-width: 480px) { .right { display: none; } .tiles { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+</style>
+
+<div class="wrap">
+  <header>
+    <span class="tag">Návrh · ticket 145 · 7. 11. 2026</span>
+    <h1>Obrázky k odznakům</h1>
+    <p class="lead">Každý odznak dostane ikonu podle toho, za co je. Úroveň odznaku dál ukazují svítící tečky (1 až 3). Získaný odznak svítí oranžově, nezískaný je tlumený. Ukázková data: některé odznaky jsou „získané“, jiné rozpracované.</p>
+    <div class="theme" role="group" aria-label="Vzhled">
+      <button id="t-light" type="button" aria-pressed="false">Světlý</button>
+      <button id="t-dark" type="button" aria-pressed="false">Tmavý</button>
+      <button id="t-system" type="button" aria-pressed="true">Podle iPadu</button>
+    </div>
+  </header>
+
+  <section>
+    <h2>Sada ikon</h2>
+    <p class="lead">Jedna ikona pro skupinu, u Žánrů, Technik a Tréninku vlastní ikona pro každý druh. V aplikaci by se použily stejné tvary jako vektorové ikony (nebo nejbližší systémové ikony Applu).</p>
+    <div class="sheet" id="sheet"></div>
+  </section>
+
+  <section>
+    <span class="tag">Varianta A</span>
+    <h2>Ikona v řádku</h2>
+    <p class="lead">Dnešní seznam zůstává, vlevo přibude malá „vyrytá“ destička s ikonou a tečkami úrovně. Nejmenší změna, seznam zůstane přehledný i s 55 odznaky.</p>
+    <div id="rows"></div>
+  </section>
+
+  <section>
+    <span class="tag">Varianta B</span>
+    <h2>Odznak jako pad</h2>
+    <p class="lead">Mřížka čtvercových dlaždic ve stylu padů z Home. Získaný odznak se „rozsvítí“ jako stisknutý pad. Víc radosti z pohledu, ale podmínka se vejde jen po klepnutí (detail).</p>
+    <div id="tiles"></div>
+  </section>
+
+  <section>
+    <h2>K rozhodnutí</h2>
+    <div class="notes">
+      <div class="note"><strong>A nebo B?</strong><p>A je klidná a rychlá na čtení. B víc odměňuje, ale potřebuje detail po klepnutí pro text podmínky.</p></div>
+      <div class="note"><strong>Ikony</strong><p>Sedí tvary? Které ikoně nerozumíš nebo bys chtěl jinak?</p></div>
+      <div class="note"><strong>Kde všude</strong><ul><li>Obrazovka Odznaky</li><li>Banner při získání odznaku</li><li>Tréninkové odznaky na stránce Trénink</li></ul></div>
+    </div>
+  </section>
+</div>
+
+<script>
+const I = {
+  pad: '<rect x="4" y="4" width="16" height="16" rx="3"/><circle class="f" cx="12" cy="12" r="3"/>',
+  metronome: '<path d="M8.5 20.5h7l-2.3-16.5h-2.4z"/><path d="M12 15.5l5-8.5"/><circle class="f" cx="16" cy="8.6" r="1.4"/><path d="M6.5 20.5h11"/>',
+  eye: '<path d="M3 10c2.5 3.5 5.5 5 9 5s6.5-1.5 9-5"/><path d="M12 15v3M7.3 13.8l-1.4 2.5M16.7 13.8l1.4 2.5M4.2 11.8l-1.7 1.7M19.8 11.8l1.7 1.7"/>',
+  flag: '<path d="M6 21V3.5"/><path d="M6 4.5h11.5l-2.6 4 2.6 4H6"/>',
+  stairs: '<path d="M3 20h5v-5h5v-5h5V5h3"/>',
+  bolt: '<path d="M13.5 3L5 14h6.5l-1 7L19 10h-6.5z"/>',
+  sine: '<path d="M2 12c2-5.5 4.5-5.5 6.5 0s4.5 5.5 6.5 0 4.5-5.5 6.5 0"/>',
+  note: '<ellipse class="f" cx="8.5" cy="17.5" rx="3.2" ry="2.4" transform="rotate(-20 8.5 17.5)"/><path d="M11.4 16.8V3.5c1.8 2.4 5.4 2.6 5.6 7"/>',
+  mic: '<rect x="9" y="3" width="6" height="11" rx="3"/><path d="M6 11a6 6 0 0 0 12 0M12 17v4M9 21h6"/>',
+  globe: '<circle cx="12" cy="12" r="9"/><path d="M3 12h18"/><path d="M12 3c3.2 3 3.2 15 0 18c-3.2-3-3.2-15 0-18z"/>',
+  square: '<path d="M2 16h4V8h5v8h5V8h4v8h2"/>',
+  heart: '<path d="M12 20s-7.5-4.6-7.5-10.2A4 4 0 0 1 12 7.4a4 4 0 0 1 7.5 2.4C19.5 15.4 12 20 12 20z"/>',
+  four: '<circle class="f" cx="4.5" cy="13" r="2"/><circle class="f" cx="9.5" cy="13" r="2"/><circle class="f" cx="14.5" cy="13" r="2"/><circle class="f" cx="19.5" cy="13" r="2"/><path d="M2.5 18h19"/>',
+  sixteen: (() => { let s = ''; for (let i = 0; i < 16; i++) { const x = 2.6 + i * 1.25; const tall = i % 4 === 0; s += `<path d="M${x.toFixed(2)} ${tall ? 6 : 10}V18"/>`; } return s; })(),
+  ghost: '<path d="M7 5.5c-2.2 3.4-2.2 9.6 0 13M17 5.5c2.2 3.4 2.2 9.6 0 13"/><circle cx="12" cy="12" r="2.6"/>',
+  triplet: '<path d="M4 9.5V6.5h16v3"/><circle class="f" cx="6" cy="16" r="2.1"/><circle class="f" cx="12" cy="16" r="2.1"/><circle class="f" cx="18" cy="16" r="2.1"/>',
+  tom: '<ellipse cx="12" cy="8" rx="8" ry="3"/><path d="M4 8v8c0 1.7 3.6 3 8 3s8-1.3 8-3V8"/><path d="M8 11v7.6M16 11v7.6"/>',
+  review: '<path d="M20 12a8 8 0 1 1-2.4-5.7"/><path d="M20 4v4.5h-4.5"/>',
+  lock: '<rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/><circle class="f" cx="12" cy="16" r="1.4"/>',
+  bounce: '<path d="M3 20.5h18"/><path d="M3.5 6c2.5 0 3.3 14 5.5 14s2.3-8 4.5-8 2 8 3.7 8 1.6-3 3.3-3"/>',
+  shuffle: '<path d="M3 7h3.5c4.5 0 6.5 10 11 10H21"/><path d="M3 17h3.5c1.5 0 2.7-1.2 3.7-2.8M13.8 9.8C14.8 8.2 16 7 17.5 7H21"/><path d="M18 4l3 3-3 3M18 14l3 3-3 3"/>',
+  ear: '<path d="M7.5 9a5 5 0 1 1 9.3 2.6c-1.2 1.8-2.6 2.6-2.6 4.9a3.1 3.1 0 0 1-5.7 1.7"/><path d="M10.5 9.5a2 2 0 1 1 3.6 1.2"/>',
+  calendar: '<rect x="3.5" y="5" width="17" height="15.5" rx="2"/><path d="M3.5 10h17M8 3v4M16 3v4"/><path d="M9 15.2l2 2 4-4"/>'
+};
+const LABEL = {
+  pad: 'Splněno', metronome: 'Cílové tempo', eye: 'Zpaměti', flag: 'Etapy', stairs: 'Úrovně',
+  bolt: 'Rock a punk', sine: 'Funk, soul, blues', note: 'Jazz', mic: 'Hip hop a trap', globe: 'Latin a svět', square: 'Elektronika', heart: 'Pop a country',
+  four: 'Základní groove', sixteen: 'Šestnáctiny', ghost: 'Ghost noty', triplet: 'Swing a shuffle', tom: 'Přechody a tomy',
+  review: 'Opakování', lock: 'Upevněno', bounce: 'Zpátky na nohy', shuffle: 'Mix', ear: 'Zahraj po mně', calendar: 'Dny tréninku'
+};
+const svg = k => `<svg class="ic" viewBox="0 0 24 24" aria-hidden="true">${I[k]}</svg>`;
+
+// id, group, tier, name, condition, icon, earned date or [done, goal]
+const B = [
+  ['passed','Splněno',[
+    [1,'První groove','Splň první lekci.','pad','2. 11. 2026'],
+    [2,'Stavitel groovu','Splň deset různých lekcí.','pad','5. 11. 2026'],
+    [3,'Veterán groovu','Splň padesát různých lekcí.','pad',[23,50]],
+    [3,'Stovka groovů','Splň 100 různých lekcí.','pad',[23,100]]]],
+  ['genres','Žánry',[
+    [2,'Rock a punk – hotovo','Splň všechny lekce skupiny Rock a punk.','bolt','6. 11. 2026'],
+    [2,'Funk, soul, blues – hotovo','Splň všechny lekce skupiny Funk, soul, blues.','sine',[9,14]],
+    [2,'Jazz a New Orleans – hotovo','Splň všechny lekce skupiny Jazz a New Orleans.','note',[2,11]],
+    [2,'Hip hop a trap – hotovo','Splň všechny lekce skupiny Hip hop a trap.','mic',[5,12]],
+    [2,'Latin a svět – hotovo','Splň všechny lekce skupiny Latin a svět.','globe',[1,16]],
+    [2,'Elektronika – hotovo','Splň všechny lekce skupiny Elektronika.','square',[7,9]],
+    [2,'Pop a country – hotovo','Splň všechny lekce skupiny Pop a country.','heart',[0,10]]]],
+  ['training','Trénink',[
+    [1,'Návrat','Projdi první opakování.','review','4. 11. 2026'],
+    [2,'Pravidelně','Projdi 10 opakování.','review',[6,10]],
+    [1,'Upevněno','Upevni první lekci.','lock',[0,1]],
+    [1,'Zpátky na nohy','Projdi opakování den po nesplněném.','bounce','6. 11. 2026'],
+    [1,'Zamíchej','Dokonči celé kolo Mixu.','shuffle','5. 11. 2026'],
+    [2,'Mix naslepo','Dokonči kolo Mixu zpaměti, každý běh aspoň 80 %.','shuffle',[0,1]],
+    [1,'Ozvěna','Získej aspoň 80 % v Zahraj po mně.','ear','7. 11. 2026'],
+    [2,'Deset tréninků','Trénuj v 10 různých dnech.','calendar',[4,10]]]]
+];
+
+document.getElementById('sheet').innerHTML = Object.keys(I).map(k => `<div class="cell">${svg(k)}<span>${LABEL[k]}</span></div>`).join('');
+
+const leds = (n, tag) => Array.from({ length: n }, () => `<${tag}></${tag}>`).join('');
+document.getElementById('rows').innerHTML = B.map(([, title, items]) => `
+  <div class="group"><h3>${title}</h3><div class="rows">${items.map(([tier, name, cond, ic, st]) => {
+    const on = typeof st === 'string';
+    const right = on ? `Získáno: ${st}` : `Postup: ${st[0]} / ${st[1]}<span class="bar"><b style="width:${Math.round(100 * st[0] / st[1])}%"></b></span>`;
+    return `<div class="row ${on ? 'on' : 'off'}"><div class="plate ${on ? 'on' : ''}">${svg(ic)}<span class="leds">${leds(tier, 'i')}</span></div>
+      <div class="txt"><span class="name">${name}</span><span class="cond">${cond}</span></div><div class="right">${right}</div></div>`;
+  }).join('')}</div></div>`).join('');
+
+document.getElementById('tiles').innerHTML = B.map(([, title, items]) => `
+  <div class="group"><h3>${title}</h3><div class="tiles">${items.map(([tier, name, , ic, st]) => {
+    const on = typeof st === 'string';
+    const foot = on ? `<div class="dt">${st}</div>` : `<div class="pr"><b style="width:${Math.round(100 * st[0] / st[1])}%"></b></div>`;
+    return `<div class="tile ${on ? 'on' : ''}"><div class="tl">${leds(tier, 'i')}</div><div class="ico">${svg(ic)}</div><div><div class="nm">${name}</div>${foot}</div></div>`;
+  }).join('')}</div></div>`).join('<div style="height:18px"></div>');
+
+const root = document.documentElement;
+const btns = { light: 't-light', dark: 't-dark', system: 't-system' };
+function setTheme(m) {
+  if (m === 'system') root.removeAttribute('data-theme'); else root.setAttribute('data-theme', m);
+  for (const [k, id] of Object.entries(btns)) document.getElementById(id).setAttribute('aria-pressed', String(k === m));
+}
+for (const [k, id] of Object.entries(btns)) document.getElementById(id).addEventListener('click', () => setTheme(k));
+</script>

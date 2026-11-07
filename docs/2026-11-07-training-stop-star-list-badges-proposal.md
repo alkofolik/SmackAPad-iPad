@@ -89,4 +89,5 @@ Source: SF Symbols (free, sharp, consistent, no licence work) as the default; cu
 
 - Star 3: **option B** (two passed reviews) → ticket 143.
 - Auto-stop rethought to keep the flow: a review is decided by **2 of 3** counted hidden passes. Success stops the lesson (a natural end, like star 2); a failed review does **not** stop, playing simply goes on as practice. Stop before the outcome records nothing. → ticket 142 rewritten.
-- Still open: §3 list details, §4 badge mockup.
+- Badge preview made (ticket 145, `docs/design/2026-11-07-badge-images/`); waiting for the pick.
+- Still open: §3 list details.

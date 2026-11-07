@@ -169,3 +169,4 @@ Source: Jakub, retention and memory discussion; legacy "Trénink" concept 2026-1
 | 140 | Home pad titles: Barlow Condensed ExtraBold | Gemini 3.8 Flash, medium (fallback Codex Sol, medium) | after 135 |
 | 142 | Review decided by 2 of 3 hidden passes; stops only on success | Codex GPT-6.1 Sol, high (fallback Gemini 3.8 Pro, high) | any time |
 | 143 | Star 3 earned by two passed reviews in Training | Gemini 3.8 Flash, high (fallback Codex Sol, high) | after 142 |
+| 145 | Proposal: badge images (HTML preview, no code) | Gemini 3.8 Flash, medium (fallback Codex Sol, medium) | waiting for Jakub to pick A or B |
