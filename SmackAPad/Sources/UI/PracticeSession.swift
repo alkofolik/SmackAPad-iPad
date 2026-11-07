@@ -163,9 +163,17 @@ final class PracticeSession {
     @ObservationIgnored private var earnedPass = false
     @ObservationIgnored private var earnedMastery = false
     @ObservationIgnored private var earnedMemory = false
-    @ObservationIgnored private var stopAfterStar = false
+    @ObservationIgnored private var stopAfterPass = false
     @ObservationIgnored private var runPadCount = 16
     private(set) var finishedByStar: Int?
+    private(set) var finishedByReview = false
+
+    private struct DailyReviewWindow {
+        let day: String
+        var state = ReviewScheduler.WindowState()
+        var outcome: ReviewScheduler.Outcome?
+    }
+    private var reviewWindows: [Int: DailyReviewWindow] = [:]
     /// Best score and tempo of this run, written to the store once at STOP.
     /// Writing during a run re-encodes all progress and refreshes the library
     /// behind the practice cover, which caused the hitch at every pass boundary.
@@ -257,7 +265,12 @@ final class PracticeSession {
     }
 
     public var isDueReview: Bool {
-        !afterMe && !isMix && progress.progress(for: lesson.id)?.reviewSchedule.isDue(on: currentDay()) == true
+        guard !afterMe, !isMix, let schedule = savedProgress?.reviewSchedule else { return false }
+        return schedule.isDue(on: currentDay()) && schedule.lastReviewedDay != currentDay()
+    }
+
+    var showsReviewStatus: Bool {
+        !afterMe && !isMix && reviewStatusText(for: lesson.id, settings: settings) != nil
     }
 
     public var reviewStep: Int {
@@ -265,8 +278,22 @@ final class PracticeSession {
     }
 
     public func reviewStatusText(settings: SettingsManager) -> String {
-        let step = reviewStep
-        return settings.localized("Review · step %lld of 4", step)
+        reviewStatusText(for: lesson.id, settings: settings) ?? ""
+    }
+
+    func reviewStatusText(for lessonID: Int, settings: SettingsManager) -> String? {
+        guard !afterMe else { return nil }
+        let today = currentDay()
+        let window = reviewWindows[lessonID].flatMap { $0.day == today ? $0 : nil }
+        if let feedback = window?.outcome?.feedback {
+            if case .failed = feedback {
+                return settings.localized("Review not passed · again tomorrow · practice goes on")
+            }
+            return feedback.message(language: settings.languagePreference)
+        }
+        guard let schedule = progress.progress(for: lessonID)?.reviewSchedule,
+              schedule.isDue(on: today), schedule.lastReviewedDay != today else { return nil }
+        return settings.localized("Review · %lld of 2 passed", window?.state.successes ?? 0)
     }
 
     public var showsMemoryFadePhase: Bool {
@@ -556,11 +583,15 @@ final class PracticeSession {
             summary = nil
             lastResult = nil
             bestResponseScore = nil
-            reviewFeedback = nil
+            // STOP abandons an undecided window; Mix keeps it only across live rounds.
+            let today = currentDay()
+            reviewWindows = reviewWindows.filter { $0.value.day == today && $0.value.outcome != nil }
+            reviewFeedback = afterMe ? nil : reviewWindows[lesson.id]?.outcome?.feedback
+            finishedByReview = false
             starEvent = nil
             lastVerdict = nil
             tempoUpEvent = nil
-            stopAfterStar = false
+            stopAfterPass = false
             finishedByStar = nil
             earnedFirstMasteryInRun = false
             runResults = []
@@ -619,12 +650,12 @@ final class PracticeSession {
     func stop() {
         guard running else { return }
         // Credit complete passes only; stopping halfway cannot earn a star.
-        // An automatic stop already credited the winning pass. Discard everything
+        // An automatic star or review stop already credited the winning pass. Discard everything
         // queued after it, even if the app was delayed long enough to finish it.
-        if !stopAfterStar { finishCompleted(at: now) }
+        if !stopAfterPass { finishCompleted(at: now) }
         let accuracy = currentRunAccuracy
         flushPendingProgress()
-        stopAfterStar = false
+        stopAfterPass = false
         running = false
         BluetoothTimingDiagnostics.shared.stopRun()
         midi.resetControlPickup()
@@ -742,7 +773,9 @@ final class PracticeSession {
         lastResult = nil
         lastVerdict = nil
         starEvent = nil
-        reviewFeedback = nil
+        reviewFeedback = reviewWindows[lesson.id].flatMap {
+            $0.day == currentDay() ? $0.outcome?.feedback : nil
+        }
         finishedByStar = nil
         tempoUpEvent = nil
         barVerdicts = [:]
@@ -789,7 +822,7 @@ final class PracticeSession {
             advanceMix()
             return
         }
-        if stopAfterStar {
+        if stopAfterPass {
             stop()
             return
         }
@@ -896,13 +929,13 @@ final class PracticeSession {
 
                 let isHiddenPass = !fromMemory || !settings.fadeMemoryNotes || pass.number >= 3
 
-                // Ticket 98 spaced review evaluation: only hidden passes (3+) count as review
-                if isHiddenPass,
-                   let currentProgress = saved,
-                   currentProgress.reviewSchedule.isDue(on: currentDay()) {
-                    let outcome = ReviewScheduler.evaluate(
+                let today = currentDay()
+                if let currentProgress = saved,
+                   currentProgress.reviewSchedule.isDue(on: today),
+                   currentProgress.reviewSchedule.lastReviewedDay != today {
+                    let passResult = ReviewScheduler.evaluate(
                         schedule: currentProgress.reviewSchedule,
-                        today: currentDay(),
+                        today: today,
                         isFullRun: !isSectionLoop,
                         fromMemory: fromMemory,
                         bpm: result.bpm,
@@ -911,18 +944,35 @@ final class PracticeSession {
                         pass: pass.number,
                         fadeNotes: settings.fadeMemoryNotes
                     )
-                    if let feedback = outcome.feedback {
-                        self.reviewFeedback = feedback
+                    var window = reviewWindows[lesson.id].flatMap { $0.day == today ? $0 : nil }
+                        ?? DailyReviewWindow(day: today)
+                    let decision = ReviewScheduler.advanceWindow(window.state, with: passResult)
+                    window.state = decision.window
+                    window.outcome = decision.outcome
+                    reviewWindows[lesson.id] = window
+                    if let outcome = decision.outcome, let feedback = outcome.feedback {
+                        reviewFeedback = feedback
                         progress.updateReviewSchedule(outcome.newSchedule, for: lesson.id, autoSave: false)
                         switch feedback {
                         case .passed, .settled:
-                            progress.recordReviewRun(lessonId: lesson.id, passed: true, today: currentDay(), autoSave: false)
+                            progress.recordReviewRun(lessonId: lesson.id, passed: true, today: today, autoSave: false)
+                            if !isMix {
+                                stopAfterPass = true
+                                finishedByReview = true
+                            }
                         case .failed:
-                            progress.recordReviewRun(lessonId: lesson.id, passed: false, today: currentDay(), autoSave: false)
+                            progress.recordReviewRun(lessonId: lesson.id, passed: false, today: today, autoSave: false)
                         case .doesNotCount:
                             break
                         }
+                        // A decided review survives app closure even while practice continues.
+                        try? progress.save()
                         evaluateBadges()
+                    } else {
+                        reviewFeedback = passResult.feedback.flatMap {
+                            if case .doesNotCount = $0 { return $0 }
+                            return nil
+                        }
                     }
                 }
 
@@ -984,7 +1034,7 @@ final class PracticeSession {
                     starEvent = StarEvent(award: award)
                     evaluateBadges()
                 }
-                stopAfterStar = !isMix && award.shouldStop
+                stopAfterPass = stopAfterPass || (!isMix && award.shouldStop)
                 if award.shouldStop { finishedByStar = award.fresh[2] ? 3 : 2 }
             } else {
                 runPassed = result.passed
@@ -1018,7 +1068,7 @@ final class PracticeSession {
             }
             // The tempo preference is saved once at STOP, not at every pass.
             if let error = progress.lastSaveError { errorMessage = error.localizedDescription }
-            if stopAfterStar { return }
+            if stopAfterPass { return }
         }
     }
 

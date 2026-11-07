@@ -167,6 +167,7 @@ struct TransportControls: View {
     let running: Bool
     let enabled: Bool
     var showsResult: Bool = false
+    var resultStartTitle: String = "Again"
     var preferredWidth: CGFloat = Theme.Size.transportWidth
     var squareSize: CGFloat? = nil
     var secondAction: AnyView? = nil
@@ -191,7 +192,7 @@ struct TransportControls: View {
     }
 
     private var actionTitle: String {
-        running ? "Stop" : (showsResult ? "Again" : "Start")
+        running ? "Stop" : (showsResult ? resultStartTitle : "Start")
     }
 
     @ViewBuilder
@@ -202,7 +203,7 @@ struct TransportControls: View {
                 VStack(spacing: Theme.Space.small) {
                     Button(action: start) {
                         HStack(spacing: Theme.Space.small) {
-                            Text(settings.localized("Again"))
+                            Text(settings.localized(resultStartTitle))
                                 .font(Theme.action)
                                 .lineLimit(1)
                                 .fixedSize()
@@ -221,7 +222,7 @@ struct TransportControls: View {
             } else {
                 Button(action: start) {
                     HStack(spacing: Theme.Space.small) {
-                        Text(settings.localized("Again"))
+                        Text(settings.localized(resultStartTitle))
                             .font(Theme.action)
                             .lineLimit(1)
                             .fixedSize()
@@ -279,7 +280,7 @@ struct TransportControls: View {
         if showsResult {
             Button(action: start) {
                 HStack(spacing: Theme.Space.small) {
-                    Text(settings.localized("Again"))
+                    Text(settings.localized(resultStartTitle))
                         .font(Theme.action)
                         .lineLimit(1).fixedSize()
                 }

@@ -271,6 +271,7 @@ struct ResultCard: View {
     let saved: LessonProgress?
     let event: StarEvent?
     let announcement: String
+    var reviewMessage: String? = nil
     var badgeText: String? = nil
     var firstStar2Notice: String? = nil
     var memoryNotice: String? = nil
@@ -339,16 +340,20 @@ struct ResultCard: View {
     }
 
     var body: some View {
-        HStack(spacing: Theme.Space.regular) {
-            scoreColumn
-
-            Spacer(minLength: 0)
-
-            starsColumn
-
-            Spacer(minLength: 0)
-
-            runSummaryColumn
+        VStack(alignment: .leading, spacing: Theme.Space.small) {
+            if let reviewMessage {
+                Text(reviewMessage)
+                    .font(Theme.display(22))
+                    .fontWeight(.semibold)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            HStack(spacing: Theme.Space.regular) {
+                scoreColumn
+                Spacer(minLength: 0)
+                starsColumn
+                Spacer(minLength: 0)
+                runSummaryColumn
+            }
         }
         .padding(.horizontal, Theme.Space.regular)
         .frame(width: cardWidth, height: cardHeight)
@@ -358,7 +363,7 @@ struct ResultCard: View {
             openSessionResults()
         }
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel(voiceOverLabel)
+        .accessibilityLabel([reviewMessage, voiceOverLabel].compactMap { $0 }.joined(separator: ". "))
         .accessibilityHint(settings.localized("Shows all runs"))
         .accessibilityAction(named: settings.localized("Star requirements")) {
             openRules()
@@ -373,7 +378,7 @@ struct ResultCard: View {
     private var scoreColumn: some View {
         VStack(spacing: 2) {
             Text("\(scorePercent)\u{00a0}%")
-                .font(Theme.display(min(56, cardHeight * 0.36)))
+                .font(Theme.display(reviewMessage == nil ? min(56, cardHeight * 0.36) : 18))
                 .fontWeight(.bold)
                 .monospacedDigit()
                 .lineLimit(1)

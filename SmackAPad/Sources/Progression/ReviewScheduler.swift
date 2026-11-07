@@ -98,6 +98,37 @@ public struct ReviewScheduler: Sendable {
         }
     }
 
+    /// Ephemeral counts for one lesson's review attempt. Never persisted.
+    public struct WindowState: Equatable, Sendable {
+        public var successes = 0
+        public var failures = 0
+
+        public init() {}
+
+        public var isDecided: Bool { successes >= 2 || failures >= 2 }
+    }
+
+    public struct WindowOutcome: Equatable, Sendable {
+        public let window: WindowState
+        public let outcome: Outcome?
+    }
+
+    /// Accumulates eligible pass results; only a certain majority commits a schedule.
+    /// `evaluate` supplies the eligibility checks and the unchanged review gaps.
+    public static func advanceWindow(_ window: WindowState, with passResult: Outcome) -> WindowOutcome {
+        guard !window.isDecided else { return WindowOutcome(window: window, outcome: nil) }
+        var next = window
+        switch passResult.feedback {
+        case .passed, .settled:
+            next.successes += 1
+        case .failed:
+            next.failures += 1
+        case .doesNotCount, nil:
+            return WindowOutcome(window: window, outcome: nil)
+        }
+        return WindowOutcome(window: next, outcome: next.isDecided ? passResult : nil)
+    }
+
     /// Pure function: schedule + run result + today → new schedule and feedback.
     /// Under ticket 99, when fadeNotes is on, only hidden passes (pass >= 3) count as reviews.
     public static func evaluate(
@@ -111,7 +142,7 @@ public struct ReviewScheduler: Sendable {
         pass: Int = 3,
         fadeNotes: Bool = true
     ) -> Outcome {
-        guard schedule.isDue(on: today) else {
+        guard schedule.isDue(on: today), schedule.lastReviewedDay != today else {
             return Outcome(newSchedule: schedule, feedback: nil)
         }
 

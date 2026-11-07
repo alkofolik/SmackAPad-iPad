@@ -1,6 +1,6 @@
 # 142 — A review is decided by 2 of 3 hidden passes and stops only on success
 
-Status: ready-for-agent. Source: Jakub, 2026-11-07. Proposal: `docs/2026-11-07-training-stop-star-list-badges-proposal.md` §1.
+Status: ready-for-human. Source: Jakub, 2026-11-07. Proposal: `docs/2026-11-07-training-stop-star-list-badges-proposal.md` §1.
 
 ## Problem
 
@@ -40,7 +40,7 @@ Pure window function: S S → passed after 2 passes; F F → failed after 2; S F
 - [ ] Below goal tempo / From memory off / section loop: window does not move.
 - [ ] STOP mid-window records nothing.
 - [ ] Mix records the window per lesson and never stops for it.
-- [ ] Czech and English texts. Tests pass, build succeeds.
+- [x] Czech and English texts. Tests pass, build succeeds.
 - [ ] **iPad test (Jakub)**: one passed and one failed review with the MIDI controller; is the flow uninterrupted enough?
 
 ## Agent assignment
@@ -51,3 +51,11 @@ Pure window function: S S → passed after 2 passes; F F → failed after 2; S F
 ## Done rule
 
 Run before ticket 143. Stop after successful build and tests. Commit (AGENTS.md); Jakub pushes and tests on the iPad.
+
+## Implementation — 2026-11-07
+
+- Added the pure `ReviewScheduler.advanceWindow` reducer, with in-session windows keyed by lesson and day. Only a decided majority updates the persisted schedule and review log. STOP discards an undecided attempt on the next start; Mix retains its windows across live rounds.
+- Successful reviews use the shared automatic stop path, including simultaneous star awards. Failed reviews continue playing with a quiet status line. The success result card leads with the review verdict and offers Play on; Today retains its existing Continue hand-off.
+- Mix results include each lesson's review progress or verdict. Removed the screen's premature last-reviewed write, so incomplete attempts leave the review schedule unchanged. Added English and Czech copy.
+- Validation: the first requested test failed before the reducer existed, then passed. The remaining five requested tests passed separately, with zero failures; the already-passing test was excluded. Final iPad simulator build and selected tests succeeded. Logs: `.build/ticket142-green-ss.log`, `.build/ticket142-final.log`.
+- Physical iPad/MIDI acceptance remains for Jakub. No additional tests were run.

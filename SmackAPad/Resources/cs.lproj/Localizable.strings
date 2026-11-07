@@ -663,6 +663,9 @@
 "Reviews start once a lesson has two stars." = "Opakování začne, až bude mít lekce dvě hvězdy.";
 "Settled" = "Upevněno";
 "Review · step %lld of 4" = "Opakování · krok %lld ze 4";
+"Review · %lld of 2 passed" = "Opakování · splněno %lld ze 2";
+"Review not passed · again tomorrow · practice goes on" = "Opakování nesplněno · znovu zítra · hraješ dál";
+"Play on" = "Hrát dál";
 "Review passed · next in %lld days" = "Opakování splněno · další za %lld dní";
 "Review passed · next in 1 day" = "Opakování splněno · další za 1 den";
 "Lesson settled" = "Lekce je upevněná";

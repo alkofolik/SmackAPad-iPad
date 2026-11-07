@@ -184,10 +184,6 @@ struct PracticeScreen: View {
     private func reportStepResult() {
         guard !session.isSectionLoop, !session.afterMe, !session.listen,
               let best = session.runResults.map(\.score).max() else { return }
-        if !session.isMix, let schedule = progress.progress(for: session.lesson.id)?.reviewSchedule,
-           schedule.reviewStep != nil, schedule.lastReviewedDay != AppCalendar.today() {
-            progress.markReviewPlayed(for: session.lesson.id, today: AppCalendar.today())
-        }
         onStepResult?(PracticeStepOutcome(bestScore: best, reviewFeedback: session.reviewFeedback))
     }
 
@@ -257,7 +253,7 @@ struct PracticeScreen: View {
                 .accessibilityHidden(!session.afterMe)
 
             Group {
-                if session.isDueReview {
+                if session.showsReviewStatus {
                     Text(session.reviewStatusText(settings: settings))
                 } else {
                     HStack(spacing: 0) {
@@ -570,6 +566,7 @@ struct PracticeScreen: View {
                     saved: session.savedProgress,
                     event: session.starEvent,
                     announcement: resultAnnouncement,
+                    reviewMessage: session.finishedByReview ? session.reviewFeedback?.message(language: settings.languagePreference) : nil,
                     badgeText: session.badgeSummaryMessage(settings: settings),
                     firstStar2Notice: summary.firstStar2 ? settings.localized("Star 3: from tomorrow.") : nil,
                     memoryNotice: (session.fromMemory && session.isMemoryPracticeToday) ? settings.localized("Star 3: from tomorrow.") : nil,
@@ -661,6 +658,11 @@ struct PracticeScreen: View {
                         Text(mixBarSummary(result))
                             .foregroundStyle(Theme.secondary)
                             .fixedSize(horizontal: false, vertical: true)
+                        if let review = session.reviewStatusText(for: result.id, settings: settings) {
+                            Text(review)
+                                .foregroundStyle(Theme.secondary)
+                                .fixedSize(horizontal: false, vertical: true)
+                        }
                     }
                     .font(Theme.meta)
                 }
@@ -765,11 +767,13 @@ struct PracticeScreen: View {
 
     private func transportSquare(s: CGFloat) -> some View {
         let showsResult = session.summary != nil && !session.running
-        let second = showsResult && !session.isMix && !session.afterMe ? transportSecondAction(s: s) : nil
+        let second = showsResult && !session.isMix && !session.afterMe
+            && (!session.finishedByReview || onStepResult != nil) ? transportSecondAction(s: s) : nil
         return TransportControls(
             running: session.running,
             enabled: session.ready && session.available,
             showsResult: showsResult,
+            resultStartTitle: session.finishedByReview ? "Play on" : "Again",
             squareSize: s,
             secondAction: second.map { AnyView($0) },
             start: { showingInfo = false; session.start() },
@@ -925,6 +929,9 @@ struct PracticeScreen: View {
 
     private var resultAnnouncement: String {
         var parts: [String] = []
+        if let reviewMessage = session.reviewFeedback?.message(language: settings.languagePreference) {
+            parts.append(reviewMessage)
+        }
         if let starEvent = session.starEvent {
             let stars = starAnnouncement(for: starEvent)
             if !stars.isEmpty { parts.append(stars) }
@@ -934,9 +941,6 @@ struct PracticeScreen: View {
             parts.append(settings.localized("Comes back tomorrow for a review"))
         } else if session.fromMemory && session.isMemoryPracticeToday {
             parts.append(settings.localized("Star 3: from tomorrow."))
-        }
-        if let reviewMessage = session.reviewFeedback?.message(language: settings.languagePreference) {
-            parts.append(reviewMessage)
         }
         return parts.joined(separator: ". ")
     }

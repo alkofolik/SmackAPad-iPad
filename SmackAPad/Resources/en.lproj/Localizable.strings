@@ -660,6 +660,9 @@
 "Reviews start once a lesson has two stars." = "Reviews start once a lesson has two stars.";
 "Settled" = "Settled";
 "Review · step %lld of 4" = "Review · step %lld of 4";
+"Review · %lld of 2 passed" = "Review · %lld of 2 passed";
+"Review not passed · again tomorrow · practice goes on" = "Review not passed · again tomorrow · practice goes on";
+"Play on" = "Play on";
 "Review passed · next in %lld days" = "Review passed · next in %lld days";
 "Review passed · next in 1 day" = "Review passed · next in 1 day";
 "Lesson settled" = "Lesson settled";
