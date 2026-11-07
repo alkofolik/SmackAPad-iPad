@@ -292,10 +292,10 @@ private struct ProfileRow: View {
             }
             if isCustom {
                 Button(role: .destructive, action: onDelete) {
-                    Image(systemName: "trash").font(Theme.control).foregroundStyle(Theme.markWrong)
+                    Image(systemName: "trash").font(Theme.control)
                         .frame(width: Theme.Size.touch, height: Theme.Size.touch)
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(PadIconButtonStyle(destructive: true))
                 .accessibilityLabel(settings.localized("Delete profile"))
             }
         }

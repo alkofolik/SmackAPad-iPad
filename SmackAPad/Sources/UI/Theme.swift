@@ -38,6 +38,18 @@ enum Theme {
     )
     /// One fill for an active or selected control.
     static let activeFill = orange.opacity(0.24)
+    /// Unified warm brick red / terracotta for destructive actions (ticket 133).
+    static let destructive = adaptive(
+        light: UIColor(hex: 0xC0392B),
+        dark: UIColor(hex: 0xE74C3C)
+    )
+    /// 1 px outline for destructive controls (ticket 133).
+    static let destructiveOutline = destructive.opacity(0.4)
+    /// Inert unpowered matte fill for disabled controls (ticket 133).
+    static let disabledFill = adaptive(
+        light: UIColor(hex: 0xD6D0C4),
+        dark: UIColor(hex: 0x201E1B)
+    )
     /// Inactive LED / off segment colour.
     static let ledOff = starColor(for: 0)
 
@@ -101,6 +113,8 @@ enum Theme {
     enum Radius {
         /// Home pad radius (Akai MPC Tactile Rubber style, ticket 112).
         static let pad: CGFloat = 8
+        /// Button & control radius (Variant B studio precision, ticket 133).
+        static let button: CGFloat = 6
         /// Controller plate at the reference pad size; scaled with the Home grid.
         static let controllerPlate: CGFloat = 16
     }
@@ -153,7 +167,7 @@ enum Theme {
         }
 
         enum Pad {
-            static let radius = Radius.pad
+            static let radius = Radius.button
             static let fill = surface
             static let highlight = padBevelTop
             static let shade = padBevelBottom
@@ -162,9 +176,9 @@ enum Theme {
             static let topBevel: CGFloat = 1.5
             static let bottomBevel: CGFloat = 2
             static let heroBottomBevel: CGFloat = 2.5
-            static let pressedScale: CGFloat = 0.965
-            static let pressedY: CGFloat = 1.5
-            static let flashOpacity: Double = 0.38
+            static let pressedScale: CGFloat = 0.97
+            static let pressedY: CGFloat = 1.0
+            static let flashOpacity: Double = 0.25
             static let reducedPressOpacity: Double = 0.12
         }
 
@@ -310,9 +324,9 @@ extension Theme {
         static let rise: CGFloat = 6
         static let starStagger = Duration.milliseconds(80)
 
-        /// Home pad tactile strike motion tokens (ticket 112).
+        /// Home pad tactile strike motion tokens (ticket 112, 133).
         static let padPress = Animation.spring(response: 0.18, dampingFraction: 0.7)
-        static let padFlash = Animation.easeOut(duration: 0.06)
+        static let padFlash = Animation.easeOut(duration: 0.12)
         static let ledBreath = Animation.easeInOut(duration: 1.6).repeatForever(autoreverses: true)
         static let bootStagger = Duration.milliseconds(40)
 

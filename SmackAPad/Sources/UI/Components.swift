@@ -79,6 +79,19 @@ private struct SatinPlateSurface: View {
     }
 }
 
+struct StructuralPlateSurface: View {
+    var body: some View {
+        RoundedRectangle(cornerRadius: Theme.Skin.Plate.radius)
+            .fill(Theme.Skin.Plate.top)
+            .overlay {
+                RoundedRectangle(cornerRadius: Theme.Skin.Plate.radius)
+                    .strokeBorder(Theme.hairline, lineWidth: 1)
+            }
+            .allowsHitTesting(false)
+            .accessibilityHidden(true)
+    }
+}
+
 private struct InsetDisplay: ViewModifier {
     func body(content: Content) -> some View {
         content
@@ -130,7 +143,9 @@ private struct PadControlBody<Label: View>: View {
     let label: Label
     let pressed: Bool
     var primary = false
+    var destructive = false
     var selected: Bool? = nil
+    var showLightBar = false
     @Environment(\.accessibilityReduceMotion) private var reduced
     @Environment(\.isEnabled) private var enabled
 
@@ -138,28 +153,20 @@ private struct PadControlBody<Label: View>: View {
         let policy = Theme.Motion.Policy(reduced: reduced)
         label
             .frame(minWidth: Theme.Size.touch, minHeight: Theme.Size.touch)
-            .foregroundStyle(primary ? Theme.black : Theme.ink)
+            .foregroundStyle(foregroundColor)
             .background {
                 RoundedRectangle(cornerRadius: Theme.Skin.Pad.radius)
-                    .fill(primary ? Theme.orange : Theme.Skin.Pad.fill)
-                    .overlay {
-                        SkinBevel(radius: Theme.Skin.Pad.radius,
-                                  highlight: primary ? Theme.Skin.Pad.heroHighlight : Theme.Skin.Pad.highlight,
-                                  shade: primary ? Theme.Skin.Pad.heroShade : Theme.Skin.Pad.shade,
-                                  top: Theme.Skin.Pad.topBevel,
-                                  bottom: primary ? Theme.Skin.Pad.heroBottomBevel : Theme.Skin.Pad.bottomBevel)
-                    }
+                    .fill(backgroundColor)
                     .overlay {
                         RoundedRectangle(cornerRadius: Theme.Skin.Pad.radius)
-                            .strokeBorder(primary ? Theme.black.opacity(0.12) : Theme.hairline, lineWidth: 1)
+                            .strokeBorder(borderColor, lineWidth: 1)
                     }
-                    .shadow(color: primary ? Theme.orange.opacity(0.25) : Theme.black.opacity(0.08),
-                            radius: primary ? 3 : 2, y: primary ? 3 : 2)
+                    .shadow(color: shadowColor, radius: shadowRadius, y: shadowY)
                     .allowsHitTesting(false)
             }
             .contentShape(RoundedRectangle(cornerRadius: Theme.Skin.Pad.radius))
             .overlay(alignment: .bottom) {
-                if let selected {
+                if showLightBar, let selected {
                     Color.clear.overlay(alignment: .bottom) { HardwareLightBar(active: selected) }
                         .clipShape(RoundedRectangle(cornerRadius: Theme.Skin.Pad.radius))
                         .motion(Theme.Motion.fast, value: selected)
@@ -168,17 +175,75 @@ private struct PadControlBody<Label: View>: View {
                 }
             }
             .overlay {
-                RoundedRectangle(cornerRadius: Theme.Skin.Pad.radius)
-                    .fill(policy.reduced ? Theme.black : Theme.white)
-                    .opacity(pressed ? (policy.reduced ? Theme.Skin.Pad.reducedPressOpacity : Theme.Skin.Pad.flashOpacity) : 0)
-                    .animation(policy.animation(Theme.Motion.padFlash), value: pressed)
-                    .allowsHitTesting(false)
+                if enabled {
+                    RoundedRectangle(cornerRadius: Theme.Skin.Pad.radius)
+                        .fill(policy.reduced ? Color.black : Color.white)
+                        .opacity(pressed ? (policy.reduced ? Theme.Skin.Pad.reducedPressOpacity : Theme.Skin.Pad.flashOpacity) : 0)
+                        .animation(policy.reduced ? nil : policy.animation(Theme.Motion.padFlash), value: pressed)
+                        .allowsHitTesting(false)
+                }
             }
-            .scaleEffect(policy.scale(pressed ? Theme.Skin.Pad.pressedScale : 1))
-            .offset(y: policy.offset(pressed ? Theme.Skin.Pad.pressedY : 0))
-            .animation(policy.animation(pressed ? Theme.Motion.padFlash : Theme.Motion.padPress), value: pressed)
-            .opacity(enabled ? 1 : 0.45)
+            .scaleEffect(enabled ? policy.scale(pressed ? Theme.Skin.Pad.pressedScale : 1) : 1)
+            .offset(y: enabled ? policy.offset(pressed ? Theme.Skin.Pad.pressedY : 0) : 0)
+            .animation(enabled ? policy.animation(pressed ? Theme.Motion.padFlash : Theme.Motion.padPress) : nil, value: pressed)
         // Callers size the label; the style guarantees a matching minimum touch target.
+    }
+
+    private var foregroundColor: Color {
+        guard enabled else {
+            let base = destructive ? Theme.destructive : (primary ? Theme.black : Theme.ink)
+            return base.opacity(0.35)
+        }
+        if destructive {
+            return Theme.destructive
+        } else if primary {
+            return Theme.black
+        } else {
+            return Theme.ink
+        }
+    }
+
+    private var backgroundColor: Color {
+        guard enabled else {
+            return Theme.disabledFill
+        }
+        if primary {
+            return Theme.orange
+        } else {
+            return Theme.Skin.Pad.fill
+        }
+    }
+
+    private var borderColor: Color {
+        guard enabled else {
+            return Theme.hairline.opacity(0.6)
+        }
+        if destructive {
+            return Theme.destructiveOutline
+        } else if primary {
+            return Theme.black.opacity(0.18)
+        } else {
+            return Theme.hairline
+        }
+    }
+
+    private var shadowColor: Color {
+        guard enabled else {
+            return Color.clear
+        }
+        if primary {
+            return Theme.orange.opacity(0.25)
+        } else {
+            return Theme.black.opacity(0.08)
+        }
+    }
+
+    private var shadowRadius: CGFloat {
+        primary ? 3 : 1.5
+    }
+
+    private var shadowY: CGFloat {
+        primary ? 2 : 1
     }
 }
 
@@ -190,15 +255,36 @@ struct PadPrimaryButtonStyle: ButtonStyle {
 
 struct PadSecondaryButtonStyle: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
-        PadControlBody(label: configuration.label, pressed: configuration.isPressed)
+        PadControlBody(
+            label: configuration.label,
+            pressed: configuration.isPressed,
+            destructive: configuration.role == .destructive
+        )
+    }
+}
+
+struct PadDestructiveButtonStyle: ButtonStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        PadControlBody(
+            label: configuration.label,
+            pressed: configuration.isPressed,
+            destructive: true
+        )
     }
 }
 
 struct PadIconButtonStyle: ButtonStyle {
     var selected: Bool? = nil
+    var destructive = false
 
     func makeBody(configuration: Configuration) -> some View {
-        PadControlBody(label: configuration.label, pressed: configuration.isPressed, selected: selected)
+        PadControlBody(
+            label: configuration.label,
+            pressed: configuration.isPressed,
+            destructive: destructive || configuration.role == .destructive,
+            selected: selected,
+            showLightBar: false
+        )
     }
 }
 
@@ -207,14 +293,20 @@ struct HardwareKeyButtonStyle: ButtonStyle {
     let isSelected: Bool
 
     func makeBody(configuration: Configuration) -> some View {
-        PadControlBody(label: configuration.label, pressed: configuration.isPressed, selected: isSelected)
-            .accessibilityAddTraits(isSelected ? .isSelected : [])
+        PadControlBody(
+            label: configuration.label,
+            pressed: configuration.isPressed,
+            selected: isSelected,
+            showLightBar: isSelected
+        )
+        .accessibilityAddTraits(isSelected ? .isSelected : [])
     }
 }
 
 extension View {
     func calmChassisBackground() -> some View { modifier(CalmChassisBackground()) }
     func satinPlate() -> some View { background { SatinPlateSurface() } }
+    func structuralPlate() -> some View { background { StructuralPlateSurface() } }
     func insetDisplay() -> some View { modifier(InsetDisplay()) }
 }
 
@@ -454,6 +546,41 @@ struct ListRow<Meta: View, Trailing: View>: View {
     }
 }
 
+struct FilterChipButtonStyle: ButtonStyle {
+    let isSelected: Bool
+    @Environment(\.accessibilityReduceMotion) private var reduced
+    @Environment(\.isEnabled) private var enabled
+
+    func makeBody(configuration: Configuration) -> some View {
+        let policy = Theme.Motion.Policy(reduced: reduced)
+        let pressed = configuration.isPressed
+        configuration.label
+            .foregroundStyle(isSelected ? Theme.ink : Theme.secondary)
+            .background {
+                RoundedRectangle(cornerRadius: Theme.Radius.button)
+                    .fill(isSelected ? Theme.activeFill : Theme.surface)
+                    .overlay {
+                        RoundedRectangle(cornerRadius: Theme.Radius.button)
+                            .strokeBorder(isSelected ? Theme.orange : Theme.hairline, lineWidth: isSelected ? 1.5 : 1)
+                    }
+                    .allowsHitTesting(false)
+            }
+            .contentShape(RoundedRectangle(cornerRadius: Theme.Radius.button))
+            .overlay {
+                if enabled {
+                    RoundedRectangle(cornerRadius: Theme.Radius.button)
+                        .fill(policy.reduced ? Color.black : Color.white)
+                        .opacity(pressed ? (policy.reduced ? Theme.Skin.Pad.reducedPressOpacity : Theme.Skin.Pad.flashOpacity) : 0)
+                        .animation(policy.reduced ? nil : policy.animation(Theme.Motion.padFlash), value: pressed)
+                        .allowsHitTesting(false)
+                }
+            }
+            .scaleEffect(enabled ? policy.scale(pressed ? Theme.Skin.Pad.pressedScale : 1) : 1)
+            .offset(y: enabled ? policy.offset(pressed ? Theme.Skin.Pad.pressedY : 0) : 0)
+            .animation(enabled ? policy.animation(pressed ? Theme.Motion.padFlash : Theme.Motion.padPress) : nil, value: pressed)
+    }
+}
+
 struct FilterChip: View {
     @Environment(\.accessibilityReduceMotion) private var reduced
     let title: String
@@ -468,7 +595,7 @@ struct FilterChip: View {
                 .padding(.horizontal, Theme.Space.small)
                 .frame(minHeight: Theme.Size.touch)
         }
-        .buttonStyle(HardwareKeyButtonStyle(isSelected: selected))
+        .buttonStyle(FilterChipButtonStyle(isSelected: selected))
         .accessibilityAddTraits(selected ? .isSelected : [])
         .motion(value: selected)
     }

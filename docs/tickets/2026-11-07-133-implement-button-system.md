@@ -1,6 +1,6 @@
 # 133 — Implement unified button system (Variant B style + full toolbar pads + flash)
 
-Status: ready-for-agent. Type: implementation. Depends on: 130, 131. Source: Jakub, 2026-11-07: selected **Variant B** (studio precision, 6 pt radius, clean 1px hairline) with **full tactile pads in toolbar** and **pad flash feedback (Variant A press)** from ticket 131.
+Status: ready-for-human. Type: implementation. Depends on: 130, 131. Source: Jakub, 2026-11-07: selected **Variant B** (studio precision, 6 pt radius, clean 1px hairline) with **full tactile pads in toolbar** and **pad flash feedback (Variant A press)** from ticket 131.
 
 ## Goal
 
@@ -39,14 +39,14 @@ Apply the unified button system decided in ticket 131 to `SmackAPad/Sources/UI/C
 
 ## Acceptance criteria
 
-- [ ] All button styles updated in `Components.swift` with 6 pt radius, clean 1px hairline, and flash feedback.
-- [ ] Filter chips use clean tag style without bottom LED light bar.
-- [ ] Hardware key button style retains bottom light bar with breathing animation.
-- [ ] Destructive buttons use unified warm terracotta styling.
-- [ ] Disabled buttons show inert unpowered state (not washed-out 45% transparency).
-- [ ] Minimum touch size &ge; 44 pt (48 pt default) preserved everywhere from ticket 130.
-- [ ] Build succeeds with zero warnings. No extra tests.
-- [ ] Visual verification on iPad Pro 11″ simulator in both orientations and light/dark modes.
+- [x] All button styles updated in `Components.swift` with 6 pt radius, clean 1px hairline, and flash feedback.
+- [x] Filter chips use clean tag style without bottom LED light bar.
+- [x] Hardware key button style retains bottom light bar with breathing animation.
+- [x] Destructive buttons use unified warm terracotta styling.
+- [x] Disabled buttons show inert unpowered state (not washed-out 45% transparency).
+- [x] Minimum touch size &ge; 44 pt (48 pt default) preserved everywhere from ticket 130.
+- [x] Build succeeds with zero warnings. No extra tests.
+- [x] Visual verification on iPad Pro 11″ simulator in both orientations and light/dark modes.
 
 ## Agent assignment
 

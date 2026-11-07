@@ -777,13 +777,6 @@ struct LibraryScreen: View {
                     RoundedRectangle(cornerRadius: Theme.Skin.Pad.radius)
                         .fill(Theme.Skin.Pad.fill)
                         .overlay {
-                            SkinBevel(radius: Theme.Skin.Pad.radius,
-                                      highlight: Theme.Skin.Pad.highlight,
-                                      shade: Theme.Skin.Pad.shade,
-                                      top: Theme.Skin.Pad.topBevel,
-                                      bottom: Theme.Skin.Pad.bottomBevel)
-                        }
-                        .overlay {
                             RoundedRectangle(cornerRadius: Theme.Skin.Pad.radius)
                                 .strokeBorder(Theme.hairline, lineWidth: 1)
                         }
@@ -809,23 +802,10 @@ struct LibraryScreen: View {
                     .frame(height: Theme.Size.touch)
                     .background {
                         RoundedRectangle(cornerRadius: Theme.Skin.Pad.radius)
-                            .fill(cross.isEmpty ? Theme.Skin.Pad.fill : Theme.surface)
-                            .overlay {
-                                SkinBevel(radius: Theme.Skin.Pad.radius,
-                                          highlight: Theme.Skin.Pad.highlight,
-                                          shade: Theme.Skin.Pad.shade,
-                                          top: Theme.Skin.Pad.topBevel,
-                                          bottom: Theme.Skin.Pad.bottomBevel)
-                            }
+                            .fill(cross.isEmpty ? Theme.Skin.Pad.fill : Theme.activeFill)
                             .overlay {
                                 RoundedRectangle(cornerRadius: Theme.Skin.Pad.radius)
-                                    .strokeBorder(cross.isEmpty ? Theme.hairline : Theme.ink, lineWidth: 1)
-                            }
-                            .overlay(alignment: .bottom) {
-                                if !cross.isEmpty {
-                                    HardwareLightBar(active: true)
-                                        .clipShape(RoundedRectangle(cornerRadius: Theme.Skin.Pad.radius))
-                                }
+                                    .strokeBorder(cross.isEmpty ? Theme.hairline : Theme.orange, lineWidth: cross.isEmpty ? 1 : 1.5)
                             }
                     }
                 }
@@ -1003,7 +983,7 @@ struct LibraryLessonRow: View {
             .buttonStyle(.plain)
             .accessibilityHidden(true)
         }
-        .satinPlate()
+        .structuralPlate()
         .lessonSource(lesson.id)
     }
 
