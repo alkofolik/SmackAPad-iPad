@@ -709,7 +709,7 @@
 "Reviews passed: %lld of %lld" = "Reviews passed: %lld of %lld";
 "New lesson: %@" = "New lesson: %@";
 "Best score: %lld %%" = "Best score: %lld %%";
-"Does not count · finish a hidden pass" = "Does not count · finish a hidden pass";
+"Does not count · finish a hidden pass" = "Does not count · Complete a pass without hints to master the lesson.";
 
 /* Ticket 110: Today session screen matching mockup frame 3. */
 "NEXT" = "NEXT";
@@ -772,3 +772,36 @@
 "Nothing to do" = "Nothing to do";
 "1 lesson" = "1 lesson";
 "%lld lessons" = "%lld lessons";
+
+/* Ticket 141: Today session screen redesign (Variant 1) */
+"Daily mix" = "Daily mix";
+"Start" = "Start";
+"Next" = "Next";
+"Waiting" = "Waiting";
+"Skipped" = "Skipped";
+"FIRST STEP OF THE DAY" = "FIRST STEP OF THE DAY";
+"PREPARE FOR THE NEXT STEP" = "PREPARE FOR THE NEXT STEP";
+"REVIEW %lld OF %lld COMPLETED" = "REVIEW %lld OF %lld COMPLETED";
+"REVIEW %lld OF %lld PASSED" = "REVIEW %lld OF %lld PASSED";
+"NEW LESSON COMPLETED" = "NEW LESSON COMPLETED";
+"NEW LESSON PASSED" = "NEW LESSON PASSED";
+"DAILY MIX COMPLETED" = "DAILY MIX COMPLETED";
+"DAILY MIX PASSED" = "DAILY MIX PASSED";
+"Rhythm pattern preview" = "Rhythm pattern preview";
+"Start training" = "Start training";
+"Continue to %@" = "Continue to %@";
+"Great job! You finished today's training plan and strengthened your rhythm memory." = "Great job! You finished today's training plan and strengthened your rhythm memory.";
+"Reviews" = "Reviews";
+"of" = "of";
+"New lesson passed successfully!" = "New lesson passed successfully!";
+"Aim for 80% to pass the new lesson." = "Aim for 80% to pass the new lesson.";
+"Daily mix completed successfully!" = "Daily mix completed successfully!";
+"Mix completed · keep practicing to improve your groove." = "Mix completed · keep practicing to improve your groove.";
+"%lld bars · from memory at %lld BPM" = "%lld bars · from memory at %lld BPM";
+"1 bar · from memory at %lld BPM" = "1 bar · from memory at %lld BPM";
+"%lld bars · %lld BPM" = "%lld bars · %lld BPM";
+"1 bar · %lld BPM" = "1 bar · %lld BPM";
+"Review %lld of %lld · %lld BPM from memory" = "Review %lld of %lld · %lld BPM from memory";
+"New lesson · %lld BPM · %lld bars" = "New lesson · %lld BPM · %lld bars";
+"New lesson · %lld BPM · 1 bar" = "New lesson · %lld BPM · 1 bar";
+"Daily mix · %lld lessons" = "Daily mix · %lld lessons";

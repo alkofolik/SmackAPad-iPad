@@ -708,11 +708,11 @@
 "Skip" = "Přeskočit";
 "Done for today" = "Konec na dnes";
 "Not played" = "Nezahráno";
-"That's enough for today" = "Dnes stačí";
+"That's enough for today" = "To je pro dnešek vše";
 "Reviews passed: %lld of %lld" = "Splněná opakování: %lld ze %lld";
 "New lesson: %@" = "Nová lekce: %@";
 "Best score: %lld %%" = "Nejlepší skóre: %lld %%";
-"Does not count · finish a hidden pass" = "Nepočítá se · dokonči průchod bez nápovědy";
+"Does not count · finish a hidden pass" = "Nepočítá se · Dokonči průchod bez nápovědy, aby se lekce uložila jako zvládnutá.";
 
 /* Ticket 110: Today session screen matching mockup frame 3. */
 "NEXT" = "DALŠÍ";
@@ -777,3 +777,36 @@
 "Nothing to do" = "Nic na řadě";
 "1 lesson" = "1 lekce";
 "%lld lessons" = "%lld lekcí";
+
+/* Ticket 141: Today session screen redesign (Variant 1) */
+"Daily mix" = "Denní mix";
+"Start" = "Začátek";
+"Next" = "Další";
+"Waiting" = "Čeká";
+"Skipped" = "Přeskočeno";
+"FIRST STEP OF THE DAY" = "PRVNÍ KROK DNE";
+"PREPARE FOR THE NEXT STEP" = "PŘIPRAV SE NA DALŠÍ KROK";
+"REVIEW %lld OF %lld COMPLETED" = "OPAKOVÁNÍ %lld ZE %lld DOKONČENO";
+"REVIEW %lld OF %lld PASSED" = "OPAKOVÁNÍ %lld ZE %lld SPLNĚNO";
+"NEW LESSON COMPLETED" = "NOVÁ LEKCE DOKONČENA";
+"NEW LESSON PASSED" = "NOVÁ LEKCE SPLNĚNA";
+"DAILY MIX COMPLETED" = "DENNÍ MIX DOKONČEN";
+"DAILY MIX PASSED" = "DENNÍ MIX SPLNĚN";
+"Rhythm pattern preview" = "Náhled rytmického vzoru";
+"Start training" = "Začít trénink";
+"Continue to %@" = "Pokračovat na %@";
+"Great job! You finished today's training plan and strengthened your rhythm memory." = "Skvělá práce! Splnil jsi dnešní tréninkový plán. Upevnil jsi rytmickou paměť i motoriku.";
+"Reviews" = "Opakování";
+"of" = "z";
+"New lesson passed successfully!" = "Nová lekce úspěšně splněna!";
+"Aim for 80% to pass the new lesson." = "Dokonči průchod se skóre alespoň 80 %, aby se lekce uložila jako splněná.";
+"Daily mix completed successfully!" = "Denní mix úspěšně odehrán!";
+"Mix completed · keep practicing to improve your groove." = "Denní mix odehrán · zítra to zkusíš s ještě lepším skóre.";
+"%lld bars · from memory at %lld BPM" = "%lld takty · cvičení zpaměti při %lld BPM";
+"1 bar · from memory at %lld BPM" = "1 takt · cvičení zpaměti při %lld BPM";
+"%lld bars · %lld BPM" = "%lld takty · %lld BPM";
+"1 bar · %lld BPM" = "1 takt · %lld BPM";
+"Review %lld of %lld · %lld BPM from memory" = "Opakování %lld ze %lld · %lld BPM zpaměti";
+"New lesson · %lld BPM · %lld bars" = "Nová lekce · %lld BPM · %lld takty";
+"New lesson · %lld BPM · 1 bar" = "Nová lekce · %lld BPM · 1 takt";
+"Daily mix · %lld lessons" = "Denní mix · %lld skladby";
