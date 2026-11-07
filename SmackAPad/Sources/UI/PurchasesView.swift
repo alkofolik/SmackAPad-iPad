@@ -32,15 +32,21 @@ struct PurchaseControls: View {
             if store.productLoadFailed || (product == nil && !store.loadingProducts) {
                 Text(settings.localized("Purchases are unavailable. Free lessons still work."))
                     .font(Theme.meta)
-                Button(settings.localized("Try again")) { Task { await store.loadProducts() } }
-                    .font(Theme.control).frame(minHeight: Theme.Size.touch)
-                    .buttonStyle(PadSecondaryButtonStyle())
-                    .disabled(store.loadingProducts || store.busy)
-            }
-            Button(settings.localized("Restore Purchases")) { Task { await store.restore() } }
-                .font(Theme.meta).frame(minHeight: Theme.Size.touch)
+                Button { Task { await store.loadProducts() } } label: {
+                    Text(settings.localized("Try again"))
+                        .font(Theme.control)
+                        .frame(minHeight: Theme.Size.touch)
+                }
                 .buttonStyle(PadSecondaryButtonStyle())
-                .disabled(store.busy)
+                .disabled(store.loadingProducts || store.busy)
+            }
+            Button { Task { await store.restore() } } label: {
+                Text(settings.localized("Restore Purchases"))
+                    .font(Theme.meta)
+                    .frame(minHeight: Theme.Size.touch)
+            }
+            .buttonStyle(PadSecondaryButtonStyle())
+            .disabled(store.busy)
             if let message = store.message {
                 Text(settings.localized(message)).font(Theme.meta)
                     .accessibilityAddTraits(.updatesFrequently)
@@ -60,9 +66,12 @@ struct PurchasesSection: View {
             LabeledContent(settings.localized("Access"), value: settings.localized(store.hasFullAccess ? "Full" : "Free"))
                 .font(Theme.control)
             if !store.hasFullAccess {
-                Button(settings.localized("Full unlock")) { showingPurchase = true }
-                    .font(Theme.control).frame(minHeight: Theme.Size.touch)
-                    .buttonStyle(PadSecondaryButtonStyle())
+                Button { showingPurchase = true } label: {
+                    Text(settings.localized("Full unlock"))
+                        .font(Theme.control)
+                        .frame(minHeight: Theme.Size.touch)
+                }
+                .buttonStyle(PadSecondaryButtonStyle())
             }
             ForEach(store.packIDs, id: \.self) { id in
                 let productID = StoreManager.productPrefix + ".pack." + id
@@ -75,9 +84,13 @@ struct PurchasesSection: View {
                     }
                 }
             }
-            Button(settings.localized("Restore Purchases")) { Task { await store.restore() } }
-                .font(Theme.control).frame(minHeight: Theme.Size.touch).disabled(store.busy)
-                .buttonStyle(PadSecondaryButtonStyle())
+            Button { Task { await store.restore() } } label: {
+                Text(settings.localized("Restore Purchases"))
+                    .font(Theme.control)
+                    .frame(minHeight: Theme.Size.touch)
+            }
+            .disabled(store.busy)
+            .buttonStyle(PadSecondaryButtonStyle())
             if store.busy { ProgressView().tint(Theme.ink) }
             if let message = store.message { Text(settings.localized(message)).font(Theme.meta) }
         } header: {

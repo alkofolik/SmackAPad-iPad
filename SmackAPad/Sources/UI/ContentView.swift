@@ -94,18 +94,22 @@ struct MIDILearnView: View {
                                     .foregroundStyle(Theme.markWrong)
                             }
 
-                            Button(settings.localized("Start again")) {
+                            Button {
                                 midi.startLearning(padCount: padCount)
+                            } label: {
+                                Text(settings.localized("Start again"))
+                                    .font(Theme.control)
+                                    .frame(minHeight: Theme.Size.touch)
                             }
-                            .font(Theme.control)
-                            .frame(minHeight: Theme.Size.touch)
                             .buttonStyle(PadSecondaryButtonStyle())
                         } else {
-                            Button(settings.localized("Start MIDI learn")) {
+                            Button {
                                 midi.startLearning(padCount: padCount)
+                            } label: {
+                                Text(settings.localized("Start MIDI learn"))
+                                    .font(Theme.control)
+                                    .frame(minHeight: Theme.Size.touch)
                             }
-                            .font(Theme.control)
-                            .frame(minHeight: Theme.Size.touch)
                             .buttonStyle(PadPrimaryButtonStyle())
                             .disabled(midi.sources.isEmpty)
 
@@ -136,17 +140,21 @@ struct MIDILearnView: View {
             .toolbar {
                 ToolbarItem(placement: .principal) { ScreenHeader(title: settings.localized("MIDI learn")) }
                 ToolbarItem(placement: .cancellationAction) {
-                    Button(settings.localized("Cancel")) { dismiss() }
-                        .font(Theme.control)
-                        .frame(minHeight: Theme.Size.touch)
-                        .buttonStyle(PadSecondaryButtonStyle())
+                    Button { dismiss() } label: {
+                        Text(settings.localized("Cancel"))
+                            .font(Theme.control)
+                            .frame(minHeight: Theme.Size.touch)
+                    }
+                    .buttonStyle(PadSecondaryButtonStyle())
                 }
                 ToolbarItem(placement: .confirmationAction) {
-                    Button(settings.localized("Save")) {
+                    Button {
                         if midi.saveLearnedProfile(name: profileName) { dismiss() }
+                    } label: {
+                        Text(settings.localized("Save"))
+                            .font(Theme.control)
+                            .frame(minHeight: Theme.Size.touch)
                     }
-                    .font(Theme.control)
-                    .frame(minHeight: Theme.Size.touch)
                     .buttonStyle(PadPrimaryButtonStyle())
                     .disabled(!midi.learningComplete || trimmedName.isEmpty || nameExists)
                 }

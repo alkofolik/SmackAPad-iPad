@@ -207,12 +207,11 @@ struct TransportControls: View {
                                 .lineLimit(1)
                                 .fixedSize()
                         }
-                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                        .frame(width: s, height: buttonHeight)
                     }
                     .buttonStyle(PadSecondaryButtonStyle())
                     .disabled(!enabled)
                     .opacity(enabled ? 1 : 0.5)
-                    .frame(width: s, height: buttonHeight)
 
                     secondAction
                         .frame(width: s, height: buttonHeight)
@@ -226,12 +225,11 @@ struct TransportControls: View {
                             .lineLimit(1)
                             .fixedSize()
                     }
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .frame(width: s, height: s)
                 }
                 .buttonStyle(PadSecondaryButtonStyle())
                 .disabled(!enabled)
                 .opacity(enabled ? 1 : 0.5)
-                .frame(width: s, height: s)
             }
         } else {
             VStack(spacing: Theme.Space.small) {
@@ -247,12 +245,11 @@ struct TransportControls: View {
                             .id(running ? "Stop" : "Start")
                             .transition(.opacity)
                     }
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .frame(width: s, height: buttonHeight)
                 }
                 .buttonStyle(PadPrimaryButtonStyle())
                 .disabled(!running && !enabled)
                 .opacity(running || enabled ? 1 : 0.5)
-                .frame(width: s, height: buttonHeight)
 
                 Button(action: restart) {
                     HStack(spacing: Theme.Space.small) {
@@ -262,12 +259,11 @@ struct TransportControls: View {
                             .lineLimit(1)
                             .fixedSize()
                     }
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .frame(width: s, height: buttonHeight)
                 }
                 .buttonStyle(PadSecondaryButtonStyle())
                 .disabled(!enabled)
                 .opacity(enabled ? 1 : 0.5)
-                .frame(width: s, height: buttonHeight)
             }
             .frame(width: s, height: s)
             .motion(Theme.Motion.standard, value: running)

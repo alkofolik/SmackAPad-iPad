@@ -44,11 +44,13 @@ public struct AboutDetailView: View {
             ToolbarItem(placement: .principal) { ScreenHeader(title: settings.localized("About")) }
             if showsDoneButton || onDismiss != nil {
                 ToolbarItem(placement: .confirmationAction) {
-                    Button(settings.localized("Done")) {
+                    Button {
                         if let onDismiss { onDismiss() } else { dismiss() }
+                    } label: {
+                        Text(settings.localized("Done"))
+                            .font(Theme.control)
+                            .frame(minHeight: Theme.Size.touch)
                     }
-                    .font(Theme.control)
-                    .frame(minHeight: Theme.Size.touch)
                     .buttonStyle(PadSecondaryButtonStyle())
                 }
             }

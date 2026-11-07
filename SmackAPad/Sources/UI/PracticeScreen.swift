@@ -315,11 +315,13 @@ struct PracticeScreen: View {
         if !session.isMix {
             HStack(spacing: 0) {
                 ForEach(LessonPlaybackMode.allCases, id: \.self) { mode in
-                    Button(settings.localized(mode.rawValue)) { session.selectPlaybackMode(mode) }
-                        .font(Theme.control)
-                        .padding(.horizontal, Theme.Space.regular)
-                        .frame(minHeight: Theme.Size.touch)
-                        .buttonStyle(HardwareKeyButtonStyle(isSelected: session.playbackMode == mode))
+                    Button { session.selectPlaybackMode(mode) } label: {
+                        Text(settings.localized(mode.rawValue))
+                            .font(Theme.control)
+                            .padding(.horizontal, Theme.Space.regular)
+                            .frame(minHeight: Theme.Size.touch)
+                    }
+                    .buttonStyle(HardwareKeyButtonStyle(isSelected: session.playbackMode == mode))
                 }
             }
             .lineLimit(1)
@@ -785,17 +787,19 @@ struct PracticeScreen: View {
     private func transportSecondAction(s: CGFloat) -> some View {
         let buttonHeight = max(0, (s - Theme.Space.small) / 2)
         if onStepResult != nil {
-            Button(settings.localized("Continue")) {
+            Button {
                 session.stop()
                 reportStepResult()
                 if let dismissLesson { dismissLesson() } else { dismiss() }
+            } label: {
+                Text(settings.localized("Continue"))
+                    .font(Theme.action)
+                    .lineLimit(1)
+                    .fixedSize()
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .frame(height: buttonHeight)
             }
-            .font(Theme.action)
-            .lineLimit(1)
-            .fixedSize()
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
             .buttonStyle(PadPrimaryButtonStyle())
-            .frame(height: buttonHeight)
         } else if showsMemoryChallenge {
             Menu {
                 Button(action: startMemoryChallenge) {
@@ -841,9 +845,9 @@ struct PracticeScreen: View {
             .lineLimit(1)
             .minimumScaleFactor(0.8)
             .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .frame(height: buttonHeight)
         }
         .buttonStyle(PadPrimaryButtonStyle())
-        .frame(height: buttonHeight)
         .disabled(nextLesson == nil)
         .accessibilityHint(nextLesson.map { settings.localized($0.title) } ?? settings.localized("No next lesson available"))
     }

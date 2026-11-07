@@ -179,11 +179,13 @@ struct LibraryScreen: View {
             .motion(Theme.Motion.standard, value: showingIntro ? "intro" : mode.id + (group?.id ?? ""))
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
-                    Button(settings.localized("Settings")) { showingSettings = true }
-                        .font(Theme.control)
-                        .padding(.horizontal, Theme.Space.small)
-                        .frame(minHeight: Theme.Size.touch)
-                        .buttonStyle(PadSecondaryButtonStyle())
+                    Button { showingSettings = true } label: {
+                        Text(settings.localized("Settings"))
+                            .font(Theme.control)
+                            .padding(.horizontal, Theme.Space.small)
+                            .frame(minHeight: Theme.Size.touch)
+                    }
+                    .buttonStyle(PadSecondaryButtonStyle())
                 }
             }
         }
@@ -675,12 +677,14 @@ struct LibraryScreen: View {
                 settings.localized("Level %lld · %@", $0.level, settings.localized(group.title))
             } ?? settings.localized(group.title)) {
                 courseProgressIndicator(group: group, shown: filtered.count, total: group.lessons.count)
-                Button(settings.localized("Play next")) { if let next { open(next) } }
-                    .font(Theme.control)
-                    .padding(.horizontal, Theme.Space.small)
-                    .frame(minHeight: Theme.Size.touch)
-                    .buttonStyle(PadPrimaryButtonStyle())
-                    .disabled(next == nil)
+                Button { if let next { open(next) } } label: {
+                    Text(settings.localized("Play next"))
+                        .font(Theme.control)
+                        .padding(.horizontal, Theme.Space.small)
+                        .frame(minHeight: Theme.Size.touch)
+                }
+                .buttonStyle(PadPrimaryButtonStyle())
+                .disabled(next == nil)
             }
             .padding(.bottom, Theme.Space.small)
             if let stage = group.stage, !progression.isStageOpen(stage) || progression.canRelockStage(stage) {
@@ -992,6 +996,15 @@ struct LibraryLessonRow: View {
             }
         }
         .padding(.horizontal, Theme.Space.regular)
+        .background {
+            // Fill the plate's gaps while keeping the row and trailing controls as siblings.
+            Button(action: onSelect) {
+                Color.clear
+                    .contentShape(RoundedRectangle(cornerRadius: Theme.Skin.Plate.radius))
+            }
+            .buttonStyle(.plain)
+            .accessibilityHidden(true)
+        }
         .satinPlate()
         .lessonSource(lesson.id)
     }

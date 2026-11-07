@@ -106,15 +106,19 @@ struct CalibrationView: View {
                     }
                     if let error = session.audioError { Text(error).font(Theme.meta).foregroundStyle(Theme.secondary) }
                     if session.busy {
-                        Button(settings.localized("Cancel calibration"), role: .cancel) { session.cancel() }
-                            .font(Theme.control)
-                            .frame(minHeight: Theme.Size.touch)
-                            .buttonStyle(PadSecondaryButtonStyle())
+                        Button(role: .cancel) { session.cancel() } label: {
+                            Text(settings.localized("Cancel calibration"))
+                                .font(Theme.control)
+                                .frame(minHeight: Theme.Size.touch)
+                        }
+                        .buttonStyle(PadSecondaryButtonStyle())
                     } else {
-                        Button(settings.localized("Start calibration")) { touching = false; session.start() }
-                            .font(Theme.control)
-                            .frame(minHeight: Theme.Size.touch)
-                            .buttonStyle(PadPrimaryButtonStyle())
+                        Button { touching = false; session.start() } label: {
+                            Text(settings.localized("Start calibration"))
+                                .font(Theme.control)
+                                .frame(minHeight: Theme.Size.touch)
+                        }
+                        .buttonStyle(PadPrimaryButtonStyle())
                     }
                 } header: { SectionHeader(title: settings.localized("Calibration progress")) }
             }

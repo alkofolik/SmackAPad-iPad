@@ -1,6 +1,6 @@
 # 130 — Buttons react again: hit areas after the satin skin, Library lessons open
 
-Status: ready-for-agent. Source: Jakub, 2026-11-07 (iPad): "after the last graphic change most buttons look broken; in the Library a lesson almost never opens; buttons mostly do not react."
+Status: ready-for-human. Implementation complete; final build passed; physical-iPad acceptance pending. Source: Jakub, 2026-11-07 (iPad): "after the last graphic change most buttons look broken; in the Library a lesson almost never opens; buttons mostly do not react."
 
 ## Problem
 
@@ -28,10 +28,10 @@ After tickets 126–129 (skin "Klidný satén"):
 
 ## Acceptance criteria
 
-- [ ] Cause of B named in the report, with the bisect result.
+- [x] Cause of B named in the report, with the bisect result.
 - [ ] Every button in the list under A: pad and tap area identical, ≥ 44 pt, both orientations.
 - [ ] Library: tapping any open lesson row and "Play next" opens the lesson on the first tap.
-- [ ] Build succeeds. No new tests.
+- [x] Build succeeds. No new tests.
 - [ ] **iPad test (Jakub)**: Library → open 5 different lessons; press Home/Settings/Show/Play next; Training and Today buttons.
 
 ## Agent assignment
@@ -42,3 +42,52 @@ After tickets 126–129 (skin "Klidný satén"):
 ## Done rule
 
 Stop after a successful build. Commit (AGENTS.md); Jakub pushes and tests on the iPad.
+
+
+## Implementation report — 2026-11-07
+
+### Diagnosis and temporary bisect
+
+Reproduced an unresponsive part of an **open** lesson card on the iPad Pro 11-inch (M5), iPadOS 27.0 simulator, through Device Hub. In the 2200 × 1600 window screenshot, tapping the first card's unused lower-right area at (1690, 602) left the Library visible; tapping its title at (1460, 520) opened “Kick on every beat”. This is a position-dependent missing hit target, rather than a locked lesson.
+
+| Diagnostic configuration (one change at a time) | Unused card area | Working control |
+| --- | --- | --- |
+| Original skin | Did not open | Lesson title opened |
+| Remove only `LibraryLessonRow.satinPlate()` | Did not open | Play next opened |
+| Disable `HardwareLightBar` breathing | Did not open | Lesson title opened |
+| Remove only Library `calmChassisBackground()` | Did not open | Lesson title opened |
+
+None of the three removals restored the missing target. Temporary logging at `open(_:)` confirmed `open id=10001 purchased=true open=true` when the title was tapped. The empty area did not invoke the action. The original report's intermittent failures when tapping the title or Play next were not reproduced in this simulator session.
+
+**Cause of the reproduced B symptom:** `ListRow` makes only its leading title/metadata region a primary Button. Its adaptive vertical layout places trailing controls below that Button, and the satin surface encloses both regions plus padding. Blank portions of that visible plate therefore have no action. The skin made the plate look like a larger tappable card without extending its hit target. The diagnostic results do not support removing shadows, lights, or the chassis as the fix.
+
+`LibraryLessonRow` now fills the complete plate's unused area with a plain background Button using the existing `onSelect` action and the plate's rounded hit shape. The existing accessible primary Button and trailing star/info/purchase controls remain siblings, with their own actions. The background target is hidden from accessibility to avoid a duplicate lesson action. Unlocking and lesson presentation logic are unchanged.
+
+All temporary flags, logging, and surface removals were removed. The satin surfaces and breathing behavior are preserved.
+
+### Button audit
+
+Audited all **57** `Pad*ButtonStyle` / `HardwareKeyButtonStyle` applications in `SmackAPad/Sources/UI/`. Moved label sizing/formatting into explicit label closures at 34 sites, and moved the external transport dimensions inside five existing labels: **39 changed call sites** in total. Existing correct labels were retained. The shared `PadControlBody` now guarantees at least the touch-size width and height, draws the background inside those bounds, and applies the same rounded shape to hit testing. Decorative background drawing does not receive touches.
+
+| File | Audited / changed call sites | Changed buttons |
+| --- | --- | --- |
+| `LibraryScreen.swift` | 7 / 2 | Settings; Play next. Also added the full lesson-plate target. Home, Show, Show completed, Clear filters, and purchase lock already sized their labels correctly. |
+| `TrainingScreen.swift` | 7 / 6 | Not today; Start today's training; Mix Start; New mix; After me Start; Another lesson. Home already correct. |
+| `TodaySessionScreen.swift` | 5 / 5 | Toolbar Home; Continue; Skip; Done for today; final Home. Touch heights are minimums so taller text can fit. |
+| `ContentView.swift` | 4 / 4 | Start again; Start MIDI learn; Cancel; Save. |
+| `PurchasesView.swift` | 6 / 4 | Try again; Restore Purchases in both locations; Full unlock. Unlock purchase and Close already correct. |
+| `ControllerSetupView.swift` | 6 / 5 | Reconnect MIDI; Done; Learn; Clear; Cancel learning. Connect Bluetooth MIDI already correct; Reconnect MIDI receives its minimum size from the shared style. |
+| `CalibrationView.swift` | 2 / 2 | Cancel calibration; Start calibration. |
+| `IntroScreen.swift` | 3 / 1 | Close rules. Visibility toggle and Show completed already correct. |
+| `AboutScreen.swift` | 1 / 1 | Done. |
+| `BadgesScreen.swift` | 1 / 1 | Done. |
+| `SettingsView.swift` | 1 / 1 | Done. |
+| `PracticeScreen.swift` | 4 / 3 | Playback mode keys; Continue; Next lesson. Library/Today/Training return button already correct. |
+| `PracticeComponents.swift` | 8 / 4 | Square transport Again in both layouts; Start/Stop; Restart. Tool icon and the three regular transport labels already correct. |
+| `Components.swift` | 2 / 0 | Confirmation-action style inheritance and FilterChip audited; shared style geometry fixed for all applications. |
+
+### Validation and handoff
+
+- Diagnostic simulator build succeeded; no tests added or run.
+- Final implementation build succeeded: `xcodebuild -project SmackAPad.xcodeproj -scheme SmackAPad -configuration Debug -sdk iphonesimulator -destination 'id=9CC875DA-5EDB-4032-94FF-1D802565DBB5' -derivedDataPath .build/ticket130/DerivedData CODE_SIGNING_ALLOWED=NO build` → `BUILD SUCCEEDED`. No tests added or run.
+- Stopped implementation after the final successful build, as requested. Post-fix touch behavior, both orientations, and the five-lesson physical-iPad checklist remain for Jakub; the corresponding acceptance boxes are intentionally open.

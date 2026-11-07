@@ -211,22 +211,26 @@ public struct TrainingScreen: View {
                     Spacer(minLength: Theme.Space.small)
 
                     HStack(spacing: 10) {
-                        Button(settings.localized("Not today")) {
+                        Button {
                             postponeTodayReviews()
+                        } label: {
+                            Text(settings.localized("Not today"))
+                                .font(Theme.strong(18))
+                                .padding(.horizontal, 18)
+                                .frame(minHeight: Theme.Size.touch)
                         }
-                        .font(Theme.strong(18))
-                        .padding(.horizontal, 18)
-                        .frame(minHeight: Theme.Size.touch)
                         .buttonStyle(PadSecondaryButtonStyle())
                         .disabled(dueLessons.isEmpty)
                         .opacity(dueLessons.isEmpty ? 0.4 : 1.0)
 
-                        Button(settings.localized("START TODAY'S TRAINING")) {
+                        Button {
                             startTodayTraining()
+                        } label: {
+                            Text(settings.localized("START TODAY'S TRAINING"))
+                                .font(Theme.strong(18))
+                                .padding(.horizontal, 22)
+                                .frame(minHeight: Theme.Size.touch)
                         }
-                        .font(Theme.strong(18))
-                        .padding(.horizontal, 22)
-                        .frame(minHeight: Theme.Size.touch)
                         .buttonStyle(PadSecondaryButtonStyle())
                     }
                 }
@@ -820,22 +824,26 @@ public struct TrainingScreen: View {
                 .disabled(mixLessons.count < 2)
 
             HStack(spacing: Theme.Space.regular) {
-                Button(settings.localized("Start")) {
+                Button {
                     playingMix = mixLessons
                     showingMix = true
+                } label: {
+                    Text(settings.localized("Start"))
+                        .font(Theme.action)
+                        .padding(.horizontal, Theme.Space.regular)
+                        .frame(minHeight: Theme.Size.control)
                 }
-                .font(Theme.action)
-                .padding(.horizontal, Theme.Space.regular)
-                .frame(minHeight: Theme.Size.control)
                 .buttonStyle(PadPrimaryButtonStyle())
                 .disabled(mixLessons.count < 2)
 
-                Button(settings.localized("New mix")) {
+                Button {
                     refreshMix(newDraw: true)
+                } label: {
+                    Text(settings.localized("New mix"))
+                        .font(Theme.control)
+                        .padding(.horizontal, Theme.Space.regular)
+                        .frame(minHeight: Theme.Size.touch)
                 }
-                .font(Theme.control)
-                .padding(.horizontal, Theme.Space.regular)
-                .frame(minHeight: Theme.Size.touch)
                 .buttonStyle(PadSecondaryButtonStyle())
                 .disabled(mixLessons.count < 2)
             }
@@ -925,20 +933,24 @@ public struct TrainingScreen: View {
                     .foregroundStyle(Theme.secondary)
 
                 HStack(spacing: Theme.Space.regular) {
-                    Button(settings.localized("Start")) {
+                    Button {
                         selectedAfterMeLesson = lesson
+                    } label: {
+                        Text(settings.localized("Start"))
+                            .font(Theme.action)
+                            .padding(.horizontal, Theme.Space.regular)
+                            .frame(minHeight: Theme.Size.control)
                     }
-                    .font(Theme.action)
-                    .padding(.horizontal, Theme.Space.regular)
-                    .frame(minHeight: Theme.Size.control)
                     .buttonStyle(PadPrimaryButtonStyle())
 
-                    Button(settings.localized("Another lesson")) {
+                    Button {
                         chooseAfterMeLesson(another: true)
+                    } label: {
+                        Text(settings.localized("Another lesson"))
+                            .font(Theme.control)
+                            .padding(.horizontal, Theme.Space.regular)
+                            .frame(minHeight: Theme.Size.touch)
                     }
-                    .font(Theme.control)
-                    .padding(.horizontal, Theme.Space.regular)
-                    .frame(minHeight: Theme.Size.touch)
                     .buttonStyle(PadSecondaryButtonStyle())
                     .disabled(afterMeCandidates.count < 2)
                 }

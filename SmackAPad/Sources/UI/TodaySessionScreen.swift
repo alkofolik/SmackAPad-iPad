@@ -114,11 +114,13 @@ struct TodaySessionScreen: View {
             .calmChassisBackground()
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) {
-                    Button(settings.localized("Home"), action: onHome)
-                        .font(Theme.control)
-                        .padding(.horizontal, Theme.Space.small)
-                        .frame(minHeight: Theme.Size.touch)
-                        .buttonStyle(PadSecondaryButtonStyle())
+                    Button(action: onHome) {
+                        Text(settings.localized("Home"))
+                            .font(Theme.control)
+                            .padding(.horizontal, Theme.Space.small)
+                            .frame(minHeight: Theme.Size.touch)
+                    }
+                    .buttonStyle(PadSecondaryButtonStyle())
                 }
             }
         }
@@ -286,34 +288,40 @@ struct TodaySessionScreen: View {
     }
 
     private var continueButton: some View {
-        Button(settings.localized("Continue")) { openPractice() }
-            .font(Theme.action)
-            .padding(.horizontal, Theme.Space.regular)
-            .frame(height: Theme.Size.touch)
-            .buttonStyle(PadPrimaryButtonStyle())
+        Button { openPractice() } label: {
+            Text(settings.localized("Continue"))
+                .font(Theme.action)
+                .padding(.horizontal, Theme.Space.regular)
+                .frame(minHeight: Theme.Size.touch)
+        }
+        .buttonStyle(PadPrimaryButtonStyle())
     }
 
     private var skipButton: some View {
-        Button(settings.localized("Skip")) {
+        Button {
             withAnimation(Theme.Motion.Policy(reduced: reduceMotion).animation(Theme.Motion.cardStep)) {
                 coordinator.skip(progress: progress)
             }
+        } label: {
+            Text(settings.localized("Skip"))
+                .font(Theme.control)
+                .padding(.horizontal, Theme.Space.regular)
+                .frame(minHeight: Theme.Size.touch)
         }
-        .font(Theme.control)
-        .padding(.horizontal, Theme.Space.regular)
-        .frame(height: Theme.Size.touch)
         .buttonStyle(PadSecondaryButtonStyle())
     }
 
     private var doneButton: some View {
-        Button(settings.localized("Done for today")) {
+        Button {
             withAnimation(Theme.Motion.Policy(reduced: reduceMotion).animation(Theme.Motion.cardStep)) {
                 coordinator.finish(progress: progress)
             }
+        } label: {
+            Text(settings.localized("Done for today"))
+                .font(Theme.control)
+                .padding(.horizontal, Theme.Space.regular)
+                .frame(minHeight: Theme.Size.touch)
         }
-        .font(Theme.control)
-        .padding(.horizontal, Theme.Space.regular)
-        .frame(height: Theme.Size.touch)
         .buttonStyle(PadSecondaryButtonStyle())
     }
 
@@ -348,12 +356,14 @@ struct TodaySessionScreen: View {
             }
         }
 
-        Button(settings.localized("Home"), action: onHome)
-            .font(Theme.action)
-            .padding(.horizontal, Theme.Space.regular)
-            .frame(height: Theme.Size.touch)
-            .buttonStyle(PadPrimaryButtonStyle())
-            .padding(.top, Theme.Space.small)
+        Button(action: onHome) {
+            Text(settings.localized("Home"))
+                .font(Theme.action)
+                .padding(.horizontal, Theme.Space.regular)
+                .frame(minHeight: Theme.Size.touch)
+        }
+        .buttonStyle(PadPrimaryButtonStyle())
+        .padding(.top, Theme.Space.small)
     }
 
     private func openPractice() {

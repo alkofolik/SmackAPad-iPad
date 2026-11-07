@@ -137,6 +137,7 @@ private struct PadControlBody<Label: View>: View {
     var body: some View {
         let policy = Theme.Motion.Policy(reduced: reduced)
         label
+            .frame(minWidth: Theme.Size.touch, minHeight: Theme.Size.touch)
             .foregroundStyle(primary ? Theme.black : Theme.ink)
             .background {
                 RoundedRectangle(cornerRadius: Theme.Skin.Pad.radius)
@@ -154,7 +155,9 @@ private struct PadControlBody<Label: View>: View {
                     }
                     .shadow(color: primary ? Theme.orange.opacity(0.25) : Theme.black.opacity(0.08),
                             radius: primary ? 3 : 2, y: primary ? 3 : 2)
+                    .allowsHitTesting(false)
             }
+            .contentShape(RoundedRectangle(cornerRadius: Theme.Skin.Pad.radius))
             .overlay(alignment: .bottom) {
                 if let selected {
                     Color.clear.overlay(alignment: .bottom) { HardwareLightBar(active: selected) }
@@ -175,7 +178,7 @@ private struct PadControlBody<Label: View>: View {
             .offset(y: policy.offset(pressed ? Theme.Skin.Pad.pressedY : 0))
             .animation(policy.animation(pressed ? Theme.Motion.padFlash : Theme.Motion.padPress), value: pressed)
             .opacity(enabled ? 1 : 0.45)
-        // No padding, font or frame: sizing and touch targets remain the caller's.
+        // Callers size the label; the style guarantees a matching minimum touch target.
     }
 }
 

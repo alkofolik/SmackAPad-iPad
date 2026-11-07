@@ -100,9 +100,11 @@ public struct ControllerSetupView: View {
                         Text(error)
                             .font(Theme.meta)
                             .foregroundStyle(Theme.markWrong)
-                        Button(settings.localized("Reconnect MIDI")) {
+                        Button {
                             midi.stop()
                             midi.start()
+                        } label: {
+                            Text(settings.localized("Reconnect MIDI"))
                         }
                         .buttonStyle(PadSecondaryButtonStyle())
                     }
@@ -218,11 +220,13 @@ public struct ControllerSetupView: View {
             ToolbarItem(placement: .principal) { ScreenHeader(title: settings.localized("Controller")) }
             if showsDoneButton {
                 ToolbarItem(placement: .confirmationAction) {
-                    Button(settings.localized("Done")) {
+                    Button {
                         if let onDismiss { onDismiss() } else { dismiss() }
+                    } label: {
+                        Text(settings.localized("Done"))
+                            .font(Theme.control)
+                            .frame(minHeight: Theme.Size.touch)
                     }
-                    .font(Theme.control)
-                    .frame(minHeight: Theme.Size.touch)
                     .buttonStyle(PadSecondaryButtonStyle())
                 }
             }
@@ -381,22 +385,29 @@ struct ControllerMappingSections: View {
                     Text(mappingText(signal)).font(Theme.meta).foregroundStyle(Theme.secondary)
                 }
                 Spacer()
-                Button(settings.localized("Learn")) { midi.startControlLearning(target) }
-                    .buttonStyle(PadSecondaryButtonStyle())
-                    .frame(minWidth: Theme.Size.touch, minHeight: Theme.Size.touch)
-                    .accessibilityLabel(settings.localized("Learn: %@", settings.localized(title)))
-                Button(settings.localized("Clear")) { midi.clearControlMapping(target) }
-                    .buttonStyle(PadSecondaryButtonStyle())
-                    .frame(minWidth: Theme.Size.touch, minHeight: Theme.Size.touch)
-                    .disabled(signal == nil)
-                    .accessibilityLabel(settings.localized("Clear: %@", settings.localized(title)))
+                Button { midi.startControlLearning(target) } label: {
+                    Text(settings.localized("Learn"))
+                        .frame(minWidth: Theme.Size.touch, minHeight: Theme.Size.touch)
+                }
+                .buttonStyle(PadSecondaryButtonStyle())
+                .accessibilityLabel(settings.localized("Learn: %@", settings.localized(title)))
+                Button { midi.clearControlMapping(target) } label: {
+                    Text(settings.localized("Clear"))
+                        .frame(minWidth: Theme.Size.touch, minHeight: Theme.Size.touch)
+                }
+                .buttonStyle(PadSecondaryButtonStyle())
+                .disabled(signal == nil)
+                .accessibilityLabel(settings.localized("Clear: %@", settings.localized(title)))
             }
             if midi.controlLearningTarget == target {
                 Text(settings.localized(midi.controlLearningNotice ?? (target == .knob
                     ? "Turn the tempo knob slightly." : "Press the controller button once.")))
                     .font(Theme.meta).foregroundStyle(Theme.secondary)
-                Button(settings.localized("Cancel")) { midi.cancelControlLearning() }
-                    .buttonStyle(PadSecondaryButtonStyle()).frame(minHeight: Theme.Size.touch)
+                Button { midi.cancelControlLearning() } label: {
+                    Text(settings.localized("Cancel"))
+                        .frame(minHeight: Theme.Size.touch)
+                }
+                .buttonStyle(PadSecondaryButtonStyle())
             }
         }
     }
