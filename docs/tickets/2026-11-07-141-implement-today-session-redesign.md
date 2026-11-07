@@ -16,8 +16,7 @@ Replace the current draft-like, left-crammed `TodaySessionScreen.swift` with the
    - Keep the "Domů" pad button in the top toolbar confirmation placement (tickets 109, 133).
 
 2. **Top Stepper / Roadmap (`TodayStepperView`)**:
-   - Horizontal progress row across the top of the session view:
-     - 4 steps: `1. Opakování` -> `2. Opakování` -> `3. Nová lekce` -> `4. Denní mix`.
+   - Horizontal progress row across the top of the session view, built from `plan.steps` (kinds `.review`, `.newLesson`, `.mix`). The preview shows the full day: `1. Opakování` -> `2. Opakování` -> `3. Nová lekce` -> `4. Denní mix`, but the real plan may have 0–2 reviews, so draw only the steps that exist, never a fixed four.
      - Visual states:
        - `completed`: green tint / check + percentage (e.g. `✓ 91 %`).
        - `current`: orange hairline highlight + current step score or indicator.
@@ -53,7 +52,8 @@ Replace the current draft-like, left-crammed `TodaySessionScreen.swift` with the
 
 - Layout and UI presentation only. Do not change the session flow logic, plan storage (`TodayPlan.swift`), or practice screen coordinator.
 - Use existing Theme tokens and `LessonPatternStrip`. Add new layout tokens only if needed for spacing/proportions, and name them by role.
-- No code outside `SmackAPad/Sources/UI/TodaySessionScreen.swift` and `Localizable.strings` (unless small helper views in `Components.swift` are appropriate).
+- Edit only `SmackAPad/Sources/UI/TodaySessionScreen.swift`, both `Localizable.strings`, and, if really needed, small helper views in `Components.swift` or new layout tokens in `Theme.swift` (read-only otherwise). Ticket 140 may also touch `Theme.swift`: do not run both at once.
+- `TodaySessionCoordinator` lives in the same file: leave its logic untouched, change only the views.
 - Build must succeed with zero new warnings. No extra tests.
 
 ## Files to read
@@ -76,7 +76,7 @@ Replace the current draft-like, left-crammed `TodaySessionScreen.swift` with the
 ## Agent assignment
 
 - **Agent**: Gemini 3.8 Flash, **high**. Fallback: Codex GPT-6.1 Sol, high.
-- **Reasoning**: Precision UI rewrite of a single screen to match an approved offline HTML preview.
+- **Reasoning**: Precision UI rewrite of a single screen (3 states × 2 orientations × 2 appearances) against an HTML preview. Flash on **high** is the minimum; if its first result drifts from the preview, switch to the fallback instead of iterating.
 
 ## Done rule
 

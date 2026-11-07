@@ -7,8 +7,9 @@ Spec = preview `docs/previews/135-pad-title-fonts.html` (candidate 3: Barlow Con
 ## What to build
 
 1. **Font asset**:
-   - Bundle `BarlowCondensed-ExtraBold.ttf` (SIL Open Font License 1.1) in `SmackAPad/Resources/Fonts/`.
-   - Register the font in `SmackAPad-Info.plist` under `UIAppFonts`.
+   - Bundle `BarlowCondensed-ExtraBold.ttf` (SIL Open Font License 1.1) in `SmackAPad/Resources/Fonts/`, plus its licence text as `barlowcondensed-OFL.txt` next to it (like `ibmplexsans-OFL.txt`).
+   - **Where to get the file (no download needed):** the TTF is embedded as base64 in `docs/previews/135-pad-title-fonts.html`, in the `@font-face` block for `'Barlow Condensed'` (weight 800, ~line 35). Decode it into the `.ttf`. Confirm the PostScript name is exactly `BarlowCondensed-ExtraBold` (e.g. `fc-scan` or `fontTools`); if it differs, use the real name in code and tell Jakub. If the embedded file is not a usable static ExtraBold, stop and report; do not substitute another font.
+   - Register the font in `SmackAPad-Info.plist` under `UIAppFonts` (file name, like the IBM Plex entry).
    - Verify font loading in `SmackAPad/Sources/UI/Theme.swift` alongside IBM Plex Sans (`UIFont(name: "BarlowCondensed-ExtraBold", size: ...)`).
 2. **Typography theme token**:
    - Add a dedicated token in `Theme.swift`, e.g. `Theme.padTitle(size: CGFloat)` using `"BarlowCondensed-ExtraBold"`, and canvas variant if needed.
@@ -27,12 +28,12 @@ Spec = preview `docs/previews/135-pad-title-fonts.html` (candidate 3: Barlow Con
 ## Rules
 
 - Home screen action pads only. Do not change titles on Library, Practice, Training or Settings screens.
-- Keep SIL OFL license notice in About/Licences view (`docs/tickets/2026-11-04-80-about-and-licences.md` / `AboutScreen.swift`).
+- **Add** a Barlow Condensed entry (SIL OFL 1.1) to the Licences section in `AboutScreen.swift`, in the same form as the existing IBM Plex Sans entry (see ticket 80). Small change, only this entry.
 - Build must succeed with zero new warnings.
 
 ## Files to read
 
-`AGENTS.md`, this ticket, ticket 119, ticket 135, `SmackAPad-Info.plist`, `SmackAPad/Sources/UI/Theme.swift`, `SmackAPad/Sources/UI/HomeScreen.swift` (`HomePadView`).
+`AGENTS.md`, this ticket, ticket 119, ticket 135, `SmackAPad-Info.plist`, `SmackAPad/Sources/UI/Theme.swift`, `SmackAPad/Sources/UI/HomeScreen.swift` (`HomePadView`, line ~331), `SmackAPad/Sources/UI/AboutScreen.swift` (licences only).
 
 ## Acceptance criteria
 
@@ -40,13 +41,14 @@ Spec = preview `docs/previews/135-pad-title-fonts.html` (candidate 3: Barlow Con
 - [ ] Home pad titles render in Barlow Condensed ExtraBold in both Light and Dark appearances.
 - [ ] Subtitles and pad numbers remain in IBM Plex Sans.
 - [ ] No "…" on any pad title in Czech or English, landscape and portrait.
+- [ ] Barlow Condensed licence listed in About/Licences.
 - [ ] Build succeeds. No new tests.
 - [ ] **iPad test (Jakub)**: Check visual contrast and pad title appearance on iPad.
 
 ## Agent assignment
 
 - **Agent**: Gemini 3.8 Flash, **medium**. Fallback: Codex GPT-6.1 Sol, medium.
-- **Reasoning**: Straightforward font asset integration and styling update in `Theme.swift` and `HomeScreen.swift`.
+- **Reasoning**: Straightforward font asset integration and styling update. Run **after ticket 141 is committed** or before it, never at the same time: both may edit `Theme.swift`.
 
 ## Done rule
 
