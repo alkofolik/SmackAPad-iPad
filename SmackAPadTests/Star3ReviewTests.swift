@@ -4,6 +4,18 @@ import XCTest
 final class Star3ReviewTests: XCTestCase {
     private let today = "2026-11-07"
 
+    func testLegacyThreeStarsStartTheExistingScheduleWithoutAZeroPassCounter() {
+        var records = [1: LessonProgress(passed: true, mastery: true, memory: true)]
+        XCTAssertTrue(ProgressStore.migrateLegacyMasteredReviewSchedule(in: &records, today: today))
+        XCTAssertEqual(records[1]?.memory, true)
+        XCTAssertEqual(records[1]?.reviewDueDay, "2026-11-08")
+        XCTAssertEqual(records[1]?.isUnstartedLegacyReview, true)
+        records[1]?.lastReviewedDay = "2026-11-08"
+        XCTAssertEqual(records[1]?.isUnstartedLegacyReview, false)
+        XCTAssertFalse(LessonProgress(mastery: true, memory: false, reviewStep: 0).isUnstartedLegacyReview)
+        XCTAssertFalse(LessonProgress(memory: true, reviewStep: 2).isUnstartedLegacyReview)
+    }
+
     // 1. second passed review → star 3
     func testSecondPassedReviewAwardsStar3() {
         let progress = LessonProgress(passed: true, mastery: true, memory: false, reviewStep: 1)

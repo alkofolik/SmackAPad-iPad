@@ -9,6 +9,18 @@ struct TodayPlan: Codable, Equatable {
         let kind: Kind
         let lessonIDs: [Int]
         var outcome: PracticeStepOutcome?
+
+        /// Shared by the step marks, handoff and summary. A score alone cannot pass a review.
+        var status: PracticeStepOutcome.Status? {
+            guard let outcome, outcome.played else { return nil }
+            guard kind == .review else { return (outcome.bestScore ?? 0) >= 0.8 ? .passed : .played }
+            switch outcome.reviewFeedback {
+            case .passed, .settled: return .passed
+            case .failed: return .didNotCount(.reviewNotPassed)
+            case .doesNotCount(let bpm): return .didNotCount(.requirements(goalBpm: bpm))
+            case nil: return .didNotCount(outcome.reviewPendingReason ?? .unfinishedReview)
+            }
+        }
     }
 
     enum Phase: String, Codable { case practice, handoff, summary }
@@ -21,6 +33,37 @@ struct TodayPlan: Codable, Equatable {
 
     var reviewCount: Int { steps.filter { $0.kind == .review }.count }
     var hasNewLesson: Bool { steps.contains { $0.kind == .newLesson } }
+
+    struct ReviewSummary: Equatable {
+        var played = 0
+        var passed = 0
+        var didNotCount = 0
+        var notPlayed = 0
+    }
+
+    var reviewSummary: ReviewSummary {
+        steps.filter { $0.kind == .review }.reduce(into: ReviewSummary()) { summary, step in
+            switch step.status {
+            case .passed: summary.passed += 1; summary.played += 1
+            case .didNotCount: summary.didNotCount += 1; summary.played += 1
+            case .played: summary.played += 1
+            case nil: summary.notPlayed += 1
+            }
+        }
+    }
+
+    /// Keep the saved daily selection stable as its lessons leave the due list.
+    struct ReviewLoad {
+        let todayIDs: [Int]
+        let queueIDs: [Int]
+
+        init(dueLessonIDs: [Int], plan: TodayPlan?) {
+            todayIDs = plan.map { $0.steps.filter { $0.kind == .review }.flatMap(\.lessonIDs) }
+                ?? Array(dueLessonIDs.prefix(2))
+            let selected = Set(todayIDs)
+            queueIDs = dueLessonIDs.filter { !selected.contains($0) }
+        }
+    }
 
     /// `dueLessonIDs` comes from `ReviewQueue.order`, already ordered by fragility (lowest reviewStep first, then most days late, then earlier masteryDay, then lesson id).
     static func make(day: String, dueLessonIDs: [Int], nextLessonID: Int?, mixLessonIDs: [Int]) -> TodayPlan? {
@@ -45,11 +88,62 @@ struct TodayPlan: Codable, Equatable {
 struct PracticeStepOutcome: Codable, Equatable {
     var bestScore: Double?
     var reviewFeedback: ReviewScheduler.ReviewFeedback?
+    var reviewPendingReason: Reason?
+
+    enum Status: Equatable {
+        case played, passed, didNotCount(Reason)
+
+        var titleKey: String {
+            switch self {
+            case .played: return "Played"
+            case .passed: return "Passed"
+            case .didNotCount: return "Did not count"
+            }
+        }
+
+        var reason: Reason? {
+            if case .didNotCount(let reason) = self { return reason }
+            return nil
+        }
+    }
+
+    enum Reason: Codable, Equatable {
+        case notesVisible, unfinishedReview, reviewNotPassed, requirements(goalBpm: Int)
+
+        func message(language: AppLanguage) -> String {
+            switch self {
+            case .notesVisible:
+                return language == .czech
+                    ? "Průchod s nápovědou · započítají se až průchody bez not."
+                    : "Warm-up with notes · only hidden passes count."
+            case .unfinishedReview:
+                return language == .czech
+                    ? "Opakování není dokončené · jsou potřeba dva úspěšné průchody bez not."
+                    : "Review unfinished · two successful hidden passes are needed."
+            case .reviewNotPassed:
+                return language == .czech
+                    ? "Dva průchody bez not pod 80 % · zkus to znovu zítra."
+                    : "Two hidden passes below 80% · try again tomorrow."
+            case .requirements(let bpm):
+                return language == .czech
+                    ? "Hraj zpaměti alespoň při \(bpm) BPM."
+                    : "Play from memory at \(bpm) BPM or faster."
+            }
+        }
+    }
 
     var played: Bool { bestScore != nil }
 
     mutating func include(_ other: Self) {
         bestScore = [bestScore, other.bestScore].compactMap { $0 }.max()
-        if let feedback = other.reviewFeedback { reviewFeedback = feedback }
+        // Later warm-ups or ordinary practice cannot undo a committed review result.
+        switch reviewFeedback {
+        case .passed, .settled, .failed: break
+        default:
+            if other.played {
+                reviewFeedback = other.reviewFeedback
+                reviewPendingReason = other.reviewPendingReason
+            }
+        }
     }
 }

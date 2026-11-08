@@ -4,7 +4,7 @@
 //
 //  New Training screen following ticket 107 and mockup frame 1.
 //  Dominant orange Today band, Memory meter, Next 7 days forecast,
-//  Due now list with lateness, Mix & Play after me, and Training badges.
+//  Calm review queue, Mix & Play after me, and Training badges.
 //
 
 import SwiftUI
@@ -117,6 +117,13 @@ public struct TrainingScreen: View {
     private var nextLesson: Lesson? { data?.nextLesson }
     private var currentPlan: TodayPlan? { data?.currentPlan }
     private var isPlanFinished: Bool { currentPlan?.finished == true }
+    private var reviewLoad: TodayPlan.ReviewLoad {
+        TodayPlan.ReviewLoad(dueLessonIDs: dueLessons.map(\.id), plan: currentPlan)
+    }
+    private var queuedLessons: [Lesson] {
+        let ids = Set(reviewLoad.queueIDs)
+        return dueLessons.filter { ids.contains($0.id) }
+    }
 
     public var body: some View {
         NavigationStack {
@@ -303,14 +310,7 @@ public struct TrainingScreen: View {
 
     private func bandMetaText(finished: Bool) -> String {
         let dateStr = formattedTodayDate()
-        let count = dueLessons.count
-        let dueStr: String = {
-            if count == 1 {
-                return settings.localized("1 review due")
-            } else {
-                return settings.localized("%lld reviews due", count)
-            }
-        }()
+        let dueStr = settings.localized("%lld today", reviewLoad.todayIDs.count)
         return "\(dateStr) · \(dueStr)"
     }
 
@@ -367,11 +367,12 @@ public struct TrainingScreen: View {
     }
 
     private var reviewStepBlock: some View {
-        let count = dueLessons.count
+        let count = reviewLoad.todayIDs.count
         let state: StepLedState = {
-            if let saved = currentPlan, saved.steps.contains(where: { $0.kind == .review && $0.outcome?.played == true }) {
+            if let saved = currentPlan, saved.reviewCount > 0, saved.reviewSummary.passed == saved.reviewCount {
                 return .done
             }
+            if isPlanFinished { return .off }
             return count > 0 ? .todo : .off
         }()
 
@@ -404,7 +405,7 @@ public struct TrainingScreen: View {
     private var newLessonStepBlock: some View {
         let hasLesson = nextLesson != nil
         let state: StepLedState = {
-            if let saved = currentPlan, saved.steps.contains(where: { $0.kind == .newLesson && $0.outcome?.played == true }) {
+            if let saved = currentPlan, saved.steps.contains(where: { $0.kind == .newLesson && $0.status == .passed }) {
                 return .done
             }
             return hasLesson ? .todo : .off
@@ -424,7 +425,7 @@ public struct TrainingScreen: View {
         let count = mixLessons.count
         let hasMix = count >= 2
         let state: StepLedState = {
-            if let saved = currentPlan, saved.steps.contains(where: { $0.kind == .mix && $0.outcome?.played == true }) {
+            if let saved = currentPlan, saved.steps.contains(where: { $0.kind == .mix && $0.status == .passed }) {
                 return .done
             }
             return hasMix ? .todo : .off
@@ -529,13 +530,12 @@ public struct TrainingScreen: View {
     private var finishedSummaryView: some View {
         VStack(alignment: .leading, spacing: Theme.Space.small) {
             if let saved = currentPlan {
-                let passed = saved.steps.filter { step in
-                    guard step.kind == .review, let feedback = step.outcome?.reviewFeedback else { return false }
-                    switch feedback { case .passed, .settled: return true; default: return false }
-                }.count
-                Text(settings.localized("Reviews passed: %lld of %lld", passed, saved.reviewCount))
-                    .font(Theme.strong(18))
-                    .foregroundStyle(Theme.black)
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(settings.localized("Reviews played: %lld of %lld", saved.reviewSummary.played, saved.reviewCount))
+                    Text(settings.localized("Passed: %lld · Did not count: %lld", saved.reviewSummary.passed, saved.reviewSummary.didNotCount))
+                }
+                .font(Theme.strong(18))
+                .foregroundStyle(Theme.black)
             }
         }
     }
@@ -731,7 +731,7 @@ public struct TrainingScreen: View {
                 }
             }
 
-            Text(settings.localized("Lessons coming back for a review that day."))
+            Text(settings.localized("Total review queue by that day if nothing is played. Includes earlier reviews; Today still selects at most two."))
                 .font(Theme.meta)
                 .foregroundStyle(Theme.secondary)
         }
@@ -771,9 +771,9 @@ public struct TrainingScreen: View {
 
     private var filteredDueLessons: [Lesson] {
         guard let targetIndex = currentStepFilter.stepIndex else {
-            return dueLessons
+            return queuedLessons
         }
-        return dueLessons.filter { lesson in
+        return queuedLessons.filter { lesson in
             let record = progress.progress(for: lesson.id)
             let step = record?.reviewStep ?? 0
             return step == targetIndex
@@ -786,9 +786,9 @@ public struct TrainingScreen: View {
                 ForEach(DueStepFilter.allCases) { filter in
                     let count: Int = {
                         if let targetIndex = filter.stepIndex {
-                            return dueLessons.filter { (progress.progress(for: $0.id)?.reviewStep ?? 0) == targetIndex }.count
+                            return queuedLessons.filter { (progress.progress(for: $0.id)?.reviewStep ?? 0) == targetIndex }.count
                         } else {
-                            return dueLessons.count
+                            return queuedLessons.count
                         }
                     }()
                     let isSelected = (currentStepFilter == filter)
@@ -812,12 +812,19 @@ public struct TrainingScreen: View {
 
     private var dueNowPanel: some View {
         VStack(alignment: .leading, spacing: Theme.Space.regular) {
-            panelHeader(settings.localized("Due now"))
+            panelHeader(settings.localized("Review queue"))
+
+            Text(settings.localized("%lld in queue · take these at your own pace", queuedLessons.count))
+                .font(Theme.meta)
+                .foregroundStyle(Theme.secondary)
+                .fixedSize(horizontal: false, vertical: true)
 
             VStack(spacing: 0) {
                 if data?.hasMasteredLesson != true {
                     emptyCardText(settings.localized("Reviews start once a lesson has two stars."))
-                } else if dueLessons.isEmpty {
+                } else if queuedLessons.isEmpty && !dueLessons.isEmpty {
+                    emptyCardText(settings.localized("Today's reviews are in the plan above. Nothing else is waiting in the queue."))
+                } else if queuedLessons.isEmpty {
                     let nextDateFormatted: String = {
                         if let nearest = data?.nearestDueDay {
                             return formattedDate(from: nearest)
@@ -882,7 +889,6 @@ public struct TrainingScreen: View {
     private func dueLessonRow(_ lesson: Lesson) -> some View {
         let record = progress.progress(for: lesson.id)
         let step = (record?.reviewStep ?? 0) + 1
-        let lateness = latenessText(for: record?.reviewDueDay)
 
         return Button {
             selectedLesson = .review(lesson)
@@ -903,41 +909,17 @@ public struct TrainingScreen: View {
                     .padding(.vertical, 3)
                     .overlay(Rectangle().stroke(Theme.ink, lineWidth: 2))
 
-                Text(lateness)
+                Text(settings.localized("Ready for review"))
                     .font(Theme.text(14))
                     .foregroundStyle(Theme.secondary)
                     .fixedSize()
             }
             .padding(.vertical, 8)
             .frame(minHeight: 52)
-            .overlay(alignment: .bottom) {
-                if record?.reviewDueDay != nil {
-                    HardwareLightBar(active: true, breathes: false)
-                }
-            }
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
         .lessonSource(lesson.id)
-    }
-
-    private func latenessText(for dueDay: String?) -> String {
-        guard let dueDay, dueDay < today else {
-            return settings.localized("today")
-        }
-        let diff = AppCalendar.daysBetween(dueDay, today) ?? 0
-        if diff <= 0 { return settings.localized("today") }
-        if diff == 1 { return settings.localized("1 day late") }
-
-        if settings.languagePreference == .czech {
-            if diff >= 2 && diff <= 4 {
-                return "o \(diff) dny později"
-            } else {
-                return "o \(diff) dní později"
-            }
-        } else {
-            return settings.localized("%lld days late", diff)
-        }
     }
 
     // MARK: - 3b. Waiting (reviews not yet due)

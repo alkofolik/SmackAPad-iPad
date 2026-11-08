@@ -1063,14 +1063,8 @@ public struct HomeScreen: View {
     }
 
     private func todaySubtitle(_ plan: TodayPlan) -> String {
-        let count = plan.reviewCount
-        let key: String
-        if count == 1 {
-            key = plan.hasNewLesson ? "1 review · then new lesson" : "1 review"
-            return settings.localized(key)
-        }
-        key = plan.hasNewLesson ? "%lld reviews · then new lesson" : "%lld reviews"
-        return settings.localized(key, count)
+        let count = settings.localized("%lld today", plan.reviewCount)
+        return plan.hasNewLesson ? count + " · " + settings.localized("then new lesson") : count
     }
 
     private func todaySubtitleVariants(_ plan: TodayPlan) -> [String] {
@@ -1254,17 +1248,11 @@ public struct HomeScreen: View {
     private func pad3(cellSize: CGFloat) -> some View {
         let label = settings.localized("Training").uppercased(with: Locale(identifier: settings.languagePreference.rawValue))
         let dueCount = progress.dueLessonsCount(today: calendarDay)
-        let subtitle: String? = {
-            guard dueCount > 0 else { return nil }
-            return settings.localized("%lld due", dueCount)
-        }()
 
         return HomePadView(
             title: label,
-            subtitle: subtitle,
-            numericTransitionValue: dueCount,
+            subtitle: nil,
             accessibilityText: label,
-            accessibilityValue: dueCount > 0 ? settings.localized("%lld due", dueCount) : nil,
             isLit: dueCount > 0,
             padNumber: 3,
             cellSize: cellSize,

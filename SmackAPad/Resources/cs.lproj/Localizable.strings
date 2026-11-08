@@ -832,3 +832,20 @@
 "Review tomorrow · practice only" = "Opakování zítra · jen cvičení";
 "Settled (%lld)" = "Upevněné (%lld)";
 "No lessons for this step." = "Pro tento krok nejsou žádné lekce.";
+
+// Ticket 150: daily outcomes and a calm review queue.
+"Played" = "Odehráno";
+"Did not count" = "Nezapočteno";
+"Review · start from memory" = "Opakování · začni zpaměti";
+"Review %lld of %lld" = "Opakování %lld ze %lld";
+"Reviews played" = "Odehraná opakování";
+"Reviews played: %lld of %lld" = "Odehraná opakování: %lld ze %lld";
+"Passed: %lld · Did not count: %lld" = "Splněno: %lld · Nezapočteno: %lld";
+"Today's session is over. Every played step is shown below." = "Dnešní trénink skončil. Výsledky jednotlivých kroků najdeš níže.";
+"%lld today" = "%lld dnes";
+"then new lesson" = "pak nová lekce";
+"Review queue" = "Fronta opakování";
+"%lld in queue · take these at your own pace" = "%lld ve frontě · pokračuj vlastním tempem";
+"Today's reviews are in the plan above. Nothing else is waiting in the queue." = "Dnešní opakování jsou v plánu nahoře. Ve frontě už nic dalšího nečeká.";
+"Ready for review" = "Připraveno k opakování";
+"Total review queue by that day if nothing is played. Includes earlier reviews; Today still selects at most two." = "Celkový počet opakování na řadě k danému dni, pokud nic neodehraješ. Zahrnuje i dřívější termíny; do Dnes se vybírají nejvýše dvě.";

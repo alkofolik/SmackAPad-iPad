@@ -828,3 +828,20 @@
 "Review in %lld days · practice only" = "Review in %lld days · practice only";
 "Settled (%lld)" = "Settled (%lld)";
 "No lessons for this step." = "No lessons for this step.";
+
+// Ticket 150: daily outcomes and a calm review queue.
+"Played" = "Played";
+"Did not count" = "Did not count";
+"Review · start from memory" = "Review · start from memory";
+"Review %lld of %lld" = "Review %lld of %lld";
+"Reviews played" = "Reviews played";
+"Reviews played: %lld of %lld" = "Reviews played: %lld of %lld";
+"Passed: %lld · Did not count: %lld" = "Passed: %lld · Did not count: %lld";
+"Today's session is over. Every played step is shown below." = "Today's session is over. Every played step is shown below.";
+"%lld today" = "%lld today";
+"then new lesson" = "then new lesson";
+"Review queue" = "Review queue";
+"%lld in queue · take these at your own pace" = "%lld in queue · take these at your own pace";
+"Today's reviews are in the plan above. Nothing else is waiting in the queue." = "Today's reviews are in the plan above. Nothing else is waiting in the queue.";
+"Ready for review" = "Ready for review";
+"Total review queue by that day if nothing is played. Includes earlier reviews; Today still selects at most two." = "Total review queue by that day if nothing is played. Includes earlier reviews; Today still selects at most two.";

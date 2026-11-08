@@ -797,6 +797,12 @@ public struct LessonProgress: Codable, Equatable, Hashable, Sendable {
     public var lastReviewFailDay: String?
     var learningCreditByPadCount: [String: StarStreak] = [:]
 
+    /// Imported stars remain earned; an untouched review chain is an invitation, not a failed counter.
+    var isUnstartedLegacyReview: Bool {
+        memory && (reviewStep ?? 0) == 0 && settled != true
+            && lastReviewedDay == nil && lastReviewFailDay == nil
+    }
+
     public var reviewSchedule: ReviewScheduler.ScheduleState {
         get {
             ReviewScheduler.ScheduleState(reviewStep: reviewStep, reviewDueDay: reviewDueDay, settled: settled,

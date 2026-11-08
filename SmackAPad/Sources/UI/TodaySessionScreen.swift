@@ -103,6 +103,9 @@ struct TodaySessionScreen: View {
                         Spacer(minLength: Theme.Space.page)
 
                         VStack(spacing: 24) {
+                            Text(settings.localized("Reviews") + " · " + settings.localized("%lld today", coordinator.plan.reviewCount))
+                                .font(Theme.meta)
+                                .foregroundStyle(Theme.secondary)
                             TodayStepperView(plan: coordinator.plan, isLandscape: isLandscape)
 
                             if coordinator.plan.finished {
@@ -284,6 +287,7 @@ private struct TodayStepperView: View {
         }()
         let isCurrent: Bool = !plan.finished && index == plan.index
         let isUpcoming: Bool = !plan.finished && index > plan.index
+        let isPassed = step.status == .passed
 
         return VStack(alignment: .leading, spacing: 4) {
             HStack {
@@ -294,24 +298,36 @@ private struct TodayStepperView: View {
                 Spacer(minLength: 4)
                 Text(stepStatus(step: step, isCompleted: isCompleted, isCurrent: isCurrent, isUpcoming: isUpcoming))
                     .font(Theme.strong(11))
-                    .lineLimit(1)
+                    .fixedSize(horizontal: false, vertical: true)
             }
-            .foregroundStyle(headerColor(isCompleted: isCompleted, isCurrent: isCurrent, isUpcoming: isUpcoming))
+            .foregroundStyle(headerColor(isCompleted: isPassed, isCurrent: isCurrent, isUpcoming: isUpcoming))
 
             Text(stepName(step: step))
                 .font(Theme.strong(14))
                 .foregroundStyle(Theme.ink)
                 .lineLimit(1)
+
+            if isCompleted, let reason = step.status?.reason {
+                Text(reason.message(language: settings.languagePreference))
+                    .font(Theme.text(12))
+                    .foregroundStyle(Theme.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            if isCompleted, let score = step.outcome?.bestScore {
+                Text("\(Int((score * 100).rounded())) %")
+                    .font(Theme.text(12))
+                    .foregroundStyle(Theme.secondary)
+            }
         }
         .padding(.horizontal, 12)
         .padding(.vertical, 8)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background {
             RoundedRectangle(cornerRadius: 8)
-                .fill(backgroundColor(isCompleted: isCompleted, isCurrent: isCurrent))
+                .fill(backgroundColor(isCompleted: isPassed, isCurrent: isCurrent))
                 .overlay {
                     RoundedRectangle(cornerRadius: 8)
-                        .strokeBorder(borderColor(isCompleted: isCompleted, isCurrent: isCurrent), lineWidth: isCurrent ? 1.5 : 1)
+                        .strokeBorder(borderColor(isCompleted: isPassed, isCurrent: isCurrent), lineWidth: isCurrent ? 1.5 : 1)
                 }
                 .shadow(color: isCurrent ? Theme.orange.opacity(0.18) : .clear, radius: 4, y: 1)
         }
@@ -331,10 +347,8 @@ private struct TodayStepperView: View {
 
     private func stepStatus(step: TodayPlan.Step, isCompleted: Bool, isCurrent: Bool, isUpcoming: Bool) -> String {
         if isCompleted {
-            if let outcome = step.outcome, outcome.played, let score = outcome.bestScore {
-                return "✓ \(Int((score * 100).rounded())) %"
-            }
-            return "✓"
+            guard let status = step.status else { return settings.localized("Not played") }
+            return (status == .passed ? "✓ " : "") + settings.localized(status.titleKey)
         }
         if isCurrent {
             if plan.lastPlayedIndex == nil {
@@ -506,18 +520,7 @@ private struct PreviousRunEvaluationView: View {
     let plan: TodayPlan
 
     private var isSuccess: Bool {
-        guard let outcome = step.outcome, outcome.played else { return false }
-        if step.kind == .review {
-            if let feedback = outcome.reviewFeedback {
-                switch feedback {
-                case .passed, .settled: return true
-                default: return false
-                }
-            }
-            return false
-        } else {
-            return (outcome.bestScore ?? 0) >= 0.8
-        }
+        step.status == .passed
     }
 
     private var earnedStars: Int {
@@ -526,26 +529,21 @@ private struct PreviousRunEvaluationView: View {
     }
 
     private var kicker: String {
+        let state = settings.localized(step.status?.titleKey ?? "Not played")
         switch step.kind {
         case .review:
             let position = plan.steps.prefix(index + 1).filter { $0.kind == .review }.count
-            return isSuccess
-                ? settings.localized("REVIEW %lld OF %lld PASSED", position, plan.reviewCount)
-                : settings.localized("REVIEW %lld OF %lld COMPLETED", position, plan.reviewCount)
+            return settings.localized("Review %lld of %lld", position, plan.reviewCount) + " · " + state
         case .newLesson:
-            return isSuccess
-                ? settings.localized("NEW LESSON PASSED")
-                : settings.localized("NEW LESSON COMPLETED")
+            return settings.localized("New lesson") + " · " + state
         case .mix:
-            return isSuccess
-                ? settings.localized("DAILY MIX PASSED")
-                : settings.localized("DAILY MIX COMPLETED")
+            return settings.localized("Daily mix") + " · " + state
         }
     }
 
     private var scoreText: String {
         guard let outcome = step.outcome, outcome.played, let score = outcome.bestScore else {
-            return "0 %"
+            return "—"
         }
         return "\(Int((score * 100).rounded())) %"
     }
@@ -587,10 +585,13 @@ private struct PreviousRunEvaluationView: View {
             return settings.localized("Not played")
         }
         if step.kind == .review {
+            if let reason = step.status?.reason {
+                return settings.localized("Did not count") + " · " + reason.message(language: settings.languagePreference)
+            }
             if let feedback = outcome.reviewFeedback {
                 return feedback.message(language: settings.languagePreference)
             }
-            return settings.localized("Does not count · finish a hidden pass")
+            return settings.localized("Played")
         } else if step.kind == .newLesson {
             return isSuccess
                 ? settings.localized("New lesson passed successfully!")
@@ -756,16 +757,6 @@ private struct TodaySummaryView: View {
     let plan: TodayPlan
     let onHome: () -> Void
 
-    private var passedReviewsCount: Int {
-        plan.steps.filter { step in
-            guard step.kind == .review, let feedback = step.outcome?.reviewFeedback else { return false }
-            switch feedback {
-            case .passed, .settled: return true
-            default: return false
-            }
-        }.count
-    }
-
     private func newLessonValue(_ step: TodayPlan.Step) -> String {
         if let outcome = step.outcome, outcome.played, let score = outcome.bestScore {
             let percent = Int((score * 100).rounded())
@@ -810,7 +801,7 @@ private struct TodaySummaryView: View {
                     .multilineTextAlignment(.center)
                     .accessibilityAddTraits(.isHeader)
 
-                Text(settings.localized("Great job! You finished today's training plan and strengthened your rhythm memory."))
+                Text(settings.localized("Today's session is over. Every played step is shown below."))
                     .font(Theme.text(16))
                     .foregroundStyle(Theme.secondary)
                     .multilineTextAlignment(.center)
@@ -820,8 +811,8 @@ private struct TodaySummaryView: View {
             HStack(spacing: 0) {
                 if plan.reviewCount > 0 {
                     statColumn(
-                        label: settings.localized("Reviews"),
-                        value: "\(passedReviewsCount) \(settings.localized("of")) \(plan.reviewCount)",
+                        label: settings.localized("Reviews played"),
+                        value: "\(plan.reviewSummary.played) \(settings.localized("of")) \(plan.reviewCount)",
                         isHighlighted: false
                     )
                 }
@@ -855,6 +846,29 @@ private struct TodaySummaryView: View {
             .clipShape(RoundedRectangle(cornerRadius: 8))
             .overlay(RoundedRectangle(cornerRadius: 8).strokeBorder(Theme.hairline, lineWidth: 1))
 
+            if plan.reviewCount > 0 {
+                Text(settings.localized("Passed: %lld · Did not count: %lld", plan.reviewSummary.passed, plan.reviewSummary.didNotCount))
+                    .font(Theme.text(15))
+                    .foregroundStyle(Theme.ink)
+                    .multilineTextAlignment(.center)
+            }
+
+            VStack(alignment: .leading, spacing: 14) {
+                ForEach(Array(plan.steps.enumerated()), id: \.offset) { index, step in
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("\(index + 1). \(resultTitle(step)) · \(settings.localized(step.status?.titleKey ?? "Not played"))")
+                            .font(Theme.strong(15))
+                        if let reason = step.status?.reason {
+                            Text(reason.message(language: settings.languagePreference))
+                                .font(Theme.text(14))
+                                .foregroundStyle(Theme.secondary)
+                        }
+                    }
+                    .fixedSize(horizontal: false, vertical: true)
+                }
+            }
+            .frame(maxWidth: 520, alignment: .leading)
+
             Button(action: onHome) {
                 Text(settings.localized("Home"))
                     .font(Theme.strong(18))
@@ -866,6 +880,12 @@ private struct TodaySummaryView: View {
         .padding(40)
         .frame(maxWidth: 700)
         .satinPlate()
+    }
+
+    private func resultTitle(_ step: TodayPlan.Step) -> String {
+        if step.kind == .mix { return settings.localized("Daily mix") }
+        return step.lessonIDs.first.flatMap { LessonStore.shared.lesson(for: $0) }
+            .map { settings.localized($0.title) } ?? settings.localized("Review")
     }
 
     private func statColumn(label: String, value: String, isHighlighted: Bool) -> some View {

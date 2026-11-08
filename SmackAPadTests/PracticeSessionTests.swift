@@ -7,6 +7,64 @@ final class PracticeSessionTests: XCTestCase {
     override func setUp() { super.setUp(); StarStreak.forgetAll() }
 
     @MainActor
+    func testTodayReportsPerfectWarmupsAndTheUnfinishedReviewBeforePassing() async throws {
+        let suite = "today-review-state-\(UUID().uuidString)"
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))
+        defer { defaults.removePersistentDomain(forName: suite) }
+        let settings = SettingsManager(userDefaults: defaults)
+        settings.fadeMemoryNotes = true
+        let file = FileManager.default.temporaryDirectory.appendingPathComponent("\(suite).json")
+        defer { try? FileManager.default.removeItem(at: file) }
+        let progress = ProgressStore(fileURL: file, autoLoad: false)
+        let hits = stride(from: 0, to: 64, by: 4).map {
+            LessonHit(step: $0, padIndex: 12, hand: "L", velocity: 100)
+        }
+        let lesson = Lesson(id: 40_150, cat: "test", title: "Today review", genre: "", tags: [],
+                            text: "", division: 16, bars: 4, startBpm: 120, targetBpm: 120,
+                            level: 1, src: "test", hits: hits)
+        progress.setProgress(.init(passed: true, mastery: true, memory: true,
+                                   reviewStep: 0, reviewDueDay: "2026-11-08"), for: lesson.id)
+        let midi = MIDIInput(settings: settings)
+        var time = AVAudioTime.seconds(forHostTime: mach_absolute_time())
+        let session = PracticeSession(lesson: lesson, settings: settings, progress: progress, midi: midi,
+                                      initialFromMemory: true, initialBpm: 120, clock: { time },
+                                      currentDay: { "2026-11-08" })
+        defer { session.close() }
+        for language in [AppLanguage.english, .czech] {
+            settings.languagePreference = language
+            XCTAssertEqual(session.reviewStatusText(settings: settings), settings.localized("Review · start from memory"))
+        }
+        session.metronome = false
+        await session.prepare()
+        XCTAssertTrue(session.ready, session.errorMessage ?? "Sound preparation failed")
+        time = AVAudioTime.seconds(forHostTime: mach_absolute_time())
+        let firstStart = time + 0.6 + 2
+        session.start()
+        XCTAssertTrue(session.running)
+        var step = TodayPlan.Step(kind: .review, lessonIDs: [lesson.id])
+        for pass in 0..<4 {
+            let start = firstStart + Double(pass) * 8
+            for hit in hits {
+                time = start + Double(hit.step) * 15 / 120
+                session.tick()
+                midi.onPadEvent?(PadInputEvent(padIndex: hit.padIndex, velocity: 100, isNoteOn: true,
+                    timestamp: AVAudioTime.hostTime(forSeconds: time), deviceID: "test"))
+            }
+            time = start + 7.6
+            session.tick()
+            time = start + 8.01
+            session.tick()
+            step.outcome = try XCTUnwrap(session.todayStepOutcome)
+            XCTAssertEqual(step.outcome?.bestScore, 1)
+            XCTAssertEqual(step.status, pass < 2 ? .didNotCount(.notesVisible)
+                           : (pass == 2 ? .didNotCount(.unfinishedReview) : .passed))
+            if pass < 3 { XCTAssertEqual(progress.progress(for: lesson.id)?.reviewStep, 0) }
+        }
+        XCTAssertEqual(progress.progress(for: lesson.id)?.reviewStep, 1)
+        XCTAssertEqual(progress.progress(for: lesson.id)?.memory, true)
+    }
+
+    @MainActor
     func testTapeMovesContinuouslyAcrossTenRepeatsBeforeAndAfterSchedulerTicks() async throws {
         let suite = "tape-boundary-\(UUID().uuidString)"
         let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))

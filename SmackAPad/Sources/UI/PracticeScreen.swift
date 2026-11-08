@@ -182,9 +182,8 @@ struct PracticeScreen: View {
     }
 
     private func reportStepResult() {
-        guard !session.isSectionLoop, !session.afterMe, !session.listen,
-              let best = session.runResults.map(\.score).max() else { return }
-        onStepResult?(PracticeStepOutcome(bestScore: best, reviewFeedback: session.reviewFeedback))
+        guard let outcome = session.todayStepOutcome else { return }
+        onStepResult?(outcome)
     }
 
     @ViewBuilder

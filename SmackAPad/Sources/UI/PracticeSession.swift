@@ -237,6 +237,13 @@ final class PracticeSession {
     }
 
     public private(set) var reviewFeedback: ReviewScheduler.ReviewFeedback?
+    private(set) var reviewPendingReason: PracticeStepOutcome.Reason?
+
+    var todayStepOutcome: PracticeStepOutcome? {
+        guard !isSectionLoop, !afterMe, !listen, let best = runResults.map(\.score).max() else { return nil }
+        return PracticeStepOutcome(bestScore: best, reviewFeedback: reviewFeedback,
+                                   reviewPendingReason: reviewPendingReason)
+    }
 
     init(lesson: Lesson, settings: SettingsManager, progress: ProgressStore, midi: MIDIInput,
          initialFromMemory: Bool = false, initialBpm: Int? = nil,
@@ -293,6 +300,9 @@ final class PracticeSession {
         }
         guard let schedule = progress.progress(for: lessonID)?.reviewSchedule,
               schedule.isDue(on: today), schedule.lastReviewedDay != today else { return nil }
+        if window == nil, progress.progress(for: lessonID)?.isUnstartedLegacyReview == true {
+            return settings.localized("Review · start from memory")
+        }
         return settings.localized("Review · %lld of 2 passed", window?.state.successes ?? 0)
     }
 
@@ -935,6 +945,8 @@ final class PracticeSession {
                     window.state = decision.window
                     window.outcome = decision.outcome
                     reviewWindows[lesson.id] = window
+                    reviewPendingReason = settings.fadeMemoryNotes && pass.number < 3
+                        ? .notesVisible : .unfinishedReview
                     if let outcome = decision.outcome, let feedback = outcome.feedback {
                         reviewFeedback = feedback
                         progress.updateReviewSchedule(outcome.newSchedule, for: lesson.id, autoSave: false)
