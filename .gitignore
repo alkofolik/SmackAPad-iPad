@@ -12,3 +12,6 @@ xcuserdata/
 # OS
 .DS_Store
 
+
+# AI panel screen recordings (large, kept local)
+docs/reviews/ai-panel/pack/videos/

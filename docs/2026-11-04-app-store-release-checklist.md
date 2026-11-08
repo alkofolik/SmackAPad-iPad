@@ -28,6 +28,7 @@ Stav k 2026-11-04: nákupy (ticket 32) hotové v kódu — `cz.kju.SmackAPad.ful
 - [ ] Product → Archive → Distribute → TestFlight (interní)
 - [ ] Sandbox: koupě, smazání a reinstalace, Obnovit nákupy, offline start
 - [ ] Externí TestFlight: 3–10 testerů, 1–2 týdny, sbírat chyby
+- [ ] Volitelně: AI panel (`docs/reviews/ai-panel/README.md`) – tři AI nezávisle zhodnotí aplikaci, ideálně souběžně s TestFlightem
 - [ ] Projít kontrolní seznam níže
 
 ## E. Stránka v obchodě
@@ -41,6 +42,8 @@ Stav k 2026-11-04: nákupy (ticket 32) hotové v kódu — `cz.kju.SmackAPad.ful
 ## F. Odeslání a vydání
 - [ ] K verzi 1.0 přiložit build a nákup Full (In-App Purchases → vybrat)
 - [ ] Vydání: ručně (Manually release)
+- [ ] U aktualizací (1.0.1 a dál): zapnout postupné vydání (Phased Release, 7 dní), aby šlo chybnou verzi pozastavit
+- [ ] Po odeslání: v GitHub Desktop přidat značku verze (tag `v1.0`, build číslo v popisu), ať se k vydanému kódu jde vždy vrátit
 - [ ] Odeslat ke kontrole; při zamítnutí odpovědět v Resolution Center
 - [ ] Vydat, sledovat pády (Xcode → Organizer → Crashes) a hodnocení
 - [ ] Později: balíčky (nové produkty `cz.kju.SmackAPad.pack.<id>`, v datech `access: pack:<id>`)
@@ -77,6 +80,12 @@ Stav k 2026-11-04: nákupy (ticket 32) hotové v kódu — `cz.kju.SmackAPad.ful
 - [ ] Otočení iPadu během běhu (na šířku / na výšku)
 - [ ] Nejstarší dostupný iPad (min. iPadOS 17): plynulost pásu, teplota, baterie
 - [ ] Zaplněná paměť iPadu (málo místa) – ukládání postupu nespadne
+
+### Aktualizace nesmaže postup (před každým vydáním, od 1.0.1 nejdůležitější bod)
+- [ ] Nainstalovat předchozí vydanou verzi (TestFlight → Previous Builds), nahrát hvězdy, odznaky, Trénink, nastavení a mapování kontroléru
+- [ ] Přes ni nainstalovat novou verzi (bez smazání aplikace) → vše zůstalo, nic se neresetovalo
+- [ ] Zakoupený Full zůstal odemčený
+- [ ] Ticket, který mění způsob ukládání postupu, musí v zadání výslovně říct, jak se převedou stará data
 
 ### Vzhled a texty
 - [ ] Všechny obrazovky EN i CS, světlý i tmavý režim, žádný oříznutý text
