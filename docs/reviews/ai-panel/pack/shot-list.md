@@ -71,12 +71,10 @@ tento seznam slouží jako přesný návod, jaké snímky obrazovek a videonahr�
 15. `15-practice-tools-popover.png`  
     - **Obrazovka**: Otevřená nabídka nástrojů v záhlaví cvičení (*More tools*).  
     - **Co zachytit**: Plovoucí okno s přepínačem zobrazení padů (*Show pads*), volbou bicí sady a odkazem na MIDI nastavení.
-16. `16-practice-touch-pads-landscape.png`  
-    - **Obrazovka**: Cvičení se zobrazenými dotykovými pady na displeji (Landscape).  
-    - **Co zachytit**: Zmenšená mřížka dotykových padů integrovaná na cvičební obrazovce pro hraní bez kontroléru.
+16. ~~`16-practice-touch-pads-landscape.png`~~ — **VYNECHAT.** Dotykové pady existují jen na výšku, na šířku nejsou. Číslo 16 zůstává prázdné, ať se nemusí přejmenovávat ostatní snímky.
 17. `17-practice-touch-pads-portrait.png`  
     - **Obrazovka**: Cvičení na výšku (**Portrait mode**).  
-    - **Co zachytit**: Obrazovka při otočení iPadu na výšku, kde je nahoře notový pás a dole velká dotyková plocha padů.
+    - **Co zachytit**: Obrazovka při otočení iPadu na výšku, kde je nahoře notový pás a dole velká dotyková plocha padů. Dotykové pady jsou jen na výšku, tohle je jediný snímek s nimi.
 
 ### Trénink a opakování (Training)
 18. `18-training-main.png`  

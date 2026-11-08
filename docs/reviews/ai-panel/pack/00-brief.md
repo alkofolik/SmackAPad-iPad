@@ -102,7 +102,7 @@ The app contains **587 bundled lessons** across diverse musical styles:
 ## 7. Current State of Development
 
 ### What is completed and fully operational
-- Native SwiftUI architecture targeting iPadOS 17+, optimized for landscape iPad orientation on a stand.
+- Native SwiftUI architecture targeting iPadOS 17+, optimized for landscape iPad orientation on a stand. The on-screen touch pads exist only in portrait orientation.
 - High-performance low-latency audio engine (`AVAudioEngine`) with shared output presentation latency compensation.
 - Native CoreMIDI integration with hardware timestamps, BLE fallback handling, preset controller profiles, and user-facing MIDI Learn.
 - Guided 10-click hardware calibration procedure.
