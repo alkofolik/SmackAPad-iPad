@@ -461,6 +461,14 @@
 
 "Rules" = "Pravidla";
 
+// Unreadable progress recovery (ticket 149)
+"Saved progress could not be read" = "Uložený postup se nepodařilo načíst";
+"Your saved progress could not be read. A copy of the file was kept. Progress will not be saved until you choose an option." = "Tvůj uložený postup se nepodařilo načíst. Kopie souboru zůstala zachována. Postup se nebude ukládat, dokud si nevybereš jednu z možností.";
+"Start with empty progress" = "Začít s prázdným postupem";
+"Not now" = "Teď ne";
+"Progress backup could not be kept" = "Záložní kopii postupu se nepodařilo vytvořit";
+"Your original progress file has not been changed. Progress will not be saved. Try again next time you open the app." = "Tvůj původní soubor s postupem se nezměnil. Postup se nebude ukládat. Zkus to znovu při příštím spuštění aplikace.";
+
 // Debug-only legacy progress import
 "Import from legacy backup" = "Import ze staré zálohy";
 "Choose legacy backup JSON" = "Vybrat starou zálohu JSON";

@@ -1007,9 +1007,12 @@ public final class ProgressStore: @unchecked Sendable {
     public private(set) var lastSaveError: Error?
     public private(set) var lastLoadError: Error?
 
+    public var hasUnreadableProgressBackup: Bool { unreadableProgressBackupURL != nil }
+
     public let fileURL: URL
     private let lock = NSRecursiveLock()
     private var lifecycleObservers: [Any] = []
+    private var unreadableProgressBackupURL: URL?
 
     /// Default progress file location in app Documents: `<Documents>/progress.json`.
     public static var defaultFileURL: URL {
@@ -1058,18 +1061,12 @@ public final class ProgressStore: @unchecked Sendable {
     // MARK: - Load & Save
 
     /// Loads progress from `progress.json`.
-    /// Gracefully handles missing files (starts fresh) and corrupt files (logs warning, starts fresh, no crash).
+    /// Missing files start fresh; unreadable files are backed up and block all saves.
     public func load() {
         lock.lock()
         defer { lock.unlock() }
 
-        guard FileManager.default.fileExists(atPath: fileURL.path) else {
-            self.records = [:]
-            self.trainingLog = TrainingLog()
-            self.lastLoadError = nil
-            return
-        }
-
+        unreadableProgressBackupURL = nil
         do {
             let data = try Data(contentsOf: fileURL)
             let root = try JSONDecoder().decode(ProgressRoot.self, from: data)
@@ -1089,12 +1086,77 @@ public final class ProgressStore: @unchecked Sendable {
                 try? save()
             }
         } catch {
-            // Graceful handling of corrupt or malformed file: start fresh without crashing.
-            print("SmackAPad.ProgressStore: Warning - failed to decode progress from \(fileURL.path): \(error). Starting fresh.")
+            if (error as? CocoaError)?.code == .fileReadNoSuchFile {
+                self.records = [:]
+                self.trainingLog = TrainingLog()
+                self.lastLoadError = nil
+                return
+            }
+            // Preserve the original before clearing memory. A failed copy must still block saves.
+            do {
+                unreadableProgressBackupURL = try backupUnreadableProgress()
+            } catch {
+                print("SmackAPad.ProgressStore: Error backing up unreadable progress: \(error)")
+            }
+            print("SmackAPad.ProgressStore: Warning - failed to read progress from \(fileURL.path): \(error). Saving is blocked.")
             self.records = [:]
             self.trainingLog = TrainingLog()
             self.lastLoadError = error
         }
+    }
+
+    /// Keeps distinct, timestamped copies even when failures occur within the same second.
+    private func backupUnreadableProgress() throws -> URL {
+        let manager = FileManager.default
+        let directory = fileURL.deletingLastPathComponent()
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        formatter.calendar = Calendar(identifier: .gregorian)
+        formatter.timeZone = TimeZone(secondsFromGMT: 0)
+        formatter.dateFormat = "yyyyMMdd-HHmmss"
+        formatter.isLenient = false
+        let prefix = "progress.corrupt-"
+        let suffix = ".json"
+        let backups = try manager.contentsOfDirectory(at: directory, includingPropertiesForKeys: nil)
+            .filter { url in
+                let name = url.lastPathComponent
+                guard name.hasPrefix(prefix), name.hasSuffix(suffix) else { return false }
+                let timestamp = String(name.dropFirst(prefix.count).dropLast(suffix.count))
+                guard let date = formatter.date(from: timestamp) else { return false }
+                return formatter.string(from: date) == timestamp
+            }
+            .sorted { $0.lastPathComponent < $1.lastPathComponent }
+        var date = Date()
+        if let newest = backups.last {
+            let timestamp = String(newest.lastPathComponent.dropFirst(prefix.count).dropLast(suffix.count))
+            if let newestDate = formatter.date(from: timestamp) {
+                date = max(date, newestDate.addingTimeInterval(1))
+            }
+        }
+        let backupURL = directory.appendingPathComponent("\(prefix)\(formatter.string(from: date))\(suffix)")
+        // copyItem refuses to replace an existing destination. Prune only after a successful copy.
+        try manager.copyItem(at: fileURL, to: backupURL)
+        for oldBackup in backups.prefix(max(0, backups.count - 4)) {
+            do {
+                try manager.removeItem(at: oldBackup)
+            } catch {
+                print("SmackAPad.ProgressStore: Error pruning progress backup: \(error)")
+            }
+        }
+        return backupURL
+    }
+
+    /// Explicit recovery choice. Never unblock saving unless the unreadable file has a copy.
+    public func startWithEmptyProgress() throws {
+        lock.lock()
+        defer { lock.unlock() }
+        guard lastLoadError != nil else { return }
+        if unreadableProgressBackupURL.map({ FileManager.default.fileExists(atPath: $0.path) }) != true {
+            unreadableProgressBackupURL = try backupUnreadableProgress()
+        }
+        records = [:]
+        trainingLog = TrainingLog()
+        lastLoadError = nil
     }
 
     /// Consuming retired records makes the migration idempotent without a separate marker.
@@ -1225,6 +1287,7 @@ public final class ProgressStore: @unchecked Sendable {
     public func save() throws {
         lock.lock()
         defer { lock.unlock() }
+        guard lastLoadError == nil else { return }
 
         let parentDir = fileURL.deletingLastPathComponent()
         if !FileManager.default.fileExists(atPath: parentDir.path) {

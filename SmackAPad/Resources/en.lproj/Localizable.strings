@@ -458,6 +458,14 @@
 
 "Rules" = "Rules";
 
+// Unreadable progress recovery (ticket 149)
+"Saved progress could not be read" = "Saved progress could not be read";
+"Your saved progress could not be read. A copy of the file was kept. Progress will not be saved until you choose an option." = "Your saved progress could not be read. A copy of the file was kept. Progress will not be saved until you choose an option.";
+"Start with empty progress" = "Start with empty progress";
+"Not now" = "Not now";
+"Progress backup could not be kept" = "Progress backup could not be kept";
+"Your original progress file has not been changed. Progress will not be saved. Try again next time you open the app." = "Your original progress file has not been changed. Progress will not be saved. Try again next time you open the app.";
+
 // Debug-only legacy progress import
 "Import from legacy backup" = "Import from legacy backup";
 "Choose legacy backup JSON" = "Choose legacy backup JSON";
