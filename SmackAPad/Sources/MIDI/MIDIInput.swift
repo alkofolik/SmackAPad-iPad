@@ -78,7 +78,15 @@ public struct PadInputEvent: Sendable {
 @MainActor
 @Observable
 public final class MIDIInput {
-    public private(set) var sources: [MIDISource] = []
+    private var connectedSources: [MIDISource] = []
+    private var networkSourceID: String?
+    public var sources: [MIDISource] {
+        connectedSources.map { source in
+            guard source.id == networkSourceID else { return source }
+            // iPadOS exposes one default CoreMIDI network session.
+            return MIDISource(id: source.id, name: settings.localized("Network session %lld", 1))
+        }
+    }
     public private(set) var lastNote: MIDINoteEvent?
     public private(set) var lastControlMessage: MIDIControlMessage?
     public private(set) var controlLearningTarget: MIDIControlLearnTarget?
@@ -170,7 +178,8 @@ public final class MIDIInput {
         ports.removeAll()
         if client != 0 { MIDIClientDispose(client) }
         client = 0
-        sources = []
+        connectedSources = []
+        networkSourceID = nil
     }
 
     private func refreshSources() {
@@ -185,10 +194,13 @@ public final class MIDIInput {
             if let port = ports.removeValue(forKey: endpoint) { MIDIPortDispose(port) }
         }
         var connected: [MIDISource] = []
+        let networkEndpoint = MIDINetworkSession.default().sourceEndpoint()
+        networkSourceID = nil
         for endpoint in endpoints {
             var uniqueID: MIDIUniqueID = 0
             let idStatus = MIDIObjectGetIntegerProperty(endpoint, kMIDIPropertyUniqueID, &uniqueID)
             let deviceID = idStatus == noErr ? "midi:\(uniqueID)" : "endpoint:\(endpoint)"
+            if endpoint == networkEndpoint { networkSourceID = deviceID }
             var displayName: Unmanaged<CFString>?
             MIDIObjectGetStringProperty(endpoint, kMIDIPropertyDisplayName, &displayName)
             let name = displayName?.takeRetainedValue() as String? ?? deviceID
@@ -227,7 +239,7 @@ public final class MIDIInput {
             }
             connected.append(MIDISource(id: deviceID, name: name))
         }
-        sources = connected
+        connectedSources = connected
         if let selectedSourceID, !sources.contains(where: { $0.id == selectedSourceID }) {
             self.selectedSourceID = nil
         }

@@ -406,6 +406,8 @@
 "%lld lessons" = "%lld lekcí";
 "One-time payment" = "Jednorázová platba";
 "No subscription" = "Bez předplatného";
+"Lessons across %lld genres" = "Lekce napříč žánry: %lld";
+"Network session %lld" = "Síťová relace %lld";
 "Stage progress still follows your stars." = "Stupně se dál odemykají podle získaných hvězd.";
 "Purchase could not be verified. Please try again." = "Nákup se nepodařilo ověřit. Zkus to znovu.";
 "Purchase pending approval" = "Nákup čeká na schválení";

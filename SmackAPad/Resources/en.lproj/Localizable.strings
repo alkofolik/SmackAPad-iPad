@@ -407,6 +407,8 @@
 "%lld lessons" = "%lld lessons";
 "One-time payment" = "One-time payment";
 "No subscription" = "No subscription";
+"Lessons across %lld genres" = "Lessons across %lld genres";
+"Network session %lld" = "Network session %lld";
 "Stage progress still follows your stars." = "Stage progress still follows your stars.";
 "Purchase could not be verified. Please try again." = "Purchase could not be verified. Please try again.";
 "Purchase pending approval" = "Purchase pending approval";

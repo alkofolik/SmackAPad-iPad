@@ -1,6 +1,6 @@
 # 153 — Paywall: show what the player actually buys, and fix label leaks
 
-Status: ready-for-agent. Blocked by: none. Source: AI panel round 1 (`docs/reviews/ai-panel/results/synthesis.md`, items 10 and 20; `round1-claude.md` R1-08, `round1-gemini.md` R2-04); `docs/2026-11-08-ai-panel-action-plan.md`, Batch 2. Approved by Jakub 2026-11-08.
+Status: done. Blocked by: none. Source: AI panel round 1 (`docs/reviews/ai-panel/results/synthesis.md`, items 10 and 20; `round1-claude.md` R1-08, `round1-gemini.md` R2-04); `docs/2026-11-08-ai-panel-action-plan.md`, Batch 2. Approved by Jakub 2026-11-08.
 
 ## Goal
 
@@ -32,13 +32,26 @@ The purchase sheet says "587 lessons", but 58 of them are free. The player buys 
 
 ## Acceptance criteria
 
-- [ ] The Full unlock sheet shows 529 (computed), in English and Czech.
-- [ ] The sheet has one short line on what is included, derived from the data.
-- [ ] Every purchase message is shown in the app language; the final report lists which ones were not before.
-- [ ] The network session name follows the app language.
-- [ ] No change to purchase, entitlement or restore logic.
-- [ ] The full test suite passes before commit (AGENTS.md).
-- [ ] **iPad check (Jakub, separate):** English and Czech; free and unlocked state; the sheet from Settings and from a locked lesson; Settings → MIDI sources.
+- [x] The Full unlock sheet shows 529 (computed), in English and Czech.
+- [x] The sheet has one short line on what is included, derived from the data.
+- [x] Every purchase message is shown in the app language; the final report lists which ones were not before.
+- [x] The network session name follows the app language.
+- [x] No change to purchase, entitlement or restore logic.
+- [x] The full test suite passes before commit (AGENTS.md).
+
+## Manual iPad checks — Jakub
+
+- [ ] English and Czech; free and unlocked state; the sheet from Settings and from a locked lesson; Settings → MIDI sources.
+
+## Implementation and validation
+
+The sheet filters lessons by the requested access value, excluding free lessons from Full unlock. Its short contents line counts distinct nonempty genres in those same lessons. Pack filtering remains exact. Both new strings have English and Czech translations.
+
+All six StoreManager purchase/restore message keys already had English and Czech strings, and both purchase message views already used settings.localized. No purchase error.localizedDescription reaches either view, so no purchase messages required changes. StoreManager is unchanged.
+
+The system network source is identified by MIDINetworkSession.default().sourceEndpoint(), independently of its system-localized name. The source list derives its display name from the current app language on access; other source names and identities are preserved.
+
+Build succeeded and the full simulator suite reported 198 tests with zero failures, including both requested count tests. xcodebuild stalled while finalizing logs after “All tests” passed; it was interrupted and its diagnostic collection stopped according to AGENTS.md. Manual device checks remain with Jakub.
 
 ## Agent assignment
 

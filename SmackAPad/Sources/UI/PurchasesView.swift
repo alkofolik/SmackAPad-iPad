@@ -1,6 +1,18 @@
 import StoreKit
 import SwiftUI
 
+/// Only the lessons unlocked by this purchase, excluding already-free content.
+struct PurchaseContents {
+    let lessons: [Lesson]
+
+    init(lessons: [Lesson], access: String) {
+        self.lessons = lessons.filter { $0.access == access }
+    }
+
+    var lessonCount: Int { lessons.count }
+    var genreCount: Int { Set(lessons.map(\.genre).filter { !$0.isEmpty }).count }
+}
+
 /// The same purchase controls serve Settings and the lesson paywall.
 @MainActor
 struct PurchaseControls: View {
@@ -113,10 +125,8 @@ struct PurchaseSheet: View {
         return store.ownedProductIDs.contains(StoreManager.bundleID)
             || store.productID(for: access).map { store.ownedProductIDs.contains($0) } == true
     }
-    private var lessonCount: Int {
-        LessonStore.shared.lessons.filter {
-            access == "full" ? ["free", "full"].contains($0.access ?? "full") : $0.access == access
-        }.count
+    private var contents: PurchaseContents {
+        PurchaseContents(lessons: LessonStore.shared.lessons, access: access)
     }
     private var title: String {
         guard access != "full", let id = store.productID(for: access), let product = store.products[id] else {
@@ -131,7 +141,9 @@ struct PurchaseSheet: View {
                 VStack(alignment: .leading, spacing: Theme.Space.page) {
                     Text(title).font(Theme.screenTitle)
                     VStack(alignment: .leading, spacing: Theme.Space.regular) {
-                        Text(settings.localized("%lld lessons", lessonCount))
+                        Text(settings.localized("%lld lessons", contents.lessonCount))
+                        Text(settings.localized("Lessons across %lld genres", contents.genreCount))
+                            .font(Theme.meta).foregroundStyle(Theme.secondary)
                         Text(settings.localized("One-time payment"))
                         Text(settings.localized("No subscription"))
                     }
