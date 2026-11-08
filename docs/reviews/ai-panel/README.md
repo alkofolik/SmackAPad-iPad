@@ -28,7 +28,7 @@ Pokud se v nabídce model jmenuje jinak, vyber vždy **nejsilnější model s p�
 
 1. Nech agenta udělat ticket `docs/tickets/2026-11-08-148-ai-panel-review-pack.md`. Vznikne z něj `pack/00-brief.md` (popis aplikace na 2–3 strany) a `pack/shot-list.md` (seznam snímků a videí, která máš udělat).
 2. Na iPadu udělej snímky podle `shot-list.md` (v angličtině, světlý režim). Ulož je do `pack/screens/`.
-3. Natoč 2–3 videa (každé do 2 minut) s MIDI kontrolérem, podle `shot-list.md`. Ulož do `pack/videos/`. Videa necommituj, jsou velká; stačí je mít na disku.
+3. Videa: tentokrát se nenatáčejí (nebyl čas). Zadání pro Gemini s tím počítá. Kdyby sis je později natočil, ulož je do `pack/videos/` a zadání pro Gemini vrať do původní podoby z gitu.
 4. Kód: v ChatGPT, Claude i Gemini připoj **GitHub** (Nastavení → Connectors / Integrations, repozitář `alkofolik/SmackAPad-iPad`). Kde to nejde, nahraj ZIP vytvořený tímhle příkazem (obsahuje jen soubory z gitu, žádné sestavení):
 
 ```bash
