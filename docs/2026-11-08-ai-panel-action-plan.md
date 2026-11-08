@@ -7,7 +7,7 @@ Zdroj: `docs/reviews/ai-panel/results/synthesis.md` (čísla v závorkách = ř�
 - [ ] **AGENTS.md: před commitem projít všechny testy** (#2), plus pravidlo „odstraněné pravidlo = smazat kód i testy“ (#30) a doplnění šablony ticketů (#32). Úprava AGENTS.md, ukázat Jakubovi před zápisem.
 - [x] **T150 Shrnutí dne a revize** (#3, #4, #5). Proč se 2 revize nezapočítaly, jasné stavy (zahráno / splněno / nezapočteno + důvod), staré ★3 vs „0 of 2“, „2 dnes“ místo 29, popisek předpovědi, pryč oranžové číslo z Home. Codex Sol, high.
 - [ ] **T151 Dvojitý úder pad (~25 ms) se ignoruje** (#6; ticket napsán: docs/tickets/2026-11-08-151-…). Codex Sol, medium.
-- [ ] **T152 Srovnat dokumenty s aplikací** (#7; ticket napsán: docs/tickets/2026-11-08-152-…). SPEC hvězda 3, brief „verdikty po taktech“, 574 vs 587, 24 vs 25 intro, Learning 60 %. Gemini 3.8 Flash, high.
+- [x] **T152 Srovnat dokumenty s aplikací** (#7; ticket napsán: docs/tickets/2026-11-08-152-…). SPEC hvězda 3, brief „verdikty po taktech“, 574 vs 587, 24 vs 25 intro, Learning 60 %. Gemini 3.8 Flash, high.
 
 ## Dávka 2 – vydání v App Store (blockery)
 - [ ] Tickety 79 (privacy manifest, šifrování) a 81 + 80 (web, O aplikaci, kredity AVL CC BY-SA, odkazy) (#8, #9) – už existují, zařadit do pořadí.

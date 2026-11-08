@@ -7,7 +7,7 @@
 ## 1. Goals
 
 - Full-feature native SwiftUI iPad app replacing the JS/Capacitor prototype.
-- Lesson library (539 core + 24 intro + electronic-path + genre-extensions), play screen, scoring, calibration, 8 bundled sample kits (acoustic, 808, jazz, world, rock, brush, worldperc, house).
+- Lesson library: 587 bundled lessons across 4 JSON files (539 core + 24 intro + 12 electronic path + 12 genre extensions). In the UI, the Library Path displays 574 lessons (excluding 12 genre extensions and lesson 6 projected into Intro), Intro presents 25 exercises (24 from intro.json + 1 projected from core), and the paywall counts all 587 bundled lessons (58 free + 529 full). Play screen, scoring, calibration, 8 bundled sample kits (acoustic, 808, jazz, world, rock, brush, worldperc, house).
 - External MIDI controller is the primary input (CoreMIDI). On-screen pads are a bonus.
 - Czech + English localisation. Czech primary.
 - iPadOS 17+, iPad-only.
@@ -37,7 +37,7 @@
 - Metronome click for calibration and practice.
 
 ### 3.3 Lesson Data
-- Lesson schema stays unchanged; ticket 20 removes eight duplicate starter entries from the original legacy data: `lessons-core.json` (539), `intro.json` (24), `electronic-path.json`, `genre-extensions.json`, `sample-kits.json`.
+- Lesson schema stays unchanged; ticket 20 removes eight duplicate starter entries from the original legacy data: `lessons-core.json` (539), `intro.json` (24), `electronic-path.json` (12), `genre-extensions.json` (12), `sample-kits.json` (8 kits). Total 587 bundled lessons.
 - Schema per lesson: `{id, cat, title, genre, tags, text, division, bars, startBpm, targetBpm, level, score, src, hits}`.
 - `hits`: array of `[step, padIndex, hand, velocity]`. `step` is 0-based sixteenth index. `padIndex` is 0–15.
 - `division` is always 16. `bars` is 1, 2, or 3.
@@ -66,12 +66,13 @@
 - **Soft unlock**: only the stage banner offers Unlock → Really? → Yes/Cancel; a purely manual unlock can be undone with the same inline confirmation while the stage has no stars and no played, earned or migration-snapshot access (ticket 25B).
 - Intro (25 projected exercises): separate section, always accessible; ticket 25B moves core lesson 6 here, after the Control and detail exercises, with its saved ID/progress intact, excludes it from every Library list, and removes the First steps category; bundled core remains 539 and intro.json remains 24.
 - Electronic-path lessons are folded into the main category/genre system.
+- Path contains 574 lessons across 23 stages (538 core + 12 electronic + 24 intro). 12 genre-extension lessons (Jersey club and Footwork) remain separate extension groups outside Path.
 
 ### 3.8 Screens
 - **Library**: browse lessons by category/genre. Locked stages show readable lesson rows and one banner with inline unlock confirmation.
-- **Play screen**: minimal chrome, pattern first. Pattern is the dominant element of the play screen and always visible: a grid with one row per used pad and one column per sixteenth step, count labels 1 e & a, beat starts emphasised. A hit is a cell carrying the pad abbreviation; the hand is shown by cell colour (white = right, black = left) and the currently playing cell is outlined. User-selectable modes: **static** (the whole pattern visible, a position marker moves) and **scrolling** (the pattern moves past a fixed hit marker). 1 bar = one block across the width; 2-4 bars = blocks stacked or 2x2 with the current bar emphasised; longer patterns and whole tracks = pages of 4 bars or scrolling, with a thin overview strip of the whole track. Everything else (score details, settings, section loop) is hidden but one touch or gesture away. The 4x4 pad-layout grid is hidden by default; a Settings option shows it small and unobtrusive in the lesson. Current BPM and score stay small and peripheral. There is no per-hit feedback: each bar gets a one-word verdict (clean / ahead / behind / uneven) in its header, and a small summary strip appears at the end. Details: `docs/design/2026-10-30-practice-screen-spec.md`.
+- **Play screen**: minimal chrome, pattern first. Pattern is the dominant element of the play screen and always visible: a grid with one row per used pad and one column per sixteenth step, count labels 1 e & a, beat starts emphasised. A hit is a cell carrying the pad abbreviation; the hand is shown by cell colour (white = right, black = left) and the currently playing cell is outlined. User-selectable modes: **static** (the whole pattern visible, a position marker moves) and **scrolling** (the pattern moves past a fixed hit marker). 1 bar = one block across the width; 2-4 bars = blocks stacked or 2x2 with the current bar emphasised; longer patterns and whole tracks = pages of 4 bars or scrolling, with a thin overview strip of the whole track. Everything else (score details, settings, section loop) is hidden but one touch or gesture away. The 4x4 pad-layout grid is hidden by default; a Settings option shows it small and unobtrusive in the lesson. Current BPM and score stay small and peripheral. Practice feedback is delivered at the run and pass level without distracting per-hit visual flashing; per-bar text verdicts (clean / ahead / behind / uneven) are not shipped / planned (ticket 2026-10-30-bar-summary-scoring remains a draft). Details: `docs/design/2026-10-30-practice-screen-spec.md`.
 - **Calibration**: guided 10-click flow per device.
-- **Settings**: kit selection, BPM step (1/2/5/10), controller profile management, MIDI learn, language.
+- **Settings**: kit selection, BPM step (1/2/5/10), practice mode (Learning/Challenge), controller profile management, MIDI learn, language.
 - **Intro section**: separate entry point for the 25 projected intro exercises.
 
 ---
@@ -130,12 +131,13 @@ The scoring window is symmetric around the expected note time.
 2. Subtract calibration offset → corrected timestamp.
 3. Subtract adaptive timing-center shift → final timestamp used for window comparison.
 
-### 5.3 Pass & Mastery
+### 5.3 Star Progression & Practice Modes
 
-- **Pass**: score ≥ 70% (non-intro), ≥ 80% (intro).
-- **Mastery**: clean run at or above `targetBpm`.
-- **Memory** (third star): score ≥ 80 % at `targetBpm` or above with the pattern hidden (From memory mode). See `docs/design/2026-10-30-practice-screen-spec.md` §8.
-- **Clean run error limits**:
+- **Star 1 (Passed)**:
+  - *Normal threshold*: score ≥ 70% (non-intro), ≥ 80% (intro).
+  - *Learning mode alternative threshold* (ticket 28): a full run also qualifies for Star 1 if all three conditions hold: score ≥ 60%, perfect-or-good hits ≥ 85% of expected hits, and errors (missed + extra) ≤ max(1, floor(10% of expected hits)). (Challenge mode uses only the normal threshold).
+- **Star 2 (Mastery)**:
+  - Clean run at or above `targetBpm` within the allowed error limits:
 
 | Total expected hits | Allowed errors |
 |---------------------|----------------|
@@ -144,6 +146,20 @@ The scoring window is symmetric around the expected note time.
 | > 32                | 2              |
 
 Intro lessons always require 0 errors for mastery.
+
+- **Star 3 (Retention / Settled in hands)**:
+  - Star 3 is earned **exclusively by passing two spaced reviews in Training on separate days** (tickets 97, 98, 143; `ReviewScheduler.mayEarnStar3` when `reviewStep >= 2` or `settled`).
+  - Spaced review intervals: Step 0 → 1 day gap, Step 1 → 3 days gap, Step 2 → 7 days gap, Step 3 → 21 days gap. Passing step 3 marks the lesson settled ("upevněno").
+  - A review run must be played *From memory* at `targetBpm` with score ≥ 80% (under ticket 99, notes fade on passes 1–2; only hidden pass ≥ 3 counts).
+  - Practice *From memory* mode alone does NOT award Star 3 (it remains an active practice tool, but earns no star).
+
+- **Practice Modes (ticket 28)**:
+  - **Learning · keep progress** (default): Qualifying passes for each star accumulate. A weaker pass never removes credit. Credit is persisted in the progress JSON per lesson and per pad mode (`8` vs `16` pads) across app restarts. Enables the alternative 60% Star 1 threshold.
+  - **Challenge · consecutive clean runs** (setting in Settings): Qualifying passes must be consecutive ("in a row"); an imperfect pass resets only that star's counter. Counters are session-only and clear on START, RESTART, and STOP. Uses only normal thresholds.
+
+- **Required Runs Per Star (`StarStreak.requiredRuns`, ticket 18)**:
+  - Formula: `runs = min(4, (16 - 1) / expectedHits + 1)` (1 to 4 runs based on pattern length; minimum 16 hits played per star).
+  - For Intro lessons: Stars 2 and 3 require `max(runs, 3)` (at least 3 runs), while Star 1 uses the normal non-intro run count.
 
 ### 5.4 Double-Hit Guard
 
@@ -195,7 +211,7 @@ Lessons use `padIndex` 0–15. In **8-pad mode** the controller has 8 physical p
 - [ ] **iPad test**: audio output latency is acceptable; no audible glitches.
 
 ### Lesson Data
-- [ ] All 539 core + 24 intro lessons load from bundled JSON.
+- [ ] All 587 bundled lessons (539 core + 24 intro + 12 electronic path + 12 genre extensions) load from bundled JSON.
 - [ ] Electronic-path and genre-extension lessons load and appear in correct categories.
 - [ ] Invalid or missing JSON produces a clear error, not a crash.
 

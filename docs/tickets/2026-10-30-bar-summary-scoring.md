@@ -1,6 +1,6 @@
 # Bar Summary for the Scoring Engine (follow-up to 08)
 
-Status: draft — Jakub approves before it goes to an agent
+Status: not shipped / planned (draft — Jakub approves before it goes to an agent)
 
 ## Goal
 

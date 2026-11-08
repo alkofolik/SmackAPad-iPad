@@ -23,7 +23,7 @@ The app is organized around a hardware-inspired central hub, a deep lesson libra
 - **Intro exercises**: A dedicated onboarding collection of 25 progressive exercises (hand coordination, basic eighths, open hi-hat coordination) that are always unlocked and accessible without stage restrictions.
 - **Practice screen**: The core playing environment. Dominated by a bold horizontal orange band displaying the note pattern grid (static or scrolling mode, count labels `1 e & a`, hand indicator colors). Everything else is minimal and peripheral:
   - *Listen mode*: Plays the pattern audibly through the audio engine so the player can internalise the rhythm.
-  - *Play mode*: Interactive play scored against level-dependent timing windows, featuring quiet bar-by-bar text verdicts (`clean`, `ahead`, `behind`, `uneven`) rather than distracting per-hit flashes.
+  - *Play mode*: Interactive play scored against level-dependent timing windows without distracting per-hit flashes. Quiet textual feedback is delivered at the run and pass level (per-bar text verdicts `clean`, `ahead`, `behind`, `uneven` are planned / not shipped; ticket 2026-10-30-bar-summary-scoring remains a draft).
   - *From memory mode*: Fades or hides the pattern grid entirely, requiring the player to perform from tactile memory.
 - **Training screen**: The daily retention hub driven by spaced repetition. Features a prominent Today banner, a memory progression meter, a 7-day review forecast strip, the *Due now* list (ordered by fragility, filtered with step chips), collapsible *Waiting* boxes for future reviews, a *Settled* box, plus *Mix* (continuous multi-pattern playback) and *Play after me* modes.
 - **Today session**: A guided 10–15 minute daily workout assembled dynamically from up to two fragile due reviews, one fresh progression lesson, and an optional consolidation mix, concluding with a session summary card.
@@ -47,9 +47,17 @@ The app is organized around a hardware-inspired central hub, a deep lesson libra
 The educational methodology blends deliberate practice, motor-skill automation, and spaced retrieval:
 
 - **Three-Star Progression**:
-  - **Star 1 (Passed)**: Demonstrates basic competence. Awarded for completing a full run with a score of $\ge 70\%$ ($\ge 80\%$ for Intro exercises) within the timing window.
+  - **Star 1 (Passed)**: Demonstrates basic competence within the timing window:
+    - *Normal threshold*: score $\ge 70\%$ ($\ge 80\%$ for Intro exercises).
+    - *Learning mode alternative threshold*: score $\ge 60\%$ if perfect-or-good hits $\ge 85\%$ of expected hits and errors (missed + extra) $\le \max(1, \lfloor 10\% \text{ of expected hits} \rfloor)$. (Challenge mode uses only the normal threshold).
   - **Star 2 (Mastery)**: Demonstrates speed and clean execution. Awarded for achieving a clean run at or above the lesson's target BPM. A clean run enforces strict error limits based on pattern length: $0$ errors for $\le 15$ hits, $\le 1$ error for $16$–$32$ hits, $\le 2$ errors for $> 32$ hits ($0$ errors always required for Intro).
   - **Star 3 (Retention / Settled in hands)**: Demonstrates durable long-term retention. Practice *From memory* mode alone does not grant Star 3. Instead, once Star 2 is reached, the lesson enters the spaced review system in Training. Passing **two separate review sessions on different days** (reaching review step $\ge 2$ or settled status) awards Star 3 with a special celebratory completion animation.
+- **Practice Modes (Learning vs Challenge)**:
+  - **Learning · keep progress** (default): Qualifying passes for each star accumulate. A weaker pass never removes credit. Accumulated credit is persisted in the progress file per lesson and per pad mode (8 vs 16 pads) across app restarts. Enables the alternative 60% Star 1 threshold.
+  - **Challenge · consecutive clean runs** (setting in Settings): Qualifying passes must be consecutive ("in a row"); an imperfect pass resets only that star's counter. Counters are session-only and clear on START, RESTART, and STOP. Uses only normal thresholds.
+- **Required Runs Per Star**:
+  - The number of qualifying passes required per star is determined by pattern length (`StarStreak.requiredRuns`): $\min(4, \lfloor (16 - 1) / \text{expectedHits} \rfloor + 1)$ (1 to 4 runs, ensuring at least 16 hits played per star).
+  - For Intro exercises: Star 1 requires the normal run count, while Stars 2 and 3 require $\max(\text{runs}, 3)$ (at least 3 runs).
 - **Tempo Auto-Progression**:
   - After any clean run below the target tempo, the app automatically steps up the tempo by the user's selected increment: **1, 2, 5, or 10 BPM** (default is 5 BPM).
   - Tempo rises smoothly without stopping the musical flow, allowing players to build speed gradually toward target BPM. Unclean runs never decrement tempo.
@@ -84,6 +92,12 @@ The app contains **587 bundled lessons** across diverse musical styles:
   - *Fills & toms* (linear fills, tom movements, rhythmic breaks)
 - **Electronic path extensions**: 12 dedicated electronic lessons (hardgroove, broken techno, UK club).
 - **Genre extensions**: 12 specialized rhythmic lessons (Jersey club, Footwork/juke).
+- **Lesson counts across the app (reconciliation)**:
+  - *Bundled data files*: Exactly **587 lessons** across 4 JSON files in `SmackAPad/Resources/Data/` (539 core in `lessons-core.json` + 24 intro in `intro.json` + 12 electronic in `electronic-path.json` + 12 genre extensions in `genre-extensions.json`).
+  - *Paywall / Store*: Displays **587 lessons** (58 Free + 529 Full), counting all bundled records.
+  - *Library Path*: Displays **574 lessons** in "Overall progress" (538 core lessons + 12 electronic path + 24 intro = 574). It excludes the 12 standalone genre extensions (Jersey club and Footwork, kept in their own extension section) and core lesson 6, which is projected into Intro.
+  - *Intro exercises (24 vs 25)*: `intro.json` contains 24 exercise definitions (IDs 10001–10024). In `LibraryCatalog`, core lesson 6 ("Open hat on the and", the sole retained First steps lesson after ticket 20 removed starter duplicates) is projected into Intro as exercise #21, so the UI presents **25 Intro exercises**.
+  - *Library views total*: Contains 586 lessons (574 Path + 12 extensions), with lesson 6 visible only in Intro.
 - **Free vs. Full breakdown**:
   - **Free Tier (58 lessons)**: All 25 Intro drills + 31 Level 1 Path lessons (Stage 1) + 3 electronic starter lessons. Players can experience the entire learning loop, calibration, scoring, and training without paying.
   - **Full Tier (529 lessons)**: Levels 2 through 5, advanced genres, ghost notes, fills, world rhythms, and complex syncopations, unlocked via the one-time purchase.
@@ -138,7 +152,7 @@ The following architectural and product decisions are finalized for version 1.0 
 - **Monetization**: Paid upfront one-time unlock (`cz.kju.SmackAPad.full`), never a mandatory monthly subscription.
 - **User accounts & cloud**: No user logins, no server infrastructure, no iCloud sync in v1.0; all data is local.
 - **Visual design philosophy**: Industrial hardware aesthetic (orange, black, white tokens), high contrast for arm's length viewing in dim light; no gamified mascots, confetti, floating cartoon bubbles, purple gradients, or glassmorphism.
-- **Practice screen UX**: Pattern-first grid view; no distracting per-hit visual flashing; feedback is delivered as a quiet, one-word textual verdict per bar (`clean`, `ahead`, `behind`, `uneven`).
+- **Practice screen UX**: Pattern-first grid view; no distracting per-hit visual flashing; feedback is delivered quietly at the run and pass level. (Per-bar textual verdicts `clean`, `ahead`, `behind`, `uneven` are not shipped / planned; ticket 2026-10-30-bar-summary-scoring remains a draft).
 - **Scoring formula**: Score equals $\text{matched hits} / (\text{expected hits} + \text{extra hits})$; hits within the timing window count equally without granular accuracy weighting.
 - **Timing tolerance**: Philosophy of human groove tolerance; microsecond pedantry is rejected; adaptive timing center shifts with systematic player drift.
 - **8-pad controller compatibility**: Achieved via per-lesson dynamic voice mapping (`layoutForEight`) and `hits8` fallback patterns, ensuring 100% of bundled lessons can be played on 8-pad controllers.
@@ -162,16 +176,15 @@ The application is created by a solo creator who does not write code. The entire
 
 ---
 
-## Notes for the Developer (Documentation Discrepancies)
+## Notes for the Developer (Documentation Discrepancies Resolved in Ticket 152)
 
-*This internal section highlights minor inconsistencies found between legacy project documents and recent ticket implementations. Reviewers may disregard or Jakub can reconcile before sending:*
+*This internal section highlights reconciliations between project documents and current code:*
 
 1. **Star 3 Earning Mechanism**:
-   - `SPEC.md` §5.3 states that Star 3 (Memory) is earned by scoring $\ge 80\%$ at target BPM in Practice with the pattern hidden (*From memory* mode).
-   - *Current Implementation (Ticket 143, 2026-11-07)*: Star 3 is earned **exclusively through two passed reviews in Training** on separate days. Practice *From memory* remains an essential training tool, but no longer awards Star 3 directly. `SPEC.md` should be updated to reflect Ticket 143.
-2. **Training Screen Structure & List Order**:
-   - Earlier specifications described a flat *Due* list without step filtering or collapsed categories.
-   - *Current Implementation (Ticket 144, 2026-11-07)*: The Due list shows the first 5 fragile reviews with a "Show all" toggle, step filter chips (All, Step 1–4), categorized collapsible *Waiting* boxes (*Tomorrow*, *In 2–3 days*, *In 4–7 days*, *Later*), and a bottom *Settled* box.
-3. **Total Lesson & Free Counts**:
-   - Early specifications cited "539 core + 24 intro lessons".
-   - *Current Count (Ticket 32 & App Store Checklist)*: Exactly **587 total lessons** (24 intro + 539 core + 12 electronic path + 12 genre extensions). Exactly **58 lessons are free** (24 intro + 31 Level 1 core + 3 electronic path; note core lesson 6 is ordered with Intro exercises), and **529 lessons are Full**.
+   - `SPEC.md` §5.3 and this brief reflect Ticket 143 (2026-11-07): Star 3 is earned **exclusively through two passed reviews in Training** on separate days (`ReviewScheduler.mayEarnStar3` when `reviewStep >= 2` or `settled`). Practice *From memory* remains an essential training tool, but does not award Star 3 directly.
+2. **Bar Verdicts**:
+   - Per-bar verdicts (`clean`, `ahead`, `behind`, `uneven`) are **not shipped / planned**; `PracticeSession.receiveBarSummary` has no caller and `docs/tickets/2026-10-30-bar-summary-scoring.md` is a draft. Scoring feedback is presented at the run and pass level.
+3. **Training Screen Structure & List Order**:
+   - The Due list shows the first 5 fragile reviews with a "Show all" toggle, step filter chips (All, Step 1–4), categorized collapsible *Waiting* boxes (*Tomorrow*, *In 2–3 days*, *In 4–7 days*, *Later*), and a bottom *Settled* box (Ticket 144).
+4. **Total Lesson & Free Counts**:
+   - Exactly **587 total lessons** bundled across 4 JSON files (539 core + 24 intro + 12 electronic path + 12 genre extensions). Paywall displays **587 lessons** (58 Free + 529 Full). Library Path displays **574 lessons** (excluding 12 genre extensions and lesson 6 projected into Intro). Intro displays **25 exercises** (24 from `intro.json` + core lesson 6). All numbers match the live code.

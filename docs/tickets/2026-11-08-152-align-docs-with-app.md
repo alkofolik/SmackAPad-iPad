@@ -1,6 +1,6 @@
 # 152 — Align the documents with the app
 
-Status: draft, waiting for Jakub to hand it to the agent. Blocked by: none. Source: AI panel round 1 (`docs/reviews/ai-panel/results/round1-claude.md` R2-04; `synthesis.md` item 7); `docs/2026-11-08-ai-panel-action-plan.md`, Batch 1.
+Status: ready-for-human. Blocked by: none. Source: AI panel round 1 (`docs/reviews/ai-panel/results/round1-claude.md` R2-04; `synthesis.md` item 7); `docs/2026-11-08-ai-panel-action-plan.md`, Batch 1.
 
 ## Goal
 
@@ -26,11 +26,11 @@ Agents read only the files they are given, so a document that disagrees with the
 
 ## Acceptance criteria
 
-- [ ] Each lesson count in SPEC, the brief and the store documents matches the code, and any difference is explained once.
-- [ ] SPEC describes the two-review rule for star 3.
-- [ ] The brief no longer claims bar verdicts are shipped.
-- [ ] The brief states the Learning (60 %) and normal (70 %) thresholds and the Learning / Challenge modes.
-- [ ] The final message lists every file changed and every other discrepancy found but not fixed.
+- [x] Each lesson count in SPEC, the brief and the store documents matches the code, and any difference is explained once.
+- [x] SPEC describes the two-review rule for star 3.
+- [x] The brief no longer claims bar verdicts are shipped.
+- [x] The brief states the Learning (60 %) and normal (70 %) thresholds and the Learning / Challenge modes.
+- [x] The final message lists every file changed and every other discrepancy found but not fixed.
 
 ## Agent assignment
 

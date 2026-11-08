@@ -40,9 +40,12 @@ All scoring rules from the legacy prototype are preserved exactly:
 
 - Timing windows by level: L1–2 ±45/100/200 ms, L3–4 ±38/85/175 ms, L5 ±30/70/150 ms.
 - Mastery error limits: ≤15 hits → 0 errors, 16–32 → 1, >32 → 2. Intro always 0.
-- Pass threshold: ≥70% (non-intro), ≥80% (intro).
+- Pass threshold: ≥70% (non-intro), ≥80% (intro). In Learning mode (default), an alternative qualification passes at score ≥60%, with perfect/good hits ≥85% of expected hits and errors ≤ max(1, floor(10% of expected hits)) (ticket 28).
 - Double-hit guard: 30 ms.
 - BPM auto-progression step: **1, 2, 5, or 10 BPM** (user-selectable). The 10 BPM option is new.
+- Star 3 (Retention): earned exclusively through two spaced reviews in Training on separate days (tickets 97, 98, 143).
+- Practice modes: Learning (default; passes accumulate across sessions, persisted per lesson and pad mode) vs Challenge (consecutive passes in a row, session-only) (ticket 28).
+- Required runs per star: `min(4, (16 - 1) / expectedHits + 1)`. Intro stars 2 and 3 require at least 3 runs (ticket 18).
 
 ## 7. Philosophy of tolerance
 
@@ -122,7 +125,7 @@ Ticket 19 replaces category access with the legacy Path: five levels, split by t
 
 **Soft unlock**: the stage banner is the only unlock surface, with inline Yes/Cancel confirmation; purely manual unlocks may be undone while the stage has no stars and no played, earned or migration-snapshot access (ticket 25B). Path, Genres, and Techniques share this access policy. A one-time migration preserves stages containing lessons in previously accessible categories, including saved manual category unlocks and automatic category access; saved progress is retained. New progress records distinguish actual playing from merely saving a tempo. Old records conservatively retain access when they contain saved tempo or results.
 
-Ticket 21 preserves all previously open stages through a one-time migration and persists future stage openings; lessons without an 8-pad layout are excluded from completion counts in 8-pad mode.
+Ticket 21 preserves all previously open stages through a one-time migration and persists future stage openings; lessons without an 8-pad layout are excluded from completion counts in 8-pad mode. Path contains 574 lessons across 23 stages (538 core + 12 electronic + 24 intro). 12 genre extensions remain accessible extensions outside the Path.
 
 Library organisation and multi-select star filters are remembered. “Next lesson from” selects Path, Genre, Technique, or All (easiest first), following legacy candidate order, wraparound, and fallback to Path.
 

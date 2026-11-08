@@ -24,7 +24,7 @@
 | **Bars** | Number of bars in a pattern (1, 2, or 3). |
 | **Category** | Lesson grouping: starter, eighth, sixteenth, electronic, ghost, swing, world, fills. |
 | **Level** | Difficulty rating 1–5. Determines timing window strictness. |
-| **Intro** | 24 guided introductory exercises. Separate section, always accessible, recommended for beginners. Stricter pass threshold (80%). |
+| **Intro** | 25 guided introductory exercises (24 from `intro.json` + core lesson 6). Separate section, always accessible, recommended for beginners. Stricter pass threshold (80%). |
 | **Content pack** | A loadable bundle of additional lessons. Architecture prepared in v1; actual extension packs delivered in v2+. |
 
 ## Audio
@@ -42,15 +42,18 @@
 | **Timing center** | Adaptive rolling-median corrector (8 samples, gated ±100–110 ms) that shifts the scoring window to follow a player's systematic early/late tendency, without widening the windows. |
 | **Calibration** | 10-click guided procedure to measure per-device hardware timing offset. Forgiving thresholds — must not frustrate the user. |
 | **Double-hit guard** | 30 ms window preventing a second hit on the same pad from being scored as a second match. |
-| **Pass** | Score ≥ 70% (non-intro) or ≥ 80% (intro). |
+| **Pass** | Score ≥ 70% (non-intro) or ≥ 80% (intro). In Learning mode, alternative pass threshold is ≥ 60% with error/quality requirements. |
 | **Mastery** | Achieving a clean run at or above `targetBpm`. |
+| **Star 3 (Settled)** | Retention star earned exclusively by passing two spaced reviews in Training on separate days. |
 | **Clean run** | A play-through within the allowed error count: 0 errors for ≤15 hits, 1 for 16–32, 2 for >32. Intro always 0. |
 | **BPM auto-progression** | Automatic tempo increase (1, 2, 5, or 10 BPM — user-selectable) after a clean run below `targetBpm`. |
+| **Practice Mode** | Learning (default; passes accumulate across sessions, alternative 60% Star 1 rule) vs Challenge (consecutive passes in a row, session-only). |
+| **Bar verdict** | Planned / not shipped per-bar evaluation (`clean`, `ahead`, `behind`, `uneven`). Practice currently scores runs and passes as a whole. |
 
 ## Progression
 
 | Term | Definition |
 |---|---|
-| **Category unlock** | Categories are locked by default (except the first). Completing a certain number of lessons in a category unlocks the next one. |
-| **Soft unlock** | Manual override: user can tap a locked category, confirm, and unlock it immediately. Nobody gets stuck. |
+| **Stage unlock** | Path stages unlock when earning 2 stars on half the preceding stage's lessons (capped at 10). |
+| **Soft unlock** | Manual override: user can tap a locked stage banner, confirm, and unlock it immediately. Nobody gets stuck. |
 | **Progress** | Per-lesson persistent data: passed/mastery status, current BPM, best score. Stored as a JSON file. |
