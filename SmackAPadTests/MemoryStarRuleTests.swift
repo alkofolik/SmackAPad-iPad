@@ -16,8 +16,8 @@ final class MemoryStarRuleTests: XCTestCase {
         XCTAssertFalse(qualifies)
     }
 
-    // 2. next day → credit
-    func testNextDayEarnsMemoryCredit() {
+    // 2. next day → no longer earns memory credit in Practice
+    func testNextDayNoLongerEarnsMemoryCredit() {
         let qualifies = StarStreak.mayEarnMemoryCredit(
             masteryDay: "2026-11-05",
             wasMastered: true,
@@ -27,11 +27,11 @@ final class MemoryStarRuleTests: XCTestCase {
             targetBpm: 100,
             score: 0.85
         )
-        XCTAssertTrue(qualifies)
+        XCTAssertFalse(qualifies)
     }
 
-    // 3. old record without a day → credit
-    func testOldRecordWithoutDayEarnsMemoryCredit() {
+    // 3. old record without a day → no longer earns memory credit in Practice
+    func testOldRecordWithoutDayNoLongerEarnsMemoryCredit() {
         let qualifies = StarStreak.mayEarnMemoryCredit(
             masteryDay: nil,
             wasMastered: true,
@@ -41,7 +41,7 @@ final class MemoryStarRuleTests: XCTestCase {
             targetBpm: 100,
             score: 0.85
         )
-        XCTAssertTrue(qualifies)
+        XCTAssertFalse(qualifies)
     }
 
     // 4. star 2 earned in the current run → no credit
@@ -69,7 +69,7 @@ final class MemoryStarRuleTests: XCTestCase {
         XCTAssertEqual(mergedReverse.masteryDay, "2026-11-02")
     }
 
-    // 6. ticket 99: fading notes setting qualification
+    // 6. ticket 99/143: fading notes setting qualification (neither setting earns in Practice)
     func testMemoryCreditQualificationWithFadingNotesSetting() {
         // Setting ON (fadeNotes = true):
         // Pass 1: never qualifies
@@ -98,8 +98,8 @@ final class MemoryStarRuleTests: XCTestCase {
             fadeNotes: true
         ))
 
-        // Pass 3: qualifies
-        XCTAssertTrue(StarStreak.mayEarnMemoryCredit(
+        // Pass 3: no longer earns in Practice
+        XCTAssertFalse(StarStreak.mayEarnMemoryCredit(
             masteryDay: "2026-11-05",
             wasMastered: true,
             today: "2026-11-06",
@@ -112,8 +112,8 @@ final class MemoryStarRuleTests: XCTestCase {
         ))
 
         // Setting OFF (fadeNotes = false):
-        // Pass 1: qualifies
-        XCTAssertTrue(StarStreak.mayEarnMemoryCredit(
+        // Pass 1: no longer earns in Practice
+        XCTAssertFalse(StarStreak.mayEarnMemoryCredit(
             masteryDay: "2026-11-05",
             wasMastered: true,
             today: "2026-11-06",

@@ -172,3 +172,4 @@ Source: Jakub, retention and memory discussion; legacy "Trénink" concept 2026-1
 | 144 | Training: Due list order, step chips, waiting and settled boxes | Gemini 3.8 Flash, high (fallback Codex Sol, medium) | after 142 |
 | 145 | Proposal: badge images (HTML preview, no code) | Gemini 3.8 Flash, medium (fallback Codex Sol, medium) | done (Jakub chose B: pad tiles) |
 | 146 | Badges as pad tiles with icons | Gemini 3.8 Flash, medium (fallback Codex Sol, medium) | any time |
+| 147 | Fix 5 outdated tests after the star 3 rule change | Gemini 3.8 Flash, medium (fallback Codex Sol, medium) | any time |

@@ -73,7 +73,7 @@ final class PracticeSessionTests: XCTestCase {
     }
 
     @MainActor
-    func testMemoryStarAtEightyPercentEmitsEventAndAutomaticallyStopsAfterRequiredPasses() async throws {
+    func testMemoryStarAtEightyPercentDoesNotEmitEventOrStop() async throws {
         let suite = "practice-feedback-\(UUID().uuidString)"
         let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))
         defer { defaults.removePersistentDomain(forName: suite) }
@@ -116,29 +116,15 @@ final class PracticeSessionTests: XCTestCase {
             session.tick()
             time = start + duration + 0.001
             session.tick()
-            if pass < required - 1 {
-                XCTAssertTrue(session.running, session.errorMessage ?? "Run ended before the memory streak completed")
-                XCTAssertNil(session.starEvent)
-                XCTAssertNil(session.summary)
-            }
+            XCTAssertTrue(session.running, session.errorMessage ?? "Run ended unexpectedly")
+            XCTAssertNil(session.starEvent)
+            XCTAssertNil(session.summary)
         }
-        let event = try XCTUnwrap(session.starEvent)
-        XCTAssertEqual(event.award.fresh, [false, false, true])
-        XCTAssertTrue(event.award.shouldStop)
-        XCTAssertFalse(session.running)
-        XCTAssertEqual(session.lastResult?.score ?? 0, 0.8, accuracy: 0.0001)
-        XCTAssertEqual(session.summary?.finishedByStar, 3)
-        XCTAssertEqual(session.summary?.passes, required)
-        XCTAssertEqual(progress.progress(for: lesson.id)?.memory, true)
-        XCTAssertTrue(session.playedHits.isEmpty)
-        XCTAssertTrue(session.hitJudgments.isEmpty)
-        session.start()
-        XCTAssertTrue(session.running)
         XCTAssertNil(session.starEvent)
-        XCTAssertNil(session.summary)
-        XCTAssertNil(session.finishedByStar)
-        XCTAssertTrue(session.hitJudgments.isEmpty)
-        XCTAssertTrue(session.playedHits.isEmpty)
+        XCTAssertTrue(session.running)
+        XCTAssertEqual(session.lastResult?.score ?? 0, 0.8, accuracy: 0.0001)
+        XCTAssertNil(session.summary?.finishedByStar)
+        XCTAssertEqual(progress.progress(for: lesson.id)?.memory, false)
     }
 
     @MainActor
