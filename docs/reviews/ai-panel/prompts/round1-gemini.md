@@ -1,13 +1,13 @@
 # Review request
 
-Attached: `00-brief.md` (what the app is and what was decided), screenshots of every screen (no video recordings are provided), and the source code (GitHub repository or ZIP).
+Attached: `00-brief.md` (what the app is and what was decided), screenshots of every screen, three short screen recordings of real play on a MIDI controller, and the source code (GitHub repository or ZIP).
 
-Please review the native iPad app **Smack-a-Pad**, a finger-drumming trainer built by an independent developer. You cannot see or hear the app in motion; judge timing, sound and flow only from the screenshots, the brief and the source code, and say clearly when a point cannot be judged without video.
+Please review the native iPad app **Smack-a-Pad**, a finger-drumming trainer built by an independent developer. Watch the videos fully before answering: they show the timing, sound and flow that screenshots cannot.
 
 ## Ground rules
 
 - You are an independent reviewer. You have no stake in this app. The developer explicitly wants blunt, specific criticism; praise is only useful when it says what must not be lost.
-- Base every finding on evidence from the materials: name the screenshot, document section or source file. If you are guessing, say so and lower your confidence.
+- Base every finding on evidence from the materials: name the screenshot, video timestamp, document section or source file. If you are guessing, say so and lower your confidence.
 - Do not invent features, screens or numbers. If something is not in the materials, write "not visible in materials".
 - The app is played mainly on an external MIDI pad controller (finger drumming). Touch pads on screen are only a bonus. App navigation is by touch.
 - Do not judge deliberate decisions listed in the brief as "Decided" unless you think one is a serious mistake; then say why in one finding.
@@ -52,8 +52,8 @@ Answer in English, in Markdown, with these sections in this order and no others:
 
 Take each role in turn. Stay inside the role; do not repeat Part A.
 
-**R1 — Complete beginner.** You own a cheap 16-pad controller and have never finger-drummed. Walk through the first launch, first lesson and first 10 minutes as seen in the screenshots. Where are you confused, lost, bored or stuck? What words do you not understand? When would you quit?
+**R1 — Complete beginner.** You own a cheap 16-pad controller and have never finger-drummed. Walk through the first launch, first lesson and first 10 minutes as seen in the screenshots and videos. Where are you confused, lost, bored or stuck? What words do you not understand? When would you quit?
 
 **R2 — iPad UX and accessibility expert.** Judge against Apple's Human Interface Guidelines for iPadOS: hierarchy, navigation, touch target sizes, readability at arm's length (iPad on a stand next to a controller), Dynamic Type, VoiceOver, colour contrast, motion, landscape and portrait. Point to concrete screens.
 
-**R3 — Experienced finger-drumming teacher.** Judge the curriculum and practice method: order of lessons, difficulty steps, what is missing compared to how you teach real students (technique, posture, dynamics, groove feel, musicality), and whether the scoring rewards the right things. Judge the timing feedback from the screenshots of run results and from the scoring code.
+**R3 — Experienced finger-drumming teacher.** Judge the curriculum and practice method: order of lessons, difficulty steps, what is missing compared to how you teach real students (technique, posture, dynamics, groove feel, musicality), and whether the scoring rewards the right things. Use the videos to judge the timing feedback.
