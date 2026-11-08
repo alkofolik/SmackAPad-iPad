@@ -3,10 +3,10 @@
 Zdroj: `docs/reviews/ai-panel/results/synthesis.md` (čísla v závorkách = řádek tabulky „Decision list“). Jakub schválil 2026-11-08, pořadí navrhl Claude. Každá dávka = jeden ticket, teprve po odsouhlasení zadání.
 
 ## Dávka 1 – ochrana dat a důvěry (hned)
-- [x] **T149 (ticket napsán: docs/tickets/2026-11-08-149-…)** Postup se nikdy nesmí přepsat po chybě načtení** (#1). Záloha poškozeného souboru, zákaz ukládání, varování, verze formátu, načítání po lekcích, testy se „zlatými“ soubory. Codex GPT-6.1 Sol, high.
-- [ ] **AGENTS.md: před commitem projít všechny testy** (#2), plus pravidlo „odstraněné pravidlo = smazat kód i testy“ (#30) a doplnění šablony ticketů (#32). Úprava AGENTS.md, ukázat Jakubovi před zápisem.
+- [x] **T149 (ticket napsán: docs/tickets/2026-11-08-149-…)** Postup se nikdy nesmí přepsat po chybě načtení** (#1). Záloha poškozeného souboru, zákaz ukládání, varování, verze formátu, načítání po lekcích, testy se „zlatými“ soubory. Codex GPT-6.1 Sol, high. Ověřeno na simulátoru 2026-11-08 (okno, kopie progress.corrupt, obě tlačítka, čeština).
+- [x] **AGENTS.md: před commitem projít všechny testy** (#2), plus pravidlo „odstraněné pravidlo = smazat kód i testy“ (#30) a doplnění šablony ticketů (#32). Úprava AGENTS.md, ukázat Jakubovi před zápisem.
 - [x] **T150 Shrnutí dne a revize** (#3, #4, #5). Proč se 2 revize nezapočítaly, jasné stavy (zahráno / splněno / nezapočteno + důvod), staré ★3 vs „0 of 2“, „2 dnes“ místo 29, popisek předpovědi, pryč oranžové číslo z Home. Codex Sol, high.
-- [ ] **T151 Dvojitý úder pad (~25 ms) se ignoruje** (#6; ticket napsán: docs/tickets/2026-11-08-151-…). Codex Sol, medium.
+- [x] **T151 Dvojitý úder pad (~25 ms) se ignoruje** (#6; ticket napsán: docs/tickets/2026-11-08-151-…). Codex Sol, medium.
 - [x] **T152 Srovnat dokumenty s aplikací** (#7; ticket napsán: docs/tickets/2026-11-08-152-…). SPEC hvězda 3, brief „verdikty po taktech“, 574 vs 587, 24 vs 25 intro, Learning 60 %. Gemini 3.8 Flash, high.
 
 ## Dávka 2 – vydání v App Store (blockery)
@@ -41,3 +41,8 @@ Zdroj: `docs/reviews/ai-panel/results/synthesis.md` (čísla v závorkách = ř�
 ## Později (po 1.0)
 - [ ] Tempo i dolů (2× nahoru / 2× dolů) (#34) – porovnat s post-v1 plánem §4
 - [ ] Kontrola síly úderu u lekcí s ghost notes (#35)
+
+## Nové z kontroly na iPadu (2026-11-08, čeká na schválení tiketů)
+- [ ] Revize spuštěná z knihovny nebo z padu na úvodní obrazovce se spustí rovnou jako revize (From memory, cílové tempo); hráč nic nepřepíná.
+- [ ] Nápověda „Jak to funguje“ přes stávající ikonu (i) + tutoriál při prvním spuštění; bez dalšího textu v UI.
+- [ ] Training: šedé kolečko u kroku Review u zahrané, ale nezapočtené revize nic neříká (návrh na úpravu).
