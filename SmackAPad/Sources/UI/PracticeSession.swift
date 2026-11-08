@@ -1089,17 +1089,21 @@ final class PracticeSession {
     private func receive(_ event: PadInputEvent) {
         guard event.isNoteOn, ready else { return }
         audio.play(padIndex: event.padIndex, velocity: event.velocity)
-        padFlashes[event.padIndex] = PadFlash(mark: nil, date: Date())
-        guard running else { return }
+        guard running else {
+            padFlashes[event.padIndex] = PadFlash(mark: nil, date: Date())
+            return
+        }
         let sourceTime = AVAudioTime.seconds(forHostTime: event.timestamp)
         let adjusted = max(0, sourceTime - settings.calibrationOffset(for: event.deviceID) / 1_000)
         guard !listen else {
+            padFlashes[event.padIndex] = PadFlash(mark: nil, date: Date())
             recordPlayedHit(padIndex: event.padIndex, at: adjusted, mark: nil)
             return
         }
         // Boundary ownership follows the calibrated input timestamp, never the
         // display tick. Call hits cannot match even an early response note.
         if afterMe, !passes.contains(where: { $0.acceptsInput(at: adjusted) }) {
+            padFlashes[event.padIndex] = PadFlash(mark: nil, date: Date())
             recordPlayedHit(padIndex: event.padIndex, at: adjusted, mark: nil)
             return
         }
@@ -1115,6 +1119,9 @@ final class PracticeSession {
         for pass in passes {
             guard pass.acceptsInput(at: adjusted), var scorer = pass.scorer else { continue }
             let feedback = scorer.receive(padIndex: event.padIndex, at: timestamp)
+            // Check duplicates before choosing between overlapping pass windows.
+            // An ignored input must also preserve the previous pad colour.
+            guard feedback.judgment != .ignored else { return }
             if let error = feedback.timingErrorMilliseconds,
                best == nil || abs(error) < best!.2 {
                 best = (pass, scorer, abs(error), feedback)
@@ -1133,6 +1140,7 @@ final class PracticeSession {
             matchedPassNumber = best.0.number
         } else if let pass = passes.first(where: { $0.start <= adjusted && adjusted < $0.start + $0.duration && $0.acceptsInput(at: adjusted) }) {
             if let feedback = pass.scorer?.receive(padIndex: event.padIndex, at: timestamp) {
+                guard feedback.judgment != .ignored else { return }
                 mark = record(feedback, pass: pass.number, padIndex: event.padIndex)
                 matchedFeedback = feedback
                 currentScorerCenter = pass.scorer?.currentTimingCenterMilliseconds
@@ -1142,6 +1150,9 @@ final class PracticeSession {
             let activePass = passes.last(where: { $0.start <= adjusted }) ?? passes.last ?? passes.first
             currentScorerCenter = activePass?.scorer?.currentTimingCenterMilliseconds
             if let activePass { matchedPassNumber = activePass.number }
+        }
+        if matchedFeedback == nil {
+            padFlashes[event.padIndex] = PadFlash(mark: nil, date: Date())
         }
         recordPlayedHit(padIndex: event.padIndex, at: adjusted, mark: mark)
 
@@ -1170,12 +1181,13 @@ final class PracticeSession {
     }
 
     /// Colour feedback only. Scoring itself is unchanged.
-    private func record(_ feedback: HitFeedback, pass: Int, padIndex: Int) -> HitMark {
+    private func record(_ feedback: HitFeedback, pass: Int, padIndex: Int) -> HitMark? {
         let mark: HitMark
         switch feedback.judgment {
         case .perfect, .good: mark = .correct
         case .off: mark = .off
         case .wrongPad: mark = .wrong
+        case .ignored: return nil
         }
         padFlashes[padIndex] = PadFlash(mark: mark, date: Date())
         let hits = patternHits

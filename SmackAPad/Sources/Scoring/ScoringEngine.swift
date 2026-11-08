@@ -2,7 +2,7 @@ import Darwin
 
 /// Timing feedback is independent of score weight: every match counts equally.
 public enum HitJudgment: Equatable, Sendable {
-    case perfect, good, off, wrongPad
+    case perfect, good, off, wrongPad, ignored
 }
 
 public struct HitFeedback: Equatable, Sendable {
@@ -45,6 +45,9 @@ public struct ScoringResult: Equatable, Sendable {
 /// One pattern attempt, using native mach timestamps for both its start and input.
 /// Call on a single serial owner. MIDI mapping/BLE fallback happen before receive().
 public struct ScoringEngine: Sendable {
+    // Suppress pad bounce and re-sends without swallowing fast intentional rolls.
+    private static let duplicateWindowNanoseconds: Double = 25_000_000
+
     private struct ExpectedHit: Sendable {
         let index: Int
         let padIndex: Int
@@ -66,7 +69,7 @@ public struct ScoringEngine: Sendable {
     private var matchedIndices: Set<Int> = []
     private var timingSamples: [Double] = []
     private var timingCenterNanoseconds: Double = 0
-    private var lastMatchedTimestampByPad: [Int: UInt64] = [:]
+    private var lastAcceptedTimestampByPad: [Int: UInt64] = [:]
     private var perfectOrGoodHitCount = 0
     private var extraHitCount = 0
     private var consecutiveExtraHits = 0
@@ -111,13 +114,13 @@ public struct ScoringEngine: Sendable {
 
     /// The padIndex must already be resolved through the current controller/lesson layout.
     public mutating func receive(padIndex: Int, at timestamp: UInt64) -> HitFeedback {
-        if let previous = lastMatchedTimestampByPad[padIndex] {
+        if let previous = lastAcceptedTimestampByPad[padIndex] {
             let distance = timestamp >= previous ? timestamp - previous : previous - timestamp
-            if Double(distance) * nanosecondsPerTick <= 30_000_000 {
-                extraHitCount += 1
-                return HitFeedback(expectedHitIndex: nil, expectedStep: nil, judgment: .wrongPad, timingErrorMilliseconds: nil)
+            if Double(distance) * nanosecondsPerTick <= Self.duplicateWindowNanoseconds {
+                return HitFeedback(expectedHitIndex: nil, expectedStep: nil, judgment: .ignored, timingErrorMilliseconds: nil)
             }
         }
+        lastAcceptedTimestampByPad[padIndex] = timestamp
         let elapsed = timestamp >= startTimestamp
             ? Double(timestamp - startTimestamp) * nanosecondsPerTick
             : -Double(startTimestamp - timestamp) * nanosecondsPerTick
@@ -146,7 +149,6 @@ public struct ScoringEngine: Sendable {
         consecutiveExtraHits = 0
         let error = corrected - candidate.nanoseconds
         matchedIndices.insert(candidate.index)
-        lastMatchedTimestampByPad[padIndex] = timestamp
         let judgment: HitJudgment = abs(error) <= perfectNanoseconds ? .perfect
             : abs(error) <= goodNanoseconds ? .good : .off
         if judgment == .perfect || judgment == .good { perfectOrGoodHitCount += 1 }

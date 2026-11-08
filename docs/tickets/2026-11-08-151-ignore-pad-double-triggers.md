@@ -1,6 +1,6 @@
 # 151 — Ignore same-pad double triggers
 
-Status: draft, waiting for Jakub to hand it to the agent. Blocked by: none. Source: AI panel round 1 (`docs/reviews/ai-panel/results/round1-claude.md` R1-04; `synthesis.md` item 6); `docs/2026-11-08-ai-panel-action-plan.md`, Batch 1.
+Status: done. Blocked by: none. Source: AI panel round 1 (`docs/reviews/ai-panel/results/round1-claude.md` R1-04; `synthesis.md` item 6); `docs/2026-11-08-ai-panel-action-plan.md`, Batch 1.
 
 ## Goal
 
@@ -34,10 +34,16 @@ A worn pad or a Bluetooth re-send can fire two note-ons on the same pad a few mi
 
 ## Acceptance criteria
 
-- [ ] A same-pad duplicate within 25 ms never counts as an error.
-- [ ] Genuine extra hits still count.
-- [ ] An ignored hit leaves no mark in the pattern and does not break the played-pad colouring.
-- [ ] Full test suite passes before commit.
+- [x] A same-pad duplicate within 25 ms never counts as an error.
+- [x] Genuine extra hits still count.
+- [x] An ignored hit leaves no mark in the pattern and does not break the played-pad colouring.
+- [x] Full test suite passes before commit.
+
+## Implementation
+
+Scoring returns `.ignored` for same-pad input within 25 ms of the previous accepted input, including extras. Ignored input does not extend the window or change scoring state. PracticeSession skips visual feedback and played-hit recording, including when pass windows overlap. MIDI, touch and keyboard share this path. Audio playback is unchanged, so duplicates still play a sound.
+
+Validation: the new clean-run regression test failed against the original implementation. After the fix, the full simulator suite passed: 196 tests, zero failures. Coverage includes 24/25/26 ms boundaries, extra-hit duplicates, independent pads, fast rolls and unchanged timing-center learning. Physical iPad verification remains with Jakub.
 
 ## Agent assignment
 

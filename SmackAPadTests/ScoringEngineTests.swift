@@ -103,7 +103,20 @@ final class ScoringEngineTests: XCTestCase {
         }
     }
 
-    func testDoubleHitGuardUsesRawTimeAndOnlyPreviouslyMatchedHitsOnTheSamePad() {
+    func testDuplicateDoesNotChangeAShortCleanRun() {
+        var engine = ScoringEngine(lesson: lesson(), bpm: 120, startTimestamp: start)
+        _ = engine.receive(padIndex: 12, at: timestamp(0))
+        let before = engine.finish()
+        let duplicate = engine.receive(padIndex: 12, at: timestamp(10))
+        XCTAssertEqual(duplicate.judgment, .ignored)
+        XCTAssertNil(duplicate.expectedHitIndex)
+        XCTAssertNil(duplicate.timingErrorMilliseconds)
+        XCTAssertEqual(engine.finish(), before)
+        XCTAssertEqual(engine.finish().extraHitCount, 0)
+        XCTAssertTrue(engine.finish().isCleanRun)
+    }
+
+    func testDoubleHitGuardUsesRawTimeWithoutConsumingNotesOrTrainingTheCenter() {
         let pattern = [
             LessonHit(step: 0, padIndex: 12, hand: "L", velocity: 100),
             LessonHit(step: 1, padIndex: 12, hand: "L", velocity: 100),
@@ -113,10 +126,10 @@ final class ScoringEngineTests: XCTestCase {
         // adaptive center; the guard must still compare raw input timestamps.
         var matched = ScoringEngine(lesson: lesson(hits: pattern), bpm: 300, startTimestamp: start)
         _ = matched.receive(padIndex: 12, at: timestamp(20))
-        for delay in [0.0, 29.99, 30.0] {
+        for delay in [0.0, 24.0, 25.0] {
             var engine = matched
             let blocked = engine.receive(padIndex: 12, at: timestamp(20 + delay))
-            XCTAssertEqual(blocked.judgment, .wrongPad)
+            XCTAssertEqual(blocked.judgment, .ignored)
             XCTAssertNil(blocked.expectedHitIndex)
             // Rejection must not consume the second expected note or train the center.
             let next = engine.receive(padIndex: 12, at: timestamp(70))
@@ -124,12 +137,56 @@ final class ScoringEngineTests: XCTestCase {
             XCTAssertEqual(next.timingErrorMilliseconds ?? .infinity, 0, accuracy: 0.0001)
         }
         var boundary = matched
-        XCTAssertEqual(boundary.receive(padIndex: 12, at: timestamp(50.01)).expectedHitIndex, 1)
+        XCTAssertEqual(boundary.receive(padIndex: 12, at: timestamp(46)).expectedHitIndex, 1)
         XCTAssertEqual(matched.receive(padIndex: 13, at: timestamp(45)).expectedHitIndex, 2)
 
         var unmatched = ScoringEngine(lesson: lesson(), bpm: 120, startTimestamp: start)
         XCTAssertEqual(unmatched.receive(padIndex: 12, at: timestamp(-220)).judgment, .wrongPad)
-        XCTAssertEqual(unmatched.receive(padIndex: 12, at: timestamp(-195)).expectedHitIndex, 0)
+        XCTAssertEqual(unmatched.receive(padIndex: 12, at: timestamp(-195)).judgment, .ignored)
+        XCTAssertEqual(unmatched.receive(padIndex: 12, at: timestamp(-194)).expectedHitIndex, 0)
+    }
+
+    func testDuplicateWindowBoundaryKeepsGenuineExtraHits() {
+        for (delay, judgment, extras) in [(24.0, HitJudgment.ignored, 0),
+                                          (25.0, .ignored, 0), (26.0, .wrongPad, 1)] {
+            var engine = ScoringEngine(lesson: lesson(), bpm: 120, startTimestamp: start)
+            _ = engine.receive(padIndex: 12, at: timestamp(0))
+            XCTAssertEqual(engine.receive(padIndex: 12, at: timestamp(delay)).judgment, judgment)
+            XCTAssertEqual(engine.finish().extraHitCount, extras)
+        }
+    }
+
+    func testExtraHitOpensTheWindowButIgnoredHitsDoNotExtendIt() {
+        var engine = ScoringEngine(lesson: lesson(), bpm: 120, startTimestamp: start)
+        XCTAssertEqual(engine.receive(padIndex: 13, at: timestamp(0)).judgment, .wrongPad)
+        let before = engine.finish()
+        XCTAssertEqual(engine.receive(padIndex: 13, at: timestamp(10)).judgment, .ignored)
+        XCTAssertEqual(engine.finish(), before)
+        XCTAssertEqual(engine.finish().extraHitCount, 1)
+        XCTAssertEqual(engine.receive(padIndex: 13, at: timestamp(26)).judgment, .wrongPad)
+        XCTAssertEqual(engine.finish().extraHitCount, 2)
+    }
+
+    func testDifferentPadsFiveMillisecondsApartAreBothProcessed() {
+        let pattern = [
+            LessonHit(step: 0, padIndex: 12, hand: "L", velocity: 100),
+            LessonHit(step: 0, padIndex: 13, hand: "R", velocity: 100)
+        ]
+        var engine = ScoringEngine(lesson: lesson(hits: pattern), bpm: 120, startTimestamp: start)
+        XCTAssertEqual(engine.receive(padIndex: 12, at: timestamp(0)).expectedHitIndex, 0)
+        XCTAssertEqual(engine.receive(padIndex: 13, at: timestamp(5)).expectedHitIndex, 1)
+        XCTAssertTrue(engine.finish().isCleanRun)
+    }
+
+    func testFastSamePadRollIsStillMatched() {
+        let pattern = [
+            LessonHit(step: 0, padIndex: 12, hand: "L", velocity: 100),
+            LessonHit(step: 1, padIndex: 12, hand: "R", velocity: 100)
+        ]
+        var engine = ScoringEngine(lesson: lesson(hits: pattern), bpm: 240, startTimestamp: start)
+        XCTAssertEqual(engine.receive(padIndex: 12, at: timestamp(0)).expectedHitIndex, 0)
+        XCTAssertEqual(engine.receive(padIndex: 12, at: timestamp(62)).expectedHitIndex, 1)
+        XCTAssertTrue(engine.finish().isCleanRun)
     }
 
     func testResultCountsMissesAndExtrasAndUsesTheConfirmedScoreFormula() {
