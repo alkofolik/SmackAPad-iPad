@@ -1,6 +1,6 @@
 # 158 — Reviews started from Library/Home set themselves up; mark for played-but-uncounted review
 
-Status: approved by Jakub 2026-11-09, ready for the agent. Blocked by: 157 (tested 2026-11-09, done). Source: Jakub's iPad check 2026-11-08 (`docs/2026-11-08-ai-panel-action-plan.md`, section "Nové z kontroly na iPadu"). Related: ticket 150 (review summary states).
+Status: approved by Jakub 2026-11-09; amended same day with A6 after the agent's A5 stop (approved option 2). Ready for the agent. Blocked by: 157 (tested 2026-11-09, done). Source: Jakub's iPad check 2026-11-08 (`docs/2026-11-08-ai-panel-action-plan.md`, section "Nové z kontroly na iPadu"). Related: ticket 150 (review summary states).
 
 ## Hard constraint
 
@@ -20,7 +20,17 @@ Today `LessonLaunch.review(lesson)` (`AppNavigation.swift`) presets From memory 
 2. Everywhere Library or Home turns a lesson tap into a launch, use `.review(lesson)` when the helper is true, otherwise `.lesson(lesson)` exactly as today. Find **all** such places (`grep` for `.lesson(` launches and `selectedLesson =`); report the list.
 3. The preset only sets the starting state (From memory on, goal tempo). The player can still change them while stopped. No extra UI, no prompt, no banner.
 4. Today, Training (Mix, After me) and lessons that are not due behave unchanged.
-5. Verify (read the code, then cover with a test) that a run started this way is recorded as a review exactly as a run started from Today: counting follows the schedule in `PracticeSession` (~1049–1105), not the launch route. If it turns out the route matters, **stop and report** instead of redesigning.
+5. Counting is already route-independent (checked 2026-11-09 after the first A5 stop): `PracticeSession` (~1050–1105) updates the review schedule, `recordReviewRun` and the 3rd star from any route. Only the Today day plan (`TodayPlan` step outcomes, the "Passed / Did not count" summary) is fed by `TodaySessionCoordinator.record` via `onStepResult`, i.e. only from Today. Do **not** route Library/Home results into the coordinator. Fix it with A6 instead. Cover with a test that a Library-route hidden-pass run advances the schedule the same as a Today-route run.
+
+### A6. Today reconciles with reviews done elsewhere (added 2026-11-09, approved by Jakub)
+
+Problem: a review played from Library/Home counts in the schedule, but Today still shows that step as unplayed, offers it again, and on Skip/Finish calls `postponeIfUnplayed` → `postponeReview` on a schedule that was already decided today.
+
+1. Add one small pure function (e.g. on `TodayPlan` or `TodaySessionCoordinator`) that, given the plan and the `ProgressStore`, marks every **review** step that has no counted outcome yet and whose lesson has `reviewSchedule.lastReviewedDay == plan.day` as decided: passed when the lesson's `lastReviewFailDay != plan.day`, otherwise not passed (`reviewNotPassed`). Use existing `PracticeStepOutcome` fields/states only (`reviewFeedback`, `reviewPendingReason`, `played`); no new enum cases with UI text, no new strings.
+2. Run it when Today opens and when it returns from practice (`.task` / `leavePractice`), and before Skip/Finish. Persist via the existing `save()`.
+3. A step decided this way is treated as played: the session moves past it (not offered again as the current step), `postponeIfUnplayed` does nothing for it, and it shows in the summary and step markers exactly like the same result played in Today (passed = existing passed marker, not passed = the exclamation circle from B).
+4. Review steps not yet reviewed today, new-lesson and Mix steps: unchanged. Never overwrite an outcome Today already recorded.
+5. Tests: plan with a review step + progress with `lastReviewedDay == today` → step becomes passed / not passed per `lastReviewFailDay`; `postponeReview` not called for it; step without today's review stays untouched; existing Today outcome is not overwritten.
 
 ### B. Played-but-uncounted review shows an empty circle
 
@@ -33,7 +43,7 @@ In Training / Today a review step that was played but did not count shows the sa
 
 ## Files to read
 
-`AGENTS.md`, this ticket, `docs/2026-11-08-ai-panel-action-plan.md`, `SmackAPad/Sources/UI/AppNavigation.swift`, `LibraryScreen.swift` (~55–65, ~885–900), `HomeScreen.swift` (`libraryTarget`, ~630–640, ~1210–1220), `PracticeSession.swift` (`isDueReview`, ~278; hidden pass and review recording, ~1046–1110), `ReviewScheduler.swift`, `TrainingScreen.swift` (~500–540), `TodaySessionScreen.swift` (~425–440, ~790).
+`AGENTS.md`, this ticket, `docs/2026-11-08-ai-panel-action-plan.md`, `SmackAPad/Sources/UI/AppNavigation.swift`, `LibraryScreen.swift` (~55–65, ~885–900), `HomeScreen.swift` (`libraryTarget`, ~630–640, ~1210–1220), `PracticeSession.swift` (`isDueReview`, ~278; hidden pass and review recording, ~1046–1110), `ReviewScheduler.swift`, `TrainingScreen.swift` (~500–540), `TodaySessionScreen.swift` (~1–60 coordinator, ~145–176, ~425–440, ~790), `Progression/TodayPlan.swift` (`PracticeStepOutcome`), `Persistence.swift` (`postponeReview` ~1516, `recordReviewRun` ~1562).
 
 ## Tests
 
@@ -46,10 +56,11 @@ In Training / Today a review step that was played but did not count shows the sa
 
 - [ ] A lesson due for review today, opened from Library or from the Home pad, starts with From memory on and at the goal tempo; the player changed nothing.
 - [ ] A lesson that is not due opens exactly as before.
-- [ ] A qualifying run from that route counts as a review (appears in the day summary as played/passed).
+- [ ] A qualifying run from that route counts as a review (schedule advances as from Today).
+- [ ] Today then shows that review step as done (passed, or exclamation circle if not passed), does not offer it again and does not postpone it (A6).
 - [ ] A played-but-uncounted review shows the exclamation circle in Training and Today; unplayed and passed steps are unchanged.
 - [ ] No new strings; build succeeds; the full existing test suite passes (AGENTS.md); new tests above added.
-- [ ] **iPad test (Jakub)**: with a review due, open that lesson from the Library, then from the Home pad: it starts From memory at the goal tempo; play a qualifying run and see it counted in Today/Training. Then fail a review run and see the exclamation circle on its step.
+- [ ] **iPad test (Jakub)**: with a review due, open that lesson from the Library, then from the Home pad: it starts From memory at the goal tempo; play a qualifying run, then open Today: the step shows as passed and is not offered again. Then fail a review run and see the exclamation circle on its step.
 
 ## Agent assignment
 
@@ -58,4 +69,4 @@ In Training / Today a review step that was played but did not count shows the sa
 
 ## Done rule
 
-Run the full test suite and stop after a successful build. Commit (AGENTS.md); Jakub pushes and tests on the iPad. Report the list of entry points changed and the files touched. If rule A5 finds that counting depends on the launch route, stop and report.
+Run the full test suite and stop after a successful build. Commit (AGENTS.md); Jakub pushes and tests on the iPad. Report the list of entry points changed and the files touched. Report the A6 reconciliation call sites. If anything beyond the Today day plan turns out to depend on the launch route, stop and report.
