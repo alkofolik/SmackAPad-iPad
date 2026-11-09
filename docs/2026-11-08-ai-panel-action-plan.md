@@ -19,7 +19,7 @@ Zdroj: `docs/reviews/ai-panel/results/synthesis.md` (čísla v závorkách = ř�
 - [x] **T156 Změna výstupu zvuku během hry** (#12) a opožděný zvuk neukončí běh (#21).
 
 ## Dávka 4 – první spuštění a čitelnost
-- [ ] **T157** (ticket napsán 2026-11-09) „Začni tady“ pro nového hráče (#15), legenda zkratek padů (#17), dotykové plochy ≥ 44 pt (#18), kontrast ghost notes v režimu z paměti (#19), kontrola číslování Pad 1 v MIDI learn (#16).
+- [x] **T157** (otestováno na iPadu 2026-11-09) „Začni tady“ pro nového hráče (#15), legenda zkratek padů (#17), dotykové plochy ≥ 44 pt (#18), kontrast ghost notes v režimu z paměti (#19), kontrola číslování Pad 1 v MIDI learn (#16).
 
 ## K rozhodnutí Jakuba (mění dřívější rozhodnutí)
 - [ ] Revize skryjí vzor hned od 1. průchodu (#22)

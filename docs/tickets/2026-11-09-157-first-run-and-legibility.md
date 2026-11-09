@@ -69,3 +69,6 @@ Faded dark orange notes on the orange band have a contrast of about 1.5:1.
 ## Done rule
 
 Stop after a successful build and passing tests. Commit (AGENTS.md); Jakub pushes and tests on the iPad. Report the list of changed files and controls.
+
+## Test result (Jakub, iPad A16, 2026-11-09)
+Tested on the iPad per the acceptance list (fresh-profile Intro pad, auto-opened legend, MIDI learn numbering, touch targets, From memory ghost notes): all passed. Ticket closed.
