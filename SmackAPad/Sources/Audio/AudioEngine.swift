@@ -1,10 +1,13 @@
 import AVFoundation
 import Foundation
 import Darwin
+import os
 
-/// Preloads bundled kits and serializes control work away from the audio render thread.
-/// Call `prepare()` before playing; pass resolved lesson pad indices in eight-pad mode.
+/// Serializes playback control separately from sample validation and decoding.
 public final class AudioEngine: @unchecked Sendable {
+    static let practice = AudioEngine()
+    private static let logger = Logger(subsystem: "cz.kju.SmackAPad", category: "Audio")
+
     /// AVAudioSession is process-wide even though practice and calibration have separate graphs.
     private static let sessionOwnership = AudioSessionOwnership(activate: {
         let session = AVAudioSession.sharedInstance()
@@ -57,7 +60,7 @@ public final class AudioEngine: @unchecked Sendable {
         }
     }
 
-    private final class Layer {
+    fileprivate final class Layer {
         let maxVelocity: Int
         let buffers: [AVAudioPCMBuffer]
         var nextVariant = 0
@@ -74,6 +77,20 @@ public final class AudioEngine: @unchecked Sendable {
         }
     }
 
+    struct LoadedKit: @unchecked Sendable {
+        fileprivate let voices: [String: [Layer]]
+    }
+
+    private struct SampleLayer {
+        let maxVelocity: Int
+        let urls: [URL]
+    }
+
+    private struct KitCatalog {
+        let models: [SampleKit]
+        let samples: [String: Result<[String: [SampleLayer]], Error>]
+    }
+
     private struct Player {
         let node: AVAudioPlayerNode
         var availableAt: UInt64 = 0
@@ -88,7 +105,9 @@ public final class AudioEngine: @unchecked Sendable {
 
     private let bundle: Bundle
     private let padVoices: [String]
+    private let clickOnly: Bool
     private let queue = DispatchQueue(label: "cz.kju.SmackAPad.audio", qos: .userInteractive)
+    private let loader = DispatchQueue(label: "cz.kju.SmackAPad.samples", qos: .userInitiated)
     private let session = AVAudioSession.sharedInstance()
     private let sessionOwnerID = UUID()
     private let engine = AVAudioEngine()
@@ -105,15 +124,17 @@ public final class AudioEngine: @unchecked Sendable {
     public private(set) var metronomeVolume: Float = 0.8
     public private(set) var padsVolume: Float = 1.0
     public private(set) var patternVolume: Float = 0.7
-    private var kits: [String: [String: [Layer]]] = [:]
-    private var kitModels: [SampleKit] = []
-    private var selectedKit = "acoustic"
+    // Only accessed on the loader queue.
+    private var catalog: KitCatalog?
+    private var sampleCache = SampleKitCache<LoadedKit>()
+    private var selectedKit: LoadedKit?
     private var clickBuffer: AVAudioPCMBuffer?
     private var timer: DispatchSourceTimer?
     private var metronome: Metronome?
     private var observers: [NSObjectProtocol] = []
     private var prepared = false
     private var wantsPlayback = false
+    private var schedulingFailed = false
     private var interrupted = false
     private var failure: Error?
 
@@ -164,11 +185,15 @@ public final class AudioEngine: @unchecked Sendable {
     private var calibrationTapInstalled = false
 
     /// Uses the canonical domain mapping by default; the engine never interprets MIDI slots.
-    public init(bundle: Bundle = .main, padVoices: [String] = AudioEngine.defaultPadVoices) {
+    private init(bundle: Bundle = .main, padVoices: [String] = AudioEngine.defaultPadVoices,
+                 clickOnly: Bool = false) {
         self.bundle = bundle
         self.padVoices = padVoices
+        self.clickOnly = clickOnly
         observeSession()
     }
+
+    static func calibration() -> AudioEngine { AudioEngine(clickOnly: true) }
 
     deinit {
         timer?.cancel()
@@ -178,8 +203,6 @@ public final class AudioEngine: @unchecked Sendable {
         try? Self.sessionOwnership.release(for: sessionOwnerID)
     }
 
-    public var availableKits: [SampleKit] { queue.sync { kitModels } }
-    public var selectedKitID: String { queue.sync { selectedKit } }
     public var lastError: Error? { queue.sync { failure } }
     public var isRunning: Bool { queue.sync { engine.isRunning } }
 
@@ -230,16 +253,31 @@ public final class AudioEngine: @unchecked Sendable {
         }
     }
 
-    /// Performs file I/O and conversion once. Call outside latency-sensitive input callbacks.
-    public func prepare() throws {
-        try queue.sync {
-            guard !prepared else { return }
-            guard padVoices.count == 16 else {
-                throw Failure.invalidManifest("Expected sixteen pad voice names")
+    /// Validates the catalog once and prepares the graph without decoding any kit.
+    func prepare() async throws -> [SampleKit] {
+        #if DEBUG
+        let started = DispatchTime.now()
+        defer { if clickOnly { Self.logDuration("prepare", since: started) } }
+        #endif
+        let models: [SampleKit] = clickOnly ? [] : try await withCheckedThrowingContinuation { continuation in
+            loader.async {
+                continuation.resume(with: Result { try self.kitCatalog().models })
             }
-            try loadKits()
-            clickBuffer = try makeClick()
+        }
+        try Task.checkCancellation()
+        try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
+            queue.async {
+                continuation.resume(with: Result { try self.prepareGraph() })
+            }
+        }
+        return models
+    }
 
+    private func prepareGraph() throws {
+        guard !prepared else { return }
+        clickBuffer = try makeClick()
+
+        if !clickOnly {
             engine.attach(metronomeMixer)
             engine.connect(metronomeMixer, to: engine.mainMixerNode, format: format)
             engine.attach(padsMixer)
@@ -265,24 +303,40 @@ public final class AudioEngine: @unchecked Sendable {
             }
             engine.attach(clickPlayer)
             engine.connect(clickPlayer, to: metronomeMixer, format: format)
-            engine.attach(calibrationClickPlayer)
-            engine.connect(calibrationClickPlayer, to: engine.mainMixerNode, format: format)
-            engine.prepare()
-            prepared = true
+        }
+        engine.attach(calibrationClickPlayer)
+        engine.connect(calibrationClickPlayer, to: engine.mainMixerNode, format: format)
+        engine.prepare()
+        prepared = true
+    }
+
+    func loadKit(_ id: String) async throws -> LoadedKit {
+        try Task.checkCancellation()
+        return try await withCheckedThrowingContinuation { continuation in
+            loader.async {
+                continuation.resume(with: Result {
+                    // Take a local reference to avoid overlapping access to sampleCache.
+                    let catalog = try self.kitCatalog()
+                    return try self.sampleCache.load(id, fallback: SoundKitResolver.fallbackKitId) { id in
+                        do {
+                            return try self.decodeKit(id, catalog: catalog)
+                        } catch {
+                            Self.logger.error("Kit \(id, privacy: .public): \(error.localizedDescription, privacy: .public)")
+                            throw error
+                        }
+                    }
+                })
+            }
         }
     }
 
-    public func selectKit(_ id: String) throws {
-        try queue.sync {
-            guard prepared else { throw Failure.notPrepared }
-            guard kits[id] != nil else { throw Failure.unknownKit(id) }
-            selectedKit = id
-        }
+    func selectKit(_ kit: LoadedKit?) {
+        queue.sync { selectedKit = kit }
     }
 
     public func start() throws {
         try queue.sync {
-            guard prepared else { throw Failure.notPrepared }
+            guard prepared, clickOnly || selectedKit != nil else { throw Failure.notPrepared }
             do {
                 try activateSession()
                 if !engine.isRunning { try engine.start() }
@@ -302,6 +356,7 @@ public final class AudioEngine: @unchecked Sendable {
     public func stop() {
         queue.sync {
             wantsPlayback = false
+            schedulingFailed = false
             stopPlayers()
             calibrationClickPlayer.stop()
             engine.stop()
@@ -326,11 +381,30 @@ public final class AudioEngine: @unchecked Sendable {
         }
     }
 
-    /// `audibleHostTime` is an absolute mach host time when sound should reach the output.
-    /// Submit ahead of time; late notes are rejected instead of silently moving the beat.
-    public func schedule(padIndex: Int, velocity: Int, audibleHostTime: UInt64) throws {
-        try queue.sync {
-            try playOnQueue(padIndex: padIndex, velocity: velocity, audibleHostTime: audibleHostTime, isPattern: true)
+    struct ScheduledSound: Sendable {
+        let audibleHostTime: UInt64
+        let padIndex: Int?
+        var velocity = 0
+    }
+
+    /// Absolute mach times describe when sounds should reach the output.
+    /// Reject late sounds and subsequent batches until the run is stopped.
+    func schedule(_ sounds: [ScheduledSound], onError: @escaping @Sendable (Error) -> Void) {
+        queue.async {
+            guard !self.schedulingFailed else { return }
+            do {
+                for sound in sounds {
+                    if let pad = sound.padIndex {
+                        try self.playOnQueue(padIndex: pad, velocity: sound.velocity,
+                                             audibleHostTime: sound.audibleHostTime, isPattern: true)
+                    } else {
+                        try self.scheduleClick(audibleHostTime: sound.audibleHostTime)
+                    }
+                }
+            } catch {
+                self.schedulingFailed = true
+                onError(error)
+            }
         }
     }
 
@@ -445,13 +519,11 @@ public final class AudioEngine: @unchecked Sendable {
 
     /// Schedules one audible click. A continuous lesson owns the beat times so a
     /// tempo change does not cancel clicks already queued for the preceding pass.
-    public func scheduleClick(audibleHostTime: UInt64) throws {
-        try queue.sync {
-            guard engine.isRunning, let clickBuffer else { throw Failure.notRunning }
-            let time = try renderTime(for: audibleHostTime)
-            clickPlayer.scheduleBuffer(clickBuffer, at: time)
-            if !clickPlayer.isPlaying { clickPlayer.play() }
-        }
+    private func scheduleClick(audibleHostTime: UInt64) throws {
+        guard engine.isRunning, let clickBuffer else { throw Failure.notRunning }
+        let time = try renderTime(for: audibleHostTime)
+        clickPlayer.scheduleBuffer(clickBuffer, at: time)
+        if !clickPlayer.isPlaying { clickPlayer.play() }
     }
 
     private func playOnQueue(padIndex: Int, velocity: Int, audibleHostTime: UInt64?, isPattern: Bool) throws {
@@ -460,7 +532,7 @@ public final class AudioEngine: @unchecked Sendable {
         guard (0...127).contains(velocity) else { throw Failure.invalidVelocity(velocity) }
         guard velocity > 0 else { return }
         guard engine.isRunning else { throw Failure.notRunning }
-        guard let layers = kits[selectedKit]?[padVoices[padIndex]],
+        guard let layers = selectedKit?.voices[padVoices[padIndex]],
               let layer = layers.first(where: { velocity <= $0.maxVelocity }) else {
             throw Failure.invalidManifest("Missing voice \(padVoices[padIndex])")
         }
@@ -552,7 +624,7 @@ public final class AudioEngine: @unchecked Sendable {
         timer?.cancel()
         timer = nil
         metronome = nil
-        clickPlayer.stop()
+        if !clickOnly { clickPlayer.stop() }
     }
 
     private func stopPlayers() {
@@ -568,7 +640,11 @@ public final class AudioEngine: @unchecked Sendable {
         }
     }
 
-    private func loadKits() throws {
+    private func kitCatalog() throws -> KitCatalog {
+        if let catalog { return catalog }
+        guard padVoices.count == 16 else {
+            throw Failure.invalidManifest("Expected sixteen pad voice names")
+        }
         guard let manifest = bundle.url(forResource: "sample-kits", withExtension: "json", subdirectory: "Data")
             ?? bundle.url(forResource: "sample-kits", withExtension: "json") else {
             throw Failure.missingResource("sample-kits.json")
@@ -578,50 +654,103 @@ public final class AudioEngine: @unchecked Sendable {
             throw Failure.missingResource("samples.bundle")
         }
         let definitions = try JSONDecoder().decode([String: SampleKitDefinition].self, from: Data(contentsOf: manifest))
-        guard definitions["acoustic"] != nil else { throw Failure.invalidManifest("Missing default acoustic kit") }
-        var cache: [String: AVAudioPCMBuffer] = [:]
-        var loaded: [String: [String: [Layer]]] = [:]
+        guard definitions[SoundKitResolver.fallbackKitId] != nil else {
+            throw Failure.invalidManifest("Missing default acoustic kit")
+        }
+        var samples: [String: Result<[String: [SampleLayer]], Error>] = [:]
         for (id, definition) in definitions {
-            var voices: [String: [Layer]] = [:]
-            for voice in Set(padVoices) where definition.voices[voice] == nil {
+            let result = Result { try validateKit(id, definition: definition, root: root) }
+            if case .failure(let error) = result {
+                Self.logger.error("Kit \(id, privacy: .public): \(error.localizedDescription, privacy: .public)")
+            }
+            samples[id] = result
+        }
+        let models = definitions.map { SampleKit(kitId: $0.key, definition: $0.value) }
+            .sorted { $0.kitId < $1.kitId }
+        let catalog = KitCatalog(models: models, samples: samples)
+        self.catalog = catalog
+        return catalog
+    }
+
+    private func validateKit(
+        _ id: String, definition: SampleKitDefinition, root: URL
+    ) throws -> [String: [SampleLayer]] {
+        for voice in Set(padVoices) where definition.voices[voice] == nil {
+            throw Failure.invalidManifest("\(id): missing \(voice)")
+        }
+        var voices: [String: [SampleLayer]] = [:]
+        for (voice, entries) in definition.voices {
+            guard !entries.isEmpty else {
                 throw Failure.invalidManifest("\(id): missing \(voice)")
             }
-            for (voice, entries) in definition.voices {
-                guard !entries.isEmpty else {
-                    throw Failure.invalidManifest("\(id): missing \(voice)")
-                }
-                let sorted = entries.sorted { $0.maxVel < $1.maxVel }
-                guard sorted.last?.maxVel == 127,
-                      sorted.allSatisfy({ (1...127).contains($0.maxVel) }),
-                      Set(sorted.map(\.maxVel)).count == sorted.count else {
-                    throw Failure.invalidManifest("\(id)/\(voice): invalid velocity boundaries")
-                }
-                voices[voice] = try sorted.map { entry in
-                    let paths = entry.variants.flatMap { $0.isEmpty ? nil : $0 } ?? [entry.url]
-                    let buffers = try paths.map { path in
-                        if let cached = cache[path] { return cached }
-                        let parts = path.split(separator: "/").map(String.init)
-                        guard parts.count == 3, parts[0] == "samples",
-                              !parts.contains(".."), !parts.contains(".") else {
-                            throw Failure.invalidManifest("Invalid sample path: \(path)")
-                        }
-                        let url = root.appendingPathComponent(parts[1]).appendingPathComponent(parts[2])
-                        guard FileManager.default.fileExists(atPath: url.path) else {
-                            throw Failure.missingResource(path)
-                        }
-                        let buffer = try decodeSample(url)
-                        cache[path] = buffer
-                        return buffer
-                    }
-                    return Layer(maxVelocity: entry.maxVel, buffers: buffers)
-                }
+            let sorted = entries.sorted { $0.maxVel < $1.maxVel }
+            guard sorted.last?.maxVel == 127,
+                  sorted.allSatisfy({ (1...127).contains($0.maxVel) }),
+                  Set(sorted.map(\.maxVel)).count == sorted.count else {
+                throw Failure.invalidManifest("\(id)/\(voice): invalid velocity boundaries")
             }
-            loaded[id] = voices
+            voices[voice] = try sorted.map { entry in
+                let paths = entry.variants.flatMap { $0.isEmpty ? nil : $0 } ?? [entry.url]
+                let urls = try paths.map { path in
+                    let parts = path.split(separator: "/")
+                    guard parts.count == 3, parts[0] == "samples",
+                          !parts.contains(".."), !parts.contains(".") else {
+                        throw Failure.invalidManifest("Invalid sample path: \(path)")
+                    }
+                    let url = root.appendingPathComponent(String(parts[1])).appendingPathComponent(String(parts[2]))
+                    guard FileManager.default.fileExists(atPath: url.path) else {
+                        throw Failure.missingResource(path)
+                    }
+                    return url
+                }
+                return SampleLayer(maxVelocity: entry.maxVel, urls: urls)
+            }
         }
-        kits = loaded
-        kitModels = definitions.map { SampleKit(kitId: $0.key, definition: $0.value) }
-            .sorted { $0.kitId < $1.kitId }
+        return voices
     }
+
+    private func decodeKit(_ id: String, catalog: KitCatalog) throws -> LoadedKit {
+        #if DEBUG
+        let started = DispatchTime.now()
+        #endif
+        guard let samples = catalog.samples[id] else { throw Failure.unknownKit(id) }
+        var buffersByURL: [URL: AVAudioPCMBuffer] = [:]
+        let voices = try samples.get().mapValues { layers in
+            try layers.map { layer in
+                let buffers = try layer.urls.map { url in
+                    if let buffer = buffersByURL[url] { return buffer }
+                    let buffer = try decodeSample(url)
+                    buffersByURL[url] = buffer
+                    return buffer
+                }
+                return Layer(maxVelocity: layer.maxVelocity, buffers: buffers)
+            }
+        }
+        #if DEBUG
+        Self.logDuration("kit \(id) loaded", since: started)
+        #endif
+        return LoadedKit(voices: voices)
+    }
+
+    #if DEBUG
+    static func logDuration(_ event: String, since started: DispatchTime) {
+        let elapsed = Double(DispatchTime.now().uptimeNanoseconds - started.uptimeNanoseconds) / 1_000_000
+        print("[Audio] \(event) \(String(format: "%.1f", elapsed)) ms")
+    }
+
+    static func logFootprint(lessonID: Int) {
+        var info = task_vm_info_data_t()
+        var count = mach_msg_type_number_t(MemoryLayout<task_vm_info_data_t>.size / MemoryLayout<integer_t>.size)
+        let status = withUnsafeMutablePointer(to: &info) { pointer in
+            pointer.withMemoryRebound(to: integer_t.self, capacity: Int(count)) {
+                task_info(mach_task_self_, task_flavor_t(TASK_VM_INFO), $0, &count)
+            }
+        }
+        guard status == KERN_SUCCESS else { return }
+        let mib = Double(info.phys_footprint) / 1_048_576
+        print("[Audio] lesson \(lessonID) footprint \(String(format: "%.1f", mib)) MiB")
+    }
+    #endif
 
     private func decodeSample(_ url: URL) throws -> AVAudioPCMBuffer {
         let file = try AVAudioFile(forReading: url)

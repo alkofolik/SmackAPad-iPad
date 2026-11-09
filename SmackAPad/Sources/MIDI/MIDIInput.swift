@@ -105,7 +105,9 @@ public final class MIDIInput {
             }
         }
     }
-    public private(set) var learningPadCount: Int?
+    public private(set) var learningPadCount: Int? {
+        didSet { updateSoundRoute() }
+    }
     public private(set) var learnedNotes: [Int] = []
     public private(set) var learningNotice: String?
     public private(set) var lesson: Lesson?
@@ -115,7 +117,9 @@ public final class MIDIInput {
     /// Called for both presses and releases; no calibration or scoring correction is applied here.
     @ObservationIgnored public var onPadEvent: ((PadInputEvent) -> Void)?
     /// Calibration listens before profile mapping so any controller pad can tap the pulse.
-    @ObservationIgnored public var onNoteEvent: ((MIDINoteEvent) -> Void)?
+    @ObservationIgnored public var onNoteEvent: ((MIDINoteEvent) -> Void)? {
+        didSet { updateSoundRoute() }
+    }
     @ObservationIgnored var onPracticeAction: ((MIDIPracticeAction) -> Void)?
     @ObservationIgnored var stoppedPracticeTempo: (() -> Int?)?
     @ObservationIgnored var onPracticeTempo: ((Int) -> Void)?
@@ -129,6 +133,41 @@ public final class MIDIInput {
     @ObservationIgnored private var generation = UUID()
     @ObservationIgnored private var keyboardConnectObserver: (any NSObjectProtocol)?
     @ObservationIgnored private var keyboardDisconnectObserver: (any NSObjectProtocol)?
+    @ObservationIgnored private let liveSound = LiveSound()
+    @ObservationIgnored private var soundEngine: AudioEngine?
+    @ObservationIgnored private var observingSoundSettings = false
+
+    /// The MIDI callback only reads a routing snapshot. Observable input state,
+    /// controller actions and scoring still belong to the main actor.
+    private final class LiveSound: @unchecked Sendable {
+        struct Route {
+            let generation: UUID
+            let sources: Set<String>
+            let padsByNote: [Int: Int]
+            let controls: Set<MIDIControlSignal>
+            let audio: AudioEngine
+        }
+
+        private let lock = NSLock()
+        private var route: Route?
+
+        func update(_ route: Route?) {
+            lock.lock()
+            self.route = route
+            lock.unlock()
+        }
+
+        func play(_ events: [InputEvent], from deviceID: String, generation: UUID) {
+            lock.lock()
+            defer { lock.unlock() }
+            guard let route, route.generation == generation, route.sources.contains(deviceID) else { return }
+            for case .note(let note) in events where note.isNoteOn {
+                let signal = MIDIControlSignal(kind: .note, channel: note.channel, number: note.note)
+                guard !route.controls.contains(signal), let pad = route.padsByNote[note.note] else { continue }
+                route.audio.play(padIndex: pad, velocity: note.velocity)
+            }
+        }
+    }
 
     public init(settings: SettingsManager) {
         self.settings = settings
@@ -138,15 +177,59 @@ public final class MIDIInput {
     public var isLearningControl: Bool { controlLearningTarget != nil }
     public var learningComplete: Bool { learnedNotes.count == learningPadCount }
     public var activeProfile: ControllerProfile { settings.activeProfile() }
-    public var padIndices: [Int]? {
-        guard activeProfile.isEightPad else { return Array(0..<16) }
+    public var padIndices: [Int]? { padIndices(for: activeProfile) }
+
+    private func padIndices(for profile: ControllerProfile) -> [Int]? {
+        guard profile.isEightPad else { return Array(0..<16) }
         if let lesson { return EightPadLayout.slots(for: lesson) }
         return EightPadLayout.baseSlots
+    }
+
+    func setPracticeSound(_ audio: AudioEngine?) {
+        soundEngine = audio
+        updateSoundRoute()
+        observeSoundSettings()
+    }
+
+    private func observeSoundSettings() {
+        guard soundEngine != nil, !observingSoundSettings else { return }
+        observingSoundSettings = true
+        withObservationTracking {
+            _ = settings.midiControls
+            _ = settings.activeProfile()
+        } onChange: { [weak self] in
+            Task { @MainActor [weak self] in
+                guard let self else { return }
+                self.observingSoundSettings = false
+                self.updateSoundRoute()
+                self.observeSoundSettings()
+            }
+        }
+    }
+
+    private func updateSoundRoute() {
+        guard let soundEngine, !isLearning, !isLearningControl, onNoteEvent == nil else {
+            liveSound.update(nil)
+            return
+        }
+        let profile = activeProfile
+        guard let pads = padIndices(for: profile) else {
+            liveSound.update(nil)
+            return
+        }
+        let sources = connectedSources.map(\.id).filter { selectedSourceID == nil || $0 == selectedSourceID }
+        let padsByNote = profile.noteMap.compactMapValues { pads.indices.contains($0) ? pads[$0] : nil }
+        let config = settings.midiControls
+        var controls = Set(MIDIPracticeAction.allCases.compactMap { config.buttons[$0.rawValue]?.signal })
+        if let signal = config.knob.signal { controls.insert(signal) }
+        liveSound.update(.init(generation: generation, sources: Set(sources),
+                               padsByNote: padsByNote, controls: controls, audio: soundEngine))
     }
 
     public func setLesson(_ lesson: Lesson?) {
         releaseHeldPads()
         self.lesson = lesson
+        updateSoundRoute()
     }
 
     public func profileDidChange() {
@@ -180,6 +263,7 @@ public final class MIDIInput {
         client = 0
         connectedSources = []
         networkSourceID = nil
+        updateSoundRoute()
     }
 
     private func refreshSources() {
@@ -210,10 +294,11 @@ public final class MIDIInput {
                 // CoreMIDI translates MIDI 1.0/2.0 sources into MIDI 1.0 UMP packets.
                 let status = MIDIInputPortCreateWithProtocol(
                     client, name as CFString, ._1_0, &port
-                ) { [weak self] eventList, _ in
+                ) { [weak self, liveSound] eventList, _ in
                     let receipt = mach_absolute_time()
                     let events = Self.inputEvents(in: eventList, receipt: receipt, deviceID: deviceID)
                     guard !events.isEmpty else { return }
+                    liveSound.play(events, from: deviceID, generation: session)
                     Task { @MainActor [weak self] in
                         guard let self, self.generation == session,
                               self.sources.contains(where: { $0.id == deviceID }) else { return }
@@ -243,6 +328,7 @@ public final class MIDIInput {
         if let selectedSourceID, !sources.contains(where: { $0.id == selectedSourceID }) {
             self.selectedSourceID = nil
         }
+        updateSoundRoute()
     }
 
     private enum InputEvent: Sendable {
@@ -359,12 +445,14 @@ public final class MIDIInput {
         releaseHeldPads()
         cancelLearning()
         controlLearningTarget = target
+        updateSoundRoute()
     }
 
     public func cancelControlLearning() {
         controlLearningTarget = nil
         pendingControlSignal = nil
         controlLearningNotice = nil
+        updateSoundRoute()
     }
 
     private func learnControl(_ message: MIDIControlMessage) {
@@ -519,6 +607,9 @@ public final class MIDIInput {
     }
 
     private func emit(_ event: PadInputEvent) {
+        if event.isNoteOn, onNoteEvent == nil, event.deviceID == "touch" || event.deviceID == "keyboard" {
+            soundEngine?.play(padIndex: event.padIndex, velocity: event.velocity)
+        }
         pressedPadIndices = Set(heldPads.values)
         lastPad = event
         onPadEvent?(event)

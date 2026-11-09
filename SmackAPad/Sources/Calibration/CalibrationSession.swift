@@ -20,7 +20,7 @@ final class CalibrationSession {
     private(set) var failure: CalibrationFailure?
     private(set) var audioError: String?
 
-    @ObservationIgnored private let audio = AudioEngine()
+    @ObservationIgnored private let audio = AudioEngine.calibration()
     @ObservationIgnored private let settings: SettingsManager
     @ObservationIgnored private let midi: MIDIInput
     @ObservationIgnored private var measurement = CalibrationMeasurement()
@@ -70,8 +70,7 @@ final class CalibrationSession {
         task = Task { [weak self] in
             guard let self else { return }
             do {
-                let engine = audio
-                try await Task.detached(priority: .userInitiated) { try engine.prepare() }.value
+                _ = try await audio.prepare()
                 guard !Task.isCancelled, runID == id, attached else { return }
                 try audio.start()
                 let readyDeadline = AVAudioTime.seconds(forHostTime: mach_absolute_time()) + 1.5

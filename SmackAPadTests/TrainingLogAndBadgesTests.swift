@@ -83,7 +83,7 @@ final class TrainingLogAndBadgesTests: XCTestCase {
                 timestamp: AVAudioTime.hostTime(forSeconds: time), deviceID: "test"))
         }
         time = startFirst + 8.01 // 4 bars at 120 BPM = 8s
-        session.tick()
+        await session.tick()?.value
 
         XCTAssertEqual(session.lesson.id, second.id)
 

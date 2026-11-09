@@ -75,6 +75,7 @@ struct MixLessonResult: Identifiable {
 @MainActor
 @Observable
 final class PracticeSession {
+    private static weak var audioOwner: PracticeSession?
     private(set) var lesson: Lesson
     let mixLessons: [Lesson]
     var isMix: Bool { mixLessons.count >= 2 }
@@ -153,7 +154,12 @@ final class PracticeSession {
     @ObservationIgnored private let midi: MIDIInput
     @ObservationIgnored private let clock: () -> Double
     @ObservationIgnored private let currentDay: () -> String
-    @ObservationIgnored private let audio = AudioEngine()
+    @ObservationIgnored private let audio = AudioEngine.practice
+    @ObservationIgnored private var kitTask: Task<Void, Never>?
+    @ObservationIgnored private var selectedKitRequest: String?
+    @ObservationIgnored private var suspended = false
+    @ObservationIgnored private var audioStarted = false
+    @ObservationIgnored private var runID = UUID()
     @ObservationIgnored private var task: Task<Void, Never>?
     @ObservationIgnored private var passes: [Pass] = []
     @ObservationIgnored private var countInEvents: [Double] = []
@@ -266,9 +272,6 @@ final class PracticeSession {
         loopEndBar = activeLesson.bars - 1
         let saved = initialBpm ?? progress.progress(for: activeLesson.id)?.currentBpm ?? activeLesson.startBpm
         bpm = PracticeTempo.clamp(mixLessons.count >= 2 ? activeLesson.targetBpm : (saved > 0 ? saved : activeLesson.startBpm))
-        audio.setMetronomeVolume(Float(settings.metronomeVolume) / 100)
-        audio.setPadsVolume(Float(settings.padsVolume) / 100)
-        audio.setPatternVolume(Float(settings.patternVolume) / 100)
     }
 
     public var isDueReview: Bool {
@@ -327,11 +330,14 @@ final class PracticeSession {
     }
 
     var hits: [LessonHit] { lesson.hits(forPadCount: midi.activeProfile.padCount) }
-    var kits: [SampleKit] { audio.availableKits }
+    private(set) var kits: [SampleKit] = []
     var availableKitsDict: [String: SampleKit] {
         Dictionary(uniqueKeysWithValues: kits.map { ($0.kitId, $0) })
     }
     var resolvedKitId: String {
+        resolveKit(for: lesson)
+    }
+    private func resolveKit(for lesson: Lesson) -> String {
         SoundKitResolver.resolveKitId(for: lesson, settings: settings, kits: availableKitsDict)
     }
     var automaticKitPickerLabel: String {
@@ -340,19 +346,22 @@ final class PracticeSession {
     }
 
     func applyResolvedKit() {
-        guard ready, !running else { return }
-        try? audio.selectKit(resolvedKitId)
+        guard active, prepared, !suspended, !running else { return }
+        loadKit(resolvedKitId) { try $0.startAudio() }
     }
 
     func setMetronomeVolume(_ percent: Int) {
+        guard active else { return }
         audio.setMetronomeVolume(Float(percent) / 100)
     }
 
     func setPadsVolume(_ percent: Int) {
+        guard active else { return }
         audio.setPadsVolume(Float(percent) / 100)
     }
 
     func setPatternVolume(_ percent: Int) {
+        guard active else { return }
         audio.setPatternVolume(Float(percent) / 100)
     }
 
@@ -508,7 +517,17 @@ final class PracticeSession {
     }
 
     func prepare() async {
+        guard !active else { return }
+        Self.audioOwner?.close()
+        Self.audioOwner = self
         active = true
+        #if DEBUG
+        let started = DispatchTime.now()
+        defer {
+            AudioEngine.logDuration("prepare", since: started)
+            if ready { AudioEngine.logFootprint(lessonID: lesson.id) }
+        }
+        #endif
         midi.setLesson(lesson)
         midi.onPadEvent = { [weak self] event in self?.receive(event) }
         midi.onPracticeAction = { [weak self] action in self?.performControllerAction(action) }
@@ -521,15 +540,72 @@ final class PracticeSession {
             self.setTempo(bpm)
         }
         do {
-            let engine = audio
-            try await Task.detached(priority: .userInitiated) { try engine.prepare() }.value
-            guard !Task.isCancelled, active else { audio.stop(); return }
+            let catalog = try await audio.prepare()
+            guard !Task.isCancelled, active else { return }
+            kits = catalog
             prepared = true
-            applyVolumes()
-            try audio.selectKit(resolvedKitId)
-            try audio.start()
-            ready = true
-        } catch { errorMessage = error.localizedDescription }
+            guard !suspended else { return }
+            let task = loadKit(resolvedKitId) { try $0.startAudio() }
+            await withTaskCancellationHandler {
+                await task?.value
+            } onCancel: {
+                task?.cancel()
+            }
+        } catch {
+            if active, !Task.isCancelled { errorMessage = error.localizedDescription }
+        }
+    }
+
+    @discardableResult
+    private func loadKit(
+        _ id: String, onReady: @escaping (PracticeSession) throws -> Void
+    ) -> Task<Void, Never>? {
+        kitTask?.cancel()
+        kitTask = nil
+        if selectedKitRequest == id {
+            finishKitChange(onReady)
+            return nil
+        }
+        if running { midi.setPracticeSound(nil) }
+        else { setReady(false) }
+        let task = Task { [weak self, audio] in
+            do {
+                let kit = try await audio.loadKit(id)
+                guard let self, !Task.isCancelled else { return }
+                audio.selectKit(kit)
+                self.selectedKitRequest = id
+                self.kitTask = nil
+                self.finishKitChange(onReady)
+            } catch {
+                guard let self, !Task.isCancelled else { return }
+                self.kitTask = nil
+                self.failKitChange(error)
+            }
+        }
+        kitTask = task
+        return task
+    }
+
+    private func finishKitChange(_ onReady: (PracticeSession) throws -> Void) {
+        do { try onReady(self) }
+        catch { failKitChange(error) }
+    }
+
+    private func failKitChange(_ error: Error) {
+        errorMessage = error.localizedDescription
+        if running { stop() }
+    }
+
+    private func setReady(_ ready: Bool) {
+        self.ready = ready
+        midi.setPracticeSound(ready ? audio : nil)
+    }
+
+    private func startAudio() throws {
+        applyVolumes()
+        try audio.start()
+        audioStarted = true
+        setReady(true)
     }
 
     func setTempo(_ tempo: Int) {
@@ -551,6 +627,11 @@ final class PracticeSession {
 
     func start() {
         guard ready, !running, available else { return }
+        let kit = resolveKit(for: mixLessons.first ?? lesson)
+        loadKit(kit) { $0.beginRun() }
+    }
+
+    private func beginRun() {
         do {
             if isMix {
                 mixIndex = 0
@@ -570,9 +651,7 @@ final class PracticeSession {
                                     unmeasuredBars: $0.bars * max(1, Int((4.0 / Double($0.bars)).rounded())))
                 }
             }
-            applyVolumes()
-            try audio.selectKit(resolvedKitId)
-            try audio.start()
+            try startAudio()
             audio.logTiming("practice-start")
             errorMessage = nil
             summary = nil
@@ -630,19 +709,22 @@ final class PracticeSession {
                 settings.lastLessonID = lesson.id
             }
             midi.resetControlPickup()
+            runID = UUID()
             running = true
             countdown = 4
             task = Task { [weak self] in
                 while !Task.isCancelled {
                     guard let self, self.running else { return }
-                    self.tick()
+                    await self.tick()?.value
                     try? await Task.sleep(for: .milliseconds(10))
                 }
             }
         } catch { errorMessage = error.localizedDescription }
     }
 
-    func stop() {
+    func stop() { stop(restarting: false) }
+
+    private func stop(restarting: Bool) {
         guard running else { return }
         // Credit complete passes only; stopping halfway cannot earn a star.
         // An automatic star or review stop already credited the winning pass. Discard everything
@@ -664,8 +746,7 @@ final class PracticeSession {
         countdown = nil
         task?.cancel(); task = nil
         passes = []; countInEvents = []
-        audio.stop()
-        if active { resume() }
+        stopAudio()
         if afterMe {
             summary = RunSummary(score: lastResult?.score ?? 0, bpm: bpm, passes: completedPasses,
                                  passed: false, mastery: false, memory: false, runs: runResults)
@@ -688,9 +769,19 @@ final class PracticeSession {
             try? progress.save()
         }
         if !afterMe { evaluateBadges() }
+        if active, !suspended {
+            if restarting {
+                loadKit(resolveKit(for: mixLessons.first ?? lesson)) { $0.beginRun() }
+            } else {
+                resume()
+            }
+        }
     }
 
-    func restart() { stop(); start() }
+    func restart() {
+        if running { stop(restarting: true) }
+        else { start() }
+    }
 
     /// One store write per run instead of one per pass.
     private func flushPendingProgress() {
@@ -709,25 +800,38 @@ final class PracticeSession {
     func dismissSummary() { summary = nil }
 
     func suspend() {
+        guard active else { return }
+        suspended = true
         midi.resetControlPickup()
-        stop()
-        audio.stop()
-        ready = false
+        if running { stop() }
+        else { stopAudio() }
+    }
+
+    private func stopAudio() {
+        kitTask?.cancel()
+        kitTask = nil
+        setReady(false)
+        if audioStarted {
+            audio.stop()
+            audioStarted = false
+        }
     }
 
     func resume() {
-        guard active, prepared else { return }
-        do {
-            applyVolumes()
-            try audio.start()
-            ready = true
-        }
-        catch { errorMessage = error.localizedDescription }
+        guard active else { return }
+        suspended = false
+        guard prepared, !running, kitTask == nil else { return }
+        loadKit(resolvedKitId) { try $0.startAudio() }
     }
 
     func close() {
-        active = false
+        guard active else { return }
         suspend()
+        active = false
+        Self.audioOwner = nil
+        if selectedKitRequest != nil { audio.selectKit(nil) }
+        selectedKitRequest = nil
+        prepared = false
         midi.onPracticeAction = nil
         midi.stoppedPracticeTempo = nil
         midi.onPracticeTempo = nil
@@ -745,10 +849,10 @@ final class PracticeSession {
         if isMix { mixBarVerdicts[(currentRepetition - 1) * lesson.bars + bar] = verdict }
     }
 
-    /// Flush the old lesson before swapping it. Only the pattern schedule changes;
-    /// the prepared audio engine and MIDI callbacks remain owned by this session.
-    private func advanceMix() {
+    /// Flush the old round before loading the kit and scheduling the next one.
+    private func advanceMix() -> Task<Void, Never>? {
         mixNeedsAdvance = false
+        midi.setPracticeSound(nil)
         mixIndex = (mixIndex + 1) % mixLessons.count
         lesson = mixLessons[mixIndex]
         bpm = PracticeTempo.clamp(lesson.targetBpm)
@@ -783,21 +887,21 @@ final class PracticeSession {
         completedMatches = 0
         completedExpected = 0
         completedExtras = 0
-        do {
-            try audio.selectKit(resolvedKitId)
-            // Anchor AFTER kit/layout work to native host time. No events from the
-            // next lesson were queued early; four clicks use the new goal tempo.
-            let first = now + 0.6
-            let beat = 60 / Double(bpm)
-            countInEvents = (0..<4).map { first + Double($0) * beat }
-            displayStart = first + 4 * beat
-            passes = [makePass(number: passNumber, start: displayStart, bpm: bpm)]
-            countdown = 4
-            BluetoothTimingDiagnostics.shared.startRun(lessonId: lesson.id, bpm: bpm)
-        } catch {
-            errorMessage = error.localizedDescription
-            stop()
-        }
+        passes = []
+        countInEvents = []
+        countdown = 4
+        return loadKit(resolvedKitId) { $0.beginMixRound() }
+    }
+
+    private func beginMixRound() {
+        // Keep the existing lead time and count-in after the new kit is ready.
+        let first = now + 0.6
+        let beat = 60 / Double(bpm)
+        countInEvents = (0..<4).map { first + Double($0) * beat }
+        displayStart = first + 4 * beat
+        passes = [makePass(number: passNumber, start: displayStart, bpm: bpm)]
+        BluetoothTimingDiagnostics.shared.startRun(lessonId: lesson.id, bpm: bpm)
+        setReady(true)
     }
 
     private var now: Double { clock() }
@@ -810,16 +914,17 @@ final class PracticeSession {
     }
 
     /// Internal so session tests can advance a supplied host clock without waiting.
-    func tick() {
+    @discardableResult
+    func tick() -> Task<Void, Never>? {
+        if let kitTask { return kitTask }
         let time = now
         finishCompleted(at: time)
         if isMix, mixNeedsAdvance {
-            advanceMix()
-            return
+            return advanceMix()
         }
         if stopAfterPass {
             stop()
-            return
+            return nil
         }
         let horizon = time + 0.5
         // Decide the next BPM from the run's result as known so far. Notes whose
@@ -878,25 +983,30 @@ final class PracticeSession {
             let next = min(4, max(1, Int(ceil((first.start - time) * Double(bpm) / 60))))
             if countdown != next { countdown = next }
         }
-        do {
-            while let click = countInEvents.first, click <= horizon {
-                try audio.scheduleClick(audibleHostTime: AVAudioTime.hostTime(forSeconds: click))
-                countInEvents.removeFirst()
+        var sounds: [AudioEngine.ScheduledSound] = []
+        while let click = countInEvents.first, click <= horizon {
+            sounds.append(.init(audibleHostTime: AVAudioTime.hostTime(forSeconds: click), padIndex: nil))
+            countInEvents.removeFirst()
+        }
+        for pass in passes {
+            while let sound = pass.sounds.first, sound.time <= horizon {
+                sounds.append(.init(audibleHostTime: AVAudioTime.hostTime(forSeconds: sound.time),
+                                    padIndex: sound.pad, velocity: sound.velocity))
+                pass.sounds.removeFirst()
             }
-            for pass in passes {
-                while let sound = pass.sounds.first, sound.time <= horizon {
-                    let timestamp = AVAudioTime.hostTime(forSeconds: sound.time)
-                    if let pad = sound.pad {
-                        try audio.schedule(padIndex: pad, velocity: sound.velocity, audibleHostTime: timestamp)
-                    } else { try audio.scheduleClick(audibleHostTime: timestamp) }
-                    pass.sounds.removeFirst()
+        }
+        if !sounds.isEmpty {
+            let id = runID
+            audio.schedule(sounds) { [weak self] error in
+                Task { @MainActor [weak self] in
+                    guard let self, self.running, self.runID == id else { return }
+                    self.errorMessage = error.localizedDescription
+                    self.stop()
                 }
             }
-        } catch {
-            errorMessage = error.localizedDescription
-            stop()
         }
         passes.removeAll { $0.finalTime < time && $0.scorer == nil && $0.number < passNumber }
+        return nil
     }
 
     private func finishCompleted(at time: Double) {
@@ -1087,8 +1197,7 @@ final class PracticeSession {
     }
 
     private func receive(_ event: PadInputEvent) {
-        guard event.isNoteOn, ready else { return }
-        audio.play(padIndex: event.padIndex, velocity: event.velocity)
+        guard event.isNoteOn, ready, kitTask == nil else { return }
         guard running else {
             padFlashes[event.padIndex] = PadFlash(mark: nil, date: Date())
             return
