@@ -15,7 +15,7 @@ Zdroj: `docs/reviews/ai-panel/results/synthesis.md` (čísla v závorkách = ř�
 - [ ] **T154 Kontroléry a kontrola Applem** (#11, #14). Seznam otestovaných, přejmenovat „NI Maschine“, nápověda bez kontroléru, text Bluetooth, poznámky pro recenzenta (navázat na ticket 83).
 
 ## Dávka 3 – zvuk a stabilita
-- [ ] **T155 Jeden zvukový engine, načíst jen vybranou sadu** (#13, souvisí s ticketem 121), pak zvuk padu mimo hlavní vlákno – měřit na starém iPadu.
+- [x] **T155 Jeden zvukový engine, načíst jen vybranou sadu** (#13, souvisí s ticketem 121), pak zvuk padu mimo hlavní vlákno – měřit na starém iPadu.
 - [ ] **T156 Změna výstupu zvuku během hry** (#12) a opožděný zvuk neukončí běh (#21).
 
 ## Dávka 4 – první spuštění a čitelnost

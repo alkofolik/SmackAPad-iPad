@@ -42,3 +42,16 @@ Add debug-only log lines (like ticket 121): `[Audio] prepare … ms`, `[Audio] k
 ## Done rule
 
 Stop after a successful build and passing tests. Commit (AGENTS.md); Jakub pushes and tests on the iPad. Ticket 156 (route change during play) builds on this and starts only after this one is tested.
+
+## Test result (Jakub, iPad A16, 2026-11-09)
+
+Debug log, one sound kit decoded per lesson:
+
+| Lesson | Kit | Kit load | `prepare` total | App footprint |
+|---|---|---|---|---|
+| 10001 | house | 9.6 ms | 240.4 ms | 128.4 MiB |
+| 10003 | rock | 70.5 ms | 161.6 ms | 162.5 MiB |
+| 10004 | 808 | 10.3 ms | 110.2 ms | 132.8 MiB |
+| 10005 | 808 (again) | none (cached) | 104.7 ms | 137.4 MiB |
+
+Previously estimated ~290 MB for samples alone (all 8 kits decoded per lesson). Jakub checked sound, pad hits, calibration and sound-set switching on the iPad: all fine. Ticket closed.
