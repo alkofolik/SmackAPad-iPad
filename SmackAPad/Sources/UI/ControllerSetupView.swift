@@ -6,7 +6,7 @@
 //  button/knob mapping, and input monitor.
 //
 
-import CoreAudioKit
+import CoreBluetooth
 import SwiftUI
 
 @MainActor
@@ -22,6 +22,7 @@ public struct ControllerSetupView: View {
     @State private var profileToDelete: ControllerProfile?
     @State private var showingDeleteAlert = false
     @State private var showingControlPadWarning = false
+    @State private var bluetoothAccessMessage: String?
 
     public init(showsDoneButton: Bool = false, onDismiss: (() -> Void)? = nil) {
         self.showsDoneButton = showsDoneButton
@@ -82,13 +83,20 @@ public struct ControllerSetupView: View {
                     }
 
                     if midi.sources.isEmpty {
-                        Text(settings.localized("Connect a USB controller or pair a Bluetooth MIDI controller."))
+                        Text(settings.localized("Use on-screen pads in portrait (16-pad profile)."))
                             .font(Theme.meta)
                             .foregroundStyle(Theme.secondary)
                     }
 
                     Button {
-                        BluetoothMIDIPresenter.present()
+                        switch CBManager.authorization {
+                        case .denied:
+                            bluetoothAccessMessage = "Allow Bluetooth access in iPad Settings to pair a controller."
+                        case .restricted:
+                            bluetoothAccessMessage = "Bluetooth access is restricted on this iPad."
+                        default:
+                            BluetoothMIDIPresenter.present()
+                        }
                     } label: {
                         Text(settings.localized("Connect Bluetooth MIDI"))
                             .font(Theme.control)
@@ -162,7 +170,7 @@ public struct ControllerSetupView: View {
                 } header: {
                     SectionHeader(title: settings.localized("Controller profiles"))
                 } footer: {
-                    Text(settings.localized("Akai and Maschine presets use notes 36–51 starting from the bottom left. Use MIDI learn for other banks or mappings."))
+                    Text(settings.localized("The 16-pad preset maps notes 36–51 from the bottom-left pad. Use MIDI learn for other banks."))
                         .font(Theme.meta)
                         .foregroundStyle(Theme.secondary)
                 }
@@ -236,6 +244,14 @@ public struct ControllerSetupView: View {
                 .environment(settings)
                 .environment(midi)
         }
+        .alert(settings.localized("Bluetooth MIDI"), isPresented: Binding(
+            get: { bluetoothAccessMessage != nil },
+            set: { if !$0 { bluetoothAccessMessage = nil } }
+        ), presenting: bluetoothAccessMessage) { _ in
+            Button(settings.localized("Done"), role: .cancel) {}
+        } message: { message in
+            Text(settings.localized(message))
+        }
         .sheet(isPresented: $showingDeleteAlert) {
             if let profile = profileToDelete {
                 AppConfirmation(title: settings.localized("Delete profile \"%@\"?", profile.profileName),
@@ -284,7 +300,7 @@ private struct ProfileRow: View {
     var body: some View {
         ListRow(symbol: isActive ? "checkmark.circle.fill" : "circle",
                 stateTitle: settings.localized(isActive ? "Active" : "Preset"),
-                title: profile.profileName, action: onSelect) {
+                title: settings.displayName(for: profile), action: onSelect) {
             Text("\(settings.localized(profile.padCount == 8 ? "8 pads" : "16 pads")) · \(settings.localized(isCustom ? "Custom" : "Preset"))")
         } trailing: {
             if isActive {

@@ -7,14 +7,16 @@
 "Star %lld earned" = "Získána %lld. hvězda";
 "Input" = "Vstup";
 "All connected controllers" = "Všechny připojené kontroléry";
-"Connect a USB controller or pair a Bluetooth MIDI controller." = "Připoj USB kontrolér nebo spáruj Bluetooth MIDI kontrolér.";
+"Use on-screen pads in portrait (16-pad profile)." = "Na výšku můžeš hrát na dotykové pady (profil se 16 pady).";
+"16 pads, notes 36–51" = "16 padů, noty 36–51";
+"Allow Bluetooth access in iPad Settings to pair a controller." = "Pro spárování kontroléru povol přístup k Bluetooth v nastavení iPadu.";
+"Bluetooth access is restricted on this iPad." = "Přístup k Bluetooth je na tomto iPadu omezený.";
 "Connect Bluetooth MIDI" = "Připojit Bluetooth MIDI";
 "Reconnect MIDI" = "Znovu připojit MIDI";
 "Profile" = "Profil";
 "Learn a new profile" = "Naučit nový profil";
 "Delete selected profile" = "Smazat vybraný profil";
 "Controller profile" = "Profil kontroléru";
-"Akai and Maschine presets use notes 36–51, starting at the bottom left. Use MIDI learn for other banks or mappings." = "Profily Akai a Maschine používají noty 36–51 od levého dolního padu. Pro jiné banky nebo přiřazení použij učení MIDI.";
 "Input monitor" = "Kontrola vstupu";
 "Received MIDI hits" = "Přijaté MIDI údery";
 "Timestamp fallbacks" = "Nahrazené časové značky";
@@ -193,7 +195,7 @@
 "Small pad layout" = "Malá mapa padů";
 "Practice screen" = "Obrazovka cvičení";
 "Shows a small pad layout in the lesson that lights up the pads you hit." = "Zobrazí v lekci malé rozložení padů, na kterém se rozsvěcují stisknuté pady.";
-"Akai and Maschine presets use notes 36–51 starting from the bottom left. Use MIDI learn for other banks or mappings." = "Profily Akai a Maschine používají noty 36–51 (od levého dolního padu). Pro jiné kontroléry nebo banky použij MIDI learn.";
+"The 16-pad preset maps notes 36–51 from the bottom-left pad. Use MIDI learn for other banks." = "Profil se 16 pady mapuje noty 36–51 od levého dolního padu. Pro jiné banky použij učení MIDI.";
 "Choose Czech or English. Your lesson progress and controller mappings remain preserved." = "Zvol češtinu nebo angličtinu. Postup v lekcích i nastavení kontroléru zůstanou zachovány.";
 "Touch pads send the same pad events as MIDI." = "Dotykové pady posílají stejné události jako MIDI.";
 "Custom" = "Vlastní";

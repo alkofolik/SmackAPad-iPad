@@ -293,19 +293,8 @@ extension ControllerProfile {
         padCount: 16
     )
 
-    /// Requires a chromatic bank (36..51); controller programs may use different notes.
-    public static let akaiMPD218 = ControllerProfile(
-        profileName: "Akai MPD (36–51)", noteMap: standard16.noteMap, padCount: 16
-    )
-
-    /// Maschine in MIDI mode with a chromatic bank starting at MIDI note 36.
-    public static let maschine = ControllerProfile(
-        profileName: "NI Maschine (36–51)", noteMap: standard16.noteMap, padCount: 16
-    )
-
-    /// Hardware presets plus the generic 8-pad profile. Keep standard16 for saved-setting compatibility.
-    public static let presets: [ControllerProfile] = [.akaiMPD218, .maschine, .standard8]
-    public static let builtInProfiles: [ControllerProfile] = [.standard16] + presets
+    public static let presets: [ControllerProfile] = [.standard16, .standard8]
+    public static let builtInProfiles = presets
 
     public var isValid: Bool {
         (padCount == 8 || padCount == 16) &&

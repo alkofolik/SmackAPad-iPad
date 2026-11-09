@@ -556,6 +556,17 @@ public final class SettingsManager: @unchecked Sendable {
             }
         }
         self.hiddenCategoryIDsByMode = loadedHidden
+
+        switch initialProfile {
+        case "Akai MPD (36–51)", "NI Maschine (36–51)":
+            // These presets shared the default map. Preserve any custom profile with the same name.
+            if !customProfiles.contains(where: { $0.profileName == initialProfile }) {
+                activeProfileName = Self.defaultProfileName
+                persistActiveProfileName()
+            }
+        default:
+            break
+        }
     }
 
     // MARK: Persistence Helpers
@@ -684,6 +695,11 @@ public final class SettingsManager: @unchecked Sendable {
     /// Returns the active controller profile or falls back to Standard 16-Pad.
     public func activeProfile() -> ControllerProfile {
         profile(named: activeProfileName) ?? .standard16
+    }
+
+    /// Built-in profile titles can be localized without changing their saved names.
+    public func displayName(for profile: ControllerProfile) -> String {
+        profile == .standard16 ? localized("16 pads, notes 36–51") : profile.profileName
     }
 
     /// Saves or updates a custom controller profile.

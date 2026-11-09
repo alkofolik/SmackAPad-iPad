@@ -1276,7 +1276,7 @@ public struct HomeScreen: View {
 
     private func pad5(cellSize: CGFloat) -> some View {
         let label = settings.localized("Controller").uppercased(with: Locale(identifier: settings.languagePreference.rawValue))
-        let profileName = settings.activeProfile().profileName
+        let profileName = settings.displayName(for: settings.activeProfile())
 
         let inputName: String = {
             if let selectedID = midi.selectedSourceID {
