@@ -660,7 +660,7 @@ public struct HomeScreen: View {
     @Environment(\.colorScheme) private var colorScheme
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.scenePhase) private var scenePhase
-    @AppStorage("smackapad.training.today") private var savedTodayPlan = ""
+    @AppStorage(TodayPlan.storageKey) private var savedTodayPlan = ""
     @AppStorage("smackapad.training.dailyMixes") private var dailyMixes = "{}"
     @State private var calendarDay = AppCalendar.today()
     @State private var activeDestination: HomePadDestination?
@@ -835,39 +835,16 @@ public struct HomeScreen: View {
             .environment(badgeStore)
             .environment(midi)
 
-        case .continueToLesson(let lesson):
-            LibraryScreen(
-                launchTarget: .lesson(lesson),
-                onHome: {
-                    activeDestination = nil
-                    AppNavigation.shared.openHome()
-                }
-            )
-            .environment(store)
-            .environment(settings)
-            .environment(progress)
-            .environment(progression)
-            .environment(badgeStore)
-            .environment(midi)
-
-        case .continueToLibrary:
-            LibraryScreen(
-                launchTarget: .none,
-                onHome: {
-                    activeDestination = nil
-                    AppNavigation.shared.openHome()
-                }
-            )
-            .environment(store)
-            .environment(settings)
-            .environment(progress)
-            .environment(progression)
-            .environment(badgeStore)
-            .environment(midi)
-
-        case .library(let target):
+        case .continueToLesson, .continueToLibrary, .library, .intro:
+            let target = destination.libraryTarget ?? .none
+            let initialProgress = switch target {
+            case .lesson(let lesson): progress.progress(for: lesson.id)
+            default: nil as LessonProgress?
+            }
             LibraryScreen(
                 launchTarget: target,
+                initialProgress: initialProgress,
+                onReviewOpen: preserveTodayPlan(for:),
                 onHome: {
                     activeDestination = nil
                     AppNavigation.shared.openHome()
@@ -882,21 +859,6 @@ public struct HomeScreen: View {
 
         case .training:
             TrainingScreen(
-                onHome: {
-                    activeDestination = nil
-                    AppNavigation.shared.openHome()
-                }
-            )
-            .environment(store)
-            .environment(settings)
-            .environment(progress)
-            .environment(progression)
-            .environment(badgeStore)
-            .environment(midi)
-
-        case .intro:
-            LibraryScreen(
-                launchTarget: .intro,
                 onHome: {
                     activeDestination = nil
                     AppNavigation.shared.openHome()
@@ -1064,6 +1026,14 @@ public struct HomeScreen: View {
         return TodayPlan.make(day: calendarDay,
             dueLessonIDs: due.map(\.id),
             nextLessonID: next?.id, mixLessonIDs: mix.map(\.id))
+    }
+
+    private func preserveTodayPlan(for lessonID: Int) {
+        guard TodayPlan.decode(savedTodayPlan, today: calendarDay) == nil,
+              let plan = todayPlan,
+              plan.steps.contains(where: { $0.kind == .review && $0.lessonIDs.first == lessonID }),
+              let json = plan.encoded else { return }
+        savedTodayPlan = json
     }
 
     private func todaySubtitle(_ plan: TodayPlan) -> String {

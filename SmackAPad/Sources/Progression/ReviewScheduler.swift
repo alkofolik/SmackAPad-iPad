@@ -44,6 +44,10 @@ public struct ReviewScheduler: Sendable {
             guard !isSettled, let reviewDueDay else { return false }
             return today >= reviewDueDay
         }
+
+        func isDueReview(on today: String) -> Bool {
+            isDue(on: today) && lastReviewedDay != today
+        }
     }
 
     /// Feedback to present on the result card or announcement.
@@ -161,7 +165,7 @@ public struct ReviewScheduler: Sendable {
         pass: Int = 3,
         fadeNotes: Bool = true
     ) -> Outcome {
-        guard schedule.isDue(on: today), schedule.lastReviewedDay != today else {
+        guard schedule.isDueReview(on: today) else {
             return Outcome(newSchedule: schedule, feedback: nil)
         }
 
@@ -203,7 +207,7 @@ public struct ReviewScheduler: Sendable {
 
     /// Defers an unplayed due review without changing its progress.
     public static func postpone(_ schedule: ScheduleState, today: String) -> ScheduleState {
-        guard schedule.isDue(on: today), schedule.lastReviewedDay != today else { return schedule }
+        guard schedule.isDueReview(on: today) else { return schedule }
         var postponed = schedule
         postponed.reviewDueDay = AppCalendar.addingDays(1, to: today) ?? today
         return postponed

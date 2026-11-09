@@ -2,6 +2,73 @@ import XCTest
 @testable import SmackAPad
 
 final class TodayPlanTests: XCTestCase {
+    func testOnlyPlayedUnpassedReviewsShowTheExclamationMarker() {
+        var step = TodayPlan.Step(kind: .review, lessonIDs: [1])
+        XCTAssertNil(step.markerSymbol)
+        step.outcome = .init(bestScore: 1, reviewPendingReason: .notesVisible)
+        XCTAssertEqual(step.markerSymbol, "exclamationmark.circle")
+        step.outcome = .init(bestScore: 0.8, reviewFeedback: .passed(nextStep: 1, gapDays: 3))
+        XCTAssertNil(step.markerSymbol)
+    }
+
+    func testReconciliationUsesTodaysDecisionsAndPreservesRecordedOutcomes() {
+        let today = "2026-11-09"
+        let recorded = PracticeStepOutcome(bestScore: 0.85, reviewFeedback: .settled)
+        let plan = TodayPlan(day: today, steps: [
+            .init(kind: .review, lessonIDs: [1]),
+            .init(kind: .review, lessonIDs: [2]),
+            .init(kind: .review, lessonIDs: [3]),
+            .init(kind: .review, lessonIDs: [4], outcome: recorded),
+            .init(kind: .review, lessonIDs: [5], outcome: .init(bestScore: 1, reviewPendingReason: .notesVisible)),
+            .init(kind: .newLesson, lessonIDs: [1]),
+            .init(kind: .mix, lessonIDs: [1, 2])
+        ])
+        let reconciled = plan.reconcilingReviews(with: [
+            1: .init(reviewStep: 1, reviewDueDay: "2026-11-12", lastReviewedDay: today),
+            2: .init(reviewStep: 0, lastReviewedDay: today, lastReviewFailDay: today),
+            3: .init(lastReviewedDay: "2026-11-08"),
+            4: .init(lastReviewedDay: today, lastReviewFailDay: today),
+            5: .init(lastReviewedDay: today)
+        ])
+        XCTAssertEqual(reconciled.steps[0].status, .passed)
+        XCTAssertNil(reconciled.steps[0].outcome?.bestScore)
+        XCTAssertEqual(reconciled.steps[1].status, .didNotCount(.reviewNotPassed))
+        XCTAssertEqual(reconciled.steps[1].markerSymbol, "exclamationmark.circle")
+        XCTAssertEqual(reconciled.steps.dropFirst(2), plan.steps.dropFirst(2))
+    }
+
+    @MainActor
+    func testTodaySkipsReconciledReviewsAndDoesNotPostponeThem() throws {
+        let suite = "today-reconcile-\(UUID().uuidString)"
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))
+        defer { defaults.removePersistentDomain(forName: suite) }
+        let file = FileManager.default.temporaryDirectory.appendingPathComponent("\(suite).json")
+        defer { try? FileManager.default.removeItem(at: file) }
+        let today = AppCalendar.today()
+        let progress = ProgressStore(fileURL: file, autoLoad: false)
+        let decided = LessonProgress(reviewStep: 1, reviewDueDay: today, lastReviewedDay: today)
+        progress.setProgress(decided, for: 1)
+        let plan = TodayPlan(day: today, steps: [
+            .init(kind: .review, lessonIDs: [1]),
+            .init(kind: .newLesson, lessonIDs: [2])
+        ])
+
+        for transition: (TodaySessionCoordinator) -> Void in [
+            { $0.reconcileReviews(progress: progress) },
+            { $0.leavePractice(progress: progress) },
+            { $0.skip(progress: progress) },
+            { $0.finish(progress: progress) }
+        ] {
+            let coordinator = TodaySessionCoordinator(plan: plan, defaults: defaults)
+            transition(coordinator)
+            XCTAssertEqual(coordinator.plan.steps[0].status, .passed)
+            XCTAssertEqual(coordinator.currentStep?.kind, coordinator.plan.finished ? nil : .newLesson)
+            XCTAssertEqual(progress.progress(for: 1)?.reviewSchedule, decided.reviewSchedule)
+            let saved = try XCTUnwrap(defaults.string(forKey: TodayPlan.storageKey))
+            XCTAssertEqual(TodayPlan.decode(saved, today: today), coordinator.plan)
+        }
+    }
+
     func testReviewStatesAndSummaryUseTheSameOutcomesEvenAtOneHundredPercent() {
         let steps: [TodayPlan.Step] = [
             .init(kind: .review, lessonIDs: [1], outcome: .init(bestScore: 1, reviewFeedback: nil)),

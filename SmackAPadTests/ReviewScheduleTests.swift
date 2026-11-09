@@ -2,6 +2,29 @@ import XCTest
 @testable import SmackAPad
 
 final class ReviewScheduleTests: XCTestCase {
+    func testOnlyScheduledReviewsNotYetDecidedTodayAreDue() {
+        let today = "2026-11-09"
+        XCTAssertTrue(ReviewScheduler.ScheduleState(reviewDueDay: today).isDueReview(on: today))
+        XCTAssertFalse(ReviewScheduler.ScheduleState(reviewDueDay: "2026-11-10").isDueReview(on: today))
+        XCTAssertFalse(ReviewScheduler.ScheduleState(reviewDueDay: today, lastReviewedDay: today).isDueReview(on: today))
+        XCTAssertFalse(ReviewScheduler.ScheduleState().isDueReview(on: today))
+    }
+
+    func testLibraryAndHomeSelectAReviewLaunchOnlyWhenDue() {
+        let today = "2026-11-09"
+        let lesson = Lesson(id: 158, cat: "test", title: "Review", genre: "", tags: [],
+                            text: "", division: 16, bars: 1, startBpm: 90, targetBpm: 120,
+                            level: 1, src: "test", hits: [])
+        let due = LessonProgress(reviewDueDay: today)
+        let upcoming = LessonProgress(reviewDueDay: "2026-11-10")
+        guard case .review(let review) = LessonLaunch.library(lesson, progress: due, today: today),
+              case .lesson(let practice) = LessonLaunch.library(lesson, progress: upcoming, today: today) else {
+            return XCTFail("Expected a review for the due lesson and practice for the upcoming lesson")
+        }
+        XCTAssertEqual(review, lesson)
+        XCTAssertEqual(practice, lesson)
+    }
+
     // 1. pass advances with the right gap for each step
     func testPassAdvancesWithRightGapForEachStep() {
         let today = "2026-11-05"

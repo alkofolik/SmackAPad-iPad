@@ -372,6 +372,9 @@ public struct TrainingScreen: View {
             if let saved = currentPlan, saved.reviewCount > 0, saved.reviewSummary.passed == saved.reviewCount {
                 return .done
             }
+            if let symbol = currentPlan?.steps.lazy.compactMap(\.markerSymbol).first {
+                return .didNotCount(symbol)
+            }
             if isPlanFinished { return .off }
             return count > 0 ? .todo : .off
         }()
@@ -457,14 +460,16 @@ public struct TrainingScreen: View {
         )
     }
 
-    private enum StepLedState {
+    private enum StepLedState: Equatable {
         case todo, done, off
+        case didNotCount(String)
 
         var accessibilityText: String {
             switch self {
             case .todo: return "To do"
             case .done: return "Done"
             case .off: return "Nothing to do"
+            case .didNotCount: return "Did not count"
             }
         }
     }
@@ -523,6 +528,11 @@ public struct TrainingScreen: View {
                     .fill(Theme.ledOff)
                     .frame(width: 14, height: 14)
                     .overlay(Circle().stroke(Theme.black, lineWidth: 2))
+            case .didNotCount(let symbol):
+                Image(systemName: symbol)
+                    .font(.system(size: 14, weight: .semibold))
+                    .foregroundStyle(Theme.black)
+                    .frame(width: 14, height: 14)
             }
         }
     }
@@ -545,6 +555,7 @@ public struct TrainingScreen: View {
             progress.postponeReview(for: lesson.id, today: today)
         }
         if var plan = TodayPlan.decode(savedTodayPlan, today: today), !plan.finished {
+            plan = plan.reconcilingReviews(with: progress.records)
             for step in plan.steps where step.kind == .review && step.outcome?.played != true {
                 if let id = step.lessonIDs.first {
                     progress.postponeReview(for: id, today: today)
@@ -1483,7 +1494,7 @@ public struct TrainingScreen: View {
         return TrainingData(
             dueLessons: due,
             nextLesson: next,
-            currentPlan: plan,
+            currentPlan: plan?.reconcilingReviews(with: records),
             mixCandidates: candidates,
             openLessonIDs: openIDs,
             mixLessons: mix,
@@ -1508,9 +1519,9 @@ public struct TrainingScreen: View {
         guard var snapshot = data else { return }
         let byID = Dictionary(uniqueKeysWithValues: snapshot.mixCandidates.map { ($0.id, $0) })
         snapshot.mixLessons = ids.compactMap { byID[$0] }
-        snapshot.currentPlan = TodayPlan.decode(savedTodayPlan, today: today) ?? TodayPlan.make(
-            day: today, dueLessonIDs: snapshot.dueLessons.map(\.id),
-            nextLessonID: snapshot.nextLesson?.id, mixLessonIDs: ids)
+        snapshot.currentPlan = TodayPlan.decode(savedTodayPlan, today: today)?.reconcilingReviews(with: progress.records)
+            ?? TodayPlan.make(day: today, dueLessonIDs: snapshot.dueLessons.map(\.id),
+                              nextLessonID: snapshot.nextLesson?.id, mixLessonIDs: ids)
         data = snapshot
     }
 

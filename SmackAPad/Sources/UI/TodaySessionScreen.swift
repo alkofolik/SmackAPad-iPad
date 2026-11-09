@@ -26,8 +26,20 @@ final class TodaySessionCoordinator {
         save()
     }
 
+    func reconcileReviews(progress: ProgressStore) {
+        let previous = plan
+        plan = plan.reconcilingReviews(with: progress.records)
+        if !plan.finished {
+            movePastDecidedReviews()
+            if plan.index != previous.index { updatePhaseAfterAdvance() }
+        }
+        if plan != previous { save() }
+    }
+
     func leavePractice(progress: ProgressStore) {
-        guard !plan.finished, plan.phase == .practice, let step = currentStep else { return }
+        guard !plan.finished, plan.phase == .practice else { return }
+        plan = plan.reconcilingReviews(with: progress.records)
+        guard let step = currentStep else { return }
         postponeIfUnplayed(step, progress: progress)
         plan.lastPlayedIndex = plan.index
         advance()
@@ -40,13 +52,16 @@ final class TodaySessionCoordinator {
     }
 
     func skip(progress: ProgressStore) {
-        guard !plan.finished, let step = currentStep else { return }
+        guard !plan.finished else { return }
+        plan = plan.reconcilingReviews(with: progress.records)
+        guard let step = currentStep else { return }
         postponeIfUnplayed(step, progress: progress)
         advance()
     }
 
     func finish(progress: ProgressStore) {
         guard !plan.finished else { return }
+        plan = plan.reconcilingReviews(with: progress.records)
         for step in plan.steps.dropFirst(plan.index) { postponeIfUnplayed(step, progress: progress) }
         plan.index = plan.steps.count
         plan.finished = true
@@ -62,13 +77,24 @@ final class TodaySessionCoordinator {
 
     private func advance() {
         plan.index += 1
-        plan.finished = plan.index >= plan.steps.count
-        plan.phase = plan.finished ? .summary : .handoff
+        movePastDecidedReviews()
+        updatePhaseAfterAdvance()
         save()
     }
 
+    private func movePastDecidedReviews() {
+        while let step = currentStep, step.kind == .review, step.outcome?.hasDecidedReview == true {
+            plan.index += 1
+        }
+    }
+
+    private func updatePhaseAfterAdvance() {
+        plan.finished = plan.index >= plan.steps.count
+        plan.phase = plan.finished ? .summary : .handoff
+    }
+
     private func save() {
-        guard let data = try? JSONEncoder().encode(plan), let json = String(data: data, encoding: .utf8) else { return }
+        guard let json = plan.encoded else { return }
         defaults.set(json, forKey: TodayPlan.storageKey)
     }
 }
@@ -145,7 +171,10 @@ struct TodaySessionScreen: View {
         .task {
             if coordinator.plan.day != AppCalendar.today() {
                 onHome()
-            } else if coordinator.plan.phase == .practice && coordinator.plan.lastPlayedIndex != nil {
+                return
+            }
+            coordinator.reconcileReviews(progress: progress)
+            if coordinator.plan.phase == .practice && coordinator.plan.lastPlayedIndex != nil {
                 openPractice()
             }
         }
@@ -168,9 +197,10 @@ struct TodaySessionScreen: View {
         }) {
             if let step = coordinator.currentStep,
                let lesson = step.lessonIDs.first.flatMap({ LessonStore.shared.lesson(for: $0) }) {
+                let launch: LessonLaunch = step.kind == .review ? .review(lesson) : .lesson(lesson)
                 PracticeScreen(lesson: lesson, settings: settings, progress: progress, midi: midi,
-                               initialFromMemory: step.kind == .review,
-                               initialBpm: step.kind == .review ? lesson.targetBpm : nil,
+                               initialFromMemory: launch.reviewTempo != nil,
+                               initialBpm: launch.reviewTempo,
                                mixLessons: step.kind == .mix ? step.lessonIDs.compactMap { LessonStore.shared.lesson(for: $0) } : [],
                                onStepResult: { coordinator.record($0) })
             }
@@ -281,12 +311,10 @@ private struct TodayStepperView: View {
     }
 
     private func stepCard(step: TodayPlan.Step, index: Int) -> some View {
-        let isCompleted: Bool = {
-            if plan.finished { return true }
-            return index < plan.index
-        }()
-        let isCurrent: Bool = !plan.finished && index == plan.index
-        let isUpcoming: Bool = !plan.finished && index > plan.index
+        let isCompleted = plan.finished || index < plan.index
+            || (step.kind == .review && step.outcome?.hasDecidedReview == true)
+        let isCurrent = !isCompleted && index == plan.index
+        let isUpcoming = !isCompleted && index > plan.index
         let isPassed = step.status == .passed
 
         return VStack(alignment: .leading, spacing: 4) {
@@ -296,6 +324,12 @@ private struct TodayStepperView: View {
                     .tracking(0.55)
                     .lineLimit(1)
                 Spacer(minLength: 4)
+                if isCompleted, let symbol = step.markerSymbol {
+                    Image(systemName: symbol)
+                        .font(.system(size: 14, weight: .semibold))
+                        .frame(width: 14, height: 14)
+                        .accessibilityHidden(true)
+                }
                 Text(stepStatus(step: step, isCompleted: isCompleted, isCurrent: isCurrent, isUpcoming: isUpcoming))
                     .font(Theme.strong(11))
                     .fixedSize(horizontal: false, vertical: true)

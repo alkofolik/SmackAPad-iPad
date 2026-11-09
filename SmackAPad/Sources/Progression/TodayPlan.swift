@@ -21,6 +21,11 @@ struct TodayPlan: Codable, Equatable {
             case nil: return .didNotCount(outcome.reviewPendingReason ?? .unfinishedReview)
             }
         }
+
+        var markerSymbol: String? {
+            if case .didNotCount = status { return "exclamationmark.circle" }
+            return nil
+        }
     }
 
     enum Phase: String, Codable { case practice, handoff, summary }
@@ -52,6 +57,30 @@ struct TodayPlan: Codable, Equatable {
         }
     }
 
+    func reconcilingReviews(with records: [Int: LessonProgress]) -> Self {
+        var plan = self
+        for index in steps.indices {
+            let step = steps[index]
+            guard step.kind == .review, step.outcome?.played != true,
+                  let id = step.lessonIDs.first, let record = records[id],
+                  record.reviewSchedule.lastReviewedDay == day else { continue }
+
+            let reviewStep = record.reviewStep ?? 0
+            let feedback: ReviewScheduler.ReviewFeedback
+            if record.lastReviewFailDay == day {
+                feedback = .failed(newStep: reviewStep)
+            } else if record.reviewSchedule.isSettled {
+                feedback = .settled
+            } else {
+                let gap = record.reviewDueDay.flatMap { AppCalendar.daysBetween(day, $0) } ?? 0
+                feedback = .passed(nextStep: reviewStep, gapDays: gap)
+            }
+            // Progress stores the decision but has no score for this specific run.
+            plan.steps[index].outcome = PracticeStepOutcome(reviewFeedback: feedback)
+        }
+        return plan
+    }
+
     /// Keep the saved daily selection stable as its lessons leave the due list.
     struct ReviewLoad {
         let todayIDs: [Int]
@@ -72,6 +101,10 @@ struct TodayPlan: Codable, Equatable {
         if let nextLessonID { steps.append(Step(kind: .newLesson, lessonIDs: [nextLessonID])) }
         if mixLessonIDs.count >= 2 { steps.append(Step(kind: .mix, lessonIDs: mixLessonIDs)) }
         return TodayPlan(day: day, steps: steps)
+    }
+
+    var encoded: String? {
+        (try? JSONEncoder().encode(self)).flatMap { String(data: $0, encoding: .utf8) }
     }
 
     static func decode(_ json: String, today: String) -> TodayPlan? {
@@ -132,18 +165,21 @@ struct PracticeStepOutcome: Codable, Equatable {
         }
     }
 
-    var played: Bool { bestScore != nil }
+    var hasDecidedReview: Bool {
+        switch reviewFeedback {
+        case .passed, .settled, .failed: return true
+        case .doesNotCount, nil: return false
+        }
+    }
+
+    var played: Bool { bestScore != nil || hasDecidedReview }
 
     mutating func include(_ other: Self) {
         bestScore = [bestScore, other.bestScore].compactMap { $0 }.max()
         // Later warm-ups or ordinary practice cannot undo a committed review result.
-        switch reviewFeedback {
-        case .passed, .settled, .failed: break
-        default:
-            if other.played {
-                reviewFeedback = other.reviewFeedback
-                reviewPendingReason = other.reviewPendingReason
-            }
+        if !hasDecidedReview, other.played {
+            reviewFeedback = other.reviewFeedback
+            reviewPendingReason = other.reviewPendingReason
         }
     }
 }

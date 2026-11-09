@@ -34,7 +34,7 @@ public final class AppNavigation {
     }
 }
 
-/// One session setup for Library and Training; only explicit training modes override defaults.
+/// One session setup for Library and Training.
 enum LessonLaunch: Identifiable {
     case lesson(Lesson)
     case review(Lesson)
@@ -49,6 +49,15 @@ enum LessonLaunch: Identifiable {
     }
 
     var id: Int { lesson.id }
+
+    static func library(_ lesson: Lesson, progress: LessonProgress?, today: String) -> Self {
+        progress?.reviewSchedule.isDueReview(on: today) == true ? .review(lesson) : .lesson(lesson)
+    }
+
+    var reviewTempo: Int? {
+        if case .review(let lesson) = self { return lesson.targetBpm }
+        return nil
+    }
 }
 
 @MainActor
@@ -60,11 +69,9 @@ struct PracticeLessonDestination: View {
 
     var body: some View {
         switch launch {
-        case .lesson(let lesson):
-            PracticeScreen(lesson: lesson, settings: settings, progress: progress, midi: midi)
-        case .review(let lesson):
+        case .lesson(let lesson), .review(let lesson):
             PracticeScreen(lesson: lesson, settings: settings, progress: progress, midi: midi,
-                           initialFromMemory: true, initialBpm: lesson.targetBpm)
+                           initialFromMemory: launch.reviewTempo != nil, initialBpm: launch.reviewTempo)
         case .afterMe(let lesson):
             PracticeScreen(lesson: lesson, settings: settings, progress: progress, midi: midi,
                            initialAfterMe: true)

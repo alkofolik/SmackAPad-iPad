@@ -10,8 +10,8 @@ public enum LibraryLaunchTarget: Equatable, Sendable {
 /// Three projections of the same catalogue, sharing stage access and saved progress.
 @MainActor
 struct LibraryScreen: View {
-    let launchTarget: LibraryLaunchTarget
     let onHome: () -> Void
+    let onReviewOpen: (Int) -> Void
 
     @Environment(StoreManager.self) private var store
     @Environment(SettingsManager.self) private var settings
@@ -52,12 +52,13 @@ struct LibraryScreen: View {
         let stage: LibraryStage?
     }
 
-    init(launchTarget: LibraryLaunchTarget = .none, onHome: @escaping () -> Void = {}) {
-        self.launchTarget = launchTarget
+    init(launchTarget: LibraryLaunchTarget = .none, initialProgress: LessonProgress? = nil,
+         onReviewOpen: @escaping (Int) -> Void = { _ in }, onHome: @escaping () -> Void = {}) {
         self.onHome = onHome
+        self.onReviewOpen = onReviewOpen
         _showingIntro = State(initialValue: launchTarget == .intro)
         if case .lesson(let lesson) = launchTarget {
-            _selectedLesson = State(initialValue: .lesson(lesson))
+            _selectedLesson = State(initialValue: .library(lesson, progress: initialProgress, today: AppCalendar.today()))
         } else {
             _selectedLesson = State(initialValue: nil)
         }
@@ -206,6 +207,9 @@ struct LibraryScreen: View {
             return fresh
         })
         .practiceLessonPresentation(launch: $selectedLesson, namespace: lessonNamespace)
+        .onChange(of: selectedLesson?.id, initial: true) {
+            if case .review(let lesson) = selectedLesson { onReviewOpen(lesson.id) }
+        }
         .onChange(of: selectedLesson?.id) { _, id in
             if let id {
                 practicedID = id
@@ -889,7 +893,10 @@ struct LibraryScreen: View {
             purchaseAccess = lesson.access ?? "full"
             return
         }
-        if progression.isLessonOpen(lesson) { selectedLesson = .lesson(lesson); return }
+        if progression.isLessonOpen(lesson) {
+            selectedLesson = .library(lesson, progress: progress.progress(for: lesson.id), today: AppCalendar.today())
+            return
+        }
         guard let stage = catalog.stage(for: lesson) else { return }
         settings.libraryView = LibraryViewMode.path.id
         selections[LibraryViewMode.path.id] = stage.id

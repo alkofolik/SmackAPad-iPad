@@ -277,7 +277,7 @@ final class PracticeSession {
 
     public var isDueReview: Bool {
         guard !afterMe, !isMix, let schedule = savedProgress?.reviewSchedule else { return false }
-        return schedule.isDue(on: currentDay()) && schedule.lastReviewedDay != currentDay()
+        return schedule.isDueReview(on: currentDay())
     }
 
     var showsReviewStatus: Bool {
@@ -303,7 +303,7 @@ final class PracticeSession {
             return feedback.message(language: settings.languagePreference)
         }
         guard let schedule = progress.progress(for: lessonID)?.reviewSchedule,
-              schedule.isDue(on: today), schedule.lastReviewedDay != today else { return nil }
+              schedule.isDueReview(on: today) else { return nil }
         if window == nil, progress.progress(for: lessonID)?.isUnstartedLegacyReview == true {
             return settings.localized("Review · start from memory")
         }
@@ -1050,8 +1050,7 @@ final class PracticeSession {
 
                 let today = currentDay()
                 if let currentProgress = saved,
-                   currentProgress.reviewSchedule.isDue(on: today),
-                   currentProgress.reviewSchedule.lastReviewedDay != today {
+                   currentProgress.reviewSchedule.isDueReview(on: today) {
                     let passResult = ReviewScheduler.evaluate(
                         schedule: currentProgress.reviewSchedule,
                         today: today,
