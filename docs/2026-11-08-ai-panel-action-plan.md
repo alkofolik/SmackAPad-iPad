@@ -16,7 +16,7 @@ Zdroj: `docs/reviews/ai-panel/results/synthesis.md` (čísla v závorkách = ř�
 
 ## Dávka 3 – zvuk a stabilita
 - [x] **T155 Jeden zvukový engine, načíst jen vybranou sadu** (#13, souvisí s ticketem 121), pak zvuk padu mimo hlavní vlákno – měřit na starém iPadu.
-- [ ] **T156 Změna výstupu zvuku během hry** (#12) a opožděný zvuk neukončí běh (#21).
+- [x] **T156 Změna výstupu zvuku během hry** (#12) a opožděný zvuk neukončí běh (#21).
 
 ## Dávka 4 – první spuštění a čitelnost
 - [ ] **T157** „Začni tady“ pro nového hráče (#15), legenda zkratek padů (#17), dotykové plochy ≥ 44 pt (#18), kontrast ghost notes v režimu z paměti (#19), kontrola číslování Pad 1 v MIDI learn (#16).

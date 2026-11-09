@@ -56,3 +56,7 @@ Implement Option 1. Options 2 and 3 are kept only as the record of what was reje
 ## Done rule
 
 Stop after a successful build and passing tests. Commit (AGENTS.md); Jakub pushes and tests on the iPad. Ticket 157 starts after this one is tested.
+
+## Test result (Jakub, iPad A16, 2026-11-09)
+
+Tested on the iPad per the acceptance list (route changes during a run, interruption, calibration per route): all passed. Ticket closed.
