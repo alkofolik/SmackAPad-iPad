@@ -160,6 +160,7 @@ final class PracticeSession {
     @ObservationIgnored private var suspended = false
     @ObservationIgnored private var audioStarted = false
     @ObservationIgnored private var runID = UUID()
+    @ObservationIgnored private var runOutputRoute = AudioOutputRoute.other
     @ObservationIgnored private var task: Task<Void, Never>?
     @ObservationIgnored private var passes: [Pass] = []
     @ObservationIgnored private var countInEvents: [Double] = []
@@ -601,9 +602,9 @@ final class PracticeSession {
         midi.setPracticeSound(ready ? audio : nil)
     }
 
-    private func startAudio() throws {
+    private func startAudio(onRunAudioChange: (@MainActor @Sendable () -> Void)? = nil) throws {
         applyVolumes()
-        try audio.start()
+        runOutputRoute = try audio.start(onRunAudioChange: onRunAudioChange)
         audioStarted = true
         setReady(true)
     }
@@ -651,7 +652,12 @@ final class PracticeSession {
                                     unmeasuredBars: $0.bars * max(1, Int((4.0 / Double($0.bars)).rounded())))
                 }
             }
-            try startAudio()
+            let id = UUID()
+            try startAudio { [weak self] in
+                guard let self, self.running, self.runID == id else { return }
+                self.errorMessage = self.settings.localized("Audio output changed. Run stopped, press Start to continue.")
+                self.stop(restarting: false, audioSessionChanged: true)
+            }
             audio.logTiming("practice-start")
             errorMessage = nil
             summary = nil
@@ -709,7 +715,7 @@ final class PracticeSession {
                 settings.lastLessonID = lesson.id
             }
             midi.resetControlPickup()
-            runID = UUID()
+            runID = id
             running = true
             countdown = 4
             task = Task { [weak self] in
@@ -724,12 +730,12 @@ final class PracticeSession {
 
     func stop() { stop(restarting: false) }
 
-    private func stop(restarting: Bool) {
+    private func stop(restarting: Bool, audioSessionChanged: Bool = false) {
         guard running else { return }
         // Credit complete passes only; stopping halfway cannot earn a star.
         // An automatic star or review stop already credited the winning pass. Discard everything
         // queued after it, even if the app was delayed long enough to finish it.
-        if !stopAfterPass { finishCompleted(at: now) }
+        if !stopAfterPass, !audioSessionChanged { finishCompleted(at: now) }
         let accuracy = currentRunAccuracy
         flushPendingProgress()
         stopAfterPass = false
@@ -764,8 +770,16 @@ final class PracticeSession {
                                  passed: false, mastery: false, memory: false,
                                  runs: runResults)
         }
-        if !afterMe { saveTempo() }
-        if reviewFeedback != nil {
+        if !afterMe {
+            if audioSessionChanged {
+                if !listen, !isMix, let savedBpm = progress.progress(for: lesson.id)?.currentBpm {
+                    bpm = savedBpm
+                }
+            } else {
+                saveTempo()
+            }
+        }
+        if audioSessionChanged || reviewFeedback != nil {
             try? progress.save()
         }
         if !afterMe { evaluateBadges() }
@@ -991,7 +1005,7 @@ final class PracticeSession {
         for pass in passes {
             while let sound = pass.sounds.first, sound.time <= horizon {
                 sounds.append(.init(audibleHostTime: AVAudioTime.hostTime(forSeconds: sound.time),
-                                    padIndex: sound.pad, velocity: sound.velocity))
+                                    padIndex: sound.pad, velocity: sound.velocity, passStart: pass.start))
                 pass.sounds.removeFirst()
             }
         }
@@ -1203,7 +1217,8 @@ final class PracticeSession {
             return
         }
         let sourceTime = AVAudioTime.seconds(forHostTime: event.timestamp)
-        let adjusted = max(0, sourceTime - settings.calibrationOffset(for: event.deviceID) / 1_000)
+        let offset = settings.calibrationOffset(for: event.deviceID, outputRoute: runOutputRoute)
+        let adjusted = max(0, sourceTime - offset / 1_000)
         guard !listen else {
             padFlashes[event.padIndex] = PadFlash(mark: nil, date: Date())
             recordPlayedHit(padIndex: event.padIndex, at: adjusted, mark: nil)

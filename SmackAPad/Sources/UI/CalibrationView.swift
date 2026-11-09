@@ -1,3 +1,4 @@
+import AVFoundation
 import SwiftUI
 
 @MainActor
@@ -27,7 +28,7 @@ struct CalibrationView: View {
                         ForEach(midi.sources) { source in Text(source.name).font(Theme.rowTitle).tag(source.id) }
                     }
                     .disabled(session.busy)
-                    LabeledContent(settings.localized("Saved offset"), value: signed(settings.calibrationOffset(for: session.deviceID)))
+                    LabeledContent(settings.localized("Saved offset"), value: signed(session.savedOffset))
                     Text(settings.localized("Calibrate touch separately; it differs from a controller."))
                         .font(Theme.meta).foregroundStyle(Theme.secondary)
                     Text(settings.localized("Listen to four clicks, then tap with each of the next ten. Follow the sound, not the screen."))
@@ -98,7 +99,7 @@ struct CalibrationView: View {
                             }
                     }
                     if let result = session.result {
-                        LabeledContent(settings.localized("Saved offset"), value: signed(result.offsetMilliseconds))
+                        LabeledContent(settings.localized("Saved offset"), value: signed(session.savedOffset))
                         LabeledContent(settings.localized("Usable taps"), value: "\(result.usableTaps) / 10")
                         LabeledContent(settings.localized("Timing spread"), value: "\(Int(result.spreadMilliseconds.rounded())) ms")
                         if result.discardedTaps > 0 { Text(settings.localized("Outlier taps were ignored")).font(Theme.meta) }
@@ -134,7 +135,14 @@ struct CalibrationView: View {
         }
         .onAppear { session.attach() }
         .onDisappear { session.close() }
-        .onChange(of: scenePhase) { _, phase in if phase != .active { session.cancel() } }
+        .onChange(of: scenePhase) { _, phase in
+            if phase == .active { session.refreshOutputRoute() }
+            else { session.cancel() }
+        }
+        .onReceive(NotificationCenter.default.publisher(for: AVAudioSession.routeChangeNotification)
+            .receive(on: RunLoop.main)) { _ in
+                session.refreshOutputRoute()
+            }
         .onChange(of: midi.sources) { _, sources in
             if !session.busy, session.deviceID != "touch", session.deviceID != "keyboard", !sources.contains(where: { $0.id == session.deviceID }) {
                 session.deviceID = "touch"

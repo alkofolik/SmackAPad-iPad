@@ -653,31 +653,37 @@ public final class SettingsManager: @unchecked Sendable {
 
     // MARK: Calibration Offset Management
 
-    /// Returns the calibration offset in milliseconds for the given MIDI device identifier.
-    /// Returns 0.0 if not calibrated yet.
-    public func calibrationOffset(for deviceId: String) -> Double {
+    /// Reads a route-specific offset, falling back to calibration saved before routes were tracked.
+    public func calibrationOffset(for deviceId: String, outputRoute: AudioOutputRoute) -> Double {
         lock.lock()
         defer { lock.unlock() }
-        return calibrationOffsets[deviceId] ?? 0.0
+        return calibrationOffsets[calibrationKey(for: deviceId, outputRoute: outputRoute)] ?? calibrationOffsets[deviceId] ?? 0
     }
 
-    /// Stores a signed calibration offset in ms for a device, capped at ±200 ms (SPEC §3.5).
-    public func setCalibrationOffset(_ offsetMs: Double, for deviceId: String) {
+    /// Stores a signed offset for this input and output, capped at ±200 ms (SPEC §3.5).
+    public func setCalibrationOffset(_ offsetMs: Double, for deviceId: String, outputRoute: AudioOutputRoute) {
         lock.lock()
         defer { lock.unlock() }
         let capped = min(max(offsetMs, -200.0), 200.0)
         var updated = calibrationOffsets
-        updated[deviceId] = capped
+        updated[calibrationKey(for: deviceId, outputRoute: outputRoute)] = capped
         self.calibrationOffsets = updated
     }
 
-    /// Removes the calibration offset for a device.
+    /// Removes all calibration offsets for an input, including its legacy fallback.
     public func removeCalibrationOffset(for deviceId: String) {
         lock.lock()
         defer { lock.unlock() }
         var updated = calibrationOffsets
         updated.removeValue(forKey: deviceId)
+        for route in AudioOutputRoute.allCases {
+            updated.removeValue(forKey: calibrationKey(for: deviceId, outputRoute: route))
+        }
         self.calibrationOffsets = updated
+    }
+
+    private func calibrationKey(for deviceId: String, outputRoute: AudioOutputRoute) -> String {
+        "\(deviceId)|\(outputRoute.rawValue)"
     }
 
     // MARK: Controller Profile Management

@@ -103,7 +103,9 @@ struct PracticeScreen: View {
         .onChange(of: session.runResults) { _, _ in reportStepResult() }
         .onChange(of: session.reviewFeedback) { _, _ in reportStepResult() }
         .onChange(of: scenePhase) { _, phase in
-            if phase == .active { session.resume() } else { session.suspend() }
+            // An overlay such as Siri can make the scene inactive before audio is interrupted.
+            if phase == .active { session.resume() }
+            else if phase == .background || !session.running { session.suspend() }
         }
         .onChange(of: session.lesson.id) { _, _ in updatePadLayoutModel() }
         .onChange(of: settings.activeProfileName) { _, _ in
@@ -263,34 +265,36 @@ struct PracticeScreen: View {
 
     private var lessonSubtitle: some View {
         ZStack(alignment: .leading) {
-            Text(settings.localized("Practice only · no stars"))
-                .font(Theme.meta)
-                .foregroundStyle(Theme.secondary)
-                .opacity(session.afterMe ? 1 : 0)
-                .accessibilityHidden(!session.afterMe)
+            if let message = session.errorMessage {
+                Text(message)
+            } else {
+                Text(settings.localized("Practice only · no stars"))
+                    .opacity(session.afterMe ? 1 : 0)
+                    .accessibilityHidden(!session.afterMe)
 
-            Group {
-                if session.showsReviewStatus {
-                    Text(session.reviewStatusText(settings: settings))
-                } else if session.fromMemory && session.savedProgress?.memory != true {
-                    Text(StarRequirement.requirementText(for: 2, progress: session.savedProgress, language: settings.languagePreference))
-                } else {
-                    HStack(spacing: 0) {
-                        difficultyDots
-                        Text(" · \(localizedBarCount(session.lesson.bars))")
+                Group {
+                    if session.showsReviewStatus {
+                        Text(session.reviewStatusText(settings: settings))
+                    } else if session.fromMemory && session.savedProgress?.memory != true {
+                        Text(StarRequirement.requirementText(for: 2, progress: session.savedProgress, language: settings.languagePreference))
+                    } else {
+                        HStack(spacing: 0) {
+                            difficultyDots
+                            Text(" · \(localizedBarCount(session.lesson.bars))")
+                        }
+                        .accessibilityElement(children: .ignore)
+                        .accessibilityLabel(settings.localized("Difficulty %lld of 5, %@", session.lesson.level, localizedBarCount(session.lesson.bars)))
                     }
-                    .accessibilityElement(children: .ignore)
-                    .accessibilityLabel(settings.localized("Difficulty %lld of 5, %@", session.lesson.level, localizedBarCount(session.lesson.bars)))
                 }
+                .opacity(session.afterMe ? 0 : 1)
+                .accessibilityHidden(session.afterMe)
             }
-            .font(Theme.meta)
-            .foregroundStyle(Theme.secondary)
-            .opacity(session.afterMe ? 0 : 1)
-            .accessibilityHidden(session.afterMe)
         }
-        .lineLimit(1)
+        .font(Theme.meta)
+        .foregroundStyle(Theme.secondary)
+        .lineLimit(session.errorMessage == nil ? 1 : 2)
         .minimumScaleFactor(0.85)
-        .frame(height: subtitleHeight, alignment: .leading)
+        .frame(height: session.errorMessage == nil ? subtitleHeight : nil, alignment: .leading)
         .animation(motion.animation(Theme.Motion.fast), value: session.afterMe)
     }
 
@@ -786,11 +790,12 @@ struct PracticeScreen: View {
         let showsResult = session.summary != nil && !session.running
         let second = showsResult && !session.isMix && !session.afterMe
             && (!session.finishedByReview || onStepResult != nil) ? transportSecondAction(s: s) : nil
+        let startTitle = session.errorMessage != nil ? "Start" : (session.finishedByReview ? "Play on" : "Again")
         return TransportControls(
             running: session.running,
             enabled: session.ready && session.available,
             showsResult: showsResult,
-            resultStartTitle: session.finishedByReview ? "Play on" : "Again",
+            resultStartTitle: startTitle,
             squareSize: s,
             secondAction: second.map { AnyView($0) },
             start: { showingInfo = false; session.start() },

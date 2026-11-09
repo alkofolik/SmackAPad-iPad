@@ -68,6 +68,7 @@
 "Calibration input" = "Calibration input";
 "On-screen pads" = "On-screen pads";
 "Saved offset" = "Saved offset";
+"Audio output changed. Run stopped, press Start to continue." = "Audio output changed. Run stopped, press Start to continue.";
 "Listen to four clicks, then tap with each of the next ten. Follow the sound, not the screen." = "Listen to four clicks, then tap with each of the next ten. Follow the sound, not the screen.";
 "Calibration progress" = "Calibration progress";
 "Recorded taps" = "Recorded taps";

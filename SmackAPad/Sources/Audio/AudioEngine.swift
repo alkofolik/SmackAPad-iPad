@@ -135,6 +135,8 @@ public final class AudioEngine: @unchecked Sendable {
     private var prepared = false
     private var wantsPlayback = false
     private var schedulingFailed = false
+    private var lateSounds = LateSoundPolicy()
+    private var onRunAudioChange: (@MainActor @Sendable () -> Void)?
     private var interrupted = false
     private var failure: Error?
 
@@ -144,11 +146,13 @@ public final class AudioEngine: @unchecked Sendable {
     public struct CalibrationSnapshot: Sendable {
         public let outputTimes: [Double]
         public let clockChanged: Bool
+        let outputRoute: AudioOutputRoute?
     }
 
     private struct CalibrationCapture {
         let id: UUID
         let timing: AudioOutputTiming
+        let outputRoute: AudioOutputRoute
         var outputTimes: [Double] = []
         var clockOrigin: Double?
         var sampleRate: Double?
@@ -335,14 +339,27 @@ public final class AudioEngine: @unchecked Sendable {
     }
 
     public func start() throws {
+        try start(onRunAudioChange: nil)
+    }
+
+    @discardableResult
+    func start(onRunAudioChange: (@MainActor @Sendable () -> Void)?) throws -> AudioOutputRoute {
         try queue.sync {
             guard prepared, clickOnly || selectedKit != nil else { throw Failure.notPrepared }
+            if interrupted, !clickOnly, onRunAudioChange == nil {
+                // Reopening idle practice audio can wait for the interruption to end.
+                // An explicit Start still attempts activation, even without an end notification.
+                wantsPlayback = true
+                return .current
+            }
             do {
                 try activateSession()
                 if !engine.isRunning { try engine.start() }
                 wantsPlayback = true
                 interrupted = false
                 failure = nil
+                self.onRunAudioChange = onRunAudioChange
+                return .current
             } catch {
                 wantsPlayback = false
                 engine.stop()
@@ -357,6 +374,8 @@ public final class AudioEngine: @unchecked Sendable {
         queue.sync {
             wantsPlayback = false
             schedulingFailed = false
+            lateSounds = LateSoundPolicy()
+            onRunAudioChange = nil
             stopPlayers()
             calibrationClickPlayer.stop()
             engine.stop()
@@ -385,20 +404,26 @@ public final class AudioEngine: @unchecked Sendable {
         let audibleHostTime: UInt64
         let padIndex: Int?
         var velocity = 0
+        var passStart: Double?
     }
 
     /// Absolute mach times describe when sounds should reach the output.
-    /// Reject late sounds and subsequent batches until the run is stopped.
     func schedule(_ sounds: [ScheduledSound], onError: @escaping @Sendable (Error) -> Void) {
         queue.async {
             guard !self.schedulingFailed else { return }
             do {
                 for sound in sounds {
-                    if let pad = sound.padIndex {
-                        try self.playOnQueue(padIndex: pad, velocity: sound.velocity,
-                                             audibleHostTime: sound.audibleHostTime, isPattern: true)
-                    } else {
-                        try self.scheduleClick(audibleHostTime: sound.audibleHostTime)
+                    do {
+                        if let pad = sound.padIndex {
+                            try self.playOnQueue(padIndex: pad, velocity: sound.velocity,
+                                                 audibleHostTime: sound.audibleHostTime, isPattern: true)
+                        } else {
+                            try self.scheduleClick(audibleHostTime: sound.audibleHostTime)
+                        }
+                    } catch Failure.insufficientLeadTime {
+                        let shouldStop = self.lateSounds.recordSkip(passStart: sound.passStart)
+                        Self.logger.debug("[Audio] late sound skipped (\(self.lateSounds.totalSkipped))")
+                        if shouldStop { throw Failure.insufficientLeadTime }
                     }
                 }
             } catch {
@@ -445,7 +470,7 @@ public final class AudioEngine: @unchecked Sendable {
             stopPlayers()
             let timing = try outputTimingOnQueue()
             let id = UUID()
-            calibrationCapture = CalibrationCapture(id: id, timing: timing)
+            calibrationCapture = CalibrationCapture(id: id, timing: timing, outputRoute: .current)
             logTimingOnQueue("calibration-start")
             let detector = ClickDetector()
             engine.mainMixerNode.installTap(onBus: 0, bufferSize: 512, format: nil) { [weak self] buffer, time in
@@ -472,12 +497,13 @@ public final class AudioEngine: @unchecked Sendable {
     public func calibrationSnapshot() -> CalibrationSnapshot {
         queue.sync {
             guard let capture = calibrationCapture else {
-                return CalibrationSnapshot(outputTimes: [], clockChanged: true)
+                return CalibrationSnapshot(outputTimes: [], clockChanged: true, outputRoute: nil)
             }
             let latency = engine.mainMixerNode.outputPresentationLatency
             return CalibrationSnapshot(outputTimes: capture.outputTimes,
                 clockChanged: capture.clockChanged || !engine.isRunning || AudioOutputTiming(presentationLatency: latency) == nil ||
-                    abs(latency - capture.timing.presentationLatency) > 0.002)
+                    abs(latency - capture.timing.presentationLatency) > 0.002,
+                outputRoute: capture.outputRoute)
         }
     }
 
@@ -813,20 +839,50 @@ public final class AudioEngine: @unchecked Sendable {
                     self.interrupted = true
                     self.stopPlayers()
                     self.engine.pause()
+                    self.reportRunAudioChange()
                 } else if type == AVAudioSession.InterruptionType.ended.rawValue {
                     self.interrupted = false
-                    if options & AVAudioSession.InterruptionOptions.shouldResume.rawValue != 0 {
+                    if !self.schedulingFailed, options & AVAudioSession.InterruptionOptions.shouldResume.rawValue != 0 {
                         self.resumeAfterSessionChange()
                     }
                 }
             }
         })
         observers.append(center.addObserver(forName: AVAudioSession.routeChangeNotification, object: session, queue: nil) { [weak self] note in
-            let reason = (note.userInfo?[AVAudioSessionRouteChangeReasonKey] as? NSNumber)?.uintValue
-            // Our own initial category setup must not restart an already scheduled sequence.
-            guard reason != AVAudioSession.RouteChangeReason.categoryChange.rawValue else { return }
-            self?.queue.async { [weak self] in self?.resumeAfterSessionChange() }
+            guard let reason = (note.userInfo?[AVAudioSessionRouteChangeReasonKey] as? NSNumber)?.uintValue else { return }
+            let previous = note.userInfo?[AVAudioSessionRouteChangePreviousRouteKey] as? AVAudioSessionRouteDescription
+            let previousOutputs = previous?.outputs.map(\.uid)
+            self?.queue.async { [weak self] in
+                guard let self else { return }
+                let outputsChanged = previousOutputs.map { $0 != self.session.currentRoute.outputs.map(\.uid) }
+                guard Self.isOutputRouteChange(reason: reason, outputsChanged: self.clickOnly ? nil : outputsChanged) else {
+                    return
+                }
+                if self.onRunAudioChange != nil {
+                    self.stopPlayers()
+                    self.engine.stop()
+                    // The owner's stop path restarts idle audio on the new route.
+                    self.reportRunAudioChange()
+                } else if !self.schedulingFailed {
+                    self.resumeAfterSessionChange()
+                }
+            }
         })
+    }
+
+    static func isOutputRouteChange(reason: UInt, outputsChanged: Bool?) -> Bool {
+        switch AVAudioSession.RouteChangeReason(rawValue: reason) {
+        case .categoryChange: return false // Ignore our own category setup.
+        case .newDeviceAvailable, .oldDeviceUnavailable: return outputsChanged != false
+        default: return true
+        }
+    }
+
+    private func reportRunAudioChange() {
+        guard let onRunAudioChange else { return }
+        self.onRunAudioChange = nil
+        schedulingFailed = true
+        Task { @MainActor in onRunAudioChange() }
     }
 
     private func resumeAfterSessionChange() {
@@ -842,6 +898,5 @@ public final class AudioEngine: @unchecked Sendable {
             try? Self.sessionOwnership.release(for: sessionOwnerID)
             failure = error
         }
-        // A route change invalidates calibration timing; the caller restarts the click sequence.
     }
 }

@@ -68,6 +68,7 @@
 "Calibration input" = "Kalibrovaný vstup";
 "On-screen pads" = "Dotykové pady";
 "Saved offset" = "Uložený posun";
+"Audio output changed. Run stopped, press Start to continue." = "Zvukový výstup se změnil. Běh se zastavil, pokračuj tlačítkem Start.";
 "Listen to four clicks, then tap with each of the next ten. Follow the sound, not the screen." = "Poslechni si čtyři kliknutí a pak udeř s každým z dalších deseti. Řiď se zvukem, ne obrazovkou.";
 "Calibration progress" = "Průběh kalibrace";
 "Recorded taps" = "Zaznamenané úhozy";

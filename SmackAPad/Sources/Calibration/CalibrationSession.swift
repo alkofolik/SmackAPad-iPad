@@ -19,6 +19,7 @@ final class CalibrationSession {
     private(set) var result: CalibrationResult?
     private(set) var failure: CalibrationFailure?
     private(set) var audioError: String?
+    private(set) var outputRoute = AudioOutputRoute.current
 
     @ObservationIgnored private let audio = AudioEngine.calibration()
     @ObservationIgnored private let settings: SettingsManager
@@ -38,10 +39,16 @@ final class CalibrationSession {
     }
 
     var busy: Bool { phase == .preparing || phase == .countIn || phase == .measuring }
+    var savedOffset: Double { settings.calibrationOffset(for: deviceID, outputRoute: outputRoute) }
+
+    func refreshOutputRoute() {
+        outputRoute = .current
+    }
 
     func attach() {
         guard !attached else { return }
         attached = true
+        refreshOutputRoute()
         previousSourceID = midi.selectedSourceID
         previousPadHandler = midi.onPadEvent
         previousNoteHandler = midi.onNoteEvent
@@ -83,6 +90,7 @@ final class CalibrationSession {
                 }
                 try Task.checkCancellation()
                 let first = try audio.startCalibrationClicks()
+                refreshOutputRoute()
                 phase = .countIn
                 while !Task.isCancelled, runID == id, busy {
                     let snapshot = audio.calibrationSnapshot()
@@ -149,9 +157,11 @@ final class CalibrationSession {
 
     private func finish(outputTimes: [Double]) {
         // Recheck the clock immediately before committing the measurement.
-        switch measurement.finish(outputTimes: outputTimes, clockChanged: audio.calibrationSnapshot().clockChanged) {
+        let snapshot = audio.calibrationSnapshot()
+        guard let measuredRoute = snapshot.outputRoute else { fail(.audioClockChanged); return }
+        switch measurement.finish(outputTimes: outputTimes, clockChanged: snapshot.clockChanged) {
         case .success(let value):
-            settings.setCalibrationOffset(value.offsetMilliseconds, for: deviceID)
+            settings.setCalibrationOffset(value.offsetMilliseconds, for: deviceID, outputRoute: measuredRoute)
             result = value
             phase = .completed
             stopAudio()
