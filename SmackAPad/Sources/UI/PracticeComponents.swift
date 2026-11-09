@@ -81,6 +81,7 @@ struct InstrumentButtonStyle: ButtonStyle {
             .background(filled || selected ? Theme.ink : Theme.background)
             .overlay(Rectangle().stroke(Theme.ink, lineWidth: Theme.Size.border))
             .opacity(configuration.isPressed ? 0.65 : 1)
+            .frame(minWidth: Theme.Size.minimumTouch)
             .contentShape(Rectangle())
             .motion(value: selected)
             .motion(value: configuration.isPressed)
@@ -484,9 +485,12 @@ struct SummaryStrip: View {
                         .font(Theme.meta)
                         .fixedSize(horizontal: false, vertical: true)
                     if let dismiss {
-                        Button(settings.localized("Close"), action: dismiss)
-                            .font(Theme.meta)
-                            .frame(minWidth: Theme.Size.touch, minHeight: Theme.Size.touch)
+                        Button(action: dismiss) {
+                            Text(settings.localized("Close"))
+                                .font(Theme.meta)
+                                .frame(minWidth: Theme.Size.touch)
+                                .textButtonTarget()
+                        }
                     }
                 }
             }
@@ -502,9 +506,11 @@ struct SummaryStrip: View {
                     star(summary.mastery && revealed.contains(1), settings.localized("Goal tempo"))
                     star(summary.memory && revealed.contains(2), settings.localized("From memory"))
                 }
-                Button(settings.localized("Details"), action: detail)
-                    .font(Theme.control)
-                    .frame(minHeight: Theme.Size.touch)
+                Button(action: detail) {
+                    Text(settings.localized("Details"))
+                        .font(Theme.control)
+                        .textButtonTarget()
+                }
             }
             Text(settings.localized("Last run"))
                 .font(Theme.meta).foregroundStyle(Theme.secondary)
@@ -639,7 +645,9 @@ public struct PadLayoutModel: Equatable {
     public init(pads: [Int], used: Set<Int>, canShowKeys: Bool, settings: SettingsManager? = nil) {
         self.pads = pads
         self.canShowKeys = canShowKeys
-        self.cells = pads.map { pad in
+        // Eight-pad mappings use hardware slots. Sixteen-pad mappings follow the keyboard layout.
+        let displayPads = pads.count == 8 ? PhysicalPadGrid.displaySlots(padCount: pads.count).map { pads[$0] } : pads
+        self.cells = displayPads.map { pad in
             let abbr = PadVoice.abbreviation(pad)
             let key = KeyboardPadMapping.label(for: pad)
             let combined = key.map { "\(abbr) · \($0)" } ?? abbr
@@ -985,6 +993,8 @@ struct VolumeSliderRow: View {
                 step: 5
             )
             .tint(Theme.orange)
+            .frame(minHeight: Theme.Size.minimumTouch)
+            .contentShape(Rectangle())
         }
         .padding(.vertical, Theme.Space.tight)
     }

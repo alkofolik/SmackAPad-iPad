@@ -380,6 +380,11 @@ extension View {
     func satinPlate() -> some View { background { SatinPlateSurface() } }
     func structuralPlate() -> some View { background { StructuralPlateSurface() } }
     func insetDisplay() -> some View { modifier(InsetDisplay()) }
+
+    func textButtonTarget(alignment: Alignment = .center) -> some View {
+        frame(minWidth: Theme.Size.minimumTouch, minHeight: Theme.Size.touch, alignment: alignment)
+            .contentShape(Rectangle())
+    }
 }
 
 /// Native segmented controls ignore SwiftUI's custom font environment.
@@ -650,6 +655,7 @@ struct FilterChipButtonStyle: ButtonStyle {
             .scaleEffect(enabled ? policy.scale(pressed ? Theme.Skin.Pad.pressedScale : 1) : 1)
             .offset(y: enabled ? policy.offset(pressed ? Theme.Skin.Pad.pressedY : 0) : 0)
             .animation(enabled ? policy.animation(pressed ? Theme.Motion.padFlash : Theme.Motion.padPress) : nil, value: pressed)
+            .textButtonTarget()
     }
 }
 
@@ -733,12 +739,20 @@ struct InfoBanner: View {
             }
             .fixedSize(horizontal: false, vertical: true)
             if let actionTitle, let action {
-                Button(action: action) { Text(actionTitle).id(actionTitle).transition(.opacity) }.font(Theme.control)
-                    .frame(minHeight: Theme.Size.touch).fixedSize()
+                Button(action: action) {
+                    Text(actionTitle).id(actionTitle).transition(.opacity)
+                        .textButtonTarget()
+                        .fixedSize()
+                }
+                .font(Theme.control)
             }
             if let secondaryActionTitle, let secondaryAction {
-                Button(secondaryActionTitle, action: secondaryAction).font(Theme.control)
-                    .frame(minHeight: Theme.Size.touch).fixedSize()
+                Button(action: secondaryAction) {
+                    Text(secondaryActionTitle)
+                        .textButtonTarget()
+                        .fixedSize()
+                }
+                .font(Theme.control)
             }
         }
         .padding(.horizontal, Theme.Space.small)
@@ -782,8 +796,8 @@ struct StarsView: View {
                     Image(systemName: "info.circle")
                         .font(Theme.meta)
                         .foregroundStyle(Theme.secondary)
-                        .frame(minWidth: 28, minHeight: Theme.Size.touch)
-                        .contentShape(Rectangle())
+                        .frame(minWidth: 28)
+                        .textButtonTarget(alignment: .leading)
                 }
                 .buttonStyle(.plain)
                 .accessibilityLabel(settings.localized("Star requirements"))

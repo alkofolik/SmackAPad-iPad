@@ -53,7 +53,7 @@
 "Start MIDI learn" = "Start MIDI learn";
 "Connect a MIDI controller before starting." = "Connect a MIDI controller before starting.";
 "MIDI learn" = "MIDI learn";
-"Press each physical pad once, left to right, starting with the top row. Use the same controller and MIDI channel throughout. In 8-pad mode, positions are slots 1–8; sounds follow the lesson." = "Press each physical pad once, left to right, starting with the top row. Use the same controller and MIDI channel throughout. In 8-pad mode, positions are slots 1–8; sounds follow the lesson.";
+"Press each physical pad once, left to right, starting with the top row. Use the same controller and MIDI channel throughout. In 8-pad mode, positions are slots 1–8; sounds follow the lesson." = "Press each physical pad once, left to right. Use the same controller and MIDI channel throughout. In 8-pad mode, positions are slots 1–8; sounds follow the lesson.";
 "Cancel" = "Cancel";
 "Save" = "Save";
 "Crash" = "Crash";

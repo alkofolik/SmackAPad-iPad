@@ -53,7 +53,7 @@
 "Start MIDI learn" = "Spustit učení MIDI";
 "Connect a MIDI controller before starting." = "Před spuštěním připoj MIDI kontrolér.";
 "MIDI learn" = "Učení MIDI";
-"Press each physical pad once, left to right, starting with the top row. Use the same controller and MIDI channel throughout. In 8-pad mode, positions are slots 1–8; sounds follow the lesson." = "Stiskni každý fyzický pad jednou, zleva doprava, od horní řady. Používej stále stejný kontrolér a MIDI kanál. V režimu 8 padů se učí pozice 1–8; zvuky určuje lekce.";
+"Press each physical pad once, left to right, starting with the top row. Use the same controller and MIDI channel throughout. In 8-pad mode, positions are slots 1–8; sounds follow the lesson." = "Stiskni každý fyzický pad jednou, zleva doprava. Používej stále stejný kontrolér a MIDI kanál. V režimu 8 padů se učí pozice 1–8; zvuky určuje lekce.";
 "Cancel" = "Zrušit";
 "Save" = "Uložit";
 "Crash" = "Crash";

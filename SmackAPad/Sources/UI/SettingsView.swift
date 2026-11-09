@@ -262,8 +262,10 @@ public struct SettingsView: View {
                     // MARK: 7. Touch Pads
                     Section {
                         if let pads = midi.padIndices {
-                            LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: Theme.Space.small), count: 4), spacing: Theme.Space.small) {
-                                ForEach(Array(pads.enumerated()), id: \.offset) { slot, padIndex in
+                            let slots = pads.count == 8 ? PhysicalPadGrid.displaySlots(padCount: pads.count) : Array(pads.indices)
+                            LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: Theme.Space.small), count: PhysicalPadGrid.columns), spacing: Theme.Space.small) {
+                                ForEach(slots, id: \.self) { slot in
+                                    let padIndex = pads[slot]
                                     TouchPad(
                                         number: slot + 1,
                                         sound: PadNames.name(for: padIndex),

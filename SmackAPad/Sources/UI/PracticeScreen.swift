@@ -18,6 +18,7 @@ struct PracticeScreen: View {
     @AppStorage("smackapad.practice.visibleBars") private var visibleBars = 4
     @AppStorage("smackapad.practice.showPads") private var showPads = true
     @AppStorage("smackapad.practice.touchPadsInPortrait") private var touchPadsInPortrait = true
+    @AppStorage("smackapad.legend.shownOnce") private var legendShownOnce = false
     @State private var padLayoutModel: PadLayoutModel
     @State private var showingLegend = false
     @State private var showingTools = false
@@ -94,7 +95,11 @@ struct PracticeScreen: View {
             await session.prepare()
             updatePadLayoutModel()
             handleDebugLaunchArguments()
-            if session.isMix { session.start() }
+            if session.isMix {
+                session.start()
+            } else if !Task.isCancelled {
+                showFirstLegendIfNeeded()
+            }
         }
         .onDisappear {
             session.close()
@@ -118,6 +123,7 @@ struct PracticeScreen: View {
         .onChange(of: session.running) { _, running in
             if running {
                 showingInfo = false
+                showingLegend = false
                 showingStarRules = false
                 showingDetails = false
                 showingTempo = false
@@ -374,11 +380,21 @@ struct PracticeScreen: View {
             toolSeparator
 
             HStack(spacing: 0) {
-                icon("info.circle", settings.localized("Lesson info")) { showingInfo.toggle() }
+                icon("info.circle", settings.localized("Lesson info")) {
+                    showingLegend = false
+                    showingInfo.toggle()
+                }
                     .disabled(session.running)
                     .popover(isPresented: $showingInfo, arrowEdge: .top) { lessonInfo }
                 icon("list.bullet.rectangle", settings.localized("Legend")) { showingLegend.toggle() }
-                    .popover(isPresented: $showingLegend, arrowEdge: .top) { legend }
+                    .disabled(session.running || session.countdown != nil)
+                    .popover(isPresented: $showingLegend, arrowEdge: .top) {
+                        legend.onAppear {
+                            if !showingInfo && !session.running && session.countdown == nil && !session.patternHits.isEmpty {
+                                legendShownOnce = true
+                            }
+                        }
+                    }
                 icon("slider.horizontal.3", settings.localized("More tools")) { showingTools.toggle() }
                     .popover(isPresented: $showingTools, arrowEdge: .top) {
                         PracticeTools(session: session, showPads: $showPads, openMIDI: {
@@ -889,11 +905,13 @@ struct PracticeScreen: View {
             HStack {
                 Text(settings.localized("Tempo")).font(Theme.screenTitle)
                 Spacer()
-                Button(settings.localized("Close")) {
+                Button {
                     showingTempo = false
+                } label: {
+                    Text(settings.localized("Close"))
+                        .font(Theme.control)
+                        .textButtonTarget(alignment: .trailing)
                 }
-                .font(Theme.control)
-                .frame(minHeight: Theme.Size.touch)
             }
             Text("\(session.bpm) → \(session.lesson.targetBpm) BPM").font(Theme.control).monospacedDigit()
                         .contentTransition(motion.numeric).motion(value: session.bpm)
@@ -963,11 +981,13 @@ struct PracticeScreen: View {
                     Text(settings.localized("Session results"))
                         .font(Theme.sectionTitle)
                     Spacer()
-                    Button(settings.localized("Close")) {
+                    Button {
                         showingDetails = false
+                    } label: {
+                        Text(settings.localized("Close"))
+                            .font(Theme.control)
+                            .textButtonTarget(alignment: .trailing)
                     }
-                    .font(Theme.control)
-                    .frame(minHeight: Theme.Size.touch)
                 }
 
                 if !session.runResults.isEmpty {
@@ -1059,8 +1079,11 @@ struct PracticeScreen: View {
                 HStack {
                     Text(settings.localized("Star requirements")).font(Theme.sectionTitle)
                     Spacer()
-                    Button(settings.localized("Close")) { showingStarRules = false }
-                        .font(Theme.control).frame(minHeight: Theme.Size.touch)
+                    Button { showingStarRules = false } label: {
+                        Text(settings.localized("Close"))
+                            .font(Theme.control)
+                            .textButtonTarget(alignment: .trailing)
+                    }
                 }
                 ForEach(0..<3, id: \.self) { index in
                     HStack(alignment: .top, spacing: Theme.Space.small) {
@@ -1083,13 +1106,22 @@ struct PracticeScreen: View {
         .presentationDetents([.height(380), .medium])
     }
 
+    private func showFirstLegendIfNeeded() {
+        guard !legendShownOnce, !showingInfo, !showingTools, !showingTempo, !showingMIDI,
+              !session.running, session.countdown == nil, !session.patternHits.isEmpty else { return }
+        showingLegend = true
+    }
+
     private var legend: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: Theme.Space.regular) {
                 HStack {
                     Text(settings.localized("Pad legend")).font(Theme.sectionTitle)
                     Spacer()
-                    Button(settings.localized("Close")) { showingLegend = false }.frame(minHeight: Theme.Size.touch)
+                    Button { showingLegend = false } label: {
+                        Text(settings.localized("Close"))
+                            .textButtonTarget(alignment: .trailing)
+                    }
                 }
                 ForEach(Array(Set(session.patternHits.map { "\($0.padIndex):\($0.hand)" })).sorted(), id: \.self) { key in
                     let parts = key.split(separator: ":")
@@ -1117,9 +1149,11 @@ struct PracticeScreen: View {
                 HStack {
                     Text(settings.localized("Lesson info")).font(Theme.sectionTitle)
                     Spacer()
-                    Button(settings.localized("Close")) { showingInfo = false }
-                        .font(Theme.control)
-                        .frame(minHeight: Theme.Size.touch)
+                    Button { showingInfo = false } label: {
+                        Text(settings.localized("Close"))
+                            .font(Theme.control)
+                            .textButtonTarget(alignment: .trailing)
+                    }
                 }
 
                 VStack(alignment: .leading, spacing: Theme.Space.tight) {

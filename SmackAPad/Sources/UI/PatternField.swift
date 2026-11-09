@@ -2,7 +2,7 @@ import SwiftUI
 
 /// Three-state visibility for pattern notes:
 /// - shown: notes fully visible
-/// - faded: notes drawn at low contrast (outline only, no pad label)
+/// - faded: outlined notes with a light fill and no pad label
 /// - hidden: notes hidden, only struck hits drawn behind playhead
 public enum NoteVisibility: String, Sendable, Equatable {
     case shown
@@ -69,6 +69,8 @@ private struct PatternFeedback {
 }
 
 struct PatternField: View {
+    static let ghostOutline = Theme.black
+
     @ScaledMetric(relativeTo: .headline) private var notationScale: CGFloat = 1
     @Environment(SettingsManager.self) private var settings
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
@@ -566,12 +568,9 @@ private func drawHit(_ hit: LessonHit, in rect: CGRect, mark: HitMark?, strength
     case .faded:
         var fadedContext = context
         fadedContext.opacity *= strength
-        // Low contrast outline: outline only, no pad label
-        fadedContext.stroke(Path(roundedRect: rect.insetBy(dx: 0.75, dy: 0.75), cornerRadius: cornerRadius),
-                            with: .color(Theme.ink.opacity(0.35)), lineWidth: 1.5)
+        let interior = Path(roundedRect: rect.insetBy(dx: 1.5, dy: 1.5), cornerRadius: innerRadius)
         if let mark {
-            fadedContext.fill(Path(roundedRect: rect.insetBy(dx: 1.5, dy: 1.5), cornerRadius: innerRadius),
-                             with: .color(PracticeBandStyle.hitColor(mark)))
+            fadedContext.fill(interior, with: .color(PracticeBandStyle.hitColor(mark)))
             var accent = Path()
             let padInset = min(4, rect.width * 0.25)
             let vPad = min(5, rect.height * 0.2)
@@ -583,6 +582,8 @@ private func drawHit(_ hit: LessonHit, in rect: CGRect, mark: HitMark?, strength
                 accent.addLine(to: CGPoint(x: rect.maxX - padInset, y: rect.maxY - vPad))
             }
             fadedContext.stroke(accent, with: .color(Theme.black), lineWidth: 1.4)
+        } else {
+            fadedContext.fill(interior, with: .color(Theme.white.opacity(0.12)))
         }
         if fadeProgress < 1 {
             var crossContext = context
@@ -592,13 +593,15 @@ private func drawHit(_ hit: LessonHit, in rect: CGRect, mark: HitMark?, strength
             crossContext.draw(Text(PadVoice.abbreviation(hit.padIndex)).font(Theme.canvasDisplay(hitFontSize))
                 .foregroundColor(Theme.black), at: CGPoint(x: rect.midX, y: rect.midY))
         }
+        fadedContext.stroke(Path(roundedRect: rect.insetBy(dx: 1, dy: 1), cornerRadius: innerRadius),
+                            with: .color(PatternField.ghostOutline), lineWidth: 2)
 
     case .hidden:
         if fadeProgress < 1 {
             var crossContext = context
             crossContext.opacity *= strength * (1.0 - fadeProgress)
-            crossContext.stroke(Path(roundedRect: rect.insetBy(dx: 0.75, dy: 0.75), cornerRadius: cornerRadius),
-                                with: .color(Theme.ink.opacity(0.35)), lineWidth: 1.5)
+            crossContext.stroke(Path(roundedRect: rect.insetBy(dx: 1, dy: 1), cornerRadius: innerRadius),
+                                with: .color(PatternField.ghostOutline), lineWidth: 2)
         }
     }
 }

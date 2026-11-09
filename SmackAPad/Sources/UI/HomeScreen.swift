@@ -1,5 +1,9 @@
 import SwiftUI
 
+func hasAnyLessonProgress(_ records: [Int: LessonProgress]) -> Bool {
+    records.values.contains { $0.hasPlayed || $0.passed || $0.mastery || $0.memory }
+}
+
 /// One proportional coordinate system for the grid, title and decorative hardware.
 private struct HomeControllerLayout: Equatable {
     let size: CGSize
@@ -1245,6 +1249,8 @@ public struct HomeScreen: View {
         }
     }
 
+    private var hasProgress: Bool { hasAnyLessonProgress(progress.records) }
+
     private func pad3(cellSize: CGFloat) -> some View {
         let label = settings.localized("Training").uppercased(with: Locale(identifier: settings.languagePreference.rawValue))
         let dueCount = progress.dueLessonsCount(today: calendarDay)
@@ -1253,7 +1259,7 @@ public struct HomeScreen: View {
             title: label,
             subtitle: nil,
             accessibilityText: label,
-            isLit: dueCount > 0,
+            isLit: hasProgress && dueCount > 0,
             padNumber: 3,
             cellSize: cellSize,
             isHero: false
@@ -1267,7 +1273,14 @@ public struct HomeScreen: View {
 
     private func pad4(cellSize: CGFloat) -> some View {
         let label = settings.localized("Intro").uppercased(with: Locale(identifier: settings.languagePreference.rawValue))
-        return HomePadView(title: label, subtitle: nil, padNumber: 4, cellSize: cellSize, isHero: false) {
+        return HomePadView(
+            title: label,
+            subtitle: nil,
+            isLit: !hasProgress,
+            padNumber: 4,
+            cellSize: cellSize,
+            isHero: false
+        ) {
             activeDestination = .intro
             onNavigateToLibrary(.intro)
             AppNavigation.shared.openLibrary(.intro)

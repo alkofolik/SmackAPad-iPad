@@ -97,6 +97,7 @@ enum Theme {
         /// Two-line list row (lesson rows).
         static let listRow: CGFloat = 60
 
+        static let minimumTouch: CGFloat = 44
         static let touch: CGFloat = 48
         static let control: CGFloat = 72
         static let transportWidth: CGFloat = 420

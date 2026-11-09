@@ -8,6 +8,16 @@ struct MIDISettingsView: View {
     }
 }
 
+enum PhysicalPadGrid {
+    static let columns = 4
+
+    /// Top-to-bottom display of zero-based hardware slots, numbered from the bottom row.
+    static func displaySlots(padCount: Int) -> [Int] {
+        stride(from: padCount - columns, through: 0, by: -columns)
+            .flatMap { rowStart in rowStart..<(rowStart + columns) }
+    }
+}
+
 @MainActor
 struct MIDILearnView: View {
     @Environment(SettingsManager.self) private var settings
@@ -51,8 +61,8 @@ struct MIDILearnView: View {
                                     .font(Theme.meta)
                             }
 
-                            LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: Theme.Space.small), count: 4), spacing: Theme.Space.small) {
-                                ForEach(0..<padCount, id: \.self) { slot in
+                            LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: Theme.Space.small), count: PhysicalPadGrid.columns), spacing: Theme.Space.small) {
+                                ForEach(PhysicalPadGrid.displaySlots(padCount: padCount), id: \.self) { slot in
                                     VStack(spacing: Theme.Space.small) {
                                         Text(settings.localized("Pad %lld", slot + 1))
                                             .font(Theme.control)
