@@ -1,0 +1,38 @@
+{
+  "configurations" : [
+    {
+      "id" : "136CE00E-5258-45B9-8DB1-4CBB99CC29ED",
+      "name" : "Configuration 1",
+      "options" : {
+
+      }
+    }
+  ],
+  "defaultOptions" : {
+    "codeCoverage" : false,
+    "mainThreadCheckerDetectionPolicy" : {
+      "enabled" : false
+    },
+    "runtimeIssueDetection" : {
+      "enabled" : false
+    },
+    "targetForVariableExpansion" : {
+      "containerPath" : "container:SmackAPad.xcodeproj",
+      "identifier" : "7C0000000000000000000008",
+      "name" : "SmackAPad"
+    },
+    "threadPerformanceCheckerRuntimeIssueDetection" : {
+      "enabled" : false
+    }
+  },
+  "testTargets" : [
+    {
+      "target" : {
+        "containerPath" : "container:SmackAPad.xcodeproj",
+        "identifier" : "7C0000000000000000000009",
+        "name" : "SmackAPadTests"
+      }
+    }
+  ],
+  "version" : 1
+}
