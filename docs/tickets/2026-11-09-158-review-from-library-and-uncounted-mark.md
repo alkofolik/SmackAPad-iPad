@@ -70,3 +70,6 @@ In Training / Today a review step that was played but did not count shows the sa
 ## Done rule
 
 Run the full test suite and stop after a successful build. Commit (AGENTS.md); Jakub pushes and tests on the iPad. Report the list of entry points changed and the files touched. Report the A6 reconciliation call sites. If anything beyond the Today day plan turns out to depend on the launch route, stop and report.
+
+## Test result (Jakub, iPad, 2026-11-10)
+Tested on the iPad with the `reviewDueToday` debug scenario (Full access) per the acceptance list: review from Library and from the Home pad starts From memory at goal tempo, qualifying run counts, Today shows the step as done and does not offer it again, not-passed review shows the exclamation circle. All passed. Ticket closed.

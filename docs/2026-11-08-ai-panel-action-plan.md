@@ -43,6 +43,6 @@ Zdroj: `docs/reviews/ai-panel/results/synthesis.md` (čísla v závorkách = ř�
 - [ ] Kontrola síly úderu u lekcí s ghost notes (#35)
 
 ## Nové z kontroly na iPadu (2026-11-08, čeká na schválení tiketů)
-- [ ] Revize spuštěná z knihovny nebo z padu na úvodní obrazovce se spustí rovnou jako revize (From memory, cílové tempo); hráč nic nepřepíná. (ticket 158 napsán 2026-11-09)
+- [x] Revize spuštěná z knihovny nebo z padu na úvodní obrazovce se spustí rovnou jako revize (From memory, cílové tempo); hráč nic nepřepíná. (T158, otestováno na iPadu 2026-11-10)
 - [ ] Nápověda „Jak to funguje“ přes stávající ikonu (i) + tutoriál při prvním spuštění; bez dalšího textu v UI.
-- [ ] Training: šedé kolečko u kroku Review u zahrané, ale nezapočtené revize nic neříká (návrh na úpravu). (ticket 158 napsán 2026-11-09)
+- [x] Training: šedé kolečko u kroku Review u zahrané, ale nezapočtené revize nic neříká (návrh na úpravu). (T158, otestováno na iPadu 2026-11-10)
