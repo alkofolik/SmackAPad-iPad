@@ -878,3 +878,14 @@
 "help.overview.mix" = "Play learned patterns back to back.";
 "help.inputs.title" = "Ways to play";
 "help.inputs.caption" = "Use a MIDI controller, a hardware keyboard or portrait touch pads with a 16-pad layout.";
+
+/* Ticket 161: Progress backup */
+"Progress" = "Progress";
+"Back up progress" = "Back up progress";
+"Restore from backup" = "Restore from backup";
+"Restored. %d lessons updated." = "Restored. %d lessons updated.";
+"Restored. 1 lesson updated." = "Restored. 1 lesson updated.";
+"This file is not a Smack-a-Pad backup. Nothing was changed." = "This file is not a Smack-a-Pad backup. Nothing was changed.";
+"This backup was created in a newer version of Smack-a-Pad. Update the app to restore it." = "This backup was created in a newer version of Smack-a-Pad. Update the app to restore it.";
+"Could not create a safety backup. Import was cancelled." = "Could not create a safety backup. Import was cancelled.";
+

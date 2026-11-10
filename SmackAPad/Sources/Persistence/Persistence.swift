@@ -24,7 +24,7 @@ public struct AppCalendar: Sendable {
         todayProvider()
     }
 
-    static func now() -> Date {
+    public static func now() -> Date {
         #if DEBUG
         debugNowProvider()
         #else
@@ -823,6 +823,132 @@ public final class SettingsManager: @unchecked Sendable {
         }
         self.hiddenCategoryIDsByMode = [:]
     }
+
+    // MARK: - Device ID & Export/Import
+
+    /// Unique, persistent identifier for this device install. Generated once and never replaced by an import.
+    public static var deviceId: String {
+        let key = "smackapad.deviceId"
+        if let existing = UserDefaults.standard.string(forKey: key), !existing.isEmpty {
+            return existing
+        }
+        let newId = UUID().uuidString
+        UserDefaults.standard.set(newId, forKey: key)
+        return newId
+    }
+
+    /// Exports player preferences for backup. Device-specific offsets (calibration, etc.) are excluded.
+    public func exportSettings() -> BackupSettings {
+        lock.lock()
+        defer { lock.unlock() }
+
+        let showPads = userDefaults.object(forKey: "smackapad.practice.showPads") as? Bool ?? true
+        let showPadKeys = userDefaults.object(forKey: "smackapad.practice.showPadKeys") as? Bool ?? true
+        let visibleBars = userDefaults.integer(forKey: "smackapad.practice.visibleBars")
+        let touchPadsInPortrait = userDefaults.object(forKey: "smackapad.practice.touchPadsInPortrait") as? Bool ?? true
+        let scrolling = userDefaults.string(forKey: "smackapad.practice.scrolling") ?? "continuous"
+        let practiceAppearance = userDefaults.string(forKey: "smackapad.practice.appearance") ?? "system"
+
+        let tutorialSeen = userDefaults.bool(forKey: "smackapad.tutorial.seen")
+        let legendShownOnce = userDefaults.bool(forKey: "smackapad.legend.shownOnce")
+        let memoryHints = userDefaults.array(forKey: "smackapad.memoryHintShownLessonIds") as? [Int] ?? []
+
+        let modifiedAt = userDefaults.object(forKey: "smackapad.settings.modifiedAt") as? Date
+
+        return BackupSettings(
+            settingsModifiedAt: modifiedAt,
+            selectedKitId: selectedKitId,
+            lessonKitOverrides: lessonKitOverrides,
+            midiControls: midiControls,
+            bpmStep: bpmStep,
+            practiceMode: practiceMode.rawValue,
+            activeProfileName: activeProfileName,
+            customProfiles: customProfiles,
+            languagePreference: languagePreference.rawValue,
+            appearance: appearance.rawValue,
+            metronomeVolume: metronomeVolume,
+            padsVolume: padsVolume,
+            patternVolume: patternVolume,
+            playPadsWithKeyboard: playPadsWithKeyboard,
+            fadeMemoryNotes: fadeMemoryNotes,
+            reviewReminderEnabled: reviewReminderEnabled,
+            reviewReminderTime: reviewReminderTime,
+            hideCompletedLessons: hideCompletedLessons,
+            hiddenCategoryIDsByMode: hiddenCategoryIDsByMode,
+            libraryView: libraryView,
+            libraryStarFilters: libraryStarFilters,
+            trainingDueStepFilter: trainingDueStepFilter,
+            nextLessonSource: nextLessonSource,
+            lastLessonID: lastLessonID,
+            showPads: showPads,
+            showPadKeys: showPadKeys,
+            visibleBars: visibleBars > 0 ? visibleBars : 1,
+            touchPadsInPortrait: touchPadsInPortrait,
+            scrolling: scrolling,
+            practiceAppearance: practiceAppearance,
+            tutorialSeen: tutorialSeen,
+            legendShownOnce: legendShownOnce,
+            memoryHintShownLessonIds: Set(memoryHints)
+        )
+    }
+
+    /// Applies portable player preferences from a backup on a fresh device.
+    /// Hardware/route calibration offsets are intentionally not restored.
+    public func applyImportedSettings(_ settings: BackupSettings) {
+        lock.lock()
+        defer { lock.unlock() }
+
+        self.selectedKitId = settings.selectedKitId
+        self.lessonKitOverrides = settings.lessonKitOverrides
+        self.midiControls = settings.midiControls
+        self.bpmStep = settings.bpmStep
+        if let mode = PracticeMode(rawValue: settings.practiceMode) {
+            self.practiceMode = mode
+        }
+        self.activeProfileName = settings.activeProfileName
+        self.customProfiles = settings.customProfiles
+        if let lang = AppLanguage(rawValue: settings.languagePreference) {
+            self.languagePreference = lang
+        }
+        if let app = AppAppearance(rawValue: settings.appearance) {
+            self.appearance = app
+        }
+        self.metronomeVolume = settings.metronomeVolume
+        self.padsVolume = settings.padsVolume
+        self.patternVolume = settings.patternVolume
+        self.playPadsWithKeyboard = settings.playPadsWithKeyboard
+        self.fadeMemoryNotes = settings.fadeMemoryNotes
+        self.reviewReminderEnabled = settings.reviewReminderEnabled
+        if let time = settings.reviewReminderTime {
+            self.reviewReminderTime = time
+        }
+        self.hideCompletedLessons = settings.hideCompletedLessons
+        self.hiddenCategoryIDsByMode = settings.hiddenCategoryIDsByMode
+        self.libraryView = settings.libraryView
+        self.libraryStarFilters = settings.libraryStarFilters
+        self.trainingDueStepFilter = settings.trainingDueStepFilter
+        self.nextLessonSource = settings.nextLessonSource
+        self.lastLessonID = settings.lastLessonID
+
+        userDefaults.set(settings.showPads, forKey: "smackapad.practice.showPads")
+        userDefaults.set(settings.showPadKeys, forKey: "smackapad.practice.showPadKeys")
+        if settings.visibleBars > 0 {
+            userDefaults.set(settings.visibleBars, forKey: "smackapad.practice.visibleBars")
+        }
+        userDefaults.set(settings.touchPadsInPortrait, forKey: "smackapad.practice.touchPadsInPortrait")
+        userDefaults.set(settings.scrolling, forKey: "smackapad.practice.scrolling")
+        userDefaults.set(settings.practiceAppearance, forKey: "smackapad.practice.appearance")
+
+        userDefaults.set(settings.tutorialSeen, forKey: "smackapad.tutorial.seen")
+        userDefaults.set(settings.legendShownOnce, forKey: "smackapad.legend.shownOnce")
+        if !settings.memoryHintShownLessonIds.isEmpty {
+            userDefaults.set(Array(settings.memoryHintShownLessonIds), forKey: "smackapad.memoryHintShownLessonIds")
+        }
+
+        if let mod = settings.settingsModifiedAt {
+            userDefaults.set(mod, forKey: "smackapad.settings.modifiedAt")
+        }
+    }
 }
 
 // MARK: - Lesson Progress Model
@@ -844,6 +970,41 @@ public struct LessonProgress: Codable, Equatable, Hashable, Sendable {
     public var lastReviewedDay: String?
     public var lastReviewFailDay: String?
     var learningCreditByPadCount: [String: StarStreak] = [:]
+    public var modifiedAt: Date?
+
+    public static func == (lhs: LessonProgress, rhs: LessonProgress) -> Bool {
+        lhs.hasPlayed == rhs.hasPlayed &&
+        lhs.passed == rhs.passed &&
+        lhs.mastery == rhs.mastery &&
+        lhs.memory == rhs.memory &&
+        lhs.currentBpm == rhs.currentBpm &&
+        lhs.bestScore == rhs.bestScore &&
+        lhs.lastPlayedDay == rhs.lastPlayedDay &&
+        lhs.masteryDay == rhs.masteryDay &&
+        lhs.reviewStep == rhs.reviewStep &&
+        lhs.reviewDueDay == rhs.reviewDueDay &&
+        lhs.settled == rhs.settled &&
+        lhs.lastReviewedDay == rhs.lastReviewedDay &&
+        lhs.lastReviewFailDay == rhs.lastReviewFailDay &&
+        lhs.learningCreditByPadCount == rhs.learningCreditByPadCount
+    }
+
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(hasPlayed)
+        hasher.combine(passed)
+        hasher.combine(mastery)
+        hasher.combine(memory)
+        hasher.combine(currentBpm)
+        hasher.combine(bestScore)
+        hasher.combine(lastPlayedDay)
+        hasher.combine(masteryDay)
+        hasher.combine(reviewStep)
+        hasher.combine(reviewDueDay)
+        hasher.combine(settled)
+        hasher.combine(lastReviewedDay)
+        hasher.combine(lastReviewFailDay)
+        hasher.combine(learningCreditByPadCount)
+    }
 
     /// Imported stars remain earned; an untouched review chain is an invitation, not a failed counter.
     var isUnstartedLegacyReview: Bool {
@@ -877,7 +1038,8 @@ public struct LessonProgress: Codable, Equatable, Hashable, Sendable {
         reviewDueDay: String? = nil,
         settled: Bool? = nil,
         lastReviewedDay: String? = nil,
-        lastReviewFailDay: String? = nil
+        lastReviewFailDay: String? = nil,
+        modifiedAt: Date? = nil
     ) {
         self.hasPlayed = hasPlayed || passed || mastery || memory
         self.passed = passed
@@ -892,11 +1054,12 @@ public struct LessonProgress: Codable, Equatable, Hashable, Sendable {
         self.settled = settled
         self.lastReviewedDay = lastReviewedDay
         self.lastReviewFailDay = lastReviewFailDay
+        self.modifiedAt = modifiedAt
     }
 
     private enum CodingKeys: String, CodingKey {
         case hasPlayed, passed, mastery, memory, currentBpm, bestScore, masteryDay, lastPlayedDay, learningCreditByPadCount
-        case reviewStep, reviewDueDay, settled, lastReviewedDay, lastReviewFailDay
+        case reviewStep, reviewDueDay, settled, lastReviewedDay, lastReviewFailDay, modifiedAt
     }
 
     /// Existing progress files predate the memory star and review schedule.
@@ -915,6 +1078,12 @@ public struct LessonProgress: Codable, Equatable, Hashable, Sendable {
         settled = try values.decodeIfPresent(Bool.self, forKey: .settled)
         lastReviewedDay = try values.decodeIfPresent(String.self, forKey: .lastReviewedDay)
         lastReviewFailDay = try values.decodeIfPresent(String.self, forKey: .lastReviewFailDay)
+        if let dateString = try? values.decodeIfPresent(String.self, forKey: .modifiedAt) {
+            let formatter = ISO8601DateFormatter()
+            modifiedAt = formatter.date(from: dateString)
+        } else {
+            modifiedAt = try values.decodeIfPresent(Date.self, forKey: .modifiedAt)
+        }
         // Old records did not distinguish a saved tempo from an interrupted attempt.
         hasPlayed = try values.decodeIfPresent(Bool.self, forKey: .hasPlayed) ?? (passed || mastery || memory || currentBpm > 0 || bestScore > 0)
     }
@@ -962,15 +1131,18 @@ public struct TrainingLog: Codable, Equatable, Hashable, Sendable {
 /// Root structure of the progress JSON file.
 /// Decodes both legacy flat dictionary format (`[String: LessonProgress]`) and the structured format.
 public struct ProgressRoot: Codable, Equatable, Sendable {
+    public var formatVersion: Int
     public var lessons: [Int: LessonProgress]
     public var trainingLog: TrainingLog
 
-    public init(lessons: [Int: LessonProgress] = [:], trainingLog: TrainingLog = TrainingLog()) {
+    public init(formatVersion: Int = 1, lessons: [Int: LessonProgress] = [:], trainingLog: TrainingLog = TrainingLog()) {
+        self.formatVersion = formatVersion
         self.lessons = lessons
         self.trainingLog = trainingLog
     }
 
     private enum CodingKeys: String, CodingKey {
+        case formatVersion
         case lessons
         case trainingLog
         case reviewsPassed
@@ -984,6 +1156,17 @@ public struct ProgressRoot: Codable, Equatable, Sendable {
     public init(from decoder: Decoder) throws {
         if let container = try? decoder.container(keyedBy: CodingKeys.self),
            container.contains(.lessons) {
+            let version = try container.decodeIfPresent(Int.self, forKey: .formatVersion) ?? 1
+            if version > 1 {
+                throw DecodingError.dataCorrupted(
+                    DecodingError.Context(
+                        codingPath: decoder.codingPath,
+                        debugDescription: "Unsupported formatVersion: \(version)"
+                    )
+                )
+            }
+            self.formatVersion = version
+
             let stringLessons = try container.decode([String: LessonProgress].self, forKey: .lessons)
             var convertedLessons: [Int: LessonProgress] = [:]
             for (k, v) in stringLessons {
@@ -1016,6 +1199,7 @@ public struct ProgressRoot: Codable, Equatable, Sendable {
             for (k, v) in stringLessons {
                 if let id = Int(k) { convertedLessons[id] = v }
             }
+            self.formatVersion = 1
             self.lessons = convertedLessons
             self.trainingLog = TrainingLog()
         }
@@ -1029,6 +1213,7 @@ public struct ProgressRoot: Codable, Equatable, Sendable {
 
     public func encode(to encoder: Encoder) throws {
         var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(formatVersion, forKey: .formatVersion)
         var stringLessons: [String: LessonProgress] = [:]
         for (id, record) in lessons {
             stringLessons[String(id)] = record
@@ -1133,7 +1318,9 @@ public final class ProgressStore: @unchecked Sendable {
         unreadableProgressBackupURL = nil
         do {
             let data = try Data(contentsOf: fileURL)
-            let root = try JSONDecoder().decode(ProgressRoot.self, from: data)
+            let decoder = JSONDecoder()
+            decoder.dateDecodingStrategy = .iso8601
+            let root = try decoder.decode(ProgressRoot.self, from: data)
             self.records = root.lessons
             self.trainingLog = root.trainingLog
             self.lastLoadError = nil
@@ -1283,7 +1470,7 @@ public final class ProgressStore: @unchecked Sendable {
         return changed
     }
 
-    static func merging(_ existing: LessonProgress, with incoming: LessonProgress) -> LessonProgress {
+    public static func merging(_ existing: LessonProgress, with incoming: LessonProgress) -> LessonProgress {
         var result = existing
         result.passed = existing.passed || incoming.passed
         result.mastery = existing.mastery || incoming.mastery
@@ -1309,6 +1496,138 @@ public final class ProgressStore: @unchecked Sendable {
 
     public static func merging(_ existing: TrainingLog, with incoming: TrainingLog) -> TrainingLog {
         TrainingLog.merging(existing, with: incoming)
+    }
+
+    // MARK: - Export / Import
+
+    public struct ImportSummary: Equatable, Sendable {
+        public let updatedLessonsCount: Int
+        public let totalImportedLessons: Int
+        public let isFreshDevice: Bool
+
+        public init(updatedLessonsCount: Int, totalImportedLessons: Int, isFreshDevice: Bool) {
+            self.updatedLessonsCount = updatedLessonsCount
+            self.totalImportedLessons = totalImportedLessons
+            self.isFreshDevice = isFreshDevice
+        }
+    }
+
+    /// Exports full application state into a portable backup envelope.
+    public func exportEnvelope() -> ProgressBackupEnvelope {
+        lock.lock()
+        let currentLessons = records
+        let currentTraining = trainingLog
+        lock.unlock()
+
+        let badges = BadgeStore.shared.records
+        let settings = SettingsManager.shared.exportSettings()
+        let appVersion: String
+        if let short = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String,
+           let build = Bundle.main.infoDictionary?["CFBundleVersion"] as? String {
+            appVersion = "\(short) (\(build))"
+        } else {
+            appVersion = "1.0"
+        }
+
+        return ProgressBackupEnvelope(
+            app: ProgressBackup.appIdentifier,
+            formatVersion: ProgressBackup.currentFormatVersion,
+            exportedAt: AppCalendar.now(),
+            appVersion: appVersion,
+            deviceId: SettingsManager.deviceId,
+            progress: currentLessons,
+            trainingLog: currentTraining,
+            badges: badges,
+            settings: settings
+        )
+    }
+
+    /// Serializes the current state into backup JSON data.
+    public func exportData() throws -> Data {
+        let envelope = exportEnvelope()
+        return try ProgressBackup.encode(envelope: envelope)
+    }
+
+    /// Imports backup JSON data, validating format and applying "never lose anything" merge rules.
+    public func importFromData(_ data: Data, validLessonIds: Set<Int>? = nil) throws -> ImportSummary {
+        let envelope = try ProgressBackup.decode(from: data)
+        return try importEnvelope(envelope, validLessonIds: validLessonIds)
+    }
+
+    /// Applies an imported backup envelope safely with atomic replacement and in-place reload.
+    public func importEnvelope(_ envelope: ProgressBackupEnvelope, validLessonIds: Set<Int>? = nil) throws -> ImportSummary {
+        lock.lock()
+        defer { lock.unlock() }
+
+        if let lastLoadError {
+            throw lastLoadError
+        }
+
+        // Hard constraint 4: Before an import is applied, the current state is saved automatically to
+        // <Documents>/Backups/before-import-<timestamp>.json (keep the last 5).
+        // If anything fails mid-import, nothing on disk changes (write to temp, then atomic replace).
+        let currentEnvelope = exportEnvelope()
+        let backupsDir = fileURL.deletingLastPathComponent().appendingPathComponent("Backups", isDirectory: true)
+        try BackupStorage.createPreImportBackup(envelope: currentEnvelope, directory: backupsDir)
+
+        let isFresh = ProgressMerge.isFreshDevice(
+            records: records,
+            trainingLog: trainingLog,
+            earnedBadgesCount: BadgeStore.shared.earnedCount
+        )
+
+        let catalogIds = validLessonIds ?? (LessonStore.shared.lessons.isEmpty ? nil : Set(LessonStore.shared.lessons.map(\.id)))
+        let mergeResult = ProgressMerge.mergeLessons(
+            localLessons: records,
+            incomingLessons: envelope.progress,
+            validLessonIds: catalogIds
+        )
+
+        let mergedTraining = ProgressMerge.mergeTrainingLog(
+            local: trainingLog,
+            incoming: envelope.trainingLog
+        )
+
+        // Write to temp file then atomic replace
+        let parentDir = fileURL.deletingLastPathComponent()
+        if !FileManager.default.fileExists(atPath: parentDir.path) {
+            try FileManager.default.createDirectory(at: parentDir, withIntermediateDirectories: true)
+        }
+        let tempURL = parentDir.appendingPathComponent("progress.json.tmp")
+        let root = ProgressRoot(formatVersion: ProgressBackup.currentFormatVersion, lessons: mergeResult.merged, trainingLog: mergedTraining)
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+        encoder.dateEncodingStrategy = .iso8601
+        let data = try encoder.encode(root)
+        try data.write(to: tempURL, options: .atomic)
+
+        let manager = FileManager.default
+        if manager.fileExists(atPath: fileURL.path) {
+            _ = try manager.replaceItemAt(fileURL, withItemAt: tempURL)
+        } else {
+            try manager.moveItem(at: tempURL, to: fileURL)
+        }
+
+        // Reload in place without app restart
+        self.records = mergeResult.merged
+        self.trainingLog = mergedTraining
+
+        // Update badges and silently award any newly earned badges
+        BadgeStore.shared.importBadges(envelope.badges)
+        BadgeStore.shared.awardSilently(progress: mergeResult.merged, catalog: LessonStore.shared.libraryCatalog, trainingLog: mergedTraining)
+
+        // If fresh device, apply settings
+        if isFresh {
+            SettingsManager.shared.applyImportedSettings(envelope.settings)
+        }
+
+        ReviewReminderScheduler.shared.reschedule()
+
+        return ImportSummary(
+            updatedLessonsCount: mergeResult.updatedCount,
+            totalImportedLessons: envelope.progress.count,
+            isFreshDevice: isFresh
+        )
     }
 
     #if DEBUG
@@ -1358,11 +1677,12 @@ public final class ProgressStore: @unchecked Sendable {
             try FileManager.default.createDirectory(at: parentDir, withIntermediateDirectories: true)
         }
 
-        let root = ProgressRoot(lessons: records, trainingLog: trainingLog)
+        let root = ProgressRoot(formatVersion: ProgressBackup.currentFormatVersion, lessons: records, trainingLog: trainingLog)
 
         do {
             let encoder = JSONEncoder()
             encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+            encoder.dateEncodingStrategy = .iso8601
             let data = try encoder.encode(root)
             try data.write(to: fileURL, options: .atomic)
             self.lastSaveError = nil
@@ -1441,6 +1761,7 @@ public final class ProgressStore: @unchecked Sendable {
         lock.lock()
         var record = records[lessonId] ?? LessonProgress()
         record.learningCreditByPadCount[String(padCount)] = credit
+        record.modifiedAt = AppCalendar.now()
         records[lessonId] = record
         lock.unlock()
         if autoSave { try? save() }
@@ -1461,6 +1782,8 @@ public final class ProgressStore: @unchecked Sendable {
         today: String = AppCalendar.today()
     ) {
         lock.lock()
+        let hadStar = (records[lessonId]?.passed == true) || (records[lessonId]?.mastery == true) || (records[lessonId]?.memory == true)
+
         var record = records[lessonId] ?? LessonProgress(
             passed: false,
             mastery: false,
@@ -1491,6 +1814,7 @@ public final class ProgressStore: @unchecked Sendable {
         if score > record.bestScore {
             record.bestScore = score
         }
+        record.modifiedAt = AppCalendar.now()
 
         records[lessonId] = record
         lock.unlock()
@@ -1499,6 +1823,13 @@ public final class ProgressStore: @unchecked Sendable {
             try? save()
         }
         ReviewReminderScheduler.shared.reschedule()
+
+        let hasStarNow = record.passed || record.mastery || record.memory
+        if !hadStar && hasStarNow {
+            let env = exportEnvelope()
+            let backupsDir = fileURL.deletingLastPathComponent().appendingPathComponent("Backups", isDirectory: true)
+            try? BackupStorage.recordDailyAutoBackupIfNeeded(envelope: env, today: today, directory: backupsDir)
+        }
     }
 
     /// Convenience helper to record a passing result for a lesson.
@@ -1520,7 +1851,9 @@ public final class ProgressStore: @unchecked Sendable {
         autoSave: Bool = true
     ) {
         lock.lock()
-        records[lessonId] = progress
+        var updated = progress
+        updated.modifiedAt = AppCalendar.now()
+        records[lessonId] = updated
         lock.unlock()
 
         if autoSave {
@@ -1533,6 +1866,7 @@ public final class ProgressStore: @unchecked Sendable {
         lock.lock()
         var record = records[lessonId] ?? LessonProgress()
         record.reviewSchedule = schedule
+        record.modifiedAt = AppCalendar.now()
         records[lessonId] = record
         lock.unlock()
 
@@ -1614,6 +1948,7 @@ public final class ProgressStore: @unchecked Sendable {
         } else {
             record.lastReviewFailDay = today
         }
+        record.modifiedAt = AppCalendar.now()
         records[lessonId] = record
         lock.unlock()
 

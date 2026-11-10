@@ -136,6 +136,7 @@ final class ProgressLoadFailureTests: XCTestCase {
             10001
           ],
           "bounceBacks" : 2,
+          "formatVersion" : 1,
           "lessons" : {
             "10001" : {
               "bestScore" : 0.9375,

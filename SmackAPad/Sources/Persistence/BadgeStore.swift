@@ -93,6 +93,27 @@ final class BadgeStore: @unchecked Sendable {
         return records[badgeId] != nil
     }
 
+    /// Imports incoming badge records, preserving the earlier earned date for existing badges.
+    func importBadges(_ incoming: [String: Date]) {
+        lock.lock()
+        defer { lock.unlock() }
+        var changed = false
+        for (badgeId, incomingDate) in incoming {
+            if let existingDate = records[badgeId] {
+                if incomingDate < existingDate {
+                    records[badgeId] = incomingDate
+                    changed = true
+                }
+            } else {
+                records[badgeId] = incomingDate
+                changed = true
+            }
+        }
+        if changed {
+            saveRecords()
+        }
+    }
+
     /// Awards badges silently (e.g. at app start or legacy import) with the given timestamp.
     /// Does not revoke any previously earned badge.
     @discardableResult

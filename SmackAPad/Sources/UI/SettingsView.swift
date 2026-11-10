@@ -75,6 +75,7 @@ public struct SettingsView: View {
                     }
 
                     PurchasesSection()
+                    ProgressBackupSection()
                     #if DEBUG
                     LegacyProgressImportSection()
                     DebugDeveloperSection()
@@ -457,6 +458,98 @@ private struct FontLicenceView: View {
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItem(placement: .principal) { ScreenHeader(title: "IBM Plex Sans") }
+        }
+    }
+}
+
+// MARK: - Progress Backup Section
+
+@MainActor
+private struct ProgressBackupSection: View {
+    @Environment(SettingsManager.self) private var settings
+    @State private var isExporting = false
+    @State private var backupDocument: BackupDocument?
+    @State private var isImporting = false
+    @State private var alertMessage: String?
+    @State private var showAlert = false
+
+    var body: some View {
+        Section {
+            Button(settings.localized("Back up progress")) {
+                do {
+                    let data = try ProgressStore.shared.exportData()
+                    backupDocument = BackupDocument(data: data)
+                    isExporting = true
+                } catch {
+                    alertMessage = error.localizedDescription
+                    showAlert = true
+                }
+            }
+            .font(Theme.control)
+            .frame(minHeight: Theme.Size.touch)
+
+            Button(settings.localized("Restore from backup")) {
+                isImporting = true
+            }
+            .font(Theme.control)
+            .frame(minHeight: Theme.Size.touch)
+        } header: {
+            SectionHeader(title: settings.localized("Progress"))
+        }
+        .fileExporter(
+            isPresented: $isExporting,
+            document: backupDocument,
+            contentType: .json,
+            defaultFilename: "Smack-a-Pad backup \(AppCalendar.today()).json"
+        ) { _ in }
+        .fileImporter(
+            isPresented: $isImporting,
+            allowedContentTypes: [.json]
+        ) { result in
+            do {
+                let url = try result.get()
+                let accessing = url.startAccessingSecurityScopedResource()
+                defer {
+                    if accessing {
+                        url.stopAccessingSecurityScopedResource()
+                    }
+                }
+                let data = try Data(contentsOf: url)
+                let summary = try ProgressStore.shared.importFromData(data)
+                alertMessage = settings.languagePreference == .czech
+                    ? czechRestoreMessage(summary.updatedLessonsCount)
+                    : englishRestoreMessage(summary.updatedLessonsCount)
+                showAlert = true
+            } catch ProgressBackupError.newerVersion {
+                alertMessage = settings.localized("This backup was created in a newer version of Smack-a-Pad. Update the app to restore it.")
+                showAlert = true
+            } catch {
+                alertMessage = settings.localized("This file is not a Smack-a-Pad backup. Nothing was changed.")
+                showAlert = true
+            }
+        }
+        .alert(settings.localized("Progress"), isPresented: $showAlert) {
+            Button(settings.localized("OK"), role: .cancel) {}
+        } message: {
+            Text(alertMessage ?? "")
+        }
+    }
+
+    private func czechRestoreMessage(_ count: Int) -> String {
+        if count == 1 {
+            return "Obnoveno. Aktualizována 1 lekce."
+        } else if count >= 2 && count <= 4 {
+            return "Obnoveno. Aktualizovány \(count) lekce."
+        } else {
+            return "Obnoveno. Aktualizováno \(count) lekcí."
+        }
+    }
+
+    private func englishRestoreMessage(_ count: Int) -> String {
+        if count == 1 {
+            return "Restored. 1 lesson updated."
+        } else {
+            return String(format: settings.localized("Restored. %d lessons updated."), count)
         }
     }
 }

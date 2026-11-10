@@ -57,3 +57,11 @@
 | **Stage unlock** | Path stages unlock when earning 2 stars on half the preceding stage's lessons (capped at 10). |
 | **Soft unlock** | Manual override: user can tap a locked stage banner, confirm, and unlock it immediately. Nobody gets stuck. |
 | **Progress** | Per-lesson persistent data: passed/mastery status, current BPM, best score. Stored as a JSON file. |
+
+## Backup & Sync
+
+| Term | Definition |
+|---|---|
+| **Backup envelope** | Single portable JSON file (`Smack-a-Pad backup YYYY-MM-DD.json`) wrapping progress, training log, badges, and portable settings with format versioning and device identifier. |
+| **Local backups directory** | `<Documents>/Backups/`: stores up to 5 pre-import safety snapshots (`before-import-*.json`) and up to 3 daily rolling copies (`auto-*.json`). |
+| **"Never lose anything" merge** | Pure merge function (`ProgressMerge`): stars and high scores never decrease; review schedule is preserved as an inseparable group from the more recently reviewed record; training log takes max counters and union of sets; badges take union with earliest earned date; settings are replaced only on a fresh device. Reused by ticket 162 for CloudKit sync. |

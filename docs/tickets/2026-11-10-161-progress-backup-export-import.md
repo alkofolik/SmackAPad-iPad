@@ -1,6 +1,6 @@
 # 161 — Progress backup: Export / Import to a file, "never lose anything" merge, data ready for iCloud sync
 
-Status: approved by Jakub 2026-11-10 ("ano"). Run **after ticket 160 is tested and committed** (both touch `Persistence.swift`, `BadgeStore.swift`, `SettingsView.swift`; the working tree currently holds uncommitted 160 work — do not build on top of it until it is committed).
+Status: done 2026-11-10. Tested on iPad by Jakub.
 Recommended agent: **Codex GPT-6.1 Sol, reasoning high** (touches real progress persistence; a merge bug silently loses player progress). Fallback: Gemini 3.8 Flash, high.
 
 **Two phases. Phase 1 is a design note only — stop and wait for Jakub's approval before Phase 2 (code).**

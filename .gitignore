@@ -12,6 +12,9 @@ xcuserdata/
 # OS
 .DS_Store
 
+# Local test outputs
+Claude outputs/
+
 
 # AI panel screen recordings (large, kept local)
 docs/reviews/ai-panel/pack/videos/

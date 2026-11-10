@@ -2639,3 +2639,11 @@ Later (%lld)	Později (%lld)
 Review tomorrow · practice only	Opakování zítra · jen cvičení
 Settled (%lld)	Upevněné (%lld)
 No lessons for this step.	Pro tento krok nejsou žádné lekce.
+Progress	Pokrok
+Back up progress	Zálohovat pokrok
+Restore from backup	Obnovit ze zálohy
+Restored. %d lessons updated.	Obnoveno. Aktualizováno %d lekcí.
+Restored. 1 lesson updated.	Obnoveno. Aktualizována 1 lekce.
+This file is not a Smack-a-Pad backup. Nothing was changed.	Tento soubor není zálohou Smack-a-Pad. Nic nebylo změněno.
+This backup was created in a newer version of Smack-a-Pad. Update the app to restore it.	Tato záloha byla vytvořena v novější verzi Smack-a-Pad. Pro její obnovení aktualizuj aplikaci.
+Could not create a safety backup. Import was cancelled.	Nepodařilo se vytvořit bezpečnostní zálohu. Import byl zrušen.
