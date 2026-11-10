@@ -33,6 +33,7 @@ public struct BackupSettings: Codable, Equatable, Sendable {
     public var metronomeVolume: Int
     public var padsVolume: Int
     public var patternVolume: Int
+    public var instrumentTrims: [String: Int]
     public var playPadsWithKeyboard: Bool
     public var fadeMemoryNotes: Bool
     public var reviewReminderEnabled: Bool
@@ -68,6 +69,7 @@ public struct BackupSettings: Codable, Equatable, Sendable {
         metronomeVolume: Int = SettingsManager.defaultMetronomeVolume,
         padsVolume: Int = SettingsManager.defaultPadsVolume,
         patternVolume: Int = SettingsManager.defaultPatternVolume,
+        instrumentTrims: [String: Int] = [:],
         playPadsWithKeyboard: Bool = true,
         fadeMemoryNotes: Bool = true,
         reviewReminderEnabled: Bool = false,
@@ -102,6 +104,7 @@ public struct BackupSettings: Codable, Equatable, Sendable {
         self.metronomeVolume = metronomeVolume
         self.padsVolume = padsVolume
         self.patternVolume = patternVolume
+        self.instrumentTrims = SettingsManager.cleanTrims(instrumentTrims)
         self.playPadsWithKeyboard = playPadsWithKeyboard
         self.fadeMemoryNotes = fadeMemoryNotes
         self.reviewReminderEnabled = reviewReminderEnabled
@@ -126,7 +129,7 @@ public struct BackupSettings: Codable, Equatable, Sendable {
 
     private enum CodingKeys: String, CodingKey {
         case settingsModifiedAt, selectedKitId, lessonKitOverrides, midiControls, bpmStep, practiceMode
-        case activeProfileName, customProfiles, languagePreference, appearance, metronomeVolume, padsVolume, patternVolume
+        case activeProfileName, customProfiles, languagePreference, appearance, metronomeVolume, padsVolume, patternVolume, instrumentTrims
         case playPadsWithKeyboard, fadeMemoryNotes, reviewReminderEnabled, reviewReminderTime, hideCompletedLessons
         case hiddenCategoryIDsByMode, libraryView, libraryStarFilters, trainingDueStepFilter, nextLessonSource, lastLessonID
         case showPads, showPadKeys, visibleBars, touchPadsInPortrait, scrolling, practiceAppearance
@@ -148,6 +151,8 @@ public struct BackupSettings: Codable, Equatable, Sendable {
         self.metronomeVolume = try c.decodeIfPresent(Int.self, forKey: .metronomeVolume) ?? SettingsManager.defaultMetronomeVolume
         self.padsVolume = try c.decodeIfPresent(Int.self, forKey: .padsVolume) ?? SettingsManager.defaultPadsVolume
         self.patternVolume = try c.decodeIfPresent(Int.self, forKey: .patternVolume) ?? SettingsManager.defaultPatternVolume
+        self.instrumentTrims = SettingsManager.cleanTrims(
+            try c.decodeIfPresent([String: Int].self, forKey: .instrumentTrims) ?? [:])
         self.playPadsWithKeyboard = try c.decodeIfPresent(Bool.self, forKey: .playPadsWithKeyboard) ?? true
         self.fadeMemoryNotes = try c.decodeIfPresent(Bool.self, forKey: .fadeMemoryNotes) ?? true
         self.reviewReminderEnabled = try c.decodeIfPresent(Bool.self, forKey: .reviewReminderEnabled) ?? false

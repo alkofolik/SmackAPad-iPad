@@ -99,6 +99,7 @@ public enum SettingsKey: String, CaseIterable, Sendable {
     case metronomeVolume = "smackapad.settings.volume.metronome"
     case padsVolume = "smackapad.settings.volume.pads"
     case patternVolume = "smackapad.settings.volume.pattern"
+    case instrumentTrims = "smackapad.settings.volume.instrumentTrims"
     case appearance = "smackapad.settings.appearance"
     case playPadsWithKeyboard = "smackapad.settings.playPadsWithKeyboard"
     case fadeMemoryNotes = "smackapad.settings.fadeMemoryNotes"
@@ -333,6 +334,27 @@ public final class SettingsManager: @unchecked Sendable {
         }
     }
 
+    /// Per-instrument trim in dB (-12...+6), keyed by voice name. Missing = 0 dB.
+    public var instrumentTrims: [String: Int] {
+        didSet {
+            let cleaned = Self.cleanTrims(instrumentTrims)
+            if cleaned != instrumentTrims {
+                instrumentTrims = cleaned
+                return
+            }
+            if let data = try? JSONEncoder().encode(cleaned) {
+                userDefaults.set(data, forKey: SettingsKey.instrumentTrims.rawValue)
+            }
+        }
+    }
+
+    /// Clamps every trim and drops zero entries so "all default" is an empty dictionary.
+    public static func cleanTrims(_ trims: [String: Int]) -> [String: Int] {
+        trims.mapValues(SampleGain.clampTrim).filter { $0.value != 0 }
+    }
+
+    public func resetInstrumentTrims() { instrumentTrims = [:] }
+
     public var libraryView: String {
         didSet { userDefaults.set(libraryView, forKey: "smackapad.library.view") }
     }
@@ -563,6 +585,13 @@ public final class SettingsManager: @unchecked Sendable {
             self.patternVolume = Self.clampVolume(userDefaults.integer(forKey: SettingsKey.patternVolume.rawValue))
         } else {
             self.patternVolume = Self.defaultPatternVolume
+        }
+
+        if let data = userDefaults.data(forKey: SettingsKey.instrumentTrims.rawValue),
+           let stored = try? JSONDecoder().decode([String: Int].self, from: data) {
+            self.instrumentTrims = Self.cleanTrims(stored)
+        } else {
+            self.instrumentTrims = [:]
         }
 
         self.playPadsWithKeyboard = userDefaults.object(forKey: SettingsKey.playPadsWithKeyboard.rawValue) as? Bool ?? true
@@ -811,6 +840,7 @@ public final class SettingsManager: @unchecked Sendable {
         self.metronomeVolume = Self.defaultMetronomeVolume
         self.padsVolume = Self.defaultPadsVolume
         self.patternVolume = Self.defaultPatternVolume
+        self.instrumentTrims = [:]
         self.playPadsWithKeyboard = true
         self.reviewReminderEnabled = false
         self.reviewReminderTime = Self.defaultReminderTime()
@@ -869,6 +899,7 @@ public final class SettingsManager: @unchecked Sendable {
             metronomeVolume: metronomeVolume,
             padsVolume: padsVolume,
             patternVolume: patternVolume,
+            instrumentTrims: instrumentTrims,
             playPadsWithKeyboard: playPadsWithKeyboard,
             fadeMemoryNotes: fadeMemoryNotes,
             reviewReminderEnabled: reviewReminderEnabled,
@@ -916,6 +947,7 @@ public final class SettingsManager: @unchecked Sendable {
         self.metronomeVolume = settings.metronomeVolume
         self.padsVolume = settings.padsVolume
         self.patternVolume = settings.patternVolume
+        self.instrumentTrims = settings.instrumentTrims
         self.playPadsWithKeyboard = settings.playPadsWithKeyboard
         self.fadeMemoryNotes = settings.fadeMemoryNotes
         self.reviewReminderEnabled = settings.reviewReminderEnabled

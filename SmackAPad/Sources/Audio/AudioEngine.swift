@@ -79,6 +79,8 @@ public final class AudioEngine: @unchecked Sendable {
 
     struct LoadedKit: @unchecked Sendable {
         fileprivate let voices: [String: [Layer]]
+        /// Normalisation gain in dB per voice for this kit (ticket 166).
+        fileprivate let gainsDB: [String: Float]
     }
 
     private struct SampleLayer {
@@ -89,6 +91,7 @@ public final class AudioEngine: @unchecked Sendable {
     private struct KitCatalog {
         let models: [SampleKit]
         let samples: [String: Result<[String: [SampleLayer]], Error>]
+        let gains: SampleGain.Table
     }
 
     private struct Player {
@@ -124,6 +127,8 @@ public final class AudioEngine: @unchecked Sendable {
     public private(set) var metronomeVolume: Float = 0.8
     public private(set) var padsVolume: Float = 1.0
     public private(set) var patternVolume: Float = 0.7
+    /// User trim in dB per voice name. Only touched on `queue`.
+    private var trimsDB: [String: Float] = [:]
     // Only accessed on the loader queue.
     private var catalog: KitCatalog?
     private var sampleCache = SampleKitCache<LoadedKit>()
@@ -235,6 +240,12 @@ public final class AudioEngine: @unchecked Sendable {
             self.patternVolume = clamped
             if self.prepared { self.patternMixer.outputVolume = clamped }
         }
+    }
+
+    /// Per-instrument trim in dB, keyed by voice name ("kick", "crash"...). Takes effect on the next hit.
+    public func setInstrumentTrims(_ trims: [String: Int]) {
+        let converted = trims.mapValues { Float(SampleGain.clampTrim($0)) }
+        queue.async { [weak self] in self?.trimsDB = converted }
     }
 
     /// Temporary diagnostics are controlled in AudioTimingDiagnostics only.
@@ -562,6 +573,12 @@ public final class AudioEngine: @unchecked Sendable {
               let layer = layers.first(where: { velocity <= $0.maxVelocity }) else {
             throw Failure.invalidManifest("Missing voice \(padVoices[padIndex])")
         }
+        let voice = padVoices[padIndex]
+        let volume = SampleGain.playerVolume(
+            velocity: velocity,
+            normalisationDB: selectedKit?.gainsDB[voice] ?? 0,
+            trimDB: trimsDB[voice] ?? 0
+        )
         let time = try audibleHostTime.map { try renderTime(for: $0) }
         let now = mach_absolute_time()
         if isPattern {
@@ -571,7 +588,7 @@ public final class AudioEngine: @unchecked Sendable {
             let buffer = layer.nextBuffer()
             let node = patternPlayers[index].node
             node.stop()
-            node.volume = Float(velocity) / 127
+            node.volume = volume
             node.scheduleBuffer(buffer, at: time, options: [])
             node.play()
             let start = time?.hostTime ?? now
@@ -583,7 +600,7 @@ public final class AudioEngine: @unchecked Sendable {
             let buffer = layer.nextBuffer()
             let node = padPlayers[index].node
             node.stop()
-            node.volume = Float(velocity) / 127
+            node.volume = volume
             node.scheduleBuffer(buffer, at: time, options: [])
             node.play()
             let start = time?.hostTime ?? now
@@ -693,7 +710,7 @@ public final class AudioEngine: @unchecked Sendable {
         }
         let models = definitions.map { SampleKit(kitId: $0.key, definition: $0.value) }
             .sorted { $0.kitId < $1.kitId }
-        let catalog = KitCatalog(models: models, samples: samples)
+        let catalog = KitCatalog(models: models, samples: samples, gains: SampleGain.Table.load(from: bundle))
         self.catalog = catalog
         return catalog
     }
@@ -755,7 +772,10 @@ public final class AudioEngine: @unchecked Sendable {
         #if DEBUG
         Self.logDuration("kit \(id) loaded", since: started)
         #endif
-        return LoadedKit(voices: voices)
+        let gainsDB = Dictionary(uniqueKeysWithValues: voices.keys.map {
+            ($0, catalog.gains.gainDB(kit: id, voice: $0))
+        })
+        return LoadedKit(voices: voices, gainsDB: gainsDB)
     }
 
     #if DEBUG

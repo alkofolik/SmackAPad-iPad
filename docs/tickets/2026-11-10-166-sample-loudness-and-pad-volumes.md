@@ -1,6 +1,6 @@
 # 166 — Even out sample loudness and add per-instrument volume
 
-Status: ready-for-agent. Approved by Jakub on 2026-11-10.
+Status: implemented, tests pass (238), waiting for Jakub's iPad check. Approved by Jakub on 2026-11-10.
 
 ## Problem
 
@@ -48,3 +48,10 @@ Codex GPT-6.1 Sol, high. Audio-path work and careful measurement.
 ## Done rule
 
 Build, run the full `SmackAPad` test plan per `AGENTS.md`, commit, stop for Jakub's iPad check.
+
+## Log
+
+- Measure: K-weighted RMS (BS.1770 filters) over the first 300 ms, plus 4x-oversampled true peak. K-weighting matches how loud short bright hits (cymbals, hats) sound; plain RMS or peak would not.
+- Gains are per kit and voice (`Resources/Data/sample-gains.json`), not per file, because kits such as `world` share WAVs with `acoustic`. Velocity layers of one voice share one gain, so the soft-to-loud dynamics are kept.
+- Gains are never above 0 dB: `AVAudioPlayerNode.volume` cannot exceed 1, so loud voices are turned down and quiet ones stay as they are. A +6 dB user trim therefore saturates at full volume on very hard hits of voices with a 0 dB gain.
+- Settings: `instrumentTrims` (voice name to dB) is saved, reset and included in the backup. Backups from older versions load with all trims at 0 dB.

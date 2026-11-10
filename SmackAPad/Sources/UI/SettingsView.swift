@@ -120,6 +120,23 @@ public struct SettingsView: View {
                             .foregroundStyle(Theme.secondary)
                     }
 
+                    // MARK: 1c. Instrument volumes
+                    Section {
+                        ForEach(InstrumentTrimRow.roles, id: \.self) { voice in
+                            InstrumentTrimRow(voice: voice)
+                        }
+                        Button(settings.localized("Reset instrument volumes")) {
+                            settings.resetInstrumentTrims()
+                        }
+                        .disabled(settings.instrumentTrims.isEmpty)
+                    } header: {
+                        SectionHeader(title: settings.localized("Instrument volumes"))
+                    } footer: {
+                        Text(settings.localized("Fine-tune single instruments for all lessons and sound kits. 0 dB is the default."))
+                            .font(Theme.meta)
+                            .foregroundStyle(Theme.secondary)
+                    }
+
                     // MARK: 2. BPM Step
                     Section {
                         PlexSegmentedPicker(title: settings.localized("Tempo step"), selection: $settings.bpmStep,
@@ -592,3 +609,50 @@ private struct LegacyProgressImportSection: View {
     }
 }
 #endif
+
+/// One slider per instrument role (ticket 166): -12 dB to +6 dB, 0 dB default.
+private struct InstrumentTrimRow: View {
+    @Environment(SettingsManager.self) private var settings
+    let voice: String
+
+    /// Roles used by at least one bundled lesson.
+    static let roles: [String] = {
+        var pads = Set<Int>()
+        for lesson in LessonStore.shared.lessons {
+            for hit in lesson.hits + (lesson.hits8 ?? []) { pads.insert(hit.padIndex) }
+        }
+        return SampleGain.roles(usedPads: pads)
+    }()
+
+    private var pad: Int { AudioEngine.defaultPadVoices.firstIndex(of: voice) ?? 0 }
+    private var trim: Int { settings.instrumentTrims[voice] ?? 0 }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: Theme.Space.tight) {
+            HStack {
+                Text("\(PadVoice.abbreviation(pad)) · \(PadVoice.name(pad, settings: settings))")
+                    .font(Theme.control)
+                Spacer()
+                Text(String(format: "%+d dB", trim))
+                    .font(Theme.meta).monospacedDigit()
+                    .foregroundStyle(Theme.secondary)
+            }
+            Slider(
+                value: Binding(
+                    get: { Double(trim) },
+                    set: {
+                        var all = settings.instrumentTrims
+                        all[voice] = SampleGain.clampTrim(Int($0.rounded()))
+                        settings.instrumentTrims = all
+                    }
+                ),
+                in: Double(SampleGain.trimRange.lowerBound)...Double(SampleGain.trimRange.upperBound),
+                step: 1
+            )
+            .tint(Theme.orange)
+            .frame(minHeight: Theme.Size.minimumTouch)
+            .contentShape(Rectangle())
+        }
+        .padding(.vertical, Theme.Space.tight)
+    }
+}

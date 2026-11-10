@@ -381,7 +381,13 @@ final class PracticeSession {
         audio.setPatternVolume(Float(percent) / 100)
     }
 
+    func setInstrumentTrims(_ trims: [String: Int]) {
+        guard active else { return }
+        audio.setInstrumentTrims(trims)
+    }
+
     func applyVolumes() {
+        audio.setInstrumentTrims(settings.instrumentTrims)
         audio.setMetronomeVolume(Float(settings.metronomeVolume) / 100)
         audio.setPadsVolume(Float(settings.padsVolume) / 100)
         audio.setPatternVolume(Float(settings.patternVolume) / 100)

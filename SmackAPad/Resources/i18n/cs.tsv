@@ -2648,3 +2648,6 @@ This file is not a Smack-a-Pad backup. Nothing was changed.	Tento soubor není z
 This backup was created in a newer version of Smack-a-Pad. Update the app to restore it.	Tato záloha byla vytvořena v novější verzi Smack-a-Pad. Pro její obnovení aktualizuj aplikaci.
 Could not create a safety backup. Import was cancelled.	Nepodařilo se vytvořit bezpečnostní zálohu. Import byl zrušen.
 Required for all lessons	Platí pro všechny lekce
+Instrument volumes	Hlasitosti nástrojů
+Reset instrument volumes	Obnovit hlasitosti nástrojů
+Fine-tune single instruments for all lessons and sound kits. 0 dB is the default.	Doladění jednotlivých nástrojů pro všechny lekce a zvukové sady. Výchozí je 0 dB.

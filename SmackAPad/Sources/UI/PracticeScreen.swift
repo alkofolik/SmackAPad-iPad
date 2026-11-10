@@ -126,6 +126,7 @@ struct PracticeScreen: View {
         .onChange(of: settings.metronomeVolume) { _, newVolume in session.setMetronomeVolume(newVolume) }
         .onChange(of: settings.padsVolume) { _, newVolume in session.setPadsVolume(newVolume) }
         .onChange(of: settings.patternVolume) { _, newVolume in session.setPatternVolume(newVolume) }
+        .onChange(of: settings.instrumentTrims) { _, trims in session.setInstrumentTrims(trims) }
         .onChange(of: session.running) { _, running in
             if running {
                 showingInfo = false

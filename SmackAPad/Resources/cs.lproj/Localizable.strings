@@ -897,3 +897,6 @@
 "help.keyboard.caption" = "V Nastavení zapni dotykové pady na výšku, použij profil s 16 pady a otoč iPad na výšku.\nPřipoj hardwarovou klávesnici a v Nastavení zapni Hrát pady na klávesnici. Čtyři řádky nahoře odpovídají padům shora dolů.";
 "help.setup.title" = "Zvuk, kalibrace a záloha";
 "help.setup.caption" = "Zvol Automaticky a aplikace vybere sadu podle lekce. Sadu pro jednu lekci změníš v Dalších nástrojích.\nHlasitost metronomu, padů a patternu nastavíš zvlášť.\nSpusť Kalibraci časování pro svůj vstup a zvukový výstup. Dotyk, klávesnici a kontrolér můžeš kalibrovat samostatně.\nV Nastavení otevři Pokrok a zálohuj do souboru. Při obnovení se zachová lepší postup v lekcích.";
+"Instrument volumes" = "Hlasitosti nástrojů";
+"Reset instrument volumes" = "Obnovit hlasitosti nástrojů";
+"Fine-tune single instruments for all lessons and sound kits. 0 dB is the default." = "Doladění jednotlivých nástrojů pro všechny lekce a zvukové sady. Výchozí je 0 dB.";

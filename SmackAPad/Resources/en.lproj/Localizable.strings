@@ -894,3 +894,6 @@
 "help.keyboard.caption" = "Turn on Touch pads in portrait in Settings, use a 16-pad profile and hold the iPad upright.\nConnect a hardware keyboard and turn on Play pads with keyboard in Settings. The four rows above match the pads from top to bottom.";
 "help.setup.title" = "Sound, timing and backup";
 "help.setup.caption" = "Choose Automatic for a kit suited to the lesson. Use More tools to choose a kit for just that lesson.\nAdjust metronome, pad and pattern volumes separately.\nRun Timing calibration for your input and audio output. Touch, keyboard and controller can each need their own calibration.\nIn Settings, under Progress, back up to a file. Restore from backup keeps the stronger lesson progress.";
+"Instrument volumes" = "Instrument volumes";
+"Reset instrument volumes" = "Reset instrument volumes";
+"Fine-tune single instruments for all lessons and sound kits. 0 dB is the default." = "Fine-tune single instruments for all lessons and sound kits. 0 dB is the default.";
