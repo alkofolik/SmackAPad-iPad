@@ -94,7 +94,6 @@ struct PatternField: View {
     let missGraceSteps: Double
     let countdown: Int?
     var band: Color = PracticeBandStyle.orange
-    var edgeTendency: Double = 0
     var runBars: Int = 4
     var starMomentBeamActive: Bool = false
 
@@ -187,7 +186,6 @@ struct PatternField: View {
                 .allowsHitTesting(false)
             }
         }
-        .overlay { BandEdgeGlow(tendency: edgeTendency) }
         .background {
             ZStack(alignment: .top) {
                 band

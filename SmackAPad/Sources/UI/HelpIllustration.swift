@@ -236,9 +236,11 @@ struct HelpIllustration: View {
         VStack(alignment: .leading, spacing: Theme.Space.small) {
             hitKey
             let tempo = progress.map { $0 < 0.5 ? 75 : 100 } ?? 100
+            TimingCue(offset: progress.map { $0 < 0.5 ? -1 : 1 } ?? 1)
+                .frame(maxWidth: .infinity)
+                .accessibilityHidden(true)
             HelpPatternBand(band: BandTone.color(listen: false, memory: false, bpm: tempo, startBpm: 75, targetBpm: 100), height: 72)
-                .overlay { BandEdgeGlow(tendency: progress.map { $0 < 0.5 ? 1 : -1 } ?? -1) }
-            tags([("help.signals.behind", "arrow.left"), ("help.signals.ahead", "arrow.right"), ("Details", "list.bullet")])
+            tags([("help.signals.behind", "arrow.right"), ("help.signals.ahead", "arrow.left"), ("Details", "list.bullet")])
         }
     }
 

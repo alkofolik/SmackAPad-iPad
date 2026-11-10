@@ -92,40 +92,52 @@ enum BandTone {
     private static func rgb(_ value: RGB) -> Color {
         Color(red: value.r / 255, green: value.g / 255, blue: value.b / 255)
     }
-
-    /// Median timing of the last strikes as -1 (rushing) … 1 (dragging); 0 inside the
-    /// comfortable part of the good window, or when no recent strikes exist.
-    static func edgeTendency(_ history: TimingHistory, at date: Date) -> Double {
-        let recent = history.samples.suffix(8).filter { date.timeIntervalSince($0.date) < 3 }
-        guard recent.count >= 3, let good = recent.last?.goodMilliseconds, good > 0 else { return 0 }
-        let sorted = recent.map(\.errorMilliseconds).sorted()
-        let middle = sorted.count / 2
-        let median = sorted.count.isMultiple(of: 2) ? (sorted[middle - 1] + sorted[middle]) / 2 : sorted[middle]
-        let excess = min(1, max(0, (abs(median) - good * 0.4) / (good * 0.8)))
-        // Quantised so the glow eases between a few levels instead of flickering.
-        let level = (excess * 4).rounded() / 4
-        return median < 0 ? -level : level
-    }
 }
 
-/// Soft glow on one edge of the band: right when rushing (ahead), left when dragging.
-struct BandEdgeGlow: View {
+/// A quiet signed timing cue, with early hits on the left and late hits on the right.
+struct TimingCue: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
-    let tendency: Double
+    @Environment(SettingsManager.self) private var settings
+
+    let offset: Double
+    var active = true
+
+    private var timingKey: String {
+        if offset < 0 { return "Early" }
+        if offset > 0 { return "Late" }
+        return "On time"
+    }
 
     var body: some View {
-        HStack(spacing: 0) {
-            LinearGradient(colors: [Theme.white.opacity(0.82 * max(0, tendency)), .clear],
-                           startPoint: .leading, endPoint: .trailing)
-                .frame(width: 78)
-            Spacer(minLength: 0)
-            LinearGradient(colors: [.clear, Theme.white.opacity(0.82 * max(0, -tendency))],
-                           startPoint: .leading, endPoint: .trailing)
-                .frame(width: 78)
+        ZStack {
+            Capsule()
+                .fill(Theme.surface)
+                .overlay { Capsule().strokeBorder(Theme.hairline, lineWidth: 1) }
+
+            ForEach([-10.0, 10.0], id: \.self) { mark in
+                Rectangle()
+                    .fill(Theme.hairline)
+                    .frame(width: 1, height: 6)
+                    .offset(x: mark)
+            }
+
+            Rectangle()
+                .fill(Theme.secondary)
+                .frame(width: 1.5, height: 10)
+
+            Capsule()
+                .fill(offset == 0 ? Theme.orange : Theme.ink)
+                .frame(width: 8, height: 10)
+                .offset(x: offset * 36)
+                .animation(reduceMotion ? nil : .spring(response: 0.35, dampingFraction: 0.78),
+                           value: offset)
         }
-        .allowsHitTesting(false)
-        .accessibilityHidden(true)
-        .animation(reduceMotion ? nil : .easeInOut(duration: 0.6), value: tendency)
+        .frame(width: 88, height: 16)
+        .opacity(active ? 1 : 0.35)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(settings.localized("Hit timing"))
+        .accessibilityValue(settings.localized(timingKey))
+        .accessibilityHidden(!active)
     }
 }
 
@@ -242,7 +254,7 @@ struct PlayingLastRunChip: View {
     }
 }
 
-/// Chip showing the current memory fade phase (Pass 1 · notes shown / Pass 2 · notes fading) in place of lap vault.
+/// Chip showing the current memory fade phase (Pass 1 · notes shown / Pass 2 · notes fading) in place of the run meter.
 struct MemoryPhaseChip: View {
     let phase: String
 
@@ -481,161 +493,73 @@ struct PracticeNextButtonStyle: ButtonStyle {
     }
 }
 
-/// Compact row of slots replacing the "1 / 3" text in the instrument row.
-/// Shows runs needed for the star being worked on, with verdict flag and notch ticks.
-struct LapVaultView: View {
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+/// Three LEDs per qualifying run, stacked from the bottom as the tape advances.
+struct RunMeterView: View {
+    @Environment(SettingsManager.self) private var settings
+
     let progress: (count: Int, required: Int, name: String, starIndex: Int)
-    let mode: PracticeMode
+    let fraction: Double
     let verdict: RunVerdict?
-    let starEvent: StarEvent?
     let starMomentActive: Bool
-    let settings: SettingsManager
 
-    @State private var flagVerdict: Bool? = nil
-    @State private var showNotch = false
-    @State private var recoil = false
-    @State private var starScale: CGFloat = 1.0
-    @State private var starOpacity: Double = 1.0
+    @State private var flashingOutline = false
 
-    private var displayCount: Int {
-        if starMomentActive {
-            return progress.required
-        }
-        return progress.count
-    }
-
-    private var targetStarNumber: Int {
-        min(3, max(1, progress.starIndex + 1))
+    static func litMicroSteps(fraction: Double) -> Int {
+        Int(min(1, max(0, fraction)) * 3)
     }
 
     var body: some View {
-        VStack(spacing: 2) {
-            HStack(alignment: .center, spacing: Theme.Space.small) {
-                // Verdict flag next to slots
-                verdictFlagView
+        HStack(spacing: Theme.Space.small) {
+            HStack(spacing: Theme.Space.tight) {
+                Image(systemName: "star.fill")
+                Text("\(progress.starIndex + 1)").monospacedDigit()
+            }
+            .font(Theme.meta)
+            .foregroundStyle(starMomentActive ? Theme.orange : Theme.ink)
+            .padding(.horizontal, Theme.Space.small)
+            .frame(height: 24)
+            .background(Theme.surface, in: Capsule())
+            .overlay { Capsule().strokeBorder(Theme.hairline, lineWidth: 1) }
 
-                // Slots row with notch space above
-                HStack(spacing: Theme.Space.tight) {
-                    ForEach(0..<progress.required, id: \.self) { index in
-                        vaultSlot(index: index)
-                    }
+            HStack(spacing: Theme.Space.tight) {
+                ForEach(0..<progress.required, id: \.self) { index in
+                    runBlock(index: index)
                 }
             }
-
-            // Star mark under slots: 1, 2, or 3 filled star marks
-            HStack(spacing: 3) {
-                ForEach(0..<targetStarNumber, id: \.self) { _ in
-                    Image(systemName: "star.fill")
-                        .font(.system(size: 9, weight: .semibold))
-                        .foregroundStyle(starMomentActive ? Theme.orange : Theme.ink)
-                        .scaleEffect(reduceMotion ? 1.0 : starScale)
-                        .opacity(starOpacity)
-                }
-            }
-            .frame(height: 12)
         }
+        .fixedSize()
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(settings.localized("Consecutive passes for %@", settings.localized(progress.name)))
-        .accessibilityValue(settings.localized("%lld of %lld", displayCount, progress.required))
+        .accessibilityValue(settings.localized("%lld of %lld", progress.count, progress.required))
         .task(id: verdict?.id) {
-            guard let verdict else {
-                flagVerdict = nil
-                showNotch = false
-                recoil = false
-                return
-            }
-            flagVerdict = verdict.passed
-            if mode == .learning && !verdict.passed {
-                showNotch = true
-            }
-            if mode == .challenge && verdict.brokenStreak {
-                if reduceMotion {
-                    withAnimation(.easeInOut(duration: 0.2)) { recoil = true }
-                    try? await Task.sleep(for: .milliseconds(200))
-                    recoil = false
-                } else {
-                    withAnimation(.easeOut(duration: 0.25)) { recoil = true }
-                    try? await Task.sleep(for: .milliseconds(250))
-                    recoil = false
-                }
-            }
-            try? await Task.sleep(for: .milliseconds(1200))
-            flagVerdict = nil
-            showNotch = false
-        }
-        .task(id: starMomentActive) {
-            guard starMomentActive else {
-                starScale = 1.0
-                starOpacity = 1.0
-                return
-            }
-            if reduceMotion {
-                withAnimation(.easeInOut(duration: 0.2)) { starOpacity = 0.5 }
-                try? await Task.sleep(for: .milliseconds(200))
-                withAnimation(.easeInOut(duration: 0.2)) { starOpacity = 1.0 }
-            } else {
-                try? await Task.sleep(for: .milliseconds(450))
-                withAnimation(.easeOut(duration: 0.12)) { starScale = 1.15 }
-                try? await Task.sleep(for: .milliseconds(120))
-                withAnimation(.easeInOut(duration: 0.13)) { starScale = 1.0 }
-            }
+            flashingOutline = verdict?.brokenStreak == true
+            guard flashingOutline else { return }
+            do { try await Task.sleep(for: .milliseconds(200)) } catch { return }
+            withAnimation(.easeOut(duration: 0.20)) { flashingOutline = false }
         }
     }
 
-    private var verdictFlagView: some View {
-        ZStack {
-            if let flagVerdict {
-                if flagVerdict {
-                    Rectangle()
-                        .fill(Theme.orange)
-                        .frame(width: 6, height: 24)
-                } else {
-                    Rectangle()
-                        .strokeBorder(Theme.markWrong, lineWidth: 1.5)
-                        .frame(width: 6, height: 24)
-                }
-            } else {
-                Rectangle()
-                    .strokeBorder(Theme.hairline, lineWidth: 1)
-                    .frame(width: 6, height: 24)
-            }
-        }
-        .frame(width: 6, height: 24)
-    }
-
-    private func vaultSlot(index: Int) -> some View {
-        let isFilled = index < displayCount
-        let isNextFree = (index == progress.count)
+    private func runBlock(index: Int) -> some View {
+        let banked = index < progress.count
+        let lit = banked ? 3 : (index == progress.count ? Self.litMicroSteps(fraction: fraction) : 0)
         return VStack(spacing: 2) {
-            // Quiet notch mark for uncredited run in Learning mode
-            ZStack {
-                if showNotch && isNextFree && mode == .learning {
-                    Rectangle()
-                        .fill(Theme.ink)
-                        .frame(width: 1.5, height: 4)
-                }
-            }
-            .frame(width: 24, height: 4)
-
-            // Slot square
-            ZStack {
+            ForEach((0..<3).reversed(), id: \.self) { step in
                 Rectangle()
-                    .fill(Theme.surface)
-                    .overlay(
+                    .fill(Theme.hairline)
+                    .overlay {
                         Rectangle()
-                            .strokeBorder(Theme.hairline, lineWidth: 1)
-                    )
-
-                if isFilled && !recoil {
-                    Rectangle()
-                        .fill(starMomentActive ? Theme.orange : Theme.ink)
-                        .padding(2)
-                        .transition(reduceMotion ? .opacity : .scale)
-                }
+                            .fill(banked && starMomentActive ? Theme.orange : Theme.ink)
+                            .opacity(step < lit ? 1 : 0)
+                    }
             }
-            .frame(width: 24, height: 24)
         }
-        .frame(width: 24, height: 30)
+        .padding(2)
+        .frame(width: 14, height: 24)
+        .background(Theme.surface)
+        .animation(verdict?.passed == true ? Theme.Motion.fast : .easeOut(duration: 0.20),
+                   value: verdict?.id)
+        .overlay {
+            Rectangle().strokeBorder(flashingOutline ? Theme.markWrong : Theme.hairline, lineWidth: 1)
+        }
     }
 }

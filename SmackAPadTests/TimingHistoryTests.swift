@@ -2,30 +2,38 @@ import XCTest
 @testable import SmackAPad
 
 final class TimingHistoryTests: XCTestCase {
-    func testTendencyUsesMedianOfLastEightHitsAndStrictCentredThreshold() {
-        var history = TimingHistory()
-        XCTAssertNil(history.tendency)
-        for error in [-150.0, -120, -100, 9, 10, 11, 12, 12, 13, 14, 180] {
-            history.record(errorMilliseconds: error, maximumMilliseconds: 200, goodMilliseconds: 100)
-        }
-        XCTAssertEqual(history.tendency, .late(12))
+    private let now = Date(timeIntervalSinceReferenceDate: 100)
 
-        for error in [-80.0, -14, -13, -12, -12, -11, -10, -9] {
-            history.record(errorMilliseconds: error, maximumMilliseconds: 200, goodMilliseconds: 100)
+    private func history(_ errors: [Double], age: TimeInterval = 0,
+                         following history: TimingHistory = TimingHistory()) -> TimingHistory {
+        var history = history
+        for error in errors {
+            history.record(errorMilliseconds: error, maximumMilliseconds: 100, goodMilliseconds: 50,
+                           date: now.addingTimeInterval(-age))
         }
-        XCTAssertEqual(history.tendency, .early(12))
+        return history
+    }
 
-        for error in [7.0, 7, 7, 7, 8, 8, 8, 8] {
-            history.record(errorMilliseconds: error, maximumMilliseconds: 200, goodMilliseconds: 100)
-        }
-        XCTAssertEqual(history.tendency, .centred) // Median is 7.5 ms, before rounding.
-        for _ in 0..<8 {
-            history.record(errorMilliseconds: 8, maximumMilliseconds: 200, goodMilliseconds: 100)
-        }
-        XCTAssertEqual(history.tendency, .late(8))
-        for _ in 0..<8 {
-            history.record(errorMilliseconds: -8, maximumMilliseconds: 200, goodMilliseconds: 100)
-        }
-        XCTAssertEqual(history.tendency, .early(8))
+    func testCueRequiresThreeRecentHits() {
+        let old = history([100, 100, 100], age: 3)
+        XCTAssertEqual(history([-60, -60], following: old).cueOffset(at: now), 0)
+        XCTAssertEqual(history([-60, -60, -60], following: old).cueOffset(at: now), -0.5)
+    }
+
+    func testCueUsesMedianWithInclusiveDeadbandAndLinearTravel() {
+        XCTAssertEqual(history([-95, 20, 100]).cueOffset(at: now), 0)
+        XCTAssertEqual(history([-95, -20, 100]).cueOffset(at: now), 0)
+        XCTAssertEqual(history([-95, -60, 100]).cueOffset(at: now), -0.5)
+        XCTAssertEqual(history([-95, 60, 100]).cueOffset(at: now), 0.5)
+    }
+
+    func testCueClampsLargeErrorsInBothDirections() {
+        XCTAssertEqual(history([-200, -150, 0]).cueOffset(at: now), -1)
+        XCTAssertEqual(history([0, 150, 200]).cueOffset(at: now), 1)
+    }
+
+    func testCueUsesOnlyTheLastEightHits() {
+        let errors: [Double] = [-100, -100, -100, -100, -100, 40, 40, 60, 60]
+        XCTAssertEqual(history(errors).cueOffset(at: now), -0.125)
     }
 }

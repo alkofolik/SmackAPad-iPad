@@ -12,10 +12,6 @@ struct TimingHistory {
         var normalized: Double { min(1, max(-1, errorMilliseconds / maximumMilliseconds)) }
     }
 
-    enum Tendency: Equatable {
-        case early(Int), late(Int), centred
-    }
-
     private(set) var samples: [Sample] = []
 
     mutating func record(errorMilliseconds: Double, maximumMilliseconds: Double,
@@ -26,15 +22,19 @@ struct TimingHistory {
         if samples.count > 32 { samples.removeFirst(samples.count - 32) }
     }
 
-    var tendency: Tendency? {
-        let sorted = samples.suffix(8).map(\.errorMilliseconds).sorted()
-        guard !sorted.isEmpty else { return nil }
+    func cueOffset(at date: Date) -> Double {
+        let recent = samples.filter { date.timeIntervalSince($0.date) < 3 }.suffix(8)
+        guard recent.count >= 3, let latest = recent.last else { return 0 }
+        let deadband = latest.goodMilliseconds * 0.4
+        let travel = latest.maximumMilliseconds - deadband
+        guard travel > 0 else { return 0 }
+        let sorted = recent.map(\.errorMilliseconds).sorted()
         let middle = sorted.count / 2
         let median = sorted.count.isMultiple(of: 2)
             ? (sorted[middle - 1] + sorted[middle]) / 2 : sorted[middle]
-        if abs(median) < 8 { return .centred }
-        let milliseconds = Int(abs(median).rounded())
-        return median < 0 ? .early(milliseconds) : .late(milliseconds)
+        guard abs(median) > deadband else { return 0 }
+        let offset = min(1, (abs(median) - deadband) / travel)
+        return median < 0 ? -offset : offset
     }
 }
 

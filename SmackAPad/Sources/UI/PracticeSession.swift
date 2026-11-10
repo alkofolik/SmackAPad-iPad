@@ -449,12 +449,6 @@ final class PracticeSession {
                       eightNote: lesson.eightNote, intro: lesson.intro)
     }
     var savedProgress: LessonProgress? { progress.progress(for: lesson.id) }
-    var timingWindows: (maximum: Double, good: Double) {
-        let scorer = passes.last(where: { $0.start <= now })?.scorer
-            ?? passes.last?.scorer
-        return (scorer?.maximumTimingMilliseconds ?? 1, scorer?.goodTimingMilliseconds ?? 0)
-    }
-
     /// The same matched/expected-plus-extra ratio as scoring, across this run.
     /// Future notes enter the denominator only once their matching window closes.
     var currentRunAccuracy: Double? {
@@ -506,6 +500,24 @@ final class PracticeSession {
     }
     var available: Bool { midi.padIndices != nil }
     var patternFrame: PatternFrame { tapeFrame(seconds: now) }
+
+    static func runFraction(tapePosition: Double, totalSteps: Int, repeatsPerRun: Int) -> Double {
+        let runSteps = Double(totalSteps) * Double(repeatsPerRun)
+        guard runSteps > 0 else { return 0 }
+        return min(1, max(0, tapePosition.truncatingRemainder(dividingBy: runSteps) / runSteps))
+    }
+
+    func runMeterFraction(at frame: PatternFrame) -> Double {
+        let repeats = repeatsPerRun
+        let runNumber = (frame.pass - 1) / repeats + 1
+        // The tape can reach the next run before the previous verdict is published.
+        // Keep the finished block full until the verdict banks or drains it.
+        if passes.contains(where: { $0.number == runNumber - 1 && $0.scorer != nil }) {
+            return 1
+        }
+        return Self.runFraction(tapePosition: frame.tapePosition,
+                                totalSteps: frame.totalSteps, repeatsPerRun: repeats)
+    }
 
     private func tapeFrame(seconds: Double) -> PatternFrame {
         let total = practiceLesson.bars * 16

@@ -70,6 +70,9 @@ struct PracticeScreen: View {
         }
     }
 
+    private var focusActive: Bool { session.running && !session.listen }
+    private var focusFade: Animation { reduced ? Theme.Motion.fast : Theme.Motion.standard }
+
     var body: some View {
         GeometryReader { geometry in
             let isPortrait = geometry.size.height > geometry.size.width
@@ -81,6 +84,16 @@ struct PracticeScreen: View {
             VStack(spacing: Theme.Space.regular) {
                 topZone(isPortrait: isPortrait, width: geometry.size.width)
                     .fixedSize(horizontal: false, vertical: true)
+                    .opacity(focusActive ? 0 : 1)
+                    .allowsHitTesting(!focusActive)
+                    .accessibilityHidden(focusActive)
+                    .animation(focusFade, value: focusActive)
+                    .overlay(alignment: .bottom) {
+                        if let event = session.badgeBannerEvent {
+                            BadgeBanner(event: event) { session.clearBadgeBannerEvent() }
+                                .id(event.id)
+                        }
+                    }
 
                 middleZone
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -457,107 +470,126 @@ struct PracticeScreen: View {
     }
 
     private var middleZone: some View {
-        GeometryReader { middleGeo in
-            let rows: [Int] = {
-                let used = Set(session.patternHits.map(\.padIndex))
-                return PadVoice.rowOrder.filter { used.contains($0) }
-            }()
-            let availableHeight = middleGeo.size.height
-            let bandHeight = PracticeBandStyle.bandHeight(rows: rows.count, availableHeight: availableHeight)
-            let verticalMargin = max(0, (availableHeight - bandHeight) / 2)
+        GeometryReader { geometry in
+            let rows = Set(session.patternHits.map(\.padIndex)).count
+            let availableHeight = geometry.size.height
+            let separateTempoBanner = geometry.size.width < 600 && !session.listen && !session.afterMe
+            let rowHeight: CGFloat = 48
+            let hudHeight = rowHeight * (separateTempoBanner ? 2 : 1)
+            let phaseHeight: CGFloat = session.afterMe ? 32 : 0
+            let reservedHeight = hudHeight + phaseHeight
+            let preferredHeight = PracticeBandStyle.bandHeight(rows: rows, availableHeight: availableHeight)
+            let bandHeight = min(preferredHeight, max(0, availableHeight - reservedHeight))
+            let bandTop = max(reservedHeight, (availableHeight - bandHeight) / 2)
 
-            ZStack {
+            TimelineView(.animation(minimumInterval: 1.0 / 60, paused: !session.running)) { timeline in
+                let frame = session.patternFrame(at: timeline.date)
+                let scored = focusActive && frame.countdown == nil
+                    && (!session.afterMe || frame.pass.isMultiple(of: 2))
+
                 VStack(spacing: 0) {
-                    Color.clear.frame(height: verticalMargin)
-
-                    TimelineView(.animation(minimumInterval: 1.0 / 60, paused: !session.running)) { timeline in
-                        let frame = session.patternFrame(at: timeline.date)
-                        let scored = session.running && !session.listen && frame.countdown == nil
-                            && (!session.afterMe || frame.pass.isMultiple(of: 2))
-                        PatternField(lesson: session.practiceLesson, hits: session.patternHits,
-                                     position: frame.position, tapePosition: frame.tapePosition,
-                                     running: session.running && frame.countdown == nil,
-                                     visibility: session.noteVisibility(pass: frame.pass),
-                                     fromMemory: session.fromMemory && !session.afterMe,
-                                     afterMe: session.afterMe,
-                                     scrolling: scrolling, visibleBars: [1, 2, 3, 4].contains(visibleBars) ? visibleBars : 4,
-                                     verdicts: session.barVerdicts,
-                                     judgments: session.hitJudgments, bpm: frame.bpm,
-                                     playedHits: session.playedHits, pass: frame.pass,
-                                     scoring: scored,
-                                     missGraceSteps: frame.missGraceSteps, countdown: frame.countdown,
-                                     band: BandTone.color(listen: session.listen,
-                                                          memory: session.fromMemory && !session.listen && !session.afterMe,
-                                                          bpm: session.bpm, startBpm: session.lesson.startBpm,
-                                                          targetBpm: session.lesson.targetBpm),
-                                     edgeTendency: scored ? BandTone.edgeTendency(session.timingHistory, at: timeline.date) : 0,
-                                     runBars: session.repeatsPerRun * session.practiceLesson.bars,
-                                     starMomentBeamActive: midLessonStarMomentActive)
-                            .overlay(alignment: .topLeading) {
-                                Text(settings.localized(session.afterMePhase(at: frame)))
-                                    .font(Theme.rowTitle)
-                                    .foregroundStyle(Theme.ink)
-                                    .lineLimit(1)
-                                    .alignmentGuide(.top) { d in d.height + Theme.Space.small }
-                                    .opacity(session.afterMe ? 1 : 0)
-                                    .animation(motion.animation(Theme.Motion.fast), value: session.afterMe)
-                                    .allowsHitTesting(false)
-                            }
+                    practiceHUD(frame: frame, date: timeline.date, scored: scored,
+                                separateTempoBanner: separateTempoBanner)
+                        .frame(height: rowHeight)
+                    if separateTempoBanner {
+                        tempoUpBanner
+                            .frame(maxWidth: .infinity, alignment: .trailing)
+                            .frame(height: rowHeight)
                     }
-                    .frame(height: bandHeight)
-                    .frame(maxWidth: .infinity)
 
-                    Color.clear.frame(height: verticalMargin)
-                }
+                    Spacer(minLength: 0)
+                        .frame(height: bandTop - reservedHeight)
 
-                if session.running && !session.listen && session.countdown == nil {
-                    VStack(spacing: 0) {
-                        Color.clear.frame(height: verticalMargin + bandHeight + Theme.Space.small)
-                        HitTimingBar(history: session.timingHistory, windows: session.timingWindows,
-                                     active: true)
-                            .frame(maxWidth: .infinity)
-                            .fixedSize(horizontal: false, vertical: true)
-                        Spacer(minLength: 0)
+                    if session.afterMe {
+                        Text(settings.localized(session.afterMePhase(at: frame)))
+                            .font(Theme.rowTitle)
+                            .lineLimit(1)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .frame(height: phaseHeight, alignment: .topLeading)
+                            .allowsHitTesting(false)
                     }
-                    .transition(.opacity)
+                    practiceBand(frame: frame, scored: scored)
+                        .frame(height: bandHeight)
+                    Spacer(minLength: 0)
                 }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
-            .overlay(alignment: .topTrailing) {
-                if session.running && !session.listen {
-                    HStack(spacing: Theme.Space.small) {
-                        if session.countdown == nil, let event = session.tempoUpEvent {
-                            TempoUpBanner(event: event,
-                                          label: settings.localized("Tempo up: %lld → %lld BPM", event.from, event.to),
-                                          announcement: settings.localized("Tempo %lld", event.to))
-                                .id(event.id)
-                        }
-                        PlayingLastRunChip(lastRun: session.runResults.last)
-                        if session.showsMemoryFadePhase {
-                            MemoryPhaseChip(phase: session.memoryPhaseText(settings: settings))
-                        } else if let progress = session.starRunProgress {
-                            LapVaultView(
-                                progress: progress,
-                                mode: session.practiceMode,
-                                verdict: session.lastVerdict,
-                                starEvent: session.starEvent,
-                                starMomentActive: midLessonStarMomentActive,
-                                settings: settings
-                            )
-                        }
-                    }
+        }
+    }
+
+    private func practiceHUD(frame: PatternFrame, date: Date, scored: Bool,
+                             separateTempoBanner: Bool) -> some View {
+        PracticeHUDLayout {
+            ViewThatFits(in: .horizontal) {
+                HStack(alignment: .firstTextBaseline, spacing: Theme.Space.tight) {
+                    Text("\(frame.bpm)").font(Theme.rowTitle).monospacedDigit()
+                    Text("BPM").font(Theme.meta)
                 }
+                .fixedSize()
+                .foregroundStyle(Theme.secondary)
+                .accessibilityElement(children: .combine)
+                .opacity(focusActive ? 1 : 0)
+                .accessibilityHidden(!focusActive)
+                .animation(focusFade, value: focusActive)
+
+                Color.clear.accessibilityHidden(true)
             }
-            .overlay(alignment: .top) {
-                if let event = session.badgeBannerEvent {
-                    BadgeBanner(event: event) {
-                        session.clearBadgeBannerEvent()
+
+            TimingCue(offset: scored ? session.timingHistory.cueOffset(at: date) : 0, active: scored)
+
+            HStack(spacing: Theme.Space.small) {
+                if focusActive {
+                    if !separateTempoBanner {
+                        tempoUpBanner
                     }
-                    .id(event.id)
-                    .padding(.top, Theme.Space.small)
+                    PlayingLastRunChip(lastRun: session.runResults.last)
+                    if session.showsMemoryFadePhase {
+                        MemoryPhaseChip(phase: session.memoryPhaseText(settings: settings))
+                    } else if let progress = session.starRunProgress {
+                        RunMeterView(
+                            progress: progress,
+                            fraction: scored ? session.runMeterFraction(at: frame) : 0,
+                            verdict: session.lastVerdict,
+                            starMomentActive: midLessonStarMomentActive
+                        )
+                    }
                 }
             }
         }
+    }
+
+    @ViewBuilder
+    private var tempoUpBanner: some View {
+        if focusActive, session.countdown == nil, let event = session.tempoUpEvent {
+            TempoUpBanner(event: event,
+                          label: settings.localized("Tempo up: %lld → %lld BPM", event.from, event.to),
+                          announcement: settings.localized("Tempo %lld", event.to))
+                .lineLimit(1)
+                .minimumScaleFactor(0.65)
+                .id(event.id)
+        }
+    }
+
+    private func practiceBand(frame: PatternFrame, scored: Bool) -> some View {
+        PatternField(lesson: session.practiceLesson, hits: session.patternHits,
+                     position: frame.position, tapePosition: frame.tapePosition,
+                     running: session.running && frame.countdown == nil,
+                     visibility: session.noteVisibility(pass: frame.pass),
+                     fromMemory: session.fromMemory && !session.afterMe,
+                     afterMe: session.afterMe,
+                     scrolling: scrolling, visibleBars: [1, 2, 3, 4].contains(visibleBars) ? visibleBars : 4,
+                     verdicts: session.barVerdicts,
+                     judgments: session.hitJudgments, bpm: frame.bpm,
+                     playedHits: session.playedHits, pass: frame.pass,
+                     scoring: scored,
+                     missGraceSteps: frame.missGraceSteps, countdown: frame.countdown,
+                     band: BandTone.color(listen: session.listen,
+                                          memory: session.fromMemory && !session.listen && !session.afterMe,
+                                          bpm: session.bpm, startBpm: session.lesson.startBpm,
+                                          targetBpm: session.lesson.targetBpm),
+                     runBars: session.repeatsPerRun * session.practiceLesson.bars,
+                     starMomentBeamActive: midLessonStarMomentActive)
+            .frame(maxWidth: .infinity)
     }
 
     private func bottomZone(s: CGFloat, portraitPads: Bool, screenHeight: CGFloat, availableWidth: CGFloat) -> some View {
@@ -657,6 +689,10 @@ struct PracticeScreen: View {
                 padLayoutSquare(s: s)
                 Spacer(minLength: 0)
                 tempoSquare(s: s, spaceAbove: spaceAbove)
+                    .opacity(focusActive ? 0 : 1)
+                    .allowsHitTesting(!focusActive)
+                    .accessibilityHidden(focusActive)
+                    .animation(focusFade, value: focusActive)
                 Spacer(minLength: 0)
                 transportSquare(s: s)
             }
@@ -1500,5 +1536,34 @@ private extension View {
             ) {
                 content()
             }
+    }
+}
+
+/// Keeps the cue centred while there is room, then gives the trailing instruments priority.
+private struct PracticeHUDLayout: Layout {
+    func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
+        proposal.replacingUnspecifiedDimensions()
+    }
+
+    func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) {
+        let bpm = subviews[0]
+        let cue = subviews[1]
+        let trailing = subviews[2]
+        let gap = Theme.Space.small
+        let bpmWidth = bpm.sizeThatFits(.unspecified).width
+        let cueWidth = cue.sizeThatFits(.unspecified).width
+        let trailingWidth = trailing.sizeThatFits(.unspecified).width
+        let sideWidth = (bounds.width - cueWidth) / 2 - gap
+        let bpmFits = bpmWidth <= sideWidth && trailingWidth <= sideWidth
+        bpm.place(at: CGPoint(x: bounds.minX, y: bounds.midY), anchor: .leading,
+                  proposal: ProposedViewSize(width: bpmFits ? bpmWidth : 0, height: bounds.height))
+
+        let trailingSpace = min(trailingWidth, max(0, bounds.width - cueWidth - gap))
+        trailing.place(at: CGPoint(x: bounds.maxX, y: bounds.midY), anchor: .trailing,
+                       proposal: ProposedViewSize(width: trailingSpace, height: bounds.height))
+
+        let cueX = trailingWidth <= sideWidth
+            ? bounds.midX : bounds.maxX - trailingSpace - gap - cueWidth / 2
+        cue.place(at: CGPoint(x: cueX, y: bounds.midY), anchor: .center, proposal: .unspecified)
     }
 }

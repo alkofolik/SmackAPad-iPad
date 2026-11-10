@@ -427,7 +427,6 @@
 "Late" = "Late";
 "Early %lld ms" = "Early %lld ms";
 "Late %lld ms" = "Late %lld ms";
-"Centred" = "Centred";
 "Hit timing" = "Hit timing";
 "Last 32 hits" = "Last 32 hits";
 "No matched hits to show." = "No matched hits to show.";
