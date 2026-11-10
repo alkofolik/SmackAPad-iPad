@@ -20,6 +20,9 @@ public struct SettingsView: View {
 
     @State private var kits: [SampleKit] = []
     @State private var notificationsDenied = false
+    @State private var helpPresentation: HelpPresentation?
+    @State private var windowWidth: CGFloat = 0
+    @AccessibilityFocusState private var helpFocused: Bool
     @AppStorage("smackapad.practice.showPads") private var showPads = true
     @AppStorage("smackapad.practice.touchPadsInPortrait") private var touchPadsInPortrait = true
     @AppStorage("smackapad.practice.visibleBars") private var visibleBars = 4
@@ -61,6 +64,14 @@ public struct SettingsView: View {
                             }
                             .frame(minHeight: Theme.Size.touch)
                         }
+                        Button {
+                            helpPresentation = HelpPresentation(windowWidth: windowWidth)
+                        } label: {
+                            HelpEntryLabel()
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityFocused($helpFocused)
+                        .helpDeck(presentation: $helpPresentation) { helpFocused = true }
                     }
 
                     PurchasesSection()
@@ -330,6 +341,7 @@ public struct SettingsView: View {
                                          bottom: Theme.Space.small, trailing: Theme.Space.regular))
             }
             .appFormStyle()
+            .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { windowWidth = $0 }
             .navigationTitle(settings.localized("Settings"))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {

@@ -6,6 +6,7 @@ func hasAnyLessonProgress(_ records: [Int: LessonProgress]) -> Bool {
 
 /// One proportional coordinate system for the grid, title and decorative hardware.
 private struct HomeControllerLayout: Equatable {
+    static let helpRowSpace = Theme.Size.touch + Theme.Space.small
     let size: CGSize
     let cellSize: CGFloat
 
@@ -178,7 +179,8 @@ private struct HomeControllerHardware: View, Equatable {
             }
         } else {
             let u = min(layout.unit, max(0, layout.size.width - 2 * layout.margin) / 316)
-            let bayHeight = layout.size.height - layout.plate.maxY
+            let bayTop = layout.plate.maxY + HomeControllerLayout.helpRowSpace
+            let bayHeight = max(0, layout.size.height - bayTop)
             let height = min(142 * u, max(0, bayHeight - 2 * layout.margin))
             // Compress the travel first, then omit channels in unusually short portrait windows.
             let travel = height - 17 * u
@@ -187,7 +189,7 @@ private struct HomeControllerHardware: View, Equatable {
             let width = CGFloat(count) * 52 * u + CGFloat(count - 1) * 36 * u
             for channel in 0..<count {
                 let rect = CGRect(x: (layout.size.width - width) / 2 + CGFloat(channel) * 88 * u,
-                                  y: layout.plate.maxY + (bayHeight - height) / 2,
+                                  y: bayTop + (bayHeight - height) / 2,
                                   width: 52 * u, height: height)
                 drawFader(in: context, channel: channel, unit: u, rect: rect, mirrored: false, portrait: true)
             }
@@ -662,6 +664,12 @@ public struct HomeScreen: View {
     @Environment(\.scenePhase) private var scenePhase
     @AppStorage(TodayPlan.storageKey) private var savedTodayPlan = ""
     @AppStorage("smackapad.training.dailyMixes") private var dailyMixes = "{}"
+    @AppStorage(TutorialLaunch.seenKey) private var tutorialSeen = false
+    @State private var showingTutorial = false
+    @State private var tutorialVisible = false
+    @State private var helpPresentation: HelpPresentation?
+    @AccessibilityFocusState private var introFocused: Bool
+    @AccessibilityFocusState private var helpFocused: Bool
     @State private var calendarDay = AppCalendar.today()
     @State private var activeDestination: HomePadDestination?
     @Namespace private var homeNamespace
@@ -761,6 +769,29 @@ public struct HomeScreen: View {
                     .frame(width: gridSize, height: gridSize)
                     .position(x: containerW / 2, y: settledGridCenterY)
                     .opacity(gridOpacity)
+                    .disabled(tutorialBlocksInput)
+                    .accessibilityHidden(tutorialBlocksInput)
+
+                if animationFinished {
+                    Button {
+                        helpPresentation = HelpPresentation(windowWidth: containerW)
+                    } label: {
+                        HelpEntryLabel()
+                            .padding(.horizontal, Theme.Space.regular)
+                            .foregroundStyle(Theme.ink)
+                            .background(Theme.surface, in: RoundedRectangle(cornerRadius: Theme.Radius.button))
+                    }
+                    .buttonStyle(.plain)
+                    .frame(width: min(containerW - 2 * Theme.Space.regular, max(200, layout.plateSize)))
+                    .accessibilityFocused($helpFocused)
+                    .helpDeck(presentation: $helpPresentation, arrowEdge: .bottom) {
+                        helpFocused = true
+                    }
+                    .disabled(tutorialBlocksInput)
+                    .accessibilityHidden(tutorialBlocksInput)
+                    .padding(.top, layout.plate.maxY + Theme.Space.tight)
+                    .frame(maxHeight: .infinity, alignment: .top)
+                }
 
                 // Floating Centre Logo Mark (only during launch animation until landed)
                 if !logoInPad {
@@ -802,6 +833,28 @@ public struct HomeScreen: View {
                 startAnimation()
             }
         }
+        .onChange(of: tutorialEligible, initial: true) { _, eligible in
+            if eligible { showingTutorial = true }
+        }
+        .onChange(of: homeIsIdle) { _, idle in
+            if !idle { showingTutorial = false }
+        }
+        .sheet(isPresented: $showingTutorial, onDismiss: {
+            if homeIsIdle && tutorialVisible && !hasProgress { introFocused = true }
+            tutorialVisible = false
+        }) {
+            HelpDeck(firstLaunch: true) { showingTutorial = false }
+                .presentationDragIndicator(.visible)
+                .onAppear {
+                    if tutorialVisible { return }
+                    guard tutorialMayStart && showingTutorial else {
+                        showingTutorial = false
+                        return
+                    }
+                    tutorialVisible = true
+                    tutorialSeen = true
+                }
+        }
         #if DEBUG
         .debugTestMarker()
         #endif
@@ -829,6 +882,19 @@ public struct HomeScreen: View {
             calendarDay = AppCalendar.today()
         }
     }
+
+    private var homeIsIdle: Bool {
+        AppNavigation.shared.route == .home && activeDestination == nil && helpPresentation == nil
+    }
+
+    private var tutorialMayStart: Bool {
+        TutorialLaunch.shouldPresent(loadSucceeded: progress.loadedSuccessfully, records: progress.records,
+            seen: tutorialSeen, homeIsIdle: homeIsIdle && animationFinished)
+    }
+
+    private var tutorialEligible: Bool { tutorialMayStart && scenePhase == .active }
+
+    private var tutorialBlocksInput: Bool { tutorialEligible || showingTutorial || tutorialVisible }
 
     // MARK: - Destination Views
 
@@ -1257,7 +1323,7 @@ public struct HomeScreen: View {
         return HomePadView(
             title: label,
             subtitle: nil,
-            isLit: !hasProgress,
+            isLit: animationFinished && progress.loadedSuccessfully && !hasProgress && !tutorialBlocksInput,
             padNumber: 4,
             cellSize: cellSize,
             isHero: false
@@ -1266,6 +1332,7 @@ public struct HomeScreen: View {
             onNavigateToLibrary(.intro)
             AppNavigation.shared.openLibrary(.intro)
         }
+        .accessibilityFocused($introFocused)
     }
 
     private func pad5(cellSize: CGFloat) -> some View {

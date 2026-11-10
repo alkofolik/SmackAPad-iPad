@@ -850,3 +850,31 @@
 "Today's reviews are in the plan above. Nothing else is waiting in the queue." = "Today's reviews are in the plan above. Nothing else is waiting in the queue.";
 "Ready for review" = "Ready for review";
 "Total review queue by that day if nothing is played. Includes earlier reviews; Today still selects at most two." = "Total review queue by that day if nothing is played. Includes earlier reviews; Today still selects at most two.";
+
+/* Ticket 162: How it works and first-launch tutorial. */
+"help.title" = "How it works";
+"help.tutorial.reopen" = "Watch tutorial";
+"help.nav.back" = "Back";
+"help.nav.position" = "%lld of %lld";
+"help.goal.title" = "The lesson";
+"help.goal.caption" = "Play the pattern in time and earn stars as you learn it.";
+"help.modes.title" = "Listen and Play";
+"help.modes.caption" = "Play along in Listen, or play to the click for a score.";
+"help.modes.unscored" = "No score";
+"help.modes.scored" = "Scored";
+"help.memory.caption" = "Play without the notes to get ready for reviews.";
+"help.memory.hiddenFromThird" = "From pass 3 · notes hidden";
+"help.memory.hidden" = "Notes hidden";
+"help.stars.reviews" = "Pass two spaced reviews on different days";
+"help.stars.caption" = "Enough two-star lessons open the next stage.";
+"help.tempo.caption" = "Set tempo while stopped, then clean passes raise it up to the goal.";
+"help.reviews.caption" = "Due reviews open from memory at goal tempo.";
+"help.reviews.warmups" = "Warm-up passes (with note fade on)";
+"help.reviews.passes" = "Two full passes · at goal tempo or faster · 80% or higher each";
+"help.overview.title" = "Where to play";
+"help.overview.today" = "Follow today's practice plan.";
+"help.overview.training" = "See what is due for review.";
+"help.overview.library" = "Browse and choose lessons.";
+"help.overview.mix" = "Play learned patterns back to back.";
+"help.inputs.title" = "Ways to play";
+"help.inputs.caption" = "Use a MIDI controller, a hardware keyboard or portrait touch pads with a 16-pad layout.";

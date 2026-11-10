@@ -339,14 +339,26 @@ struct HardwareKeyButtonStyle: ButtonStyle {
     let isSelected: Bool
 
     func makeBody(configuration: Configuration) -> some View {
+        HardwareKeyFace(isSelected: isSelected, pressed: configuration.isPressed) {
+            configuration.label
+        }
+        .accessibilityAddTraits(isSelected ? .isSelected : [])
+    }
+}
+
+struct HardwareKeyFace<Label: View>: View {
+    let isSelected: Bool
+    var pressed = false
+    @ViewBuilder let label: Label
+
+    var body: some View {
         PadControlBody(
-            label: configuration.label,
-            pressed: configuration.isPressed,
+            label: label,
+            pressed: pressed,
             selected: isSelected,
             showLightBar: isSelected,
             horizontalPadding: 12
         )
-        .accessibilityAddTraits(isSelected ? .isSelected : [])
     }
 }
 

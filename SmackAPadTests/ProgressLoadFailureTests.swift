@@ -20,6 +20,22 @@ final class ProgressLoadFailureTests: XCTestCase {
             .sorted { $0.lastPathComponent < $1.lastPathComponent }
     }
 
+    func testAutomaticTutorialWaitsForSuccessfulProgressLoad() throws {
+        let url = try progressFile()
+        let store = ProgressStore(fileURL: url, autoLoad: false)
+        func eligible() -> Bool {
+            TutorialLaunch.shouldPresent(loadSucceeded: store.loadedSuccessfully, records: store.records,
+                                         seen: false, homeIsIdle: true)
+        }
+
+        XCTAssertFalse(eligible())
+        store.load()
+        XCTAssertTrue(eligible())
+        try Data("not json".utf8).write(to: url)
+        store.load()
+        XCTAssertFalse(eligible())
+    }
+
     func testCorruptFileLoadsEmptyAndKeepsOriginalBytesInOneBackup() throws {
         let original = Data("not json".utf8)
         let url = try progressFile(original)

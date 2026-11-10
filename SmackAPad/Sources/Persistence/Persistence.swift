@@ -1064,6 +1064,9 @@ public final class ProgressStore: @unchecked Sendable {
     public private(set) var trainingLog: TrainingLog = TrainingLog()
     public private(set) var lastSaveError: Error?
     public private(set) var lastLoadError: Error?
+    private var hasFinishedLoading = false
+
+    var loadedSuccessfully: Bool { hasFinishedLoading && lastLoadError == nil }
 
     public var hasUnreadableProgressBackup: Bool { unreadableProgressBackupURL != nil }
 
@@ -1122,7 +1125,10 @@ public final class ProgressStore: @unchecked Sendable {
     /// Missing files start fresh; unreadable files are backed up and block all saves.
     public func load() {
         lock.lock()
-        defer { lock.unlock() }
+        defer {
+            hasFinishedLoading = true
+            lock.unlock()
+        }
 
         unreadableProgressBackupURL = nil
         do {

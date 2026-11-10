@@ -27,6 +27,9 @@ struct PracticeScreen: View {
     @State private var showingStarRules = false
     @State private var showingMIDI = false
     @State private var showingInfo = false
+    @State private var helpPresentation: HelpPresentation?
+    @State private var didOpenHelpOrInfo = false
+    @AccessibilityFocusState private var helpFocused: Bool
     @State private var purchaseAccess: String?
     @State private var midLessonStarMomentActive = false
     #if DEBUG
@@ -76,7 +79,7 @@ struct PracticeScreen: View {
             let s = min(defaultS, max(80, (availableWidth - 2 * Theme.Space.small) / 3))
 
             VStack(spacing: Theme.Space.regular) {
-                topZone(isPortrait: isPortrait)
+                topZone(isPortrait: isPortrait, width: geometry.size.width)
                     .fixedSize(horizontal: false, vertical: true)
 
                 middleZone
@@ -197,33 +200,29 @@ struct PracticeScreen: View {
         onStepResult?(outcome)
     }
 
-    @ViewBuilder
-    private func topZone(isPortrait: Bool) -> some View {
-        if isPortrait {
-            VStack(alignment: .leading, spacing: Theme.Space.small) {
-                HStack(spacing: Theme.Space.regular) {
-                    libraryButton
-                    titleAndSubtitle
-                    Spacer(minLength: 0)
-                }
-                .frame(maxWidth: .infinity, alignment: .leading)
+    private func topZone(isPortrait: Bool, width: CGFloat) -> some View {
+        let stacked = isPortrait || width < 850 || dynamicType.isAccessibilitySize
+        let layout = stacked
+            ? AnyLayout(VStackLayout(alignment: .leading, spacing: Theme.Space.small))
+            : AnyLayout(HStackLayout(spacing: Theme.Space.regular))
+        let toolsLayout = stacked
+            ? AnyLayout(FlowLayout(spacing: Theme.Space.small))
+            : AnyLayout(HStackLayout(spacing: Theme.Space.small))
 
-                HStack(alignment: .center) {
-                    modeButtons
-                    Spacer(minLength: Theme.Space.regular)
-                    toolIcons
-                }
-                .frame(maxWidth: .infinity)
-            }
-        } else {
+        return layout {
             HStack(spacing: Theme.Space.regular) {
                 libraryButton
                 titleAndSubtitle
-                Spacer(minLength: Theme.Space.regular)
-                tools
             }
-            .frame(maxWidth: .infinity)
+            .frame(maxWidth: .infinity, alignment: .leading)
+
+            toolsLayout {
+                modeButtons
+                patternTools.padding(.leading, Theme.Space.small)
+                helpTools(windowWidth: width)
+            }
         }
+        .frame(maxWidth: .infinity)
     }
 
     private var libraryButton: some View {
@@ -327,14 +326,6 @@ struct PracticeScreen: View {
         return settings.localized("%lld bars", bars)
     }
 
-    private var tools: some View {
-        HStack(spacing: Theme.Space.regular) {
-            modeButtons
-            toolIcons
-        }
-        .fixedSize(horizontal: true, vertical: false)
-    }
-
     @ViewBuilder
     private var modeButtons: some View {
         if !session.isMix {
@@ -356,7 +347,7 @@ struct PracticeScreen: View {
         }
     }
 
-    private var toolIcons: some View {
+    private var patternTools: some View {
         HStack(spacing: Theme.Space.small) {
             icon("eye.slash", settings.localized("From memory"), selected: session.fromMemory && !session.afterMe) {
                 session.fromMemory.toggle()
@@ -381,30 +372,47 @@ struct PracticeScreen: View {
             .accessibilityLabel(settings.localized("Pattern view"))
 
             toolSeparator
+        }
+        .fixedSize(horizontal: true, vertical: false)
+    }
 
-            HStack(spacing: 0) {
-                icon("info.circle", settings.localized("Lesson info")) {
-                    showingLegend = false
-                    showingInfo.toggle()
-                }
-                    .disabled(session.running)
-                    .popover(isPresented: $showingInfo, arrowEdge: .top) { lessonInfo }
-                icon("list.bullet.rectangle", settings.localized("Legend")) { showingLegend.toggle() }
-                    .disabled(session.running || session.countdown != nil)
-                    .popover(isPresented: $showingLegend, arrowEdge: .top) {
-                        legend.onAppear {
-                            if !showingInfo && !session.running && session.countdown == nil && !session.patternHits.isEmpty {
-                                legendShownOnce = true
-                            }
+    private func helpTools(windowWidth: CGFloat) -> some View {
+        HStack(spacing: 0) {
+            icon("info.circle", settings.localized("Lesson info")) {
+                didOpenHelpOrInfo = true
+                showingLegend = false
+                showingInfo.toggle()
+            }
+                .disabled(session.running)
+                .popover(isPresented: $showingInfo, arrowEdge: .top) { lessonInfo }
+            icon("list.bullet.rectangle", settings.localized("Legend")) { showingLegend.toggle() }
+                .disabled(session.running || session.countdown != nil)
+                .popover(isPresented: $showingLegend, arrowEdge: .top) {
+                    legend.onAppear {
+                        if showingLegend && helpPresentation == nil && !showingInfo
+                            && !session.running && session.countdown == nil && !session.patternHits.isEmpty {
+                            legendShownOnce = true
                         }
                     }
-                icon("slider.horizontal.3", settings.localized("More tools")) { showingTools.toggle() }
-                    .popover(isPresented: $showingTools, arrowEdge: .top) {
-                        PracticeTools(session: session, showPads: $showPads, openMIDI: {
-                            showingTools = false; showingMIDI = true
-                        })
-                    }
+                }
+            icon("questionmark.circle", settings.localized("help.title"), selected: helpPresentation != nil) {
+                didOpenHelpOrInfo = true
+                showingInfo = false
+                showingLegend = false
+                showingTools = false
+                showingTempo = false
+                showingDetails = false
+                showingStarRules = false
+                helpPresentation = HelpPresentation(windowWidth: windowWidth)
             }
+            .accessibilityFocused($helpFocused)
+            .helpDeck(presentation: $helpPresentation, lesson: session.lesson) { helpFocused = true }
+            icon("slider.horizontal.3", settings.localized("More tools")) { showingTools.toggle() }
+                .popover(isPresented: $showingTools, arrowEdge: .top) {
+                    PracticeTools(session: session, showPads: $showPads, openMIDI: {
+                        showingTools = false; showingMIDI = true
+                    })
+                }
         }
         .fixedSize(horizontal: true, vertical: false)
     }
@@ -973,6 +981,8 @@ struct PracticeScreen: View {
         showingTempo = false
         showingDetails = false
         showingStarRules = false
+        helpPresentation = nil
+        didOpenHelpOrInfo = false
         session.close()
         session = PracticeSession(lesson: lesson, settings: settings, progress: progress, midi: midi)
     }
@@ -1110,7 +1120,8 @@ struct PracticeScreen: View {
     }
 
     private func showFirstLegendIfNeeded() {
-        guard !legendShownOnce, !showingInfo, !showingTools, !showingTempo, !showingMIDI,
+        guard !legendShownOnce, !didOpenHelpOrInfo, helpPresentation == nil,
+              !showingInfo, !showingTools, !showingTempo, !showingMIDI,
               !session.running, session.countdown == nil, !session.patternHits.isEmpty else { return }
         showingLegend = true
     }

@@ -796,3 +796,67 @@ struct WarningToothShape: Shape {
         return path
     }
 }
+
+/// A single, read-only demo measure using the same lanes and note marks as practice.
+struct HelpPatternBand: View {
+    static let hiHat = 11
+    static let snare = 13
+    static let kick = 12
+    private static let rows = [hiHat, snare, kick]
+    private static let hits = [
+        LessonHit(step: 0, padIndex: hiHat, hand: "R", velocity: 100),
+        LessonHit(step: 4, padIndex: hiHat, hand: "R", velocity: 100),
+        LessonHit(step: 8, padIndex: hiHat, hand: "R", velocity: 100),
+        LessonHit(step: 12, padIndex: hiHat, hand: "R", velocity: 100),
+        LessonHit(step: 4, padIndex: snare, hand: "L", velocity: 100),
+        LessonHit(step: 12, padIndex: snare, hand: "L", velocity: 100),
+        LessonHit(step: 0, padIndex: kick, hand: "R", velocity: 100),
+        LessonHit(step: 10, padIndex: kick, hand: "L", velocity: 100)
+    ]
+
+    var visibility: NoteVisibility = .shown
+    var position: Double? = nil
+    var band = PracticeBandStyle.orange
+    var matchedHit = false
+    var passed = false
+    var height: CGFloat = 80
+
+    var body: some View {
+        Canvas { context, size in
+            let scale = min(size.height / 228, size.width / 400)
+            let gutter = 96 * scale
+            let stepWidth = (size.width - gutter) / 16
+            let lanes = PatternLanes(size: size, rows: Self.rows, scale: scale)
+            let x: (Double) -> CGFloat = { gutter + ($0 + 0.5) * stepWidth }
+            lanes.drawRows(context: &context)
+            for step in 0..<16 {
+                drawBeat(step: step, x: x(Double(step)), lanes: lanes, context: &context)
+            }
+            if let position {
+                drawMarker(x: x(position), top: lanes.top - 4 * scale, bottom: lanes.bottom, context: &context)
+            }
+            if visibility != .hidden {
+                for hit in Self.hits {
+                    guard let row = Self.rows.firstIndex(of: hit.padIndex) else { continue }
+                    let width = min(stepWidth * 1.5, 64 * scale)
+                    let rect = lanes.tile(x: x(Double(hit.step)), width: width, row: row)
+                    let mark: HitMark? = matchedHit && hit.step == 4 && hit.padIndex == Self.snare ? .correct : nil
+                    drawHit(hit, in: rect, mark: mark, visibility: visibility, fontSize: lanes.fontSize, context: &context)
+                }
+            }
+            lanes.drawLabels(band: band, context: &context)
+        }
+        .padding(.horizontal, Theme.Space.small)
+        .frame(height: height)
+        .background(band)
+        .overlay(alignment: .bottomTrailing) {
+            if passed {
+                Image(systemName: "checkmark.circle")
+                    .font(.system(size: 23, weight: .semibold))
+                    .foregroundStyle(Theme.black)
+                    .padding(Theme.Space.small)
+            }
+        }
+        .accessibilityHidden(true)
+    }
+}

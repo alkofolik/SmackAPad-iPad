@@ -11,6 +11,41 @@ final class FirstRunAndLegibilityTests: XCTestCase {
         XCTAssertTrue(hasAnyLessonProgress([1: LessonProgress(memory: true)]))
     }
 
+    func testTutorialEligibilityRequiresAnUnseenEmptyProfileOnHome() {
+        func eligible(_ records: [Int: LessonProgress] = [:], seen: Bool = false, homeIsIdle: Bool = true) -> Bool {
+            TutorialLaunch.shouldPresent(loadSucceeded: true, records: records, seen: seen, homeIsIdle: homeIsIdle)
+        }
+
+        XCTAssertTrue(eligible())
+        XCTAssertFalse(eligible(seen: true))
+        XCTAssertFalse(eligible([1: LessonProgress(hasPlayed: true)]))
+        XCTAssertFalse(eligible([1: LessonProgress(passed: true)]))
+        XCTAssertTrue(eligible([1: LessonProgress(currentBpm: 80)]))
+        XCTAssertFalse(eligible(homeIsIdle: false))
+        XCTAssertTrue(eligible(homeIsIdle: true))
+    }
+
+    func testHelpStringsArePresentInEachLanguageBundle() throws {
+        let keys = [
+            "help.title", "help.tutorial.reopen", "help.nav.back", "help.nav.position",
+            "help.goal.title", "help.goal.caption", "help.modes.title", "help.modes.caption",
+            "help.modes.unscored", "help.modes.scored", "help.memory.caption", "help.memory.hiddenFromThird",
+            "help.memory.hidden", "help.stars.reviews", "help.stars.caption", "help.tempo.caption",
+            "help.reviews.caption", "help.reviews.warmups", "help.reviews.passes", "help.overview.title",
+            "help.overview.today", "help.overview.training", "help.overview.library", "help.overview.mix",
+            "help.inputs.title", "help.inputs.caption"
+        ]
+        for language in ["en", "cs"] {
+            let url = try XCTUnwrap(Bundle.main.url(forResource: language, withExtension: "lproj"))
+            let bundle = try XCTUnwrap(Bundle(url: url))
+            for key in keys {
+                let value = bundle.localizedString(forKey: key, value: "", table: nil)
+                XCTAssertFalse(value == key || value.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
+                               "\(language): \(key)")
+            }
+        }
+    }
+
     func testMIDILearnDisplaysRowsFromBottomWithoutReversingSlotsWithinARow() {
         XCTAssertEqual(PhysicalPadGrid.displaySlots(padCount: 8), [4, 5, 6, 7, 0, 1, 2, 3])
         XCTAssertEqual(PhysicalPadGrid.displaySlots(padCount: 16), [

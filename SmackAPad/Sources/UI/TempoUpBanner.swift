@@ -15,13 +15,7 @@ struct TempoUpBanner: View {
     private var motion: Theme.Motion.Policy { .init(reduced: reduceMotion) }
 
     var body: some View {
-        Text(label)
-            .font(Theme.strong(28))
-            .fixedSize(horizontal: false, vertical: true)
-            .foregroundStyle(Theme.orange)
-            .padding(.horizontal, Theme.Space.regular)
-            .padding(.vertical, Theme.Space.small)
-            .satinPlate()
+        TempoUpLabel(label: label)
             .scaleEffect(motion.scale(pulse ? 1.08 : 1))
             .opacity(visible ? 1 : 0)
             .allowsHitTesting(false)
@@ -37,5 +31,20 @@ struct TempoUpBanner: View {
                 do { try await Task.sleep(for: .milliseconds(600)) } catch { return }
                 withAnimation(motion.animation(Theme.Motion.standard)) { visible = false }
             }
+    }
+}
+
+struct TempoUpLabel: View {
+    let label: String
+    var size = 28.0
+
+    var body: some View {
+        Text(label)
+            .font(Theme.strong(size))
+            .fixedSize(horizontal: false, vertical: true)
+            .foregroundStyle(Theme.orange)
+            .padding(.horizontal, Theme.Space.regular)
+            .padding(.vertical, Theme.Space.small)
+            .satinPlate()
     }
 }
