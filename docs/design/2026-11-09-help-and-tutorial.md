@@ -1,10 +1,10 @@
 # How it works and first-launch tutorial
 
-Phase 1 proposal for [ticket 159](../tickets/2026-11-09-159-help-and-first-launch-tutorial.md). The card rules below follow the app's current behavior. The [November 8 action plan](../2026-11-08-ai-panel-action-plan.md) records the iPad check for T158.
+Jakub approved the Phase 1 design for [T159](../tickets/2026-11-09-159-help-and-first-launch-tutorial.md) on 2026-11-10. Implementation is tracked in [T162](../tickets/2026-11-10-162-implement-help-and-first-launch-tutorial.md). The card rules below follow the app's current behavior. The [November 8 action plan](../2026-11-08-ai-panel-action-plan.md) records the iPad check for T158.
 
 ## 1. Entry points
 
-**Recommend A, a question mark beside Legend in Practice.** A player can open help where the question arises. A question mark has one meaning across Practice, Home and Settings. The Home row sits below the controller plate, leaving all nine pad positions in place. The Settings row is a button in the form. Both use the same title as the popover. In Practice, keep Lesson info and Legend in their current order and add a 48 pt Help target after Legend. If the group does not fit, wrap it onto a second line before reducing any target.
+**Selected option A, a question mark beside Legend in Practice.** A player can open help where the question arises. A question mark has one meaning across Practice, Home and Settings. The Home row sits below the controller plate, leaving all nine pad positions in place. The Settings row is a button in the form. Both use the same title as the popover. In Practice, keep Lesson info and Legend in their current order and add a 48 pt Help target after Legend. If the group does not fit, wrap it onto a second line before reducing any target.
 
 ```text
 A   Practice   [ⓘ] [Legend icon] [?] [Tools icon]
@@ -158,11 +158,13 @@ The static mockups use the bundled IBM Plex Sans, orange `#FF6B00`, soft black `
 
 ![Review preset, two warm-up strips, two successful hidden passes and the Did not count marker](2026-11-09-help-previews/03-reviews.png)
 
-## 7. Open questions for Jakub
+## 7. Decisions after approval
 
-1. Which entry option do you want to approve? A gives help its own question mark beside Legend.
-2. Should the four-card tutorial stay focused on the lesson, playback, memory and stars, or should the first-launch flow also show a fifth card with input setup?
-3. Is the pass-by-pass review diagram clear at a glance, including the difference between two successful passes in one review and two successful reviews on separate days for star 3?
+Jakub approved the design and delegated the remaining choices on 2026-11-10.
+
+1. Use option A.
+2. Keep four first-launch cards. Input setup stays in the help deck, where players can find it when they have their device to hand.
+3. Keep the two-pass review diagram on Reviews and the two-day explanation on Stars. Verify the distinction with the manual iPad check.
 
 ### Manual iPad checks for Phase 2
 

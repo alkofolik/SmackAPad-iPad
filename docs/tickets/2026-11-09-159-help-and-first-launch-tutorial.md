@@ -1,6 +1,8 @@
 # 159 — "How it works" help and first-launch tutorial (design phase first)
 
-Status: DRAFT written 2026-11-09, waiting for Jakub's approval. Amended 2026-11-09: content scope points 3 and 4 corrected (3rd star comes from two spaced reviews on separate days, not from a practice run; the agent's stop-on-conflict caught this). Blocked by: 158 (implemented, not yet tested on the iPad). Source: Jakub's iPad check 2026-11-08 (`docs/2026-11-08-ai-panel-action-plan.md`, section "Nové z kontroly na iPadu"); AI panel findings about unclear modes and rules. Related: 157 (first-run guidance), 158 (review launch), 150 (review summary states).
+Status: complete. Jakub approved the Phase 1 design on 2026-11-10 and delegated the remaining design choices. T158 passed its iPad check on 2026-11-10. The [approved design](../design/2026-11-09-help-and-tutorial.md) selects option A and a four-card tutorial. Implementation is tracked in [T162](2026-11-10-162-implement-help-and-first-launch-tutorial.md).
+
+Source: Jakub's 2026-11-08 iPad check and the AI panel findings. See the [action plan](../2026-11-08-ai-panel-action-plan.md) and related T150, T157 and T158.
 
 ## Goal
 
@@ -65,12 +67,12 @@ Implement the approved entry point, the tutorial flow with an `@AppStorage` flag
 
 ## Acceptance criteria (Phase 1)
 
-- [ ] `docs/design/2026-11-09-help-and-tutorial.md` exists with all 7 parts above.
-- [ ] The three entry options are compared, with a recommendation.
-- [ ] Every rule stated in the cards is checked against code or `SPEC.md`; conflicts listed.
-- [ ] String table in English and Czech with a total count.
-- [ ] 2 or 3 previews included.
-- [ ] No Swift, localisation or project file changed. Only docs.
+- [x] `docs/design/2026-11-09-help-and-tutorial.md` exists with all 7 parts above.
+- [x] The three entry options are compared, with a recommendation.
+- [x] Every rule stated in the cards is checked against code or `SPEC.md`; conflicts listed.
+- [x] String table in English and Czech with a total count.
+- [x] 2 or 3 previews included.
+- [x] No Swift, localisation or project file changed. Only docs.
 
 ## Agent assignment
 
