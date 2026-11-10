@@ -25,7 +25,7 @@ struct PurchaseControls: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: Theme.Space.small) {
+        VStack(alignment: .leading, spacing: Theme.Space.controlGap) {
             if let product {
                 Button {
                     Task { await store.purchase(product) }

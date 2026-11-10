@@ -328,7 +328,7 @@ struct LibraryScreen: View {
             }
             .padding(.horizontal, Theme.Space.regular)
             .padding(.vertical, Theme.Space.tight)
-            .frame(maxWidth: .infinity, alignment: .leading)
+            .frame(maxWidth: .infinity, minHeight: Theme.Size.touch, alignment: .leading)
             .satinPlate()
             .contentShape(Rectangle())
         }
@@ -532,7 +532,7 @@ struct LibraryScreen: View {
             }
             .padding(.horizontal, Theme.Space.regular)
             .padding(.vertical, Theme.Space.tight)
-            .frame(maxWidth: .infinity, alignment: .leading)
+            .frame(maxWidth: .infinity, minHeight: Theme.Size.touch, alignment: .leading)
             .background(selected ? Theme.surface : Color.clear)
             .contentShape(Rectangle())
         }
@@ -705,7 +705,7 @@ struct LibraryScreen: View {
                                          locked: !progression.isLessonOpen(lesson), purchaseLocked: !store.isUnlocked(lesson), isNext: lesson.id == nextID) {
                             open(lesson)
                         }
-                        .listRowInsets(EdgeInsets(top: Theme.Space.tight, leading: 0, bottom: Theme.Space.tight, trailing: 0))
+                        .listRowInsets(EdgeInsets(top: Theme.Space.controlGap / 2, leading: 0, bottom: Theme.Space.controlGap / 2, trailing: 0))
                         .listRowSeparator(.hidden)
                         .listRowBackground(Color.clear)
                     }
@@ -770,7 +770,7 @@ struct LibraryScreen: View {
 
     private func filters(matching: [Lesson]) -> some View {
         ScrollView(.horizontal, showsIndicators: false) {
-            HStack(spacing: Theme.Space.small) {
+            HStack(spacing: Theme.Space.controlGap) {
                 HStack(spacing: Theme.Space.tight) {
                     Image(systemName: "magnifyingglass").font(Theme.meta).foregroundStyle(Theme.secondary)
                     TextField(settings.localized("Search"), text: $query)

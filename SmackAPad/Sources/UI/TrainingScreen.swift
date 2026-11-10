@@ -277,26 +277,15 @@ public struct TrainingScreen: View {
 
                     Spacer(minLength: Theme.Space.small)
 
-                    HStack(spacing: 10) {
-                        Button {
-                            postponeTodayReviews()
-                        } label: {
-                            Text(settings.localized("Not today"))
-                                .font(Theme.strong(18))
-                                .frame(minHeight: Theme.Size.touch)
+                    ViewThatFits(in: .horizontal) {
+                        HStack(spacing: Theme.Space.controlGap) {
+                            notTodayButton
+                            startTodayTrainingButton
                         }
-                        .buttonStyle(PadSecondaryButtonStyle())
-                        .disabled(dueLessons.isEmpty)
-                        .opacity(dueLessons.isEmpty ? 0.4 : 1.0)
-
-                        Button {
-                            startTodayTraining()
-                        } label: {
-                            Text(settings.localized("START TODAY'S TRAINING"))
-                                .font(Theme.strong(18))
-                                .frame(minHeight: Theme.Size.touch)
+                        VStack(spacing: Theme.Space.controlGap) {
+                            startTodayTrainingButton
+                            notTodayButton
                         }
-                        .buttonStyle(PadSecondaryButtonStyle())
                     }
                 }
             } else if finished {
@@ -306,6 +295,30 @@ public struct TrainingScreen: View {
         .padding(20)
         .background(Theme.orange)
         .overlay(Rectangle().stroke(Theme.black, lineWidth: 2))
+    }
+
+    private var notTodayButton: some View {
+        Button {
+            postponeTodayReviews()
+        } label: {
+            Text(settings.localized("Not today"))
+                .font(Theme.strong(18))
+                .frame(minHeight: Theme.Size.touch)
+        }
+        .buttonStyle(PadSecondaryButtonStyle())
+        .disabled(dueLessons.isEmpty)
+        .opacity(dueLessons.isEmpty ? 0.4 : 1.0)
+    }
+
+    private var startTodayTrainingButton: some View {
+        Button {
+            startTodayTraining()
+        } label: {
+            Text(settings.localized("START TODAY'S TRAINING"))
+                .font(Theme.strong(18))
+                .frame(minHeight: Theme.Size.touch)
+        }
+        .buttonStyle(PadSecondaryButtonStyle())
     }
 
     private func bandMetaText(finished: Bool) -> String {
@@ -676,7 +689,7 @@ public struct TrainingScreen: View {
         return VStack(alignment: .leading, spacing: Theme.Space.regular) {
             panelHeader(settings.localized("Next 7 days"))
 
-            HStack(spacing: 6) {
+            HStack(spacing: Theme.Space.segmentedGap) {
                 ForEach(forecast, id: \.day) { entry in
                     let isToday = (entry.day == today)
                     let (shortName, fullName) = weekdayNames(from: entry.day)
@@ -948,7 +961,7 @@ public struct TrainingScreen: View {
             VStack(alignment: .leading, spacing: Theme.Space.regular) {
                 panelHeader(settings.localized("Waiting"))
 
-                FlowLayout(spacing: 8) {
+                FlowLayout(spacing: Theme.Space.controlGap) {
                     if !tomorrowLessons.isEmpty {
                         waitingBoxButton(
                             group: .tomorrow,

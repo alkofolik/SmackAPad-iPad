@@ -207,8 +207,8 @@ struct PracticeScreen: View {
             ? AnyLayout(VStackLayout(alignment: .leading, spacing: Theme.Space.small))
             : AnyLayout(HStackLayout(spacing: Theme.Space.regular))
         let toolsLayout = stacked
-            ? AnyLayout(FlowLayout(spacing: Theme.Space.small))
-            : AnyLayout(HStackLayout(spacing: Theme.Space.small))
+            ? AnyLayout(FlowLayout(spacing: Theme.Space.controlGap))
+            : AnyLayout(HStackLayout(spacing: Theme.Space.controlGap))
 
         return layout {
             HStack(spacing: Theme.Space.regular) {
@@ -330,7 +330,7 @@ struct PracticeScreen: View {
     @ViewBuilder
     private var modeButtons: some View {
         if !session.isMix {
-            HStack(spacing: 0) {
+            HStack(spacing: Theme.Space.segmentedGap) {
                 ForEach(LessonPlaybackMode.allCases, id: \.self) { mode in
                     Button { session.selectPlaybackMode(mode) } label: {
                         Text(settings.localized(mode.rawValue))
@@ -358,7 +358,7 @@ struct PracticeScreen: View {
 
             toolSeparator
 
-            HStack(spacing: 0) {
+            HStack(spacing: Theme.Space.segmentedGap) {
                 let effectiveBars = min(max(1, visibleBars), session.lesson.bars)
                 icon("rectangle.split.2x2", settings.localized("Static view"),
                      selected: !scrolling,
@@ -378,7 +378,7 @@ struct PracticeScreen: View {
     }
 
     private func helpTools(windowWidth: CGFloat) -> some View {
-        HStack(spacing: 0) {
+        HStack(spacing: Theme.Space.controlGap) {
             icon("info.circle", settings.localized("Lesson info")) {
                 didOpenHelpOrInfo = true
                 showingLegend = false
@@ -886,7 +886,7 @@ struct PracticeScreen: View {
 
     @ViewBuilder
     private func transportSecondAction(s: CGFloat) -> some View {
-        let buttonHeight = max(0, (s - Theme.Space.small) / 2)
+        let buttonHeight = max(0, (s - Theme.Space.controlGap) / 2)
         if onStepResult != nil {
             Button {
                 session.stop()
@@ -978,7 +978,7 @@ struct PracticeScreen: View {
             }
             Text("\(session.bpm) → \(session.lesson.targetBpm) BPM").font(Theme.control).monospacedDigit()
                         .contentTransition(motion.numeric).motion(value: session.bpm)
-            HStack(spacing: Theme.Space.small) {
+            HStack(spacing: Theme.Space.controlGap) {
                 ForEach([-5, -1, 1, 5], id: \.self) { step in
                     Button(step > 0 ? "+\(step)" : "\(step)") { session.setTempo(session.bpm + step) }
                         .buttonStyle(InstrumentButtonStyle())

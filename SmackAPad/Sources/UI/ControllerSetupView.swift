@@ -398,7 +398,7 @@ struct ControllerMappingSections: View {
             Text(settings.localized(title)).font(Theme.control)
             Text(mappingText(signal)).font(Theme.meta).foregroundStyle(Theme.secondary)
         }
-        let actions = HStack(spacing: Theme.Space.small) {
+        let actions = HStack(spacing: Theme.Space.controlGap) {
             Button { midi.startControlLearning(target) } label: {
                 Text(settings.localized("Learn"))
                     .frame(minWidth: Theme.Size.touch, minHeight: Theme.Size.touch)

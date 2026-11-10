@@ -181,10 +181,10 @@ struct TransportControls: View {
             squareBody(s: s)
         } else {
             ViewThatFits(in: .horizontal) {
-                HStack(spacing: Theme.Space.small) { buttons }
+                HStack(spacing: Theme.Space.controlGap) { buttons }
                     .frame(minWidth: preferredWidth)
                     .fixedSize(horizontal: true, vertical: true)
-                VStack(alignment: .trailing, spacing: Theme.Space.small) { buttons }
+                VStack(alignment: .trailing, spacing: Theme.Space.controlGap) { buttons }
             }
             .fixedSize(horizontal: false, vertical: true)
             .motion(Theme.Motion.standard, value: running)
@@ -198,10 +198,10 @@ struct TransportControls: View {
 
     @ViewBuilder
     private func squareBody(s: CGFloat) -> some View {
-        let buttonHeight = max(0, (s - Theme.Space.small) / 2)
+        let buttonHeight = max(0, (s - Theme.Space.controlGap) / 2)
         if showsResult {
             if let secondAction {
-                VStack(spacing: Theme.Space.small) {
+                VStack(spacing: Theme.Space.controlGap) {
                     Button(action: start) {
                         HStack(spacing: Theme.Space.small) {
                             Text(settings.localized(resultStartTitle))
@@ -236,7 +236,7 @@ struct TransportControls: View {
                 .opacity(enabled ? 1 : 0.5)
             }
         } else {
-            VStack(spacing: Theme.Space.small) {
+            VStack(spacing: Theme.Space.controlGap) {
                 Button(action: running ? stop : start) {
                     HStack(spacing: Theme.Space.small) {
                         if running {

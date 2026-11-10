@@ -758,7 +758,7 @@ private struct NextStepPreparationView: View {
                 PatternPreviewCard(hits: hits)
             }
 
-            VStack(spacing: 10) {
+            VStack(spacing: Theme.Space.controlGap) {
                 Button(action: onContinue) {
                     Text(primaryButtonTitle)
                         .font(Theme.strong(18))
@@ -767,27 +767,40 @@ private struct NextStepPreparationView: View {
                 }
                 .buttonStyle(PadPrimaryButtonStyle())
 
-                HStack(spacing: 10) {
-                    Button(action: onSkip) {
-                        Text(settings.localized("Skip"))
-                            .font(Theme.control)
-                            .frame(maxWidth: .infinity)
-                            .frame(minHeight: 48)
+                ViewThatFits(in: .horizontal) {
+                    HStack(spacing: Theme.Space.controlGap) {
+                        skipButton
+                        doneButton
                     }
-                    .buttonStyle(PadSecondaryButtonStyle())
-
-                    Button(action: onDone) {
-                        Text(settings.localized("Done for today"))
-                            .font(Theme.control)
-                            .frame(maxWidth: .infinity)
-                            .frame(minHeight: 48)
+                    VStack(spacing: Theme.Space.controlGap) {
+                        skipButton
+                        doneButton
                     }
-                    .buttonStyle(PadSecondaryButtonStyle())
                 }
             }
             .padding(.top, 8)
         }
         .frame(maxWidth: .infinity, alignment: .topLeading)
+    }
+
+    private var skipButton: some View {
+        Button(action: onSkip) {
+            Text(settings.localized("Skip"))
+                .font(Theme.control)
+                .frame(maxWidth: .infinity)
+                .frame(minHeight: 48)
+        }
+        .buttonStyle(PadSecondaryButtonStyle())
+    }
+
+    private var doneButton: some View {
+        Button(action: onDone) {
+            Text(settings.localized("Done for today"))
+                .font(Theme.control)
+                .frame(maxWidth: .infinity)
+                .frame(minHeight: 48)
+        }
+        .buttonStyle(PadSecondaryButtonStyle())
     }
 }
 

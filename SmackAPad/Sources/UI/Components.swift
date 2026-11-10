@@ -596,12 +596,12 @@ struct ListRow<Meta: View, Trailing: View>: View {
     var body: some View {
         ViewThatFits(in: .horizontal) {
             if !dynamicType.isAccessibilitySize {
-                HStack(spacing: Theme.Space.small) {
+                HStack(spacing: Theme.Space.controlGap) {
                     rowButton
                     trailing.fixedSize(horizontal: true, vertical: false)
                 }
             }
-            VStack(alignment: .leading, spacing: Theme.Space.small) {
+            VStack(alignment: .leading, spacing: Theme.Space.controlGap) {
                 rowButton
                 trailing
             }
