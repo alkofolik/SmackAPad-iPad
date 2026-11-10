@@ -1985,7 +1985,7 @@ public final class ProgressStore: @unchecked Sendable {
     ) {
         lock.lock()
         trainingLog.trainingDays.insert(today)
-        if score >= 0.80 {
+        if score >= Scoring.passMark {
             trainingLog.afterMeLessons.insert(lessonId)
         }
         lock.unlock()

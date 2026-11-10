@@ -220,7 +220,7 @@
 "STRICTER RULES" = "PŘÍSNĚJŠÍ LIMITY";
 "Intro exercises build foundational motor habits and steady timing. They are always accessible without unlock requirements, but enforce stricter scoring limits than standard lessons:" = "Úvodní cvičení slouží k osvojení základních motorických návyků a stabilního timingu. Jsou vždy odemčená bez nutnosti postupu, ale platí pro ně přísnější limity hodnocení než pro běžné lekce:";
 "Passing" = "Splnění";
-"Standard lessons require 70%" = "Běžné lekce vyžadují 70 %";
+"Required for all lessons" = "Platí pro všechny lekce";
 "0 errors" = "0 chyb";
 "At target tempo (normally up to 2)" = "V cílovém tempu (běžně až 2)";
 "%lld with full mastery" = "%lld s plným mistrovstvím";

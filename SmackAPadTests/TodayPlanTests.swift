@@ -95,10 +95,12 @@ final class TodayPlanTests: XCTestCase {
     }
 
     func testPlayedLessonAndWarmupHaveDistinctStatesAndReasons() {
-        let lesson = TodayPlan.Step(kind: .newLesson, lessonIDs: [1], outcome: .init(bestScore: 0.7))
+        let lesson = TodayPlan.Step(kind: .newLesson, lessonIDs: [1], outcome: .init(bestScore: 0.75))
+        let passingLesson = TodayPlan.Step(kind: .newLesson, lessonIDs: [1], outcome: .init(bestScore: 0.8))
         let warmup = TodayPlan.Step(kind: .review, lessonIDs: [2],
                                    outcome: .init(bestScore: 1, reviewPendingReason: .notesVisible))
         XCTAssertEqual(lesson.status, .played)
+        XCTAssertEqual(passingLesson.status, .passed)
         XCTAssertEqual(warmup.status, .didNotCount(.notesVisible))
     }
 

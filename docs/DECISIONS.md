@@ -40,7 +40,7 @@ All scoring rules from the legacy prototype are preserved exactly:
 
 - Timing windows by level: L1–2 ±45/100/200 ms, L3–4 ±38/85/175 ms, L5 ±30/70/150 ms.
 - Mastery error limits: ≤15 hits → 0 errors, 16–32 → 1, >32 → 2. Intro always 0.
-- Pass threshold: ≥70% (non-intro), ≥80% (intro). In Learning mode (default), an alternative qualification passes at score ≥60%, with perfect/good hits ≥85% of expected hits and errors ≤ max(1, floor(10% of expected hits)) (ticket 28).
+- Pass threshold: ≥80% (all lessons; ticket 170). In Learning mode (default), an alternative qualification passes at score ≥60%, with perfect/good hits ≥85% of expected hits and errors ≤ max(1, floor(10% of expected hits)) (ticket 28).
 - Double-hit guard: 30 ms.
 - BPM auto-progression step: **1, 2, 5, or 10 BPM** (user-selectable). The 10 BPM option is new.
 - Star 3 (Retention): earned exclusively through two spaced reviews in Training on separate days (tickets 97, 98, 143).

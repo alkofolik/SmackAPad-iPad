@@ -134,7 +134,7 @@ The scoring window is symmetric around the expected note time.
 ### 5.3 Star Progression & Practice Modes
 
 - **Star 1 (Passed)**:
-  - *Normal threshold*: score ≥ 70% (non-intro), ≥ 80% (intro).
+  - *Normal threshold*: score ≥ 80% (all lessons; ticket 170).
   - *Learning mode alternative threshold* (ticket 28): a full run also qualifies for Star 1 if all three conditions hold: score ≥ 60%, perfect-or-good hits ≥ 85% of expected hits, and errors (missed + extra) ≤ max(1, floor(10% of expected hits)). (Challenge mode uses only the normal threshold).
 - **Star 2 (Mastery)**:
   - Clean run at or above `targetBpm` within the allowed error limits:

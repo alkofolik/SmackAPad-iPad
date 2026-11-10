@@ -42,7 +42,7 @@
 | **Timing center** | Adaptive rolling-median corrector (8 samples, gated ±100–110 ms) that shifts the scoring window to follow a player's systematic early/late tendency, without widening the windows. |
 | **Calibration** | 10-click guided procedure to measure per-device hardware timing offset. Forgiving thresholds — must not frustrate the user. |
 | **Double-hit guard** | 30 ms window preventing a second hit on the same pad from being scored as a second match. |
-| **Pass** | Score ≥ 70% (non-intro) or ≥ 80% (intro). In Learning mode, alternative pass threshold is ≥ 60% with error/quality requirements. |
+| **Pass** | Score ≥ 80% (all lessons). In Learning mode, alternative pass threshold is ≥ 60% with error/quality requirements. |
 | **Mastery** | Achieving a clean run at or above `targetBpm`. |
 | **Star 3 (Settled)** | Retention star earned exclusively by passing two spaced reviews in Training on separate days. |
 | **Clean run** | A play-through within the allowed error count: 0 errors for ≤15 hits, 1 for 16–32, 2 for >32. Intro always 0. |

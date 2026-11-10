@@ -251,7 +251,7 @@ struct IntroRulesCard: View {
 
     @ViewBuilder private var rules: some View {
         ruleItem(value: "≥ 80 %", title: settings.localized("Passing"),
-                 detail: settings.localized("Standard lessons require 70%"))
+                 detail: settings.localized("Required for all lessons"))
         ruleItem(value: settings.localized("0 errors"), title: settings.localized("Mastery"),
                  detail: settings.localized("At target tempo (normally up to 2)"))
         ruleItem(value: "\(passedCount) / \(totalCount)", title: settings.localized("Passed"),

@@ -242,7 +242,7 @@ Browser receipt time	Čas příjmu v prohlížeči
 Auto preserves device timestamps; unusually old Bluetooth timestamps use browser receipt time.	Automatický režim zachovává časové značky zařízení; u neobvykle starých značek Bluetooth používá čas příjmu v prohlížeči.
 Lesson order	Pořadí lekcí
 Open all lessons	Odemknout všechny lekce
-The 24 guided lessons always stay open. Other modules can open progressively after a pass (70% or better), or you can keep every lesson open.	24 vedených lekcí zůstává vždy přístupných. Ostatní moduly se mohou odemykat postupně po splnění (70 % nebo více), nebo můžeš nechat všechny lekce otevřené.
+The 24 guided lessons always stay open. Other modules can open progressively after a pass (80% or better), or you can keep every lesson open.	24 vedených lekcí zůstává vždy přístupných. Ostatní moduly se mohou odemykat postupně po splnění (80 % nebo více), nebo můžeš nechat všechny lekce otevřené.
 Quick transport	Rychlé ovládání přehrávání
 Transport controls work while a lesson is open. Start keeps the current mode; Restart begins it again with a count-in. Stop ends playback.	Ovládání přehrávání funguje při otevřené lekci. Spustit zachová aktuální režim; Znovu spustit jej zahájí znovu s odpočtem. Stop ukončí přehrávání.
 Assign a separate controller button to each action. Use MIDI Learn, or enter the note or CC number manually. A mapped note becomes transport only. CC buttons leave your sound pads free.	Každé akci přiřaď samostatné tlačítko ovladače. Použij Mapování MIDI nebo ručně zadej číslo noty či CC. Přiřazená nota slouží jen k ovládání přehrávání. CC tlačítka ponechávají zvukové pady volné.
@@ -973,7 +973,7 @@ The timestamp/receipt difference is not measured sound latency; it may also refl
 This records messages reported by the browser; MIDI cannot identify your fingers.	Zaznamenávají se zprávy hlášené prohlížečem; MIDI nerozpozná prsty.
 Up to 3,000 entries; starting again clears the previous recording.	Nejvýše 3 000 záznamů; nový záznam smaže předchozí.
 The 24 guided lessons always stay open.	24 vedených lekcí zůstává vždy přístupných.
-Other modules can open progressively after a pass (70% or better), or you can keep every lesson open.	Ostatní moduly se mohou odemykat postupně po splnění (70 % nebo více), nebo můžeš nechat všechny lekce otevřené.
+Other modules can open progressively after a pass (80% or better), or you can keep every lesson open.	Ostatní moduly se mohou odemykat postupně po splnění (80 % nebo více), nebo můžeš nechat všechny lekce otevřené.
 Transport controls work while a lesson is open.	Ovládání přehrávání funguje při otevřené lekci.
 Start keeps the current mode; Restart begins it again with a count-in.	Spustit zachová aktuální režim; Znovu spustit jej zahájí znovu s odpočtem.
 Stop ends playback.	Stop ukončí přehrávání.
@@ -2647,3 +2647,4 @@ Restored. 1 lesson updated.	Obnoveno. Aktualizována 1 lekce.
 This file is not a Smack-a-Pad backup. Nothing was changed.	Tento soubor není zálohou Smack-a-Pad. Nic nebylo změněno.
 This backup was created in a newer version of Smack-a-Pad. Update the app to restore it.	Tato záloha byla vytvořena v novější verzi Smack-a-Pad. Pro její obnovení aktualizuj aplikaci.
 Could not create a safety backup. Import was cancelled.	Nepodařilo se vytvořit bezpečnostní zálohu. Import byl zrušen.
+Required for all lessons	Platí pro všechny lekce

@@ -1,6 +1,6 @@
 # 170 — One pass mark: 80 % for all lessons
 
-Status: ready-for-agent. Approved by Jakub on 2026-11-10.
+Status: done. Verified by unit tests.
 
 ## Change
 
@@ -13,8 +13,8 @@ Today a standard lesson passes (star 1, Learning credit) at 70 % and an Intro le
 
 ## Acceptance criteria
 
-- [ ] A standard-lesson run at 75 % no longer passes; 80 % passes; same for Intro and Today.
-- [ ] No 70 % left in UI text; existing stars unchanged after update.
+- [x] A standard-lesson run at 75 % no longer passes; 80 % passes; same for Intro and Today.
+- [x] No 70 % left in UI text; existing stars unchanged after update.
 
 ### Manual iPad check for Jakub
 

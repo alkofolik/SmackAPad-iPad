@@ -219,14 +219,22 @@ final class ScoringEngineTests: XCTestCase {
         XCTAssertTrue(result.mastery)
     }
 
-    func testPassIncludesSeventyPercentAndIntroRequiresEightyPercent() {
-        let cases = [(false, 6, false), (false, 7, true), (true, 7, false), (true, 8, true)]
-        for (intro, matches, passed) in cases {
-            var engine = ScoringEngine(lesson: lesson(count: 10, intro: intro), bpm: 120, startTimestamp: start)
+    func testPassRequiresEightyPercentForStandardAndIntroLessons() {
+        XCTAssertEqual(Scoring.passMark, 0.8)
+        let cases = [
+            (false, 10, 7, false), // 70% standard fails
+            (false, 4, 3, false),  // 75% standard fails
+            (false, 10, 8, true),  // 80% standard passes
+            (true, 10, 7, false),  // 70% intro fails
+            (true, 4, 3, false),   // 75% intro fails
+            (true, 10, 8, true)    // 80% intro passes
+        ]
+        for (intro, count, matches, passed) in cases {
+            var engine = ScoringEngine(lesson: lesson(count: count, intro: intro), bpm: 120, startTimestamp: start)
             for index in 0..<matches {
                 _ = engine.receive(padIndex: 12, at: timestamp(Double(index) * 500))
             }
-            XCTAssertEqual(engine.finish().passed, passed)
+            XCTAssertEqual(engine.finish().passed, passed, "intro=\(intro), \(matches)/\(count) hits")
         }
     }
 

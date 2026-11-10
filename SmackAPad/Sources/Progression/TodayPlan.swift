@@ -13,7 +13,7 @@ struct TodayPlan: Codable, Equatable {
         /// Shared by the step marks, handoff and summary. A score alone cannot pass a review.
         var status: PracticeStepOutcome.Status? {
             guard let outcome, outcome.played else { return nil }
-            guard kind == .review else { return (outcome.bestScore ?? 0) >= 0.8 ? .passed : .played }
+            guard kind == .review else { return (outcome.bestScore ?? 0) >= Scoring.passMark ? .passed : .played }
             switch outcome.reviewFeedback {
             case .passed, .settled: return .passed
             case .failed: return .didNotCount(.reviewNotPassed)

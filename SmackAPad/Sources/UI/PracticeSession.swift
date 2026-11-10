@@ -1124,7 +1124,7 @@ final class PracticeSession {
                     pass: pass.number,
                     fadeNotes: settings.fadeMemoryNotes
                 )
-                let memoryRunPassed = fromMemory && result.bpm >= lesson.targetBpm && result.score >= 0.8 && isHiddenPass
+                let memoryRunPassed = fromMemory && result.bpm >= lesson.targetBpm && result.score >= Scoring.passMark && isHiddenPass
                 let required = StarStreak.requiredRuns(expectedHits: result.expectedHitCount, isIntro: lesson.cat == "intro")
                 let passed = result.passed || (practiceMode == .learning && StarStreak.learningPassed(
                     score: result.score, perfectOrGoodHits: result.perfectOrGoodHitCount,
@@ -1191,7 +1191,7 @@ final class PracticeSession {
                     mixResults[index].unmeasuredBars = max(0, scoredLesson.bars - mixBarVerdicts.count)
                 }
                 let isHiddenPass = !fromMemory || !settings.fadeMemoryNotes || pass.number >= 3
-                let runMemoryPass = fromMemory && isHiddenPass && result.score >= 0.80
+                let runMemoryPass = fromMemory && isHiddenPass && result.score >= Scoring.passMark
                 if !runMemoryPass {
                     currentMixRoundMemory = false
                 }

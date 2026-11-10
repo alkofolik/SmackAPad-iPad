@@ -1,5 +1,10 @@
 import Darwin
 
+/// Scoring thresholds and constants.
+public enum Scoring {
+    public static let passMark: Double = 0.8
+}
+
 /// Timing feedback is independent of score weight: every match counts equally.
 public enum HitJudgment: Equatable, Sendable {
     case perfect, good, off, wrongPad, ignored
@@ -181,7 +186,7 @@ public struct ScoringEngine: Sendable {
         let clean = expected > 0 && expected - matches + extraHitCount <= allowedErrors
         return ScoringResult(
             expectedHitCount: expected, matchedHitCount: matches, extraHitCount: extraHitCount,
-            score: score, passed: expected > 0 && score >= (isIntro ? 0.8 : 0.7),
+            score: score, passed: expected > 0 && score >= Scoring.passMark,
             isCleanRun: clean, mastery: clean && bpm >= targetBpm,
             bpm: bpm, nextBpm: clean && bpm < targetBpm ? bpm + min(bpmStep.rawValue, targetBpm - bpm) : bpm,
             perfectOrGoodHitCount: perfectOrGoodHitCount
@@ -211,7 +216,7 @@ public struct ScoringEngine: Sendable {
             matchedHitCount: matches,
             extraHitCount: extraHitCount,
             score: score,
-            passed: !evaluatedHits.isEmpty && score >= (isIntro ? 0.8 : 0.7),
+            passed: !evaluatedHits.isEmpty && score >= Scoring.passMark,
             isCleanRun: clean,
             mastery: clean && bpm >= targetBpm,
             bpm: bpm,

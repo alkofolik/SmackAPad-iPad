@@ -184,7 +184,7 @@ public struct ReviewScheduler: Sendable {
         }
 
         let currentStep = schedule.reviewStep ?? 0
-        let passed = score >= 0.80
+        let passed = score >= Float(Scoring.passMark)
 
         if passed {
             if currentStep >= 3 {
