@@ -820,28 +820,45 @@ struct HelpPatternBand: View {
     var matchedHit = false
     var passed = false
     var height: CGFloat = 80
+    var bars = 1
+    var showHitColours = false
 
     var body: some View {
         Canvas { context, size in
             let scale = min(size.height / 228, size.width / 400)
             let gutter = 96 * scale
-            let stepWidth = (size.width - gutter) / 16
+            let stepCount = 16 * bars
+            let stepWidth = (size.width - gutter) / CGFloat(stepCount)
             let lanes = PatternLanes(size: size, rows: Self.rows, scale: scale)
             let x: (Double) -> CGFloat = { gutter + ($0 + 0.5) * stepWidth }
             lanes.drawRows(context: &context)
-            for step in 0..<16 {
+            for step in 0..<stepCount {
                 drawBeat(step: step, x: x(Double(step)), lanes: lanes, context: &context)
             }
             if let position {
                 drawMarker(x: x(position), top: lanes.top - 4 * scale, bottom: lanes.bottom, context: &context)
             }
             if visibility != .hidden {
-                for hit in Self.hits {
-                    guard let row = Self.rows.firstIndex(of: hit.padIndex) else { continue }
-                    let width = min(stepWidth * 1.5, 64 * scale)
-                    let rect = lanes.tile(x: x(Double(hit.step)), width: width, row: row)
-                    let mark: HitMark? = matchedHit && hit.step == 4 && hit.padIndex == Self.snare ? .correct : nil
-                    drawHit(hit, in: rect, mark: mark, visibility: visibility, fontSize: lanes.fontSize, context: &context)
+                for bar in 0..<bars {
+                    for hit in Self.hits {
+                        guard let row = Self.rows.firstIndex(of: hit.padIndex) else { continue }
+                        let step = hit.step + bar * 16
+                        let width = min(stepWidth * 1.5, 64 * scale)
+                        let rect = lanes.tile(x: x(Double(step)), width: width, row: row)
+                        let matchesPlayhead = position.map { (0..<3).contains($0 - Double(step)) } ?? false
+                        let mark: HitMark?
+                        if showHitColours && hit.padIndex == Self.hiHat {
+                            mark = switch hit.step {
+                            case 0: .correct
+                            case 4: .off
+                            case 8: .wrong
+                            default: nil
+                            }
+                        } else {
+                            mark = matchedHit && matchesPlayhead && hit.padIndex == Self.snare ? .correct : nil
+                        }
+                        drawHit(hit, in: rect, mark: mark, visibility: visibility, fontSize: lanes.fontSize, context: &context)
+                    }
                 }
             }
             lanes.drawLabels(band: band, context: &context)

@@ -867,7 +867,7 @@ struct StarsView: View {
         return Image(systemName: isEarned ? "star.fill" : "star")
             .font(Theme.control).frame(minWidth: 28, minHeight: 32)
             .foregroundStyle(isEarned ? Theme.starColor(for: starCount) : Theme.starColor(for: 0))
-            .accessibilityLabel(settings.localized(["Passed", "Goal tempo", "From memory"][index]))
+            .accessibilityLabel(settings.localized(StarRequirement.titleKeys[index]))
             .accessibilityValue(settings.localized(isEarned ? "On" : "Off"))
     }
 }

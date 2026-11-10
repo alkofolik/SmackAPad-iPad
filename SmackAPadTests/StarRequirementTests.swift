@@ -72,33 +72,33 @@ final class StarRequirementTests: XCTestCase {
 
         // Single run with target BPM
         XCTAssertEqual(StarRequirement.requirementText(for: 2, requiredRuns: 1, targetBpm: 85, language: .english),
-                       "Star 3: two reviews in Training · 0 of 2")
+                       "Review star: pass two reviews on different days · 0 of 2")
         XCTAssertEqual(StarRequirement.requirementText(for: 2, requiredRuns: 1, targetBpm: 85, language: .czech),
-                       "Třetí hvězda: dvě opakování v Tréninku · 0 ze 2")
+                       "Hvězda za opakování: splň dvě opakování v různých dnech · 0 ze 2")
         XCTAssertEqual(StarRequirement.nextMissingStarText(progress: progress, requiredRuns: 1, targetBpm: 85, language: .english),
-                       "Star 3: two reviews in Training · 0 of 2")
+                       "Review star: pass two reviews on different days · 0 of 2")
         XCTAssertEqual(StarRequirement.nextMissingStarText(progress: progress, requiredRuns: 1, targetBpm: 85, language: .czech),
-                       "Třetí hvězda: dvě opakování v Tréninku · 0 ze 2")
+                       "Hvězda za opakování: splň dvě opakování v různých dnech · 0 ze 2")
 
         // Multiple runs with target BPM
         XCTAssertEqual(StarRequirement.requirementText(for: 2, requiredRuns: 4, targetBpm: 85, language: .english, mode: .challenge),
-                       "Star 3: two reviews in Training · 0 of 2")
+                       "Review star: pass two reviews on different days · 0 of 2")
         XCTAssertEqual(StarRequirement.requirementText(for: 2, requiredRuns: 4, targetBpm: 85, language: .czech, mode: .challenge),
-                       "Třetí hvězda: dvě opakování v Tréninku · 0 ze 2")
+                       "Hvězda za opakování: splň dvě opakování v různých dnech · 0 ze 2")
         XCTAssertEqual(StarRequirement.nextMissingStarText(progress: progress, requiredRuns: 4, targetBpm: 85, language: .english, mode: .challenge),
-                       "Star 3: two reviews in Training · 0 of 2")
+                       "Review star: pass two reviews on different days · 0 of 2")
         XCTAssertEqual(StarRequirement.nextMissingStarText(progress: progress, requiredRuns: 4, targetBpm: 85, language: .czech, mode: .challenge),
-                       "Třetí hvězda: dvě opakování v Tréninku · 0 ze 2")
+                       "Hvězda za opakování: splň dvě opakování v různých dnech · 0 ze 2")
 
         // Without target BPM
         XCTAssertEqual(StarRequirement.requirementText(for: 2, requiredRuns: 1, targetBpm: nil, language: .english),
-                       "Star 3: two reviews in Training · 0 of 2")
+                       "Review star: pass two reviews on different days · 0 of 2")
         XCTAssertEqual(StarRequirement.requirementText(for: 2, requiredRuns: 1, targetBpm: nil, language: .czech),
-                       "Třetí hvězda: dvě opakování v Tréninku · 0 ze 2")
+                       "Hvězda za opakování: splň dvě opakování v různých dnech · 0 ze 2")
         XCTAssertEqual(StarRequirement.requirementText(for: 2, requiredRuns: 4, targetBpm: nil, language: .english, mode: .challenge),
-                       "Star 3: two reviews in Training · 0 of 2")
+                       "Review star: pass two reviews on different days · 0 of 2")
         XCTAssertEqual(StarRequirement.requirementText(for: 2, requiredRuns: 4, targetBpm: nil, language: .czech, mode: .challenge),
-                       "Třetí hvězda: dvě opakování v Tréninku · 0 ze 2")
+                       "Hvězda za opakování: splň dvě opakování v různých dnech · 0 ze 2")
     }
 
     func testThreeStarsEarnedReturnsNilForNextMissingStar() {

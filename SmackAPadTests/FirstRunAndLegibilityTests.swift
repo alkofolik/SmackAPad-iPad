@@ -16,6 +16,7 @@ final class FirstRunAndLegibilityTests: XCTestCase {
             TutorialLaunch.shouldPresent(loadSucceeded: true, records: records, seen: seen, homeIsIdle: homeIsIdle)
         }
 
+        XCTAssertEqual(TutorialCard.allCases.count, 5)
         XCTAssertTrue(eligible())
         XCTAssertFalse(eligible(seen: true))
         XCTAssertFalse(eligible([1: LessonProgress(hasPlayed: true)]))
@@ -26,23 +27,60 @@ final class FirstRunAndLegibilityTests: XCTestCase {
     }
 
     func testHelpStringsArePresentInEachLanguageBundle() throws {
-        let keys = [
-            "help.title", "help.tutorial.reopen", "help.nav.back", "help.nav.position",
-            "help.goal.title", "help.goal.caption", "help.modes.title", "help.modes.caption",
-            "help.modes.unscored", "help.modes.scored", "help.memory.caption", "help.memory.hiddenFromThird",
-            "help.memory.hidden", "help.stars.reviews", "help.stars.caption", "help.tempo.caption",
-            "help.reviews.caption", "help.reviews.warmups", "help.reviews.passes", "help.overview.title",
-            "help.overview.today", "help.overview.training", "help.overview.library", "help.overview.mix",
-            "help.inputs.title", "help.inputs.caption"
+        var keys = [
+            "help.title", "help.tutorial.reopen", "help.nav.back", "help.nav.topics", "help.nav.position",
+            "help.lesson.padRow", "help.lesson.now", "help.lesson.countIn", "help.hit.correct", "help.hit.off",
+            "help.hit.wrong", "help.signals.behind", "help.signals.ahead", "help.stars.label", "help.tempo.tap",
+            "help.memory.shown", "help.memory.fading", "help.memory.hiddenFromThird", "help.memory.hidden",
+            "help.reviews.timeline", "help.reviews.warmups", "help.reviews.twoPasses", "help.library.stage",
+            "help.library.progress", "help.keyboard.mapping", "Close", "Skip", "Done", "Next", "Start", "Intro",
+            "Today", "Training", "Home", "Starting tempo", "Tempo up: %lld → %lld BPM", "Path", "Genres",
+            "Techniques", "MIDI controller", "Details", "Settled", "Did not count", "New lesson", "Mix",
+            "Tempo knob", "Play pads with keyboard", "Sound kit", "Timing calibration", "Back up progress",
+            "Fade notes in From memory", "Start of plan",
+            "Review star: pass two reviews on different days · %lld of 2", "Run finished: star 3 earned, review"
         ]
+        keys += HelpTopic.allCases.flatMap { [$0.titleKey, $0.captionKey] }
+        keys += TutorialCard.allCases.flatMap { [$0.titleKey, $0.captionKey] }
+        keys += LessonPlaybackMode.allCases.map(\.rawValue)
+        keys += PracticeMode.allCases.map(\.title)
+        keys += MIDIPracticeAction.allCases.map(\.title)
+        keys += StarRequirement.titleKeys
+        let missing = "<missing translation>"
         for language in ["en", "cs"] {
             let url = try XCTUnwrap(Bundle.main.url(forResource: language, withExtension: "lproj"))
             let bundle = try XCTUnwrap(Bundle(url: url))
             for key in keys {
-                let value = bundle.localizedString(forKey: key, value: "", table: nil)
-                XCTAssertFalse(value == key || value.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
+                let value = bundle.localizedString(forKey: key, value: missing, table: nil)
+                XCTAssertFalse(value == missing || value.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
                                "\(language): \(key)")
             }
+        }
+    }
+
+    func testLocalizableStringsHaveNoDuplicateKeys() throws {
+        // The compiled bundles can collapse duplicate assignments, so read the source files.
+        let resources = URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent().deletingLastPathComponent()
+            .appendingPathComponent("SmackAPad/Resources")
+        let assignmentOrComment = try NSRegularExpression(
+            pattern: #"(?s)/\*.*?\*/|//[^\r\n]*|"(?:\\.|[^"\\])*"\s*=\s*"(?:\\.|[^"\\])*"\s*;"#
+        )
+        for language in ["en", "cs"] {
+            let url = resources.appendingPathComponent("\(language).lproj/Localizable.strings")
+            let source = try String(contentsOf: url, encoding: .utf8)
+            let data = Data(source.utf8)
+            let parsed = try XCTUnwrap(PropertyListSerialization.propertyList(from: data, format: nil) as? [String: String])
+            var keys: Set<String> = []
+            for match in assignmentOrComment.matches(in: source, range: NSRange(source.startIndex..., in: source)) {
+                let range = try XCTUnwrap(Range(match.range, in: source))
+                let entry = source[range]
+                guard entry.first == "\"" else { continue }
+                let pair = try XCTUnwrap(PropertyListSerialization.propertyList(from: Data(entry.utf8), format: nil) as? [String: String])
+                let key = try XCTUnwrap(pair.keys.first)
+                XCTAssertTrue(keys.insert(key).inserted, "\(language): duplicate key \(key)")
+            }
+            XCTAssertEqual(keys, Set(parsed.keys), "\(language): parsed keys")
         }
     }
 

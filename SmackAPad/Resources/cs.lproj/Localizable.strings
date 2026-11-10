@@ -37,7 +37,6 @@
 "Touch pads send the same pad events as MIDI. Sound playback is added by the audio module." = "Dotykové pady posílají stejné události jako MIDI. Přehrávání zvuků doplní zvukový modul.";
 "Language" = "Jazyk";
 "App language" = "Jazyk aplikace";
-"Done" = "Hotovo";
 "New controller profile" = "Nový profil kontroléru";
 "Profile name" = "Název profilu";
 "Pad count" = "Počet padů";
@@ -128,7 +127,6 @@
 "MASTERY" = "MISTR";
 "PASSED" = "SPLNĚNO";
 "Mastery" = "Mistr";
-"Memory" = "Z paměti";
 "earned" = "získáno";
 "not earned" = "nezískáno";
 "Rhythm pattern" = "Rytmický pattern";
@@ -139,7 +137,6 @@
 "behind" = "zaostáváš";
 "uneven" = "nestejnoměrné";
 "Passed" = "Splněno";
-"Goal tempo" = "Cílové tempo";
 "From memory" = "Z paměti";
 "Details" = "Detail";
 "Last run" = "Poslední běh";
@@ -171,7 +168,6 @@
 "Tempo %lld" = "Tempo %lld";
 "Practice summary" = "Souhrn hraní";
 "%lld completed passes" = "%lld dokončených průchodů";
-"Stars: passed / goal tempo / from memory" = "Hvězdy: splněno / cílové tempo / z paměti";
 "Score is from the last completed pass. Stars are earned across this run." = "Skóre patří poslednímu dokončenému průchodu. Hvězdy patří celému hraní.";
 "Preparing sound…" = "Příprava zvuku…";
 "From memory · notes hide once you start" = "Z paměti · pattern se po spuštění skryje";
@@ -226,7 +222,6 @@
 "%lld with full mastery" = "%lld s plným mistrovstvím";
 "yes" = "ano";
 "no" = "ne";
-"Not played" = "Nezahráno";
 "Eighth-note grooves" = "Osminové groovy";
 "Sixteenth-note grooves" = "Šestnáctinové groovy";
 "Electronic styles" = "Elektronické styly";
@@ -247,9 +242,6 @@
 "%@, pad %lld" = "%@, pad %lld";
 
 "Path" = "Cesta";
-"Genres" = "Žánry";
-"Techniques" = "Techniky";
-"Training" = "Trénink";
 "Basic groove" = "Základní groove";
 "Sixteenths" = "Šestnáctiny";
 "Ghost notes" = "Ghost noty";
@@ -279,7 +271,6 @@
 "Earn 2 stars in %lld lessons in %@ to open this" = "Pro odemčení získej 2 hvězdy v %lld lekcích ve stupni %@";
 "Next lesson from" = "Další lekce z";
 "Hide completed lessons" = "Skrýt hotové lekce";
-"All lessons completed" = "Všechny lekce jsou hotové";
 "Show completed" = "Zobrazit hotové";
 "Hide completed" = "Skrýt hotové";
 "Locked" = "Zamčeno";
@@ -293,19 +284,13 @@
 "Reach %lld BPM cleanly, %lld times in a row" = "Dosáhni čistě %lld BPM, %lldkrát za sebou";
 "Reach the goal tempo cleanly" = "Dosáhni čistě cílového tempa";
 "Reach the goal tempo cleanly, %lld times in a row" = "Dosáhni čistě cílového tempa, %lldkrát za sebou";
-"Play it from memory at %lld BPM, 80 %% or better" = "Zahraj zpaměti v %lld BPM na 80 %% a lépe";
-"Play it from memory at %lld BPM, 80 %% or better, %lld times in a row" = "Zahraj zpaměti v %lld BPM na 80 %% a lépe, %lldkrát za sebou";
-"Play it from memory at goal tempo, 80 % or better" = "Zahraj zpaměti v cílovém tempu na 80 % a lépe";
-"Play it from memory at goal tempo, 80 %% or better, %lld times in a row" = "Zahraj zpaměti v cílovém tempu na 80 %% a lépe, %lldkrát za sebou";
-"Next: %@" = "Další: %@";
-"For the 3rd star, turn on From memory" = "Pro 3. hvězdu zapni Z paměti";
 "Lesson stars" = "Hvězdy lekce";
 
 "Automatic" = "Automaticky";
 "Automatic · %@" = "Automaticky · %@";
 
 // Practice feedback, round 3.
-"Run finished: star 3 earned, from memory" = "Cvičení skončilo: získána 3. hvězda, z paměti";
+"Run finished: star 3 earned, review" = "Cvičení skončilo. Získána třetí hvězda za opakování.";
 "Run finished: star 2 earned, goal tempo" = "Cvičení skončilo: získána 2. hvězda, cílové tempo";
 "Position in the current pass" = "Pozice v aktuálním průchodu";
 "Bar %lld / %lld, %lld percent" = "Takt %lld / %lld, %lld procent";
@@ -332,8 +317,6 @@
 "Pass the lesson, %lld times" = "Splň lekci, %lldkrát";
 "Reach %lld BPM cleanly, %lld times" = "Dosáhni čistě %lld BPM, %lldkrát";
 "Reach the goal tempo cleanly, %lld times" = "Dosáhni čistě cílového tempa, %lldkrát";
-"Play it from memory at %lld BPM, 80 %% or better, %lld times" = "Zahraj zpaměti v %lld BPM na 80 %% a lépe, %lldkrát";
-"Play it from memory at goal tempo, 80 %% or better, %lld times" = "Zahraj zpaměti v cílovém tempu na 80 %% a lépe, %lldkrát";
 
 /* Ticket 30: Lesson instructions panel */
 "Lesson info" = "Informace o lekci";
@@ -406,7 +389,6 @@
 "Purchases are unavailable. Free lessons still work." = "Nákupy nejsou dostupné. Volné lekce fungují dál.";
 "Try again" = "Zkusit znovu";
 "Purchase required" = "Vyžaduje nákup";
-"%lld lessons" = "%lld lekcí";
 "One-time payment" = "Jednorázová platba";
 "No subscription" = "Bez předplatného";
 "Lessons across %lld genres" = "Lekce napříč žánry: %lld";
@@ -452,8 +434,6 @@
 
 /* Practice screen round 6 */
 "Memory ★3" = "Zpaměti ★3";
-"From memory for ★3" = "Zpaměti pro ★3";
-"Starts Play from memory for the 3rd star" = "Spustí hru z paměti o 3. hvězdu";
 "Band colour" = "Barva pásu";
 "The band gets deeper as the tempo nears the goal. A glow on the right edge: you are rushing; on the left: you are dragging." = "Čím blíž cílovému tempu, tím sytější pás. Záře u pravého okraje: spěcháš, u levého: zpožďuješ se.";
 
@@ -526,7 +506,6 @@
 "Levels" = "Úrovně";
 "Genres" = "Žánry";
 "Techniques" = "Techniky";
-"Training" = "Trénink";
 
 "First groove" = "První groove";
 "Pass your first lesson." = "Splň první lekci.";
@@ -622,7 +601,6 @@
 "Pass 10 reviews." = "Projdi 10 opakování.";
 "Long memory" = "Dlouhá paměť";
 "Pass 50 reviews." = "Projdi 50 opakování.";
-"Settled" = "Upevněno";
 "Settle your first lesson." = "Upevni první lekci.";
 "Solid ground" = "Pevná půda";
 "Settle 10 lessons." = "Upevni 10 lekcí.";
@@ -665,7 +643,7 @@
 "Run %lld" = "Běh %lld";
 "Last run %lld percent, %lld BPM, %@" = "Poslední běh %lld procent, %lld BPM, %@";
 "Result %lld percent, %lld of 3 stars, %@" = "Výsledek %lld procent, %lld ze 3 hvězd, %@";
-"Star 3: two reviews in Training · %lld of 2" = "Třetí hvězda: dvě opakování v Tréninku · %lld ze 2";
+"Review star: pass two reviews on different days · %lld of 2" = "Hvězda za opakování: splň dvě opakování v různých dnech · %lld ze 2";
 
 "Training" = "Trénink";
 "%lld due" = "%lld na řadě";
@@ -795,7 +773,7 @@
 
 /* Ticket 141: Today session screen redesign (Variant 1) */
 "Daily mix" = "Denní mix";
-"Start" = "Začátek";
+"Start of plan" = "Začátek";
 "Next" = "Další";
 "Waiting" = "Čeká";
 "Skipped" = "Přeskočeno";
@@ -855,34 +833,6 @@
 "Ready for review" = "Připraveno k opakování";
 "Total review queue by that day if nothing is played. Includes earlier reviews; Today still selects at most two." = "Celkový počet opakování na řadě k danému dni, pokud nic neodehraješ. Zahrnuje i dřívější termíny; do Dnes se vybírají nejvýše dvě.";
 
-/* Ticket 162: How it works and first-launch tutorial. */
-"help.title" = "Jak to funguje";
-"help.tutorial.reopen" = "Zobrazit tutoriál";
-"help.nav.back" = "Zpět";
-"help.nav.position" = "%lld z %lld";
-"help.goal.title" = "Lekce";
-"help.goal.caption" = "Hraj přesně do rytmu a za pokrok získávej hvězdy.";
-"help.modes.title" = "Poslech a hra";
-"help.modes.caption" = "Při poslechu se můžeš přidat, při hře na klik získáš skóre.";
-"help.modes.unscored" = "Bez skóre";
-"help.modes.scored" = "Se skóre";
-"help.memory.caption" = "Hrou bez not se připravíš na opakování.";
-"help.memory.hiddenFromThird" = "Od 3. průchodu · noty skryté";
-"help.memory.hidden" = "Noty skryté";
-"help.stars.reviews" = "Splň dvě opakování v různých dnech";
-"help.stars.caption" = "Další etapu otevře dostatek lekcí se dvěma hvězdami.";
-"help.tempo.caption" = "Tempo nastavíš po zastavení, čisté průchody ho pak zvyšují až k cíli.";
-"help.reviews.caption" = "Opakování se otevře připravené ke hře zpaměti v cílovém tempu.";
-"help.reviews.warmups" = "Rozehrávka (při zapnutém blednutí not)";
-"help.reviews.passes" = "Dva celé průchody · cílové tempo nebo vyšší · každý alespoň 80 %";
-"help.overview.title" = "Kde hrát";
-"help.overview.today" = "Projdi dnešní plán cvičení.";
-"help.overview.training" = "Zjisti, které lekce čekají na opakování.";
-"help.overview.library" = "Procházej a vybírej lekce.";
-"help.overview.mix" = "Zahraj naučené rytmy za sebou.";
-"help.inputs.title" = "Jak hrát";
-"help.inputs.caption" = "Hraj na MIDI kontrolér, hardwarovou klávesnici nebo dotykové pady na výšku s rozložením 16 padů.";
-
 /* Ticket 161: Progress backup */
 "Progress" = "Pokrok";
 "Back up progress" = "Zálohovat pokrok";
@@ -893,3 +843,57 @@
 "This backup was created in a newer version of Smack-a-Pad. Update the app to restore it." = "Tato záloha byla vytvořena v novější verzi Smack-a-Pad. Pro její obnovení aktualizuj aplikaci.";
 "Could not create a safety backup. Import was cancelled." = "Nepodařilo se vytvořit bezpečnostní zálohu. Import byl zrušen.";
 
+/* Help and first-launch tutorial (ticket 169) */
+"help.title" = "Jak to funguje";
+"help.tutorial.reopen" = "Zobrazit tutoriál";
+"help.nav.back" = "Zpět";
+"help.nav.topics" = "Všechna témata";
+"help.nav.position" = "%lld z %lld";
+"help.tutorial.playLesson.title" = "Jak hrát lekci";
+"help.tutorial.playLesson.caption" = "Sleduj pattern. Každý řádek je jeden pad.\nUdeř, když čára dojede k políčku.\nKlepni na Začít a hraj po odpočtu.";
+"help.lesson.padRow" = "Jeden řádek na pad";
+"help.lesson.now" = "Čára ukazuje, kdy udeřit";
+"help.lesson.countIn" = "Odpočet";
+"help.tutorial.hitColours.title" = "Barvy úderů";
+"help.tutorial.hitColours.caption" = "Podívej se na barvu úderu v pásu.\nPodle ní uprav načasování nebo zvol jiný pad.";
+"help.hit.correct" = "Správný pad v rytmu";
+"help.hit.off" = "Správný pad mimo rytmus";
+"help.hit.wrong" = "Špatný pad nebo vynechaný úder";
+"help.tutorial.modes.title" = "Tři režimy cvičení";
+"help.tutorial.modes.caption" = "Poslech: poslouchej pattern a klidně se přidej. Bez hvězd.\nHra: hraj pattern a sbírej hvězdy. Metronom můžeš vypnout.\nPo mně: poslechni si, co aplikace zahraje, a pak to zopakuj. Bez hvězd.";
+"help.tutorial.starsAndTempo.title" = "Hvězdy a tempo";
+"help.tutorial.starsAndTempo.caption" = "★ Splň lekci.\n★★ Zahraj ji čistě v cílovém tempu. Čisté průchody ve Hře tě k němu postupně přiblíží.\n★★★ Splň dvě opakování zpaměti v různých dnech.\nKlepni na hvězdy pro požadavky lekce. Tempo změníš klepnutím na jeho pole, když lekce stojí.";
+"help.tutorial.whereNext.title" = "Kam dál";
+"help.tutorial.whereNext.caption" = "Začni v Intru. Podrobnosti najdeš pod tlačítkem Pravidla.\nVšechny lekce najdeš v Knihovně.\nOpakování najdeš v Tréninku. Když jsou na řadě, pomůže ti plán Dnes.\nV lekci klepni na otazník. Na Domově a v Nastavení najdeš Jak to funguje.";
+"help.lesson.title" = "Obrazovka lekce";
+"help.lesson.caption" = "1 Informace o lekci · 2 Legenda zkratek padů · 3 Nápověda\n4 Další nástroje: takty, zvuk a smyčka. Část lekce si ve smyčce procvičíš bez hvězd.\n5 Z paměti · 6 Statické nebo posouvané zobrazení. Dalším klepnutím na statické změníš počet taktů.\n7 Tempo · 8 Požadavky na hvězdy · 9 Začít, Stop a Znovu";
+"help.modes.title" = "Režimy";
+"help.modes.caption" = "Poslech: poslouchej pattern a klidně se přidej. Tempo se samo nezvyšuje a hvězdy nezískáš.\nHra: hraj pattern a sbírej hvězdy. Metronom i zvuk patternu přepneš v Dalších nástrojích.\nPo mně: poslechni si, co aplikace zahraje, a pak to zopakuj. Za odpověď dostaneš skóre, hvězdy nezískáš.";
+"help.signals.title" = "Barvy a ukazatele";
+"help.signals.caption" = "Sleduj barvy úderů v pásu. V Poslechu je pás světlejší než ve Hře.\nČím blíž jsi cílovému tempu, tím je pás sytější. Záře vpravo znamená, že hraješ napřed, vlevo, že se zpožďuješ.\nPo hře otevři Detail a zjisti, které takty byly čisté, napřed, pozadu nebo nerovnoměrné.\nPodle výsledku můžeš lekci zkusit znovu, hrát dál nebo otevřít další lekci, když ji aplikace nabídne.";
+"help.signals.behind" = "Pozadu";
+"help.signals.ahead" = "Napřed";
+"help.stars.label" = "%lld. hvězda: %@";
+"help.stars.caption" = "★ Získej aspoň %lld %%. V Učení mohou přesné údery s málem chyb stačit i při nižším skóre.\n★★ Zahraj čistě v cílovém tempu. ★★★ Splň dvě naplánovaná opakování v různých dnech.\nKlepni na hvězdy a zjisti počet průchodů. U prvních dvou hvězd aplikace míří na aspoň 16 úderů, nejvýš ve čtyřech průchodech. V Intru potřebuješ na ★★ aspoň tři průchody.\nV Učení se dobré průchody sčítají. Ve Výzvě musí jít po sobě. Po získání ★★ nebo ★★★ se hra zastaví.";
+"help.tempo.tap" = "Klepni na pole tempa, když lekce stojí";
+"help.tempo.caption" = "Uprav tempo o −5, −1, +1 nebo +5 BPM, nebo se vrať na Počáteční tempo. Lekce si tvoje tempo pamatuje.\nVe Hře se tempo po čistých průchodech zvyšuje až k cíli. V Nastavení vyber krok 1, 2, 5 nebo 10 BPM.\nV Intru hraj bez chyb. Jinde je čistý průchod do 15 úderů bez chyby, do 32 s jednou chybou a nad 32 se dvěma.";
+"help.memory.caption" = "Když lekce stojí, klepni na přeškrtnuté oko a pak na Začít.\nZapni „%@“ v Nastavení. První průchod vidíš, druhý mizí a od třetího je pattern skrytý. Po vypnutí se pattern skryje hned po odpočtu.\nHrou zpaměti se připravíš na opakování. V tomto režimu získáš hvězdu jen za splněné naplánované opakování.";
+"help.memory.shown" = "1. průchod · pattern vidíš";
+"help.memory.fading" = "2. průchod · pattern mizí";
+"help.memory.hiddenFromThird" = "Od 3. průchodu · pattern je skrytý";
+"help.memory.hidden" = "Pattern se skryje po odpočtu";
+"help.reviews.timeline" = "★★ → +%lld → +%lld → +%lld → +%lld dní → %@";
+"help.reviews.warmups" = "Při postupném mizení patternu jsou první dva průchody rozehrávka";
+"help.reviews.twoPasses" = "Dva úspěšné průchody v jednom opakování";
+"help.reviews.caption" = "Otevři lekci, která je na řadě, z Domova, Tréninku nebo Knihovny. Je připravená na hru Z paměti v cílovém tempu.\nZahraj dva celé skryté průchody v cílovém nebo vyšším tempu, každý aspoň na %lld %%. Hra se pak zastaví. Za druhé splněné opakování v jiný den získáš ★★★.\nPo dvou neúspěšných průchodech, které splnily podmínky opakování, se rozvrh vrátí o krok a lekce přijde na řadu zítra. Vykřičník znamená, že opakování bylo odehrané, ale nezapočítalo se.\nOsa ukazuje odstupy od ★★ až po čtvrté úspěšné opakování. Připomínku opakování zapneš v Nastavení.";
+"help.training.title" = "Dnes a Trénink";
+"help.training.caption" = "Otevři Dnes, když jsou na řadě opakování. Začne nejvýš dvěma opakováními a podle dostupnosti přidá novou lekci a Mix. Kroky můžeš přeskočit.\nV Tréninku najdeš frontu opakování, přehled paměti a výhled na sedm dní. Opakování můžeš odložit na zítra.\nSpusť Mix, až budeš mít aspoň dvě lekce s ★★. Hraj je za sebou v cílovém tempu nebo vyber Nový mix.\nZvol Zahraj po mně a zopakuj, co aplikace zahraje. Pattern je skrytý a hvězdy nezískáš.";
+"help.library.stage" = "Zamčená etapa";
+"help.library.progress" = "Etapy otevírají lekce se dvěma hvězdami";
+"help.library.caption" = "Procházej Cestu, Žánry nebo Techniky. Hledej nebo filtruj podle hvězd a postupu. Přepínačem Zobrazit hotové přidáš hotové lekce.\nDalší etapu otevřeš s ★★ v polovině lekcí předchozí etapy, zaokrouhleno nahoru, nejvýš v 10 lekcích. S 8 pady se počítají jen kompatibilní lekce.\nKlepnutím na zamčenou lekci zobrazíš podmínku etapy. Etapu můžeš ručně odemknout a zase zamknout, dokud v ní nemáš hvězdy. Intro a rozšíření jsou vždy otevřené.\nVolbu Další lekce z najdeš v Nastavení.";
+"help.controller.caption" = "Připoj MIDI kontrolér přes USB nebo Bluetooth. V Nastavení otevři Ovladač a kalibrace.\nVyber profil s 8 nebo 16 pady nebo nastav vlastní mapu přes Učení MIDI. Příchozí údery ověř v monitoru MIDI. Některé lekce vyžadují 16 padů.\nV malém rozložení padů uvidíš, který pad se ozval. Tlačítkům kontroléru přiřaď akce z obrázku. Tlačítka tempa a knoflík fungují, když lekce stojí.";
+"help.keyboard.title" = "Dotyk a klávesnice";
+"help.keyboard.mapping" = "Řádky padů shora dolů: 1 2 3 4, Q W E R, A S D F, Z X C V";
+"help.keyboard.caption" = "V Nastavení zapni dotykové pady na výšku, použij profil s 16 pady a otoč iPad na výšku.\nPřipoj hardwarovou klávesnici a v Nastavení zapni Hrát pady na klávesnici. Čtyři řádky nahoře odpovídají padům shora dolů.";
+"help.setup.title" = "Zvuk, kalibrace a záloha";
+"help.setup.caption" = "Zvol Automaticky a aplikace vybere sadu podle lekce. Sadu pro jednu lekci změníš v Dalších nástrojích.\nHlasitost metronomu, padů a patternu nastavíš zvlášť.\nSpusť Kalibraci časování pro svůj vstup a zvukový výstup. Dotyk, klávesnici a kontrolér můžeš kalibrovat samostatně.\nV Nastavení otevři Pokrok a zálohuj do souboru. Při obnovení se zachová lepší postup v lekcích.";

@@ -20,7 +20,7 @@ public struct StarStreak: Codable, Equatable, Hashable, Sendable {
     }
 
     /// Decides whether a run qualifies to earn memory credit toward Star 3.
-    /// Under ticket 143, Star 3 is earned exclusively through Training reviews (two passed reviews).
+    /// The review star is earned through two successful spaced reviews.
     /// Practice From memory never grants Star 3.
     public static func mayEarnMemoryCredit(
         masteryDay: String?,

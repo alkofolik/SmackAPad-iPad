@@ -3,7 +3,9 @@ import Foundation
 /// Shared helper that returns the requirement descriptions for each star
 /// and the next missing star guidance.
 public enum StarRequirement {
-    /// 0: Star 1 (Passed), 1: Star 2 (Goal tempo), 2: Star 3 (Two reviews in Training).
+    static let titleKeys = ["Passed", "Goal tempo", "Review"]
+
+    /// 0: Passed, 1: Goal tempo, 2: Review.
     public static func nextMissingStarIndex(progress: LessonProgress?) -> Int? {
         guard let progress else { return 0 }
         if !progress.passed { return 0 }
@@ -12,7 +14,7 @@ public enum StarRequirement {
         return nil
     }
 
-    /// Number of reviews passed in Training toward Star 3 (0, 1, or 2).
+    /// Number of reviews passed toward Star 3 (0, 1, or 2).
     public static func reviewsPassedCount(progress: LessonProgress?) -> Int {
         guard let progress else { return 0 }
         if progress.reviewSchedule.isSettled { return 2 }
@@ -50,7 +52,7 @@ public enum StarRequirement {
                 }
             }
         case 2:
-            return language.localized("Star 3: two reviews in Training · %lld of 2", reviewsPassed)
+            return language.localized("Review star: pass two reviews on different days · %lld of 2", reviewsPassed)
         default:
             return ""
         }

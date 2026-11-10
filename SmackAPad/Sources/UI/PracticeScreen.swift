@@ -406,7 +406,7 @@ struct PracticeScreen: View {
                 helpPresentation = HelpPresentation(windowWidth: windowWidth)
             }
             .accessibilityFocused($helpFocused)
-            .helpDeck(presentation: $helpPresentation, lesson: session.lesson) { helpFocused = true }
+            .helpDeck(presentation: $helpPresentation, initialTopic: .lesson) { helpFocused = true }
             icon("slider.horizontal.3", settings.localized("More tools")) { showingTools.toggle() }
                 .popover(isPresented: $showingTools, arrowEdge: .top) {
                     PracticeTools(session: session, showPads: $showPads, openMIDI: {
@@ -942,7 +942,7 @@ struct PracticeScreen: View {
 
 
     private func starAnnouncement(for event: StarEvent) -> String {
-        let names = [settings.localized("Passed"), settings.localized("Goal tempo"), settings.localized("From memory")]
+        let names = StarRequirement.titleKeys.map { settings.localized($0) }
         return names.indices.filter { event.award.fresh[$0] }.map {
             settings.localized("Star earned: %@", names[$0])
         }.joined(separator: ". ")
@@ -1059,7 +1059,7 @@ struct PracticeScreen: View {
                     }
                     if let star = summary.finishedByStar {
                         Text(settings.localized(star == 3
-                            ? "Run finished: star 3 earned, from memory"
+                            ? "Run finished: star 3 earned, review"
                             : "Run finished: star 2 earned, goal tempo"))
                     }
                     if summary.firstStar2 {

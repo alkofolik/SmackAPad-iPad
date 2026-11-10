@@ -129,7 +129,6 @@
 "MASTERY" = "MASTERY";
 "PASSED" = "PASSED";
 "Mastery" = "Mastery";
-"Memory" = "Memory";
 "earned" = "earned";
 "not earned" = "not earned";
 "Rhythm pattern" = "Rhythm pattern";
@@ -140,7 +139,6 @@
 "behind" = "behind";
 "uneven" = "uneven";
 "Passed" = "Passed";
-"Goal tempo" = "Goal tempo";
 "From memory" = "From memory";
 "Details" = "Details";
 "Last run" = "Last run";
@@ -172,7 +170,6 @@
 "Tempo %lld" = "Tempo %lld";
 "Practice summary" = "Practice summary";
 "%lld completed passes" = "%lld completed passes";
-"Stars: passed / goal tempo / from memory" = "Stars: passed / goal tempo / from memory";
 "Score is from the last completed pass. Stars are earned across this run." = "Score is from the last completed pass. Stars are earned across this run.";
 "Preparing sound…" = "Preparing sound…";
 "From memory · notes hide once you start" = "From memory · notes hide once you start";
@@ -227,7 +224,6 @@
 "%lld with full mastery" = "%lld with full mastery";
 "yes" = "yes";
 "no" = "no";
-"Not played" = "Not played";
 "Eighth-note grooves" = "Eighth-note grooves";
 "Sixteenth-note grooves" = "Sixteenth-note grooves";
 "Electronic styles" = "Electronic styles";
@@ -248,9 +244,6 @@
 "%@, pad %lld" = "%@, pad %lld";
 
 "Path" = "Path";
-"Genres" = "Genres";
-"Techniques" = "Techniques";
-"Training" = "Training";
 "Basic groove" = "Basic groove";
 "Sixteenths" = "Sixteenths";
 "Ghost notes" = "Ghost notes";
@@ -280,7 +273,6 @@
 "Earn 2 stars in %lld lessons in %@ to open this" = "Earn 2 stars in %lld lessons in %@ to open this";
 "Next lesson from" = "Next lesson from";
 "Hide completed lessons" = "Hide completed lessons";
-"All lessons completed" = "All lessons completed";
 "Show completed" = "Show completed";
 "Hide completed" = "Hide completed";
 "Locked" = "Locked";
@@ -294,19 +286,13 @@
 "Reach %lld BPM cleanly, %lld times in a row" = "Reach %lld BPM cleanly, %lld times in a row";
 "Reach the goal tempo cleanly" = "Reach the goal tempo cleanly";
 "Reach the goal tempo cleanly, %lld times in a row" = "Reach the goal tempo cleanly, %lld times in a row";
-"Play it from memory at %lld BPM, 80 %% or better" = "Play it from memory at %lld BPM, 80 %% or better";
-"Play it from memory at %lld BPM, 80 %% or better, %lld times in a row" = "Play it from memory at %lld BPM, 80 %% or better, %lld times in a row";
-"Play it from memory at goal tempo, 80 % or better" = "Play it from memory at goal tempo, 80 % or better";
-"Play it from memory at goal tempo, 80 %% or better, %lld times in a row" = "Play it from memory at goal tempo, 80 %% or better, %lld times in a row";
-"Next: %@" = "Next: %@";
-"For the 3rd star, turn on From memory" = "For the 3rd star, turn on From memory";
 "Lesson stars" = "Lesson stars";
 
 "Automatic" = "Automatic";
 "Automatic · %@" = "Automatic · %@";
 
 // Practice feedback, round 3.
-"Run finished: star 3 earned, from memory" = "Run finished: star 3 earned, from memory";
+"Run finished: star 3 earned, review" = "Run finished: star 3 earned, review";
 "Run finished: star 2 earned, goal tempo" = "Run finished: star 2 earned, goal tempo";
 "Position in the current pass" = "Position in the current pass";
 "Bar %lld / %lld, %lld percent" = "Bar %lld / %lld, %lld percent";
@@ -333,8 +319,6 @@
 "Pass the lesson, %lld times" = "Pass the lesson, %lld times";
 "Reach %lld BPM cleanly, %lld times" = "Reach %lld BPM cleanly, %lld times";
 "Reach the goal tempo cleanly, %lld times" = "Reach the goal tempo cleanly, %lld times";
-"Play it from memory at %lld BPM, 80 %% or better, %lld times" = "Play it from memory at %lld BPM, 80 %% or better, %lld times";
-"Play it from memory at goal tempo, 80 %% or better, %lld times" = "Play it from memory at goal tempo, 80 %% or better, %lld times";
 
 /* Ticket 30: Lesson instructions panel */
 "Lesson info" = "Lesson info";
@@ -407,7 +391,6 @@
 "Purchases are unavailable. Free lessons still work." = "Purchases are unavailable. Free lessons still work.";
 "Try again" = "Try again";
 "Purchase required" = "Purchase required";
-"%lld lessons" = "%lld lessons";
 "One-time payment" = "One-time payment";
 "No subscription" = "No subscription";
 "Lessons across %lld genres" = "Lessons across %lld genres";
@@ -453,8 +436,6 @@
 
 /* Practice screen round 6 */
 "Memory ★3" = "Memory ★3";
-"From memory for ★3" = "From memory for ★3";
-"Starts Play from memory for the 3rd star" = "Starts Play from memory for the 3rd star";
 "Band colour" = "Band colour";
 "The band gets deeper as the tempo nears the goal. A glow on the right edge: you are rushing; on the left: you are dragging." = "The band gets deeper as the tempo nears the goal. A glow on the right edge: you are rushing; on the left: you are dragging.";
 
@@ -523,7 +504,6 @@
 "Levels" = "Levels";
 "Genres" = "Genres";
 "Techniques" = "Techniques";
-"Training" = "Training";
 
 "First groove" = "First groove";
 "Pass your first lesson." = "Pass your first lesson.";
@@ -619,7 +599,6 @@
 "Pass 10 reviews." = "Pass 10 reviews.";
 "Long memory" = "Long memory";
 "Pass 50 reviews." = "Pass 50 reviews.";
-"Settled" = "Settled";
 "Settle your first lesson." = "Settle your first lesson.";
 "Solid ground" = "Solid ground";
 "Settle 10 lessons." = "Settle 10 lessons.";
@@ -662,7 +641,7 @@
 "Run %lld" = "Run %lld";
 "Last run %lld percent, %lld BPM, %@" = "Last run %lld percent, %lld BPM, %@";
 "Result %lld percent, %lld of 3 stars, %@" = "Result %lld percent, %lld of 3 stars, %@";
-"Star 3: two reviews in Training · %lld of 2" = "Star 3: two reviews in Training · %lld of 2";
+"Review star: pass two reviews on different days · %lld of 2" = "Review star: pass two reviews on different days · %lld of 2";
 
 "Training" = "Training";
 "%lld due" = "%lld due";
@@ -790,7 +769,7 @@
 
 /* Ticket 141: Today session screen redesign (Variant 1) */
 "Daily mix" = "Daily mix";
-"Start" = "Start";
+"Start of plan" = "Start";
 "Next" = "Next";
 "Waiting" = "Waiting";
 "Skipped" = "Skipped";
@@ -851,34 +830,6 @@
 "Ready for review" = "Ready for review";
 "Total review queue by that day if nothing is played. Includes earlier reviews; Today still selects at most two." = "Total review queue by that day if nothing is played. Includes earlier reviews; Today still selects at most two.";
 
-/* Ticket 162: How it works and first-launch tutorial. */
-"help.title" = "How it works";
-"help.tutorial.reopen" = "Watch tutorial";
-"help.nav.back" = "Back";
-"help.nav.position" = "%lld of %lld";
-"help.goal.title" = "The lesson";
-"help.goal.caption" = "Play the pattern in time and earn stars as you learn it.";
-"help.modes.title" = "Listen and Play";
-"help.modes.caption" = "Play along in Listen, or play to the click for a score.";
-"help.modes.unscored" = "No score";
-"help.modes.scored" = "Scored";
-"help.memory.caption" = "Play without the notes to get ready for reviews.";
-"help.memory.hiddenFromThird" = "From pass 3 · notes hidden";
-"help.memory.hidden" = "Notes hidden";
-"help.stars.reviews" = "Pass two spaced reviews on different days";
-"help.stars.caption" = "Enough two-star lessons open the next stage.";
-"help.tempo.caption" = "Set tempo while stopped, then clean passes raise it up to the goal.";
-"help.reviews.caption" = "Due reviews open from memory at goal tempo.";
-"help.reviews.warmups" = "Warm-up passes (with note fade on)";
-"help.reviews.passes" = "Two full passes · at goal tempo or faster · 80% or higher each";
-"help.overview.title" = "Where to play";
-"help.overview.today" = "Follow today's practice plan.";
-"help.overview.training" = "See what is due for review.";
-"help.overview.library" = "Browse and choose lessons.";
-"help.overview.mix" = "Play learned patterns back to back.";
-"help.inputs.title" = "Ways to play";
-"help.inputs.caption" = "Use a MIDI controller, a hardware keyboard or portrait touch pads with a 16-pad layout.";
-
 /* Ticket 161: Progress backup */
 "Progress" = "Progress";
 "Back up progress" = "Back up progress";
@@ -889,3 +840,57 @@
 "This backup was created in a newer version of Smack-a-Pad. Update the app to restore it." = "This backup was created in a newer version of Smack-a-Pad. Update the app to restore it.";
 "Could not create a safety backup. Import was cancelled." = "Could not create a safety backup. Import was cancelled.";
 
+/* Help and first-launch tutorial (ticket 169) */
+"help.title" = "How it works";
+"help.tutorial.reopen" = "Watch tutorial";
+"help.nav.back" = "Back";
+"help.nav.topics" = "All topics";
+"help.nav.position" = "%lld of %lld";
+"help.tutorial.playLesson.title" = "Play a lesson";
+"help.tutorial.playLesson.caption" = "Follow the pattern. Each row is one pad.\nHit when the line reaches a block.\nTap Start and play after the count-in.";
+"help.lesson.padRow" = "One row per pad";
+"help.lesson.now" = "The line shows when to hit";
+"help.lesson.countIn" = "Count-in";
+"help.tutorial.hitColours.title" = "Hit colours";
+"help.tutorial.hitColours.caption" = "Check the colour of each hit in the pattern band.\nUse the feedback to adjust your timing and pad choice.";
+"help.hit.correct" = "Right pad, on time";
+"help.hit.off" = "Right pad, off time";
+"help.hit.wrong" = "Wrong pad or missed hit";
+"help.tutorial.modes.title" = "Three ways to practise";
+"help.tutorial.modes.caption" = "Listen: hear the pattern and join in. No stars.\nPlay: play the pattern yourself and earn stars. The metronome is optional.\nAfter me: listen to the app play a phrase, then repeat it. No stars.";
+"help.tutorial.starsAndTempo.title" = "Stars and tempo";
+"help.tutorial.starsAndTempo.caption" = "★ Pass the lesson.\n★★ Play cleanly at goal tempo. Clean passes in Play raise the tempo towards the goal.\n★★★ Pass two scheduled reviews from memory on different days.\nTap the stars for the lesson requirements. Tap the tempo field while stopped to change it.";
+"help.tutorial.whereNext.title" = "Where to go next";
+"help.tutorial.whereNext.caption" = "Start with Intro. Tap Rules there for the details.\nBrowse all lessons in Library.\nFind reviews in Training and follow Today when reviews are due.\nOpen the question mark in a lesson, or How it works on Home or in Settings.";
+"help.lesson.title" = "The lesson screen";
+"help.lesson.caption" = "1 Lesson info · 2 Legend for pad names · 3 Help\n4 More tools: bars, sound and loops. Practise a bar loop without earning stars.\n5 From memory · 6 Static or scrolling view. Tap Static again to cycle through bar counts.\n7 Tempo · 8 Star requirements · 9 Start, Stop and Restart";
+"help.modes.title" = "Modes";
+"help.modes.caption" = "Listen: hear the pattern and join in. Tempo stays fixed and you earn no stars.\nPlay: earn stars by playing the pattern. Use More tools to turn the metronome or pattern sound on or off.\nAfter me: hear a phrase, then repeat it. Your response gets a score, with no lesson stars.";
+"help.signals.title" = "Colours and signals";
+"help.signals.caption" = "Read the hit colours in the band. Listen uses a lighter band than Play.\nWatch the band deepen as the tempo approaches the goal. A glow on the right means you are early, on the left you are late.\nOpen Details after playing to see which bars were clean, early, late or uneven.\nUse the result controls to try again, play on or move to the next lesson when offered.";
+"help.signals.behind" = "Late";
+"help.signals.ahead" = "Early";
+"help.stars.label" = "Star %lld: %@";
+"help.stars.caption" = "★ Pass at %lld %% or higher. In Learning, accurate hits with few errors can also qualify at a lower score.\n★★ Play cleanly at goal tempo. ★★★ Pass two scheduled reviews on different days.\nTap the stars for the required passes. For the first two stars the app aims for at least 16 hits, with at most four passes. Intro needs at least three passes for ★★.\nChoose Learning to add up good passes or Challenge to require them in a row. Play stops when you earn ★★ or ★★★.";
+"help.tempo.tap" = "Tap the tempo field while stopped";
+"help.tempo.caption" = "Adjust by −5, −1, +1 or +5 BPM, or return to Starting tempo. The lesson remembers your tempo.\nIn Play, clean passes raise the tempo up to the goal. Set the automatic step to 1, 2, 5 or 10 BPM in Settings.\nPlay with no errors in Intro. Elsewhere, a clean pass allows no errors through 15 hits, one through 32, and two above that.";
+"help.memory.caption" = "While stopped, tap the crossed-out eye, then Start.\nUse “%@” in Settings to show the first pass, fade the second and hide the pattern from the third. Turn it off to hide the pattern right after the count-in.\nPractise from memory to prepare for reviews. Stars for this option come only from a successful scheduled review.";
+"help.memory.shown" = "Pass 1 · pattern visible";
+"help.memory.fading" = "Pass 2 · pattern fades";
+"help.memory.hiddenFromThird" = "Pass 3 onward · pattern hidden";
+"help.memory.hidden" = "Pattern hidden after the count-in";
+"help.reviews.timeline" = "★★ → +%lld → +%lld → +%lld → +%lld days → %@";
+"help.reviews.warmups" = "The first two passes are warm-ups with pattern fade on";
+"help.reviews.twoPasses" = "Two qualifying passes in one review";
+"help.reviews.caption" = "Open a due lesson from Home, Training or Library. It starts ready for From memory at goal tempo.\nPass two full hidden passes at goal tempo or faster, each at least %lld %%. Play then stops. The second successful review on a different day earns ★★★.\nAfter two failed eligible passes, the schedule goes back one step and the review returns tomorrow. The exclamation mark means you played but the review did not count.\nFollow the gaps above from ★★ to the fourth successful review. Turn on Review reminder in Settings if you want a reminder.";
+"help.training.title" = "Today and Training";
+"help.training.caption" = "Follow Today when reviews are due. It starts with up to two reviews, then adds a new lesson and a Mix when available. You can skip steps.\nOpen Training for the review queue, your memory overview and the next seven days. You can put off reviews until tomorrow.\nStart a Mix once at least two lessons have ★★. Play them back to back at their goal tempos or choose New mix.\nChoose Play after me to copy what the app plays, with the pattern hidden and no lesson stars.";
+"help.library.stage" = "Locked stage";
+"help.library.progress" = "Two-star lessons unlock stages";
+"help.library.caption" = "Browse Path, Genres or Techniques. Search or filter by stars and progress. Use Show completed to include finished lessons.\nUnlock the next stage with ★★ in half the previous stage’s lessons, rounded up and capped at 10. On an 8-pad controller only compatible lessons count.\nTap a locked lesson to see the stage requirement. You can confirm a manual unlock and lock the stage again while it has no stars. Intro and extension lessons are always open.\nChoose the source for Next lesson in Settings.";
+"help.controller.caption" = "Connect a MIDI controller by USB or Bluetooth. Open Controller and calibration in Settings.\nChoose an 8- or 16-pad profile, or use MIDI learn to map your pads. Check incoming hits in the MIDI monitor. Some lessons require 16 pads.\nUse the small pad layout to see which pad you hit. Map controller buttons to the actions above. Tempo buttons and the knob work while stopped.";
+"help.keyboard.title" = "Touch and keyboard";
+"help.keyboard.mapping" = "Pad rows from top to bottom: 1 2 3 4, Q W E R, A S D F, Z X C V";
+"help.keyboard.caption" = "Turn on Touch pads in portrait in Settings, use a 16-pad profile and hold the iPad upright.\nConnect a hardware keyboard and turn on Play pads with keyboard in Settings. The four rows above match the pads from top to bottom.";
+"help.setup.title" = "Sound, timing and backup";
+"help.setup.caption" = "Choose Automatic for a kit suited to the lesson. Use More tools to choose a kit for just that lesson.\nAdjust metronome, pad and pattern volumes separately.\nRun Timing calibration for your input and audio output. Touch, keyboard and controller can each need their own calibration.\nIn Settings, under Progress, back up to a file. Restore from backup keeps the stronger lesson progress.";

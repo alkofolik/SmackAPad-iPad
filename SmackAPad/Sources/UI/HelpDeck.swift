@@ -1,7 +1,9 @@
 import SwiftUI
 
-enum HelpTopic: String, CaseIterable {
-    case goal, modes, memory, stars, tempo, reviews, overview, inputs
+enum HelpTopic: String, CaseIterable, Identifiable {
+    case lesson, modes, signals, stars, tempo, memory, reviews, training, library, controller, keyboard, setup
+
+    var id: Self { self }
 
     var titleKey: String {
         switch self {
@@ -9,11 +11,20 @@ enum HelpTopic: String, CaseIterable {
         case .stars: "Stars"
         case .tempo: "Tempo"
         case .reviews: "Reviews"
+        case .library: "Library"
+        case .controller: "MIDI controller"
         default: "help.\(rawValue).title"
         }
     }
 
     var captionKey: String { "help.\(rawValue).caption" }
+}
+
+enum TutorialCard: String, CaseIterable {
+    case playLesson, hitColours, modes, starsAndTempo, whereNext
+
+    var titleKey: String { "help.tutorial.\(rawValue).title" }
+    var captionKey: String { "help.tutorial.\(rawValue).caption" }
 }
 
 enum HelpPresentation: Equatable {
@@ -28,11 +39,11 @@ extension View {
     func helpDeck(
         presentation: Binding<HelpPresentation?>,
         arrowEdge: Edge = .top,
-        lesson: Lesson? = nil,
+        initialTopic: HelpTopic? = nil,
         onDismiss: @escaping () -> Void
     ) -> some View {
         let deck = {
-            HelpDeck(lesson: lesson) { presentation.wrappedValue = nil }
+            HelpDeck(initialTopic: initialTopic) { presentation.wrappedValue = nil }
         }
         return self
             .popover(isPresented: helpBinding(presentation, style: .popover), arrowEdge: arrowEdge) {
@@ -79,34 +90,56 @@ struct HelpDeck: View {
     @ScaledMetric(relativeTo: .title) private var headingSize = 28.0
     @ScaledMetric(relativeTo: .body) private var controlSize = 18.0
     @AccessibilityFocusState private var headingFocus: Page?
-    @State private var index = 0
-    @State private var replayIndex: Int?
-    var lesson: Lesson? = nil
-    var firstLaunch = false
-    let onClose: () -> Void
+    @State private var topic: HelpTopic?
+    @State private var tutorialIndex: Int?
+    private let firstLaunch: Bool
+    private let onClose: () -> Void
 
-    private struct Page: Hashable {
-        let index: Int
-        let tutorial: Bool
+    init(initialTopic: HelpTopic? = nil, firstLaunch: Bool = false, onClose: @escaping () -> Void) {
+        _topic = State(initialValue: initialTopic)
+        _tutorialIndex = State(initialValue: firstLaunch ? 0 : nil)
+        self.firstLaunch = firstLaunch
+        self.onClose = onClose
     }
 
-    private var page: Page { Page(index: replayIndex ?? index, tutorial: firstLaunch || replayIndex != nil) }
-    private var topic: HelpTopic { HelpTopic.allCases[page.index] }
-    private var count: Int { page.tutorial ? 4 : HelpTopic.allCases.count }
-    private var position: String { settings.localized("help.nav.position", page.index + 1, count) }
+    private enum Page: Hashable {
+        case contents
+        case topic(HelpTopic)
+        case tutorial(TutorialCard)
+
+        var titleKey: String {
+            switch self {
+            case .contents: "help.title"
+            case .topic(let topic): topic.titleKey
+            case .tutorial(let card): card.titleKey
+            }
+        }
+    }
+
+    private var page: Page {
+        if let tutorialIndex { return .tutorial(TutorialCard.allCases[tutorialIndex]) }
+        if let topic { return .topic(topic) }
+        return .contents
+    }
 
     var body: some View {
-        VStack(spacing: Theme.Space.small) {
-            header
+        let currentPage = page
+        return VStack(spacing: Theme.Space.small) {
+            header(for: currentPage)
             ScrollView {
-                HelpIllustration(topic: topic, lesson: page.tutorial ? nil : lesson)
-                    .padding(.vertical, Theme.Space.regular)
-                    .frame(maxWidth: .infinity, alignment: .leading)
+                switch currentPage {
+                case .contents:
+                    topicList
+                case .topic(let topic):
+                    HelpIllustration(topic: topic)
+                case .tutorial(let card):
+                    HelpIllustration(card: card)
+                }
             }
-            .id(page)
+            .id(currentPage)
             .scrollBounceBehavior(.basedOnSize)
             Divider().overlay(Theme.hairline)
-            footer
+            footer(for: currentPage)
         }
         .padding(Theme.Space.page)
         .frame(maxWidth: 680, maxHeight: .infinity)
@@ -114,92 +147,96 @@ struct HelpDeck: View {
         .foregroundStyle(Theme.ink)
         .background(Theme.background)
         .presentationBackground(Theme.background)
-        .interactiveDismissDisabled(replayIndex != nil)
-        .task(id: page) {
-            // Moving focus also reads the heading's position on each page.
-            let currentPage = page
+        .interactiveDismissDisabled(!firstLaunch && tutorialIndex != nil)
+        .task(id: currentPage) {
             await Task.yield()
             guard !Task.isCancelled else { return }
             headingFocus = currentPage
         }
     }
 
-    private var header: some View {
+    private func header(for page: Page) -> some View {
         HStack(alignment: .top, spacing: Theme.Space.regular) {
-            Text(settings.localized(topic.titleKey))
+            Text(settings.localized(page.titleKey))
                 .font(Theme.display(headingSize))
                 .fixedSize(horizontal: false, vertical: true)
                 .accessibilityAddTraits(.isHeader)
-                .accessibilityValue(position)
+                .accessibilityValue(tutorialIndex.map(tutorialPosition) ?? "")
                 .accessibilityFocused($headingFocus, equals: page)
                 .frame(maxWidth: .infinity, minHeight: Theme.Size.touch, alignment: .leading)
             Button(action: close) {
-                controlLabel(page.tutorial ? "Skip" : "Close")
+                controlLabel(tutorialIndex == nil ? "Close" : "Skip")
                     .textButtonTarget(alignment: .trailing)
             }
             .buttonStyle(.plain)
             .keyboardShortcut(.cancelAction)
-            .fixedSize()
+        }
+    }
+
+    private var topicList: some View {
+        VStack(spacing: 0) {
+            ForEach(HelpTopic.allCases) { item in
+                Button { topic = item } label: {
+                    HStack(spacing: Theme.Space.small) {
+                        Text(settings.localized(item.titleKey))
+                            .font(Theme.text(controlSize))
+                            .fixedSize(horizontal: false, vertical: true)
+                        Spacer(minLength: Theme.Space.small)
+                        Image(systemName: "chevron.right")
+                            .font(Theme.canvasDisplay(13))
+                            .accessibilityHidden(true)
+                    }
+                    .frame(minHeight: Theme.Size.touch)
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                Divider().overlay(Theme.hairline)
+            }
         }
     }
 
     @ViewBuilder
-    private var footer: some View {
-        if !page.tutorial && index == 0 {
-            ViewThatFits(in: .horizontal) {
-                HStack {
-                    replayButton
-                    Spacer()
-                    positionLabel
-                    Spacer()
-                    nextButton
-                }
-                .fixedSize(horizontal: true, vertical: false)
-                .frame(maxWidth: .infinity)
-                VStack(spacing: Theme.Space.tight) {
-                    navigationRow
-                    replayButton.frame(maxWidth: .infinity, alignment: .leading)
+    private func footer(for page: Page) -> some View {
+        switch page {
+        case .contents:
+            Button { tutorialIndex = 0 } label: {
+                controlLabel("help.tutorial.reopen").textButtonTarget(alignment: .leading)
+            }
+            .buttonStyle(.plain)
+            .frame(maxWidth: .infinity, alignment: .leading)
+        case .topic:
+            Button { topic = nil } label: {
+                controlLabel("help.nav.topics")
+            }
+            .buttonStyle(PadSecondaryButtonStyle())
+            .frame(maxWidth: .infinity, alignment: .leading)
+        case .tutorial:
+            if let tutorialIndex {
+                let isLast = tutorialIndex == TutorialCard.allCases.count - 1
+                HStack(spacing: Theme.Space.small) {
+                    if tutorialIndex > 0 {
+                        Button { self.tutorialIndex = tutorialIndex - 1 } label: { controlLabel("help.nav.back") }
+                            .buttonStyle(PadSecondaryButtonStyle())
+                    }
+                    Text(tutorialPosition(tutorialIndex))
+                        .font(Theme.text(controlSize))
+                        .monospacedDigit()
+                        .multilineTextAlignment(.center)
+                        .frame(maxWidth: .infinity)
+                        .accessibilityHidden(true)
+                    Button {
+                        if isLast { close() } else { self.tutorialIndex = tutorialIndex + 1 }
+                    } label: {
+                        controlLabel(isLast ? "Done" : "Next")
+                    }
+                    .buttonStyle(PadPrimaryButtonStyle())
                 }
             }
-        } else {
-            navigationRow
         }
     }
 
-    private var navigationRow: some View {
-        HStack(spacing: Theme.Space.small) {
-            if page.index > 0 {
-                Button { move(by: -1) } label: { controlLabel("help.nav.back") }
-                    .buttonStyle(PadSecondaryButtonStyle())
-            }
-            positionLabel.frame(maxWidth: .infinity)
-            nextButton
-        }
-    }
-
-    private var positionLabel: some View {
-        Text(position)
-            .font(Theme.text(controlSize))
-            .monospacedDigit()
-            .multilineTextAlignment(.center)
-            .accessibilityHidden(true)
-    }
-
-    private var replayButton: some View {
-        Button { replayIndex = 0 } label: {
-            controlLabel("help.tutorial.reopen").textButtonTarget(alignment: .leading)
-        }
-        .buttonStyle(.plain)
-    }
-
-    private var nextButton: some View {
-        let isLast = page.index == count - 1
-        return Button {
-            if isLast { close() } else { move(by: 1) }
-        } label: {
-            controlLabel(isLast ? "Done" : "Next")
-        }
-        .buttonStyle(PadPrimaryButtonStyle())
+    private func tutorialPosition(_ index: Int) -> String {
+        settings.localized("help.nav.position", index + 1, TutorialCard.allCases.count)
     }
 
     private func controlLabel(_ key: String) -> some View {
@@ -210,19 +247,11 @@ struct HelpDeck: View {
             .frame(minWidth: Theme.Size.touch, minHeight: Theme.Size.touch)
     }
 
-    private func move(by offset: Int) {
-        if let replayIndex {
-            self.replayIndex = replayIndex + offset
-        } else {
-            index += offset
-        }
-    }
-
     private func close() {
-        if replayIndex != nil {
-            replayIndex = nil
-        } else {
+        if firstLaunch || tutorialIndex == nil {
             onClose()
+        } else {
+            tutorialIndex = nil
         }
     }
 }

@@ -480,7 +480,7 @@ struct SummaryStrip: View {
             if let star = summary.finishedByStar {
                 HStack(spacing: Theme.Space.small) {
                     Text(settings.localized(star == 3
-                        ? "Run finished: star 3 earned, from memory"
+                        ? "Run finished: star 3 earned, review"
                         : "Run finished: star 2 earned, goal tempo"))
                         .font(Theme.meta)
                         .fixedSize(horizontal: false, vertical: true)
@@ -504,7 +504,7 @@ struct SummaryStrip: View {
                 HStack(spacing: Theme.Space.small) {
                     star(summary.passed && revealed.contains(0), settings.localized("Passed"))
                     star(summary.mastery && revealed.contains(1), settings.localized("Goal tempo"))
-                    star(summary.memory && revealed.contains(2), settings.localized("From memory"))
+                    star(summary.memory && revealed.contains(2), settings.localized(StarRequirement.titleKeys[2]))
                 }
                 Button(action: detail) {
                     Text(settings.localized("Details"))

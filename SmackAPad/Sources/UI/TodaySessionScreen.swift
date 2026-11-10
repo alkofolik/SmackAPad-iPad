@@ -393,7 +393,7 @@ private struct TodayStepperView: View {
         }
         if isCurrent {
             if plan.lastPlayedIndex == nil {
-                return settings.localized("Start")
+                return settings.localized("Start of plan")
             }
             return settings.localized("Next")
         }
