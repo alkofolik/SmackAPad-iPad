@@ -175,7 +175,7 @@ Source: Jakub, retention and memory discussion; legacy "Trénink" concept 2026-1
 | 147 | Fix 5 outdated tests after the star 3 rule change | Gemini 3.8 Flash, medium (fallback Codex Sol, medium) | any time |
 | 163 | Independent review of help and first-launch tutorial (report only) | Claude subagent (fallback Codex Sol, high) | running |
 | 164 | Proposal: practice timing cue, run progress, focus mode (design only) | Codex GPT-6.1 Sol, high | done (Jakub chose B1 and C2) |
-| 165 | Practice HUD: timing cue B1, run progress C2 and focus mode | Codex GPT-6.1 Sol, high | ready-for-agent |
+| 165 | Practice HUD: timing cue B1, run progress C2 and focus mode | Codex GPT-6.1 Sol, high (fallback Gemini 3.8 Flash, high) | ready-for-agent |
 | 166 | Even out sample loudness and per-instrument volume | Codex GPT-6.1 Sol, high | any time |
 | 167 | Button spacing across the app | Codex GPT-6.1 Sol, medium | after 164/165 (Practice files) |
 | 168 | Mix finishes by itself and shows the result | Codex GPT-6.1 Sol, high | any time (before 165 if both touch PracticeScreen) |
