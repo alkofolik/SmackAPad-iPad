@@ -70,6 +70,12 @@ struct MixLessonResult: Identifiable {
     var score: Double?
     var barCounts: [String: Int] = [:]
     var unmeasuredBars: Int
+    var met: Bool = false
+    var counted: Bool = true
+    var earnedStars: [Bool] = [false, false, false]
+    var freshStars: [Bool] = [false, false, false]
+    var starEvent: StarEvent?
+    var reviewFeedback: ReviewScheduler.ReviewFeedback?
 }
 
 @MainActor
@@ -81,10 +87,19 @@ final class PracticeSession {
     var isMix: Bool { mixLessons.count >= 2 }
     private(set) var mixIndex = 0
     private(set) var mixResults: [MixLessonResult] = []
+    var isMixFullyMet: Bool {
+        guard isMix, !mixResults.isEmpty, mixResults.allSatisfy({ $0.score != nil }) else { return false }
+        if fromMemory {
+            return currentMixRoundMemory && mixResults.allSatisfy { $0.met }
+        }
+        return mixResults.allSatisfy { $0.met }
+    }
     @ObservationIgnored private var mixNeedsAdvance = false
     @ObservationIgnored private var mixAppearances: [Int: Int] = [:]
     @ObservationIgnored private var mixStreaks: [Int: StarStreak] = [:]
     @ObservationIgnored private var mixBarVerdicts: [Int: BarVerdict] = [:]
+    @ObservationIgnored private var mixFreshStars: [Bool] = [false, false, false]
+    @ObservationIgnored private var mixEarnedStars: [Bool] = [false, false, false]
     private(set) var bpm: Int
     private(set) var running = false
     private(set) var ready = false
@@ -647,9 +662,22 @@ final class PracticeSession {
                 mixNeedsAdvance = false
                 currentMixRoundMemory = true
                 mixBarVerdicts = [:]
+                mixFreshStars = [false, false, false]
+                mixEarnedStars = [false, false, false]
                 mixResults = mixLessons.map {
-                    MixLessonResult(id: $0.id, title: $0.title, score: nil,
-                                    unmeasuredBars: $0.bars * max(1, Int((4.0 / Double($0.bars)).rounded())))
+                    let record = progress.progress(for: $0.id)
+                    return MixLessonResult(
+                        id: $0.id,
+                        title: $0.title,
+                        score: nil,
+                        unmeasuredBars: $0.bars * max(1, Int((4.0 / Double($0.bars)).rounded())),
+                        met: false,
+                        counted: true,
+                        earnedStars: [record?.passed ?? false, record?.mastery ?? false, record?.memory ?? false],
+                        freshStars: [false, false, false],
+                        starEvent: nil,
+                        reviewFeedback: nil
+                    )
                 }
             }
             let id = UUID()
@@ -756,15 +784,18 @@ final class PracticeSession {
         if afterMe {
             summary = RunSummary(score: lastResult?.score ?? 0, bpm: bpm, passes: completedPasses,
                                  passed: false, mastery: false, memory: false, runs: runResults)
+        } else if isMix {
+            let mixPassed = isMixFullyMet
+            let mixScores = mixResults.compactMap(\.score)
+            let mixScore = mixScores.isEmpty ? (lastResult?.score ?? 0) : (mixScores.reduce(0.0, +) / Double(mixScores.count))
+            summary = RunSummary(score: mixScore, bpm: bpm,
+                                 passes: runResults.count, passed: mixPassed, mastery: earnedMastery,
+                                 memory: fromMemory && currentMixRoundMemory, runs: runResults)
         } else if let result = lastResult, !listen {
             summary = RunSummary(score: result.score, bpm: result.bpm, passes: completedPasses,
                                  passed: earnedPass, mastery: earnedMastery, memory: earnedMemory,
                                  finishedByStar: finishedByStar, runs: runResults,
                                  firstStar2: earnedFirstMasteryInRun)
-        } else if isMix {
-            summary = RunSummary(score: mixResults.compactMap(\.score).last ?? 0, bpm: bpm,
-                                 passes: runResults.count, passed: earnedPass, mastery: earnedMastery,
-                                 memory: earnedMemory, runs: runResults)
         } else if !listen, let accuracy {
             summary = RunSummary(score: accuracy, bpm: bpm, passes: 0,
                                  passed: false, mastery: false, memory: false,
@@ -885,7 +916,7 @@ final class PracticeSession {
         currentRepetition = 1
         lastResult = nil
         lastVerdict = nil
-        starEvent = nil
+        if !isMix { starEvent = nil }
         reviewFeedback = reviewWindows[lesson.id].flatMap {
             $0.day == currentDay() ? $0.outcome?.feedback : nil
         }
@@ -1043,6 +1074,7 @@ final class PracticeSession {
                 continue
             }
             let runPassed: Bool
+            var award: StarAward?
             if !isSectionLoop {
                 let saved = progress.progress(for: lesson.id)
 
@@ -1152,14 +1184,15 @@ final class PracticeSession {
                 earnedPass = earnedPass || stars.passed
                 earnedMastery = earnedMastery || stars.mastery
                 earnedMemory = earnedMemory || stars.memory
-                let award = StarAward(previous: progress.progress(for: lesson.id),
-                                      passed: stars.passed, mastery: stars.mastery, memory: stars.memory)
+                award = StarAward(previous: progress.progress(for: lesson.id),
+                                  passed: stars.passed, mastery: stars.mastery, memory: stars.memory)
+                let currentAward = award!
                 pendingScore = max(pendingScore ?? 0, Float(result.score))
                 pendingBpm = max(pendingBpm, result.bpm)
-                if award.fresh[1] {
+                if currentAward.fresh[1] {
                     earnedFirstMasteryInRun = true
                 }
-                if award.fresh.contains(true) {
+                if currentAward.fresh.contains(true) {
                     // A new star is rare and must be visible at once (library, next-star text).
                     progress.recordResult(lessonId: lesson.id, passed: stars.passed, mastery: stars.mastery,
                                           bpm: result.bpm, score: Float(result.score), memory: stars.memory,
@@ -1168,11 +1201,11 @@ final class PracticeSession {
                         progress.setLearningCredit(starStreak, lessonId: lesson.id, padCount: pass.padCount, autoSave: false)
                         pendingCredit = false
                     }
-                    starEvent = StarEvent(award: award)
+                    starEvent = StarEvent(award: currentAward)
                     evaluateBadges()
                 }
-                stopAfterPass = stopAfterPass || (!isMix && award.shouldStop)
-                if award.shouldStop { finishedByStar = award.fresh[2] ? 3 : 2 }
+                stopAfterPass = stopAfterPass || (!isMix && currentAward.shouldStop)
+                if currentAward.shouldStop { finishedByStar = currentAward.fresh[2] ? 3 : 2 }
             } else {
                 runPassed = result.passed
                 lastVerdict = RunVerdict(passed: result.passed, brokenStreak: false)
@@ -1182,26 +1215,68 @@ final class PracticeSession {
                                                 bpm: result.bpm,
                                                 passed: runPassed))
             if isMix {
+                let currentAward = award ?? StarAward(previous: progress.progress(for: lesson.id),
+                                                      passed: false, mastery: false, memory: false)
                 flushPendingProgress()
                 mixStreaks[lesson.id] = starStreak
                 mixAppearances[lesson.id, default: 0] += 1
-                if let index = mixResults.firstIndex(where: { $0.id == lesson.id }) {
-                    mixResults[index].score = result.score
-                    mixResults[index].barCounts = Dictionary(grouping: mixBarVerdicts.values, by: \.rawValue).mapValues(\.count)
-                    mixResults[index].unmeasuredBars = max(0, scoredLesson.bars - mixBarVerdicts.count)
-                }
                 let isHiddenPass = !fromMemory || !settings.fadeMemoryNotes || pass.number >= 3
                 let runMemoryPass = fromMemory && isHiddenPass && result.score >= Scoring.passMark
                 if !runMemoryPass {
                     currentMixRoundMemory = false
                 }
+
+                let lessonReviewDue = progress.progress(for: lesson.id)?.reviewSchedule.isDueReview(on: currentDay()) == true
+                let lessonMet: Bool = {
+                    if fromMemory {
+                        return runMemoryPass
+                    }
+                    if lessonReviewDue, let feedback = reviewFeedback {
+                        switch feedback {
+                        case .passed, .settled: return true
+                        case .failed, .doesNotCount: return false
+                        }
+                    }
+                    return runPassed
+                }()
+
+                let lessonCounted: Bool = {
+                    if fromMemory {
+                        return isHiddenPass
+                    }
+                    if lessonReviewDue, let feedback = reviewFeedback {
+                        if case .doesNotCount = feedback { return false }
+                    }
+                    return true
+                }()
+
+                let lessonStarEvent = currentAward.fresh.contains(true) ? StarEvent(award: currentAward) : nil
+                mixEarnedStars = zip(mixEarnedStars, currentAward.earned).map { $0 || $1 }
+                mixFreshStars = zip(mixFreshStars, currentAward.fresh).map { $0 || $1 }
+                if mixFreshStars.contains(true) {
+                    starEvent = StarEvent(award: StarAward(earned: mixEarnedStars, fresh: mixFreshStars))
+                }
+
+                if let index = mixResults.firstIndex(where: { $0.id == lesson.id }) {
+                    mixResults[index].score = result.score
+                    mixResults[index].barCounts = Dictionary(grouping: mixBarVerdicts.values, by: \.rawValue).mapValues(\.count)
+                    mixResults[index].unmeasuredBars = max(0, scoredLesson.bars - mixBarVerdicts.count)
+                    mixResults[index].met = lessonMet
+                    mixResults[index].counted = lessonCounted
+                    mixResults[index].earnedStars = currentAward.earned
+                    mixResults[index].freshStars = currentAward.fresh
+                    mixResults[index].starEvent = lessonStarEvent
+                    mixResults[index].reviewFeedback = reviewFeedback
+                }
+
                 if mixIndex == mixLessons.count - 1 {
                     progress.recordFinishedMixRound(isMemoryRound: currentMixRoundMemory, today: currentDay(), autoSave: false)
-                    currentMixRoundMemory = true
+                    stopAfterPass = true
+                } else {
+                    mixNeedsAdvance = true
                 }
                 try? progress.save()
                 evaluateBadges()
-                mixNeedsAdvance = true
             }
             // The tempo preference is saved once at STOP, not at every pass.
             if let error = progress.lastSaveError { errorMessage = error.localizedDescription }

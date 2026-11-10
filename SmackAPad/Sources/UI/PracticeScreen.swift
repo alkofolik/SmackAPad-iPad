@@ -694,12 +694,63 @@ struct PracticeScreen: View {
     private var mixResultsCard: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: Theme.Space.small) {
+                if session.isMixFullyMet {
+                    HStack(spacing: Theme.Space.small) {
+                        if let starEvent = session.starEvent {
+                            StarBurst(
+                                earned: starEvent.award.earned,
+                                event: starEvent,
+                                announcement: resultAnnouncement,
+                                size: 20
+                            )
+                        } else {
+                            Image(systemName: "checkmark")
+                                .font(Theme.control)
+                                .foregroundStyle(PracticeBandStyle.orange)
+                            Text(settings.localized("Done"))
+                                .font(Theme.control)
+                                .fontWeight(.semibold)
+                        }
+                    }
+                    .padding(.bottom, Theme.Space.tight)
+                }
+
                 ForEach(session.mixResults) { result in
                     VStack(alignment: .leading, spacing: Theme.Space.tight) {
-                        HStack(alignment: .firstTextBaseline, spacing: Theme.Space.small) {
+                        HStack(alignment: .center, spacing: Theme.Space.small) {
+                            if result.score != nil {
+                                if result.met {
+                                    Image(systemName: "checkmark")
+                                        .font(Theme.meta)
+                                        .foregroundStyle(PracticeBandStyle.orange)
+                                        .accessibilityLabel(settings.localized("Passed"))
+                                } else if !result.counted {
+                                    Image(systemName: "exclamationmark.circle")
+                                        .font(Theme.meta)
+                                        .foregroundStyle(Theme.orange)
+                                        .accessibilityLabel(settings.localized("Did not count"))
+                                } else {
+                                    Image(systemName: "xmark")
+                                        .font(Theme.meta)
+                                        .foregroundStyle(Theme.markWrong)
+                                        .accessibilityLabel(settings.localized("not passed"))
+                                }
+                            }
                             Text(settings.localized(result.title))
                                 .lineLimit(1)
                             Spacer(minLength: 0)
+                            if result.score != nil {
+                                HStack(spacing: 2) {
+                                    ForEach(0..<3, id: \.self) { starIdx in
+                                        let earned = result.earnedStars.indices.contains(starIdx) && result.earnedStars[starIdx]
+                                        let fresh = result.freshStars.indices.contains(starIdx) && result.freshStars[starIdx]
+                                        Image(systemName: earned ? "star.fill" : "star")
+                                            .font(.system(size: 11, weight: .semibold))
+                                            .foregroundStyle(earned ? PracticeBandStyle.orange : Theme.ink.opacity(0.3))
+                                            .scaleEffect(fresh ? 1.25 : 1.0)
+                                    }
+                                }
+                            }
                             Text(result.score.map { "\(Int(($0 * 100).rounded())) %" } ?? "—")
                                 .monospacedDigit()
                         }
@@ -815,9 +866,9 @@ struct PracticeScreen: View {
 
     private func transportSquare(s: CGFloat) -> some View {
         let showsResult = session.summary != nil && !session.running
-        let second = showsResult && !session.isMix && !session.afterMe
+        let second = showsResult && (!session.isMix || onStepResult != nil) && !session.afterMe
             && (!session.finishedByReview || onStepResult != nil) ? transportSecondAction(s: s) : nil
-        let startTitle = session.errorMessage != nil ? "Start" : (session.finishedByReview ? "Play on" : "Again")
+        let startTitle = (session.errorMessage != nil || session.isMix) ? "Start" : (session.finishedByReview ? "Play on" : "Again")
         return TransportControls(
             running: session.running,
             enabled: session.ready && session.available,

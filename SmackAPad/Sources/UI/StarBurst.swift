@@ -7,11 +7,12 @@ struct StarBurst: View {
     let earned: [Bool]
     let event: StarEvent?
     let announcement: String
+    var size: CGFloat = 40
     @State private var revealed = false
     @State private var scale: CGFloat = 0.86
 
     var body: some View {
-        HStack(spacing: 20) {
+        HStack(spacing: size / 2) {
             ForEach(0..<3, id: \.self) { index in
                 let fresh = event?.award.fresh[index] == true
                 ZStack {
@@ -22,8 +23,8 @@ struct StarBurst: View {
                         .foregroundStyle(PracticeBandStyle.orange)
                         .opacity(earned[index] && (!fresh || revealed || reduced) ? 1 : 0)
                 }
-                .font(.system(size: 40, weight: .regular))
-                .frame(width: 40, height: 52)
+                .font(.system(size: size, weight: .regular))
+                .frame(width: size, height: size * 1.3)
                 .scaleEffect(fresh && !reduced ? scale : 1)
             }
         }

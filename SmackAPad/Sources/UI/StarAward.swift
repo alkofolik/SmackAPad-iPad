@@ -6,6 +6,11 @@ struct StarAward {
 
     var shouldStop: Bool { fresh[1] || fresh[2] }
 
+    init(earned: [Bool], fresh: [Bool]) {
+        self.earned = earned
+        self.fresh = fresh
+    }
+
     init(previous: LessonProgress?, passed: Bool, mastery: Bool, memory: Bool) {
         let before = [previous?.passed ?? false, previous?.mastery ?? false, previous?.memory ?? false]
         let result = [passed, mastery, memory]
