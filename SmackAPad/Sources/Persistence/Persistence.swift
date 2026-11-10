@@ -17,12 +17,33 @@ import UIKit
 /// Injectable for tests and future tickets (e.g. review scheduler).
 public struct AppCalendar: Sendable {
     public static var todayProvider: @Sendable () -> String = {
-        dayString(from: Date())
+        dayString(from: now())
     }
 
     public static func today() -> String {
         todayProvider()
     }
+
+    static func now() -> Date {
+        #if DEBUG
+        debugNowProvider()
+        #else
+        Date()
+        #endif
+    }
+
+    #if DEBUG
+    private static var debugNowProvider: @Sendable () -> Date = { Date() }
+
+    static func shiftedDate(by offset: Int, from date: Date = Date()) -> Date {
+        guard offset != 0 else { return date }
+        return Calendar.current.date(byAdding: .day, value: offset, to: date) ?? date
+    }
+
+    static func useDebugDayOffset(_ offset: Int) {
+        debugNowProvider = { shiftedDate(by: offset) }
+    }
+    #endif
 
     public static func dayString(from date: Date, timeZone: TimeZone = .current) -> String {
         var calendar = Calendar(identifier: .gregorian)
@@ -192,7 +213,11 @@ public enum AppLanguage: String, CaseIterable, Identifiable, Codable, Sendable {
 /// Observable manager for user preferences persisted in UserDefaults.
 @Observable
 public final class SettingsManager: @unchecked Sendable {
+    #if DEBUG
+    public static let shared = SettingsManager(userDefaults: DebugProfileStorage.defaults)
+    #else
     public static let shared = SettingsManager()
+    #endif
 
     private let userDefaults: UserDefaults
     private let lock = NSRecursiveLock()
@@ -427,6 +452,7 @@ public final class SettingsManager: @unchecked Sendable {
     }
 
     public static func defaultReminderTime(calendar: Calendar = .current) -> Date {
+        // The picker stores a time of day for real local notifications.
         var components = calendar.dateComponents([.year, .month, .day], from: Date())
         components.hour = 18
         components.minute = 0
@@ -1022,7 +1048,11 @@ public struct ProgressRoot: Codable, Equatable, Sendable {
 /// Observable manager for lesson progress saved as a JSON file in the Documents directory.
 @Observable
 public final class ProgressStore: @unchecked Sendable {
+    #if DEBUG
+    public static let shared = ProgressStore(fileURL: DebugProfileStorage.progressURL)
+    #else
     public static let shared = ProgressStore()
+    #endif
 
     /// Ticket 20: retired First steps IDs and their retained Intro equivalents.
     public static let duplicateIntroLessonMap: [Int: Int] = [

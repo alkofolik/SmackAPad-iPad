@@ -113,7 +113,11 @@ struct TodaySessionScreen: View {
     let onHome: () -> Void
 
     init(plan: TodayPlan, onHome: @escaping () -> Void) {
+        #if DEBUG
+        _coordinator = State(initialValue: TodaySessionCoordinator(plan: plan, defaults: DebugProfileStorage.defaults))
+        #else
         _coordinator = State(initialValue: TodaySessionCoordinator(plan: plan))
+        #endif
         self.onHome = onHome
     }
 
@@ -168,6 +172,9 @@ struct TodaySessionScreen: View {
                 }
             }
         }
+        #if DEBUG
+        .debugTestMarker()
+        #endif
         .task {
             if coordinator.plan.day != AppCalendar.today() {
                 onHome()

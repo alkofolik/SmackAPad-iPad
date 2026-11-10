@@ -42,6 +42,9 @@ public final class ReviewReminderScheduler: @unchecked Sendable {
 
     /// Asynchronously removes all pending review reminder notifications.
     public func cancelAllAsync() async {
+        #if DEBUG
+        guard !DebugProfileStorage.isActive else { return }
+        #endif
         let requests = await center.pendingNotificationRequests()
         let idsToRemove = requests.map(\.identifier).filter { $0.hasPrefix(Self.identifierPrefix) }
         if !idsToRemove.isEmpty {
@@ -74,6 +77,10 @@ public final class ReviewReminderScheduler: @unchecked Sendable {
         hour: Int? = nil,
         minute: Int? = nil
     ) async {
+        #if DEBUG
+        // Keep the real profile's OS notifications on the real calendar during test scenarios.
+        guard !DebugProfileStorage.isActive else { return }
+        #endif
         let isEnabled = enabled ?? SettingsManager.shared.reviewReminderEnabled
         guard isEnabled else {
             await cancelAllAsync()

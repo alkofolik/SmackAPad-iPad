@@ -66,6 +66,7 @@ public struct SettingsView: View {
                     PurchasesSection()
                     #if DEBUG
                     LegacyProgressImportSection()
+                    DebugDeveloperSection()
                     #endif
 
                     // MARK: 1. Kit Selection

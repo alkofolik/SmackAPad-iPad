@@ -4,6 +4,10 @@ import UserNotifications
 @main
 @MainActor
 struct SmackAPadApp: App {
+    #if DEBUG
+    // Stored properties initialize in declaration order, before the shared stores below.
+    private let debugStartup: Void = DebugTestStartup.prepare()
+    #endif
     @State private var store = StoreManager.shared
     @State private var settings = SettingsManager.shared
     @State private var progress = ProgressStore.shared
@@ -22,6 +26,9 @@ struct SmackAPadApp: App {
     var body: some Scene {
         WindowGroup {
             ContentView()
+                #if DEBUG
+                .defaultAppStorage(DebugProfileStorage.defaults)
+                #endif
                 .id(settings.languagePreference)
                 .tint(Theme.ink)
                 .environment(store)

@@ -802,8 +802,19 @@ public struct HomeScreen: View {
                 startAnimation()
             }
         }
+        #if DEBUG
+        .debugTestMarker()
+        #endif
         .padPresentation(item: $activeDestination, namespace: homeNamespace) { destination in
+            #if DEBUG
+            if case .today = destination {
+                destinationView(for: destination)
+            } else {
+                destinationView(for: destination).debugTestMarker()
+            }
+            #else
             destinationView(for: destination)
+            #endif
         }
         .onChange(of: AppNavigation.shared.route) { _, route in
             syncWithNavigationRoute(route)

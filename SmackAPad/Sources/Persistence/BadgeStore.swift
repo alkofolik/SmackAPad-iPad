@@ -4,7 +4,11 @@ import Observation
 /// Observable store managing badge definitions and persisted earned dates.
 @Observable
 final class BadgeStore: @unchecked Sendable {
+    #if DEBUG
+    static let shared = BadgeStore(userDefaults: DebugProfileStorage.defaults)
+    #else
     static let shared = BadgeStore()
+    #endif
 
     static let storageKey = "smackapad.badges"
 
@@ -96,7 +100,7 @@ final class BadgeStore: @unchecked Sendable {
         progress: [Int: LessonProgress],
         catalog: LibraryCatalog,
         trainingLog: TrainingLog = TrainingLog(),
-        at date: Date = Date()
+        at date: Date = AppCalendar.now()
     ) -> [String] {
         lock.lock()
         let currentKeys = Set(records.keys)
@@ -130,7 +134,7 @@ final class BadgeStore: @unchecked Sendable {
         catalog: LibraryCatalog,
         trainingLog: TrainingLog = TrainingLog(),
         onlyGroup: BadgeGroup? = nil,
-        at date: Date = Date()
+        at date: Date = AppCalendar.now()
     ) -> [BadgeDefinition] {
         lock.lock()
         let currentKeys = Set(records.keys)

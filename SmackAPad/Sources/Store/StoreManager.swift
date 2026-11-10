@@ -23,7 +23,18 @@ final class StoreManager {
     @ObservationIgnored private var updates: Task<Void, Never>?
     @ObservationIgnored private var refreshGeneration = 0
 
+    #if DEBUG
+    var debugAccessOverride = DebugOverrides(defaults: DebugProfileStorage.defaults).access
+    #endif
+
     var hasFullAccess: Bool {
+        #if DEBUG
+        if debugAccessOverride != .real { return debugAccessOverride == .full }
+        #endif
+        return ownsFullAccess
+    }
+
+    private var ownsFullAccess: Bool {
         ownedProductIDs.contains(Self.fullID) || ownedProductIDs.contains(Self.bundleID)
     }
 
@@ -46,6 +57,9 @@ final class StoreManager {
         let access = lesson.access ?? "full"
         if access == "free" { return true }
         if access == "full" { return hasFullAccess }
+        #if DEBUG
+        if debugAccessOverride != .real { return false }
+        #endif
         guard let id = productID(for: access) else { return false }
         return ownedProductIDs.contains(id) || ownedProductIDs.contains(Self.bundleID)
     }
@@ -135,7 +149,8 @@ final class StoreManager {
         do {
             try await AppStore.sync()
             await refreshEntitlements()
-            let knownOwnership = hasFullAccess || ownedProductIDs.contains { $0.hasPrefix(Self.productPrefix + ".pack.") }
+            let knownOwnership = ownsFullAccess
+                || ownedProductIDs.contains { $0.hasPrefix(Self.productPrefix + ".pack.") }
             message = knownOwnership ? "Purchases restored" : "No previous purchases found"
         } catch StoreKitError.userCancelled {
         } catch {

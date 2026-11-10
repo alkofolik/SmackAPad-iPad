@@ -115,7 +115,11 @@ public struct CategoryProgressionStatus: Equatable, Sendable, Identifiable {
 /// Observable manager for category unlock progression, soft unlocks, and lesson counts.
 @Observable
 public final class ProgressionManager: @unchecked Sendable {
+    #if DEBUG
+    public static let shared = ProgressionManager(userDefaults: DebugProfileStorage.defaults)
+    #else
     public static let shared = ProgressionManager()
+    #endif
 
     // MARK: Configuration
 

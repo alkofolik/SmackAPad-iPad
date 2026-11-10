@@ -90,6 +90,9 @@ struct PracticeScreen: View {
             .calmChassisBackground()
             .foregroundStyle(Theme.ink)
         }
+        #if DEBUG
+        .debugTestMarker()
+        #endif
         .toolbar(.hidden, for: .navigationBar)
         .task(id: ObjectIdentifier(session)) {
             await session.prepare()
