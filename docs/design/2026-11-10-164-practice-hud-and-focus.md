@@ -1,6 +1,6 @@
 # Practice Screen: Timing Cue, Run Progress & Focus Mode — Design Proposal (Ticket 164)
 
-**Status:** Design proposal ready for Jakub's decision. Approved for design phase on 2026-11-10.  
+**Status:** Historical design proposal. The sizes and stationary-band recommendation are superseded by ticket 171 and its approved variant B (2026-11-11); use ticket 171 for current layout rules.
 **Deliverable:** Design document and visual previews in `docs/design/previews/164/`.  
 **Next step:** Jakub picks the preferred variants for Timing Cue (B) and Run Progress (C), and approves the Focus Mode rules (D). Implementation follows as **Ticket 165** (zero Swift app code modified in this ticket).
 

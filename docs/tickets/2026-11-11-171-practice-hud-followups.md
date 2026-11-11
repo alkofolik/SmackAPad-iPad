@@ -1,6 +1,6 @@
 # 171 — Practice HUD follow-ups: BPM disappears, indicators too small, lesson title, calmer idle layout
 
-Status: ready-for-agent. Jakub decided on 2026-11-11: the band MAY move or grow between idle and running, with one smooth animation (this replaces the "band must not move" rule of ticket 165). Follows ticket 165 (tested by Jakub on the iPad on 2026-11-11; mostly passed).
+Status: implemented; awaiting Jakub's manual iPad checks. Variant B approved in chat on 2026-11-11. Jakub decided on 2026-11-11: the band MAY move or grow between idle and running, with one smooth animation (this replaces the "band must not move" rule of ticket 165). Follows ticket 165 (tested by Jakub on the iPad on 2026-11-11; mostly passed).
 
 ## Goal
 
@@ -56,8 +56,8 @@ None required for A–C (layout only). If a pure sizing or priority helper is ex
 - [ ] After a tempo-up the BPM readout is still visible, together with the banner, in landscape, portrait, narrow window and Czech.
 - [ ] BPM readout, timing cue and run meter are clearly larger and readable at playing distance; nothing overlaps the band.
 - [ ] Lesson title and stars look correct with the lesson stopped (cause found and fixed, or reported if not reproducible).
-- [ ] Part D delivered as a preview approved by Jakub first, then built; HUD row and focus mode from 165 still work.
-- [ ] Build succeeds and the full test suite passes.
+- [x] Part D delivered as a preview approved by Jakub first, then built; HUD row and focus mode from 165 still work (manual iPad confirmation pending).
+- [x] Build succeeds and the full test suite passes.
 
 ### Manual iPad checks for Jakub
 
@@ -77,3 +77,14 @@ Build, run the full test suite per `AGENTS.md`, commit, stop for Jakub's iPad ch
 ## Decision (Jakub, 2026-11-11)
 
 The band may move or grow between idle and running, animated smoothly. Delete the old 165 rule and any code or test that keeps the band frame fixed.
+
+
+## Implementation notes (2026-11-11)
+
+- Preview: `docs/design/previews/171/idle-layout.html`. The first comparison used different preset band heights and was corrected before approval. Jakub approved corrected variant B: collapse the header during focus and use the remaining space for the band.
+- A: removed `PracticeHUDLayout` and its zero-width BPM fallback. Notices have their own wrapping row; the cue moves below BPM and the run meter when the main row does not fit.
+- B: scaled 180×30 pt timing track, 14×20 pt pip, 40×22 pt run blocks, `Theme.rowTitle` star badge and bold 28 pt BPM. The HUD uses its measured height with a scaled 64 pt minimum instrument row.
+- C: exact reported appearance could not be reproduced because native Simulator UI control was unavailable. Code inspection found title/tools width competition and a badge overlay on the header. The title now has at most two lines, stars retain their width, narrow headers stack, and badges have a separate row. Manual visual confirmation remains required.
+- D: idle Play removes the unused HUD and phase space; focus collapses the header. One standard transition is keyed only to `focusActive`, including count-in. Reduce Motion changes geometry instantly. Listen retains its chrome. Scoring, input and MIDI code are unchanged.
+- No new tests: layout-only changes, no pure sizing or priority helper extracted.
+- Validation: simulator build succeeded; full `SmackAPad` test plan passed on iPad (A16), iOS 27.0: 243 passed, 0 failed, 0 skipped. `xcodebuild` exited normally. Existing warnings outside the changed files were left unchanged. Manual iPad checks above remain pending.

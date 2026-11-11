@@ -102,6 +102,13 @@ struct TimingCue: View {
     let offset: Double
     var active = true
 
+    @ScaledMetric(relativeTo: .body) private var trackWidth: CGFloat = 180
+    @ScaledMetric(relativeTo: .body) private var trackHeight: CGFloat = 30
+    @ScaledMetric(relativeTo: .body) private var pipWidth: CGFloat = 14
+    @ScaledMetric(relativeTo: .body) private var pipHeight: CGFloat = 20
+    @ScaledMetric(relativeTo: .body) private var notchWidth: CGFloat = 2
+    @ScaledMetric(relativeTo: .body) private var markHeight: CGFloat = 12
+
     private var timingKey: String {
         if offset < 0 { return "Early" }
         if offset > 0 { return "Late" }
@@ -114,25 +121,25 @@ struct TimingCue: View {
                 .fill(Theme.surface)
                 .overlay { Capsule().strokeBorder(Theme.hairline, lineWidth: 1) }
 
-            ForEach([-10.0, 10.0], id: \.self) { mark in
+            ForEach([-1.0, 1.0], id: \.self) { side in
                 Rectangle()
                     .fill(Theme.hairline)
-                    .frame(width: 1, height: 6)
-                    .offset(x: mark)
+                    .frame(width: 1, height: markHeight)
+                    .offset(x: side * trackWidth / 9)
             }
 
             Rectangle()
                 .fill(Theme.secondary)
-                .frame(width: 1.5, height: 10)
+                .frame(width: notchWidth, height: pipHeight)
 
             Capsule()
                 .fill(offset == 0 ? Theme.orange : Theme.ink)
-                .frame(width: 8, height: 10)
-                .offset(x: offset * 36)
+                .frame(width: pipWidth, height: pipHeight)
+                .offset(x: offset * (trackWidth - pipWidth) / 2)
                 .animation(reduceMotion ? nil : .spring(response: 0.35, dampingFraction: 0.78),
                            value: offset)
         }
-        .frame(width: 88, height: 16)
+        .frame(width: trackWidth, height: trackHeight)
         .opacity(active ? 1 : 0.35)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(settings.localized("Hit timing"))
@@ -497,6 +504,11 @@ struct PracticeNextButtonStyle: ButtonStyle {
 struct RunMeterView: View {
     @Environment(SettingsManager.self) private var settings
 
+    @ScaledMetric(relativeTo: .body) private var blockHeight: CGFloat = 40
+    @ScaledMetric(relativeTo: .body) private var blockWidth: CGFloat = 22
+    @ScaledMetric(relativeTo: .body) private var stepGap: CGFloat = 3
+    @ScaledMetric(relativeTo: .body) private var blockInset: CGFloat = 2
+
     let progress: (count: Int, required: Int, name: String, starIndex: Int)
     let fraction: Double
     let verdict: RunVerdict?
@@ -514,10 +526,10 @@ struct RunMeterView: View {
                 Image(systemName: "star.fill")
                 Text("\(progress.starIndex + 1)").monospacedDigit()
             }
-            .font(Theme.meta)
+            .font(Theme.rowTitle)
             .foregroundStyle(starMomentActive ? Theme.orange : Theme.ink)
             .padding(.horizontal, Theme.Space.small)
-            .frame(height: 24)
+            .frame(height: blockHeight)
             .background(Theme.surface, in: Capsule())
             .overlay { Capsule().strokeBorder(Theme.hairline, lineWidth: 1) }
 
@@ -542,7 +554,7 @@ struct RunMeterView: View {
     private func runBlock(index: Int) -> some View {
         let banked = index < progress.count
         let lit = banked ? 3 : (index == progress.count ? Self.litMicroSteps(fraction: fraction) : 0)
-        return VStack(spacing: 2) {
+        return VStack(spacing: stepGap) {
             ForEach((0..<3).reversed(), id: \.self) { step in
                 Rectangle()
                     .fill(Theme.hairline)
@@ -553,8 +565,8 @@ struct RunMeterView: View {
                     }
             }
         }
-        .padding(2)
-        .frame(width: 14, height: 24)
+        .padding(blockInset)
+        .frame(width: blockWidth, height: blockHeight)
         .background(Theme.surface)
         .animation(verdict?.passed == true ? Theme.Motion.fast : .easeOut(duration: 0.20),
                    value: verdict?.id)

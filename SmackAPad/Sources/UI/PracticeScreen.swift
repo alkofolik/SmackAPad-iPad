@@ -82,18 +82,16 @@ struct PracticeScreen: View {
             let s = min(defaultS, max(80, (availableWidth - 2 * Theme.Space.small) / 3))
 
             VStack(spacing: Theme.Space.regular) {
-                topZone(isPortrait: isPortrait, width: geometry.size.width)
-                    .fixedSize(horizontal: false, vertical: true)
-                    .opacity(focusActive ? 0 : 1)
-                    .allowsHitTesting(!focusActive)
-                    .accessibilityHidden(focusActive)
-                    .animation(focusFade, value: focusActive)
-                    .overlay(alignment: .bottom) {
-                        if let event = session.badgeBannerEvent {
-                            BadgeBanner(event: event) { session.clearBadgeBannerEvent() }
-                                .id(event.id)
-                        }
-                    }
+                if !focusActive {
+                    topZone(isPortrait: isPortrait, width: geometry.size.width)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .transition(.opacity)
+                }
+
+                if let event = session.badgeBannerEvent {
+                    BadgeBanner(event: event) { session.clearBadgeBannerEvent() }
+                        .id(event.id)
+                }
 
                 middleZone
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -103,6 +101,7 @@ struct PracticeScreen: View {
             }
             .padding(Theme.Space.page)
             .frame(width: geometry.size.width, height: geometry.size.height)
+            .animation(reduced ? nil : Theme.Motion.standard, value: focusActive)
             .calmChassisBackground()
             .foregroundStyle(Theme.ink)
         }
@@ -215,7 +214,7 @@ struct PracticeScreen: View {
     }
 
     private func topZone(isPortrait: Bool, width: CGFloat) -> some View {
-        let stacked = isPortrait || width < 850 || dynamicType.isAccessibilitySize
+        let stacked = isPortrait || width < 1_100 || dynamicType.isAccessibilitySize
         let layout = stacked
             ? AnyLayout(VStackLayout(alignment: .leading, spacing: Theme.Space.small))
             : AnyLayout(HStackLayout(spacing: Theme.Space.regular))
@@ -224,7 +223,10 @@ struct PracticeScreen: View {
             : AnyLayout(HStackLayout(spacing: Theme.Space.controlGap))
 
         return layout {
-            HStack(spacing: Theme.Space.regular) {
+            let titleLayout = width < 600 || dynamicType.isAccessibilitySize
+                ? AnyLayout(VStackLayout(alignment: .leading, spacing: Theme.Space.small))
+                : AnyLayout(HStackLayout(spacing: Theme.Space.regular))
+            titleLayout {
                 libraryButton
                 titleAndSubtitle
             }
@@ -259,9 +261,12 @@ struct PracticeScreen: View {
                      ? settings.localized("Mix · %lld of %lld · %@", session.mixIndex + 1, session.mixLessons.count, settings.localized(session.lesson.title))
                      : settings.localized(session.lesson.title))
                     .font(Theme.rowTitle)
+                    .lineLimit(2)
                     .fixedSize(horizontal: false, vertical: true)
+                    .frame(maxWidth: .infinity, alignment: .leading)
                 if !session.isMix {
                     headerStars
+                        .fixedSize()
                 }
             }
             lessonSubtitle
@@ -470,90 +475,100 @@ struct PracticeScreen: View {
     }
 
     private var middleZone: some View {
-        GeometryReader { geometry in
-            let rows = Set(session.patternHits.map(\.padIndex)).count
-            let availableHeight = geometry.size.height
-            let separateTempoBanner = geometry.size.width < 600 && !session.listen && !session.afterMe
-            let rowHeight: CGFloat = 48
-            let hudHeight = rowHeight * (separateTempoBanner ? 2 : 1)
-            let phaseHeight: CGFloat = session.afterMe ? 32 : 0
-            let reservedHeight = hudHeight + phaseHeight
-            let preferredHeight = PracticeBandStyle.bandHeight(rows: rows, availableHeight: availableHeight)
-            let bandHeight = min(preferredHeight, max(0, availableHeight - reservedHeight))
-            let bandTop = max(reservedHeight, (availableHeight - bandHeight) / 2)
+        TimelineView(.animation(minimumInterval: 1.0 / 60, paused: !session.running)) { timeline in
+            let frame = session.patternFrame(at: timeline.date)
+            let scored = focusActive && frame.countdown == nil
+                && (!session.afterMe || frame.pass.isMultiple(of: 2))
 
-            TimelineView(.animation(minimumInterval: 1.0 / 60, paused: !session.running)) { timeline in
-                let frame = session.patternFrame(at: timeline.date)
-                let scored = focusActive && frame.countdown == nil
-                    && (!session.afterMe || frame.pass.isMultiple(of: 2))
+            VStack(spacing: 0) {
+                if focusActive || session.listen {
+                    practiceHUD(frame: frame, date: timeline.date, scored: scored)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .transition(.opacity)
+                }
 
-                VStack(spacing: 0) {
-                    practiceHUD(frame: frame, date: timeline.date, scored: scored,
-                                separateTempoBanner: separateTempoBanner)
-                        .frame(height: rowHeight)
-                    if separateTempoBanner {
-                        tempoUpBanner
-                            .frame(maxWidth: .infinity, alignment: .trailing)
-                            .frame(height: rowHeight)
-                    }
+                if session.afterMe && focusActive {
+                    Text(settings.localized(session.afterMePhase(at: frame)))
+                        .font(Theme.rowTitle)
+                        .lineLimit(1)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding(.bottom, Theme.Space.small)
+                        .allowsHitTesting(false)
+                }
 
-                    Spacer(minLength: 0)
-                        .frame(height: bandTop - reservedHeight)
-
-                    if session.afterMe {
-                        Text(settings.localized(session.afterMePhase(at: frame)))
-                            .font(Theme.rowTitle)
-                            .lineLimit(1)
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                            .frame(height: phaseHeight, alignment: .topLeading)
-                            .allowsHitTesting(false)
-                    }
+                GeometryReader { geometry in
+                    let rows = Set(session.patternHits.map(\.padIndex)).count
+                    let bandHeight = min(geometry.size.height,
+                        PracticeBandStyle.bandHeight(rows: rows, availableHeight: geometry.size.height))
                     practiceBand(frame: frame, scored: scored)
                         .frame(height: bandHeight)
-                    Spacer(minLength: 0)
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
                 }
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
         }
     }
 
-    private func practiceHUD(frame: PatternFrame, date: Date, scored: Bool,
-                             separateTempoBanner: Bool) -> some View {
-        PracticeHUDLayout {
+    @ScaledMetric(relativeTo: .body) private var hudRowHeight: CGFloat = 64
+    @ScaledMetric(relativeTo: .body) private var hudNoticeHeight: CGFloat = 48
+
+    private func practiceHUD(frame: PatternFrame, date: Date, scored: Bool) -> some View {
+        VStack(spacing: 0) {
             ViewThatFits(in: .horizontal) {
-                HStack(alignment: .firstTextBaseline, spacing: Theme.Space.tight) {
-                    Text("\(frame.bpm)").font(Theme.rowTitle).monospacedDigit()
-                    Text("BPM").font(Theme.meta)
+                HStack(spacing: Theme.Space.regular) {
+                    hudTempo(bpm: frame.bpm)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                    TimingCue(offset: scored ? session.timingHistory.cueOffset(at: date) : 0, active: scored)
+                    runMeter(frame: frame, scored: scored)
+                        .frame(maxWidth: .infinity, alignment: .trailing)
                 }
-                .fixedSize()
-                .foregroundStyle(Theme.secondary)
-                .accessibilityElement(children: .combine)
-                .opacity(focusActive ? 1 : 0)
-                .accessibilityHidden(!focusActive)
-                .animation(focusFade, value: focusActive)
-
-                Color.clear.accessibilityHidden(true)
+                VStack(spacing: Theme.Space.small) {
+                    HStack(spacing: Theme.Space.small) {
+                        hudTempo(bpm: frame.bpm)
+                        Spacer(minLength: 0)
+                        runMeter(frame: frame, scored: scored)
+                    }
+                    TimingCue(offset: scored ? session.timingHistory.cueOffset(at: date) : 0, active: scored)
+                }
             }
+            .frame(minHeight: hudRowHeight)
 
-            TimingCue(offset: scored ? session.timingHistory.cueOffset(at: date) : 0, active: scored)
-
-            HStack(spacing: Theme.Space.small) {
+            // Notices never compete with the tempo, cue or run meter for width.
+            FlowLayout(spacing: Theme.Space.small) {
                 if focusActive {
-                    if !separateTempoBanner {
-                        tempoUpBanner
-                    }
+                    tempoUpBanner
                     PlayingLastRunChip(lastRun: session.runResults.last)
-                    if session.showsMemoryFadePhase {
-                        MemoryPhaseChip(phase: session.memoryPhaseText(settings: settings))
-                    } else if let progress = session.starRunProgress {
-                        RunMeterView(
-                            progress: progress,
-                            fraction: scored ? session.runMeterFraction(at: frame) : 0,
-                            verdict: session.lastVerdict,
-                            starMomentActive: midLessonStarMomentActive
-                        )
-                    }
                 }
+            }
+            .frame(maxWidth: .infinity, minHeight: hudNoticeHeight, alignment: .trailing)
+        }
+    }
+
+    private func hudTempo(bpm: Int) -> some View {
+        VStack(alignment: .leading, spacing: 0) {
+            Text("\(bpm)")
+                .font(Theme.display(28).bold())
+                .monospacedDigit()
+            Text("BPM").font(Theme.meta)
+        }
+        .fixedSize()
+        .accessibilityElement(children: .combine)
+        .opacity(focusActive ? 1 : 0)
+        .accessibilityHidden(!focusActive)
+        .animation(focusFade, value: focusActive)
+    }
+
+    @ViewBuilder
+    private func runMeter(frame: PatternFrame, scored: Bool) -> some View {
+        if focusActive {
+            if session.showsMemoryFadePhase {
+                MemoryPhaseChip(phase: session.memoryPhaseText(settings: settings))
+            } else if let progress = session.starRunProgress {
+                RunMeterView(
+                    progress: progress,
+                    fraction: scored ? session.runMeterFraction(at: frame) : 0,
+                    verdict: session.lastVerdict,
+                    starMomentActive: midLessonStarMomentActive
+                )
             }
         }
     }
@@ -1536,34 +1551,5 @@ private extension View {
             ) {
                 content()
             }
-    }
-}
-
-/// Keeps the cue centred while there is room, then gives the trailing instruments priority.
-private struct PracticeHUDLayout: Layout {
-    func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
-        proposal.replacingUnspecifiedDimensions()
-    }
-
-    func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) {
-        let bpm = subviews[0]
-        let cue = subviews[1]
-        let trailing = subviews[2]
-        let gap = Theme.Space.small
-        let bpmWidth = bpm.sizeThatFits(.unspecified).width
-        let cueWidth = cue.sizeThatFits(.unspecified).width
-        let trailingWidth = trailing.sizeThatFits(.unspecified).width
-        let sideWidth = (bounds.width - cueWidth) / 2 - gap
-        let bpmFits = bpmWidth <= sideWidth && trailingWidth <= sideWidth
-        bpm.place(at: CGPoint(x: bounds.minX, y: bounds.midY), anchor: .leading,
-                  proposal: ProposedViewSize(width: bpmFits ? bpmWidth : 0, height: bounds.height))
-
-        let trailingSpace = min(trailingWidth, max(0, bounds.width - cueWidth - gap))
-        trailing.place(at: CGPoint(x: bounds.maxX, y: bounds.midY), anchor: .trailing,
-                       proposal: ProposedViewSize(width: trailingSpace, height: bounds.height))
-
-        let cueX = trailingWidth <= sideWidth
-            ? bounds.midX : bounds.maxX - trailingSpace - gap - cueWidth / 2
-        cue.place(at: CGPoint(x: cueX, y: bounds.midY), anchor: .center, proposal: .unspecified)
     }
 }
