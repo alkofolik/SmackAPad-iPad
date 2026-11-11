@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="cs">
+<head>
+<meta charset="utf-8">
+<title>Trénink</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&amp;family=Barlow+Condensed:wght@800&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0;font-family:'IBM Plex Sans',sans-serif;color:#1F1D1A}
+.ic{width:22px;height:22px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.step{border-radius:14px;padding:14px 16px;display:flex;flex-direction:column;gap:4px;min-height:96px;box-sizing:border-box}
+.card{border-radius:20px;background:#EBE5DA;border:1px solid rgba(31,29,26,.10);padding:20px;display:flex;flex-direction:column;gap:14px}
+.k{font:700 12px 'IBM Plex Sans';letter-spacing:.08em;color:#5E5950}
+.p{height:56px;flex:1;border:0;border-radius:14px;background:#FF6B00;font:700 19px 'IBM Plex Sans';color:#1F1D1A}
+.s{height:56px;flex:1;border:1.5px solid rgba(31,29,26,.28);border-radius:14px;background:#F4EFE6;font:600 17px 'IBM Plex Sans';color:#1F1D1A}
+.row{height:60px;border-radius:14px;background:#EBE5DA;border:1px solid rgba(31,29,26,.10);display:flex;align-items:center;padding:0 18px;gap:14px;font:600 17px 'IBM Plex Sans'}
+</style>
+</helmet>
+<div style="width:1194px;height:834px;background:#F4EFE6;position:relative;overflow:hidden">
+  <div style="position:absolute;left:24px;right:24px;top:24px;height:56px;display:flex;align-items:center;gap:20px">
+    <button aria-label="Zpět" style="width:56px;height:56px;border:0;background:#E6DFD2;border-radius:14px;display:flex;align-items:center;justify-content:center"><svg class="ic" viewBox="0 0 24 24" style="width:24px;height:24px"><path d="M15 5l-7 7 7 7"/></svg></button>
+    <div style="font:700 28px 'IBM Plex Sans';flex:1">Trénink</div>
+    <div style="font:500 16px 'IBM Plex Sans';color:#5E5950">Středa 11. 11.</div>
+  </div>
+
+  <section style="position:absolute;left:24px;right:24px;top:104px;height:220px;border-radius:24px;background:#E8620A;padding:24px;box-sizing:border-box;display:flex;flex-direction:column;gap:14px">
+      <div style="font:800 40px/1 'Barlow Condensed';letter-spacing:.02em">DNES</div>
+      <div style="flex:1;display:grid;grid-template-columns:repeat(3,minmax(0,1fr)) 200px;gap:12px">
+        <div class="step" style="background:#F4EFE6">
+          <div style="display:flex;justify-content:space-between"><span class="k">1 · OPAKOVÁNÍ</span><svg class="ic" viewBox="0 0 24 24" style="width:18px;height:18px;stroke-width:3"><path d="M5 12l5 5 9-10"/></svg></div>
+          <div style="font:600 19px 'IBM Plex Sans'">2 lekce</div>
+          <div style="font:500 14px 'IBM Plex Sans';color:#5E5950">1 splněna · 1 zítra</div>
+        </div>
+        <div class="step" style="background:#F4EFE6;box-shadow:inset 0 0 0 3px #1F1D1A">
+          <div style="display:flex;justify-content:space-between"><span class="k" style="color:#1F1D1A">2 · NOVÁ LEKCE</span><span style="font:700 13px 'IBM Plex Sans'">teď</span></div>
+          <div style="font:600 19px 'IBM Plex Sans'">Soul 2</div>
+          <div style="font:500 14px 'IBM Plex Sans';color:#5E5950">1 takt · 85 BPM</div>
+        </div>
+        <div class="step" style="background:rgba(244,239,230,.35);border:1.5px dashed rgba(31,29,26,.4)">
+          <span class="k" style="color:#1F1D1A">3 · MIX · NEPOVINNÝ</span>
+          <div style="font:600 19px 'IBM Plex Sans'">3 lekce</div>
+          <div style="font:500 14px 'IBM Plex Sans';color:#1F1D1A">každá jednou</div>
+        </div>
+    <button style="border:0;border-radius:14px;background:#1F1D1A;color:#F4EFE6;font:700 26px 'IBM Plex Sans';display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px">Pokračovat<span style="font:500 15px 'IBM Plex Sans';color:#B3ADA2">Soul 2</span></button>
+      </div>
+  </section>
+
+  <div style="position:absolute;left:24px;right:24px;top:348px;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:24px">
+    <article class="card">
+      <div style="display:flex;justify-content:space-between;align-items:center"><span class="k">MIX NAVÍC</span>
+        <label style="display:flex;align-items:center;gap:10px;font:600 15px 'IBM Plex Sans'">Z paměti<span style="width:48px;height:28px;border-radius:14px;background:#B3ADA2;position:relative;display:inline-block"><span style="position:absolute;left:3px;top:3px;width:22px;height:22px;border-radius:50%;background:#F4EFE6"></span></span></label>
+      </div>
+      <div style="font:500 17px/1.55 'IBM Plex Sans'">Groove, přechod a zpět<br>UK funky 1 · synkopy rimu<br>Hardgroove 1 · předrážky</div>
+      <div style="display:flex;gap:12px"><button class="s">Jiný mix</button><button class="p">Začít mix</button></div>
+    </article>
+    <article class="card">
+      <span class="k">ZAHRAJ PO MNĚ</span>
+      <div style="display:flex;justify-content:space-between;align-items:center"><div style="font:600 20px 'IBM Plex Sans'">Open hi-hat na &amp;</div>
+        <span style="display:flex;gap:2px"><svg viewBox="0 0 24 24" style="width:20px;height:20px;fill:#FF6B00"><polygon points="12 3 14.8 9 21 9.6 16.3 13.8 17.7 20 12 16.8 6.3 20 7.7 13.8 3 9.6 9.2 9"/></svg><svg viewBox="0 0 24 24" style="width:20px;height:20px;fill:#FF6B00"><polygon points="12 3 14.8 9 21 9.6 16.3 13.8 17.7 20 12 16.8 6.3 20 7.7 13.8 3 9.6 9.2 9"/></svg><svg viewBox="0 0 24 24" style="width:20px;height:20px;fill:none;stroke:#B3ADA2;stroke-width:1.6"><polygon points="12 3 14.8 9 21 9.6 16.3 13.8 17.7 20 12 16.8 6.3 20 7.7 13.8 3 9.6 9.2 9"/></svg></span></div>
+      <div style="font:500 15px 'IBM Plex Sans';color:#5E5950;flex:1">Aplikace zahraje, ty zopakuješ.</div>
+      <div style="display:flex;gap:12px"><button class="s">Jiná lekce</button><button class="p">Začít</button></div>
+    </article>
+  </div>
+
+  <div style="position:absolute;left:24px;right:24px;top:606px;display:flex;flex-direction:column;gap:8px">
+    <button class="row"><svg class="ic" viewBox="0 0 24 24"><path d="M4 6h16"/><path d="M4 12h16"/><path d="M4 18h10"/></svg><span style="flex:1;text-align:left">Fronta opakování</span><span style="color:#5E5950;font-weight:500">81</span><svg class="ic" viewBox="0 0 24 24"><path d="M9 5l7 7-7 7"/></svg></button>
+    <button class="row"><svg class="ic" viewBox="0 0 24 24"><path d="M4 20V10"/><path d="M10 20V4"/><path d="M16 20v-7"/><path d="M22 20H2"/></svg><span style="flex:1;text-align:left">Paměť a příštích 7 dní</span><svg class="ic" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg></button>
+    <button class="row"><svg class="ic" viewBox="0 0 24 24"><circle cx="12" cy="9" r="6"/><path d="M8.5 14L7 22l5-3 5 3-1.5-8"/></svg><span style="flex:1;text-align:left">Odznaky za trénink</span><span style="color:#5E5950;font-weight:500">2 / 9</span><svg class="ic" viewBox="0 0 24 24"><path d="M9 5l7 7-7 7"/></svg></button>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1194,"height":834}}'>
+class Component extends DCLogic {
+  renderVals() { return {}; }
+}
+</script>
+</body>
+</html>

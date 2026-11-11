@@ -1,0 +1,20 @@
+{"v":3,"createdOnFiles":{"v":1,"at":"2026-11-11T15:45:00Z"},"title":"Smack-a-Pad – návrhy obrazovek (kolo 11. 11.)","launch":{"view":"canvas"},"pages":[],"boards":{
+"Main.dc.html":{"x":0,"y":300,"w":1194,"h":834,"title":"1 · Lekce před startem – nová lišta, jména bubnů"},
+"PracticeRunning.dc.html":{"x":1274,"y":300,"w":1194,"h":834,"title":"2 · Lekce běží – klidný režim, ukazatel plnění, oddělená linka průběhu"},
+"PracticeResult.dc.html":{"x":2548,"y":300,"w":1194,"h":834,"title":"3 · Konec běhu – nová karta výsledku"},
+"MixLineup.dc.html":{"x":0,"y":1557,"w":1194,"h":834,"title":"4 · Mix – přehled před startem"},
+"MixNext.dc.html":{"x":1274,"y":1557,"w":1194,"h":834,"title":"5 · Mix – další lekce čeká na START"},
+"DaySummary.dc.html":{"x":2548,"y":1557,"w":1194,"h":834,"title":"6 · Shrnutí dne"},
+"Training.dc.html":{"x":0,"y":2814,"w":1194,"h":834,"title":"7 · Trénink (sloučené Dnes + Trénink)"},
+"Home.dc.html":{"x":1274,"y":2814,"w":1194,"h":834,"title":"8 · Domů – stejné pady, krátké texty"},
+"Badges.dc.html":{"x":2548,"y":2814,"w":1194,"h":834,"title":"9 · Odznaky"},
+"HelpLegend.dc.html":{"x":0,"y":4071,"w":640,"h":600,"title":"10 · Nápověda – obrazovka lekce"},
+"SettingsSound.dc.html":{"x":720,"y":4071,"w":720,"h":834,"title":"11 · Nastavení – zvuk, hlasitost nástrojů na rozklik"},
+"About.dc.html":{"x":1520,"y":4071,"w":1194,"h":834,"title":"12 · O aplikaci"},
+"Paywall.dc.html":{"x":2794,"y":4071,"w":1194,"h":834,"title":"13 · Plná verze"}
+},"order":["Main.dc.html","PracticeRunning.dc.html","PracticeResult.dc.html","MixLineup.dc.html","MixNext.dc.html","DaySummary.dc.html","Training.dc.html","Home.dc.html","Badges.dc.html","HelpLegend.dc.html","SettingsSound.dc.html","About.dc.html","Paywall.dc.html"],"notes":{
+"r1":{"x":0,"y":50,"text":"Cvičení – lišta, průběh, výsledek (body 1, 6, 7, 13, 14, 15)","kind":"title1","maxW":3742},
+"r2":{"x":0,"y":1307,"text":"Denní mix a shrnutí dne (body 1, 8, 9, 10)","kind":"title1","maxW":3742},
+"r3":{"x":0,"y":2564,"text":"Trénink, Domů, Odznaky (body 2, 3, 4, 12, 18)","kind":"title1","maxW":3742},
+"r4":{"x":0,"y":3821,"text":"Nápověda, Nastavení, O aplikaci, Plná verze (body 11, 17, 19, 20)","kind":"title1","maxW":3988}
+},"designSystems":[]}

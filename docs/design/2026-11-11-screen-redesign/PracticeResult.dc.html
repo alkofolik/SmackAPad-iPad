@@ -1,0 +1,103 @@
+<!doctype html>
+<html lang="cs">
+<head>
+<meta charset="utf-8">
+<title>Konec běhu – výsledek</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0;font-family:'IBM Plex Sans',sans-serif;color:#1F1D1A}
+.ic{width:24px;height:24px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.grp{display:flex;gap:4px;padding:4px;border-radius:16px;background:#E6DFD2}
+.b{width:48px;height:48px;border:0;border-radius:12px;background:transparent;color:#1F1D1A;display:flex;align-items:center;justify-content:center;gap:2px;font:600 15px 'IBM Plex Sans';padding:0}
+.b.on{background:#FF6B00}
+.ghost{display:flex;gap:8px}
+.ghost .b{border:1.5px solid rgba(31,29,26,.28)}
+.chip{position:absolute;top:10px;width:46px;height:52px;border-radius:8px;background:#F4EFE6;display:flex;align-items:center;justify-content:center;font:700 17px 'IBM Plex Sans';color:#1F1D1A}
+.st{width:44px;height:44px}
+</style>
+</helmet>
+<div style="width:1194px;height:834px;background:#F4EFE6;position:relative;overflow:hidden">
+  <div style="position:absolute;left:24px;right:24px;top:24px;height:56px;display:flex;align-items:center;gap:20px">
+    <button class="b" aria-label="Zpět" style="width:56px;height:56px;background:#E6DFD2;border-radius:14px"><svg class="ic" viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg></button>
+    <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:2px">
+      <div style="font:600 22px/1.15 'IBM Plex Sans'">Funk 5</div>
+      <div style="color:#5E5950;font:500 14px 'IBM Plex Sans'">1 takt</div>
+    </div>
+    <div class="grp" role="group" aria-label="Režim">
+      <button class="b" aria-label="Poslech"><svg class="ic" viewBox="0 0 24 24"><path d="M7 10a5 5 0 0 1 10 0c0 3-3 4-3 7a3 3 0 0 1-6 0"/><path d="M10 10a2 2 0 0 1 4 0"/></svg></button>
+      <button class="b" aria-label="Hra"><svg class="ic" viewBox="0 0 24 24"><path d="M4 20L15 6"/><path d="M20 20L9 6"/><circle cx="16" cy="5" r="1.8"/><circle cx="8" cy="5" r="1.8"/></svg></button>
+      <button class="b" aria-label="Po mně"><svg class="ic" viewBox="0 0 24 24"><path d="M3 4h11v8H8l-3 3v-3H3z"/><path d="M17 8h4v8h-2v3l-3-3h-5v-2"/></svg></button>
+      <div style="width:1px;background:rgba(31,29,26,.2);margin:8px 2px"></div>
+      <button class="b on" aria-label="Z paměti"><svg class="ic" viewBox="0 0 24 24"><path d="M9 4a3 3 0 0 0-3 3 3 3 0 0 0-2 5 3 3 0 0 0 2 5 3 3 0 0 0 6 1V6a2 2 0 0 0-3-2z"/><path d="M15 4a3 3 0 0 1 3 3 3 3 0 0 1 2 5 3 3 0 0 1-2 5 3 3 0 0 1-6 1"/></svg></button>
+    </div>
+    <div class="grp" role="group" aria-label="Pattern" style="background:transparent;border:1.5px solid #1F1D1A">
+      <button class="b" aria-label="Posuvné zobrazení"><svg class="ic" viewBox="0 0 24 24"><path d="M3 8h13"/><path d="M3 16h13"/><path d="M16 5l4 3-4 3"/><path d="M16 13l4 3-4 3"/></svg></button>
+      <button class="b" aria-label="Počet taktů: 1" style="width:56px"><svg class="ic" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M12 5v14"/></svg>1</button>
+      <button class="b" aria-label="Smyčka jednoho taktu"><svg class="ic" viewBox="0 0 24 24"><path d="M17 2l3 3-3 3"/><path d="M4 11V9a4 4 0 0 1 4-4h12"/><path d="M7 22l-3-3 3-3"/><path d="M20 13v2a4 4 0 0 1-4 4H4"/></svg></button>
+    </div>
+    <div class="ghost" role="group" aria-label="Informace">
+      <button class="b" aria-label="Informace o lekci"><svg class="ic" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 11v5"/><path d="M12 8h.01"/></svg></button>
+      <button class="b" aria-label="Legenda padů"><svg class="ic" viewBox="0 0 24 24"><rect x="4" y="4" width="7" height="7" rx="1.5"/><rect x="13" y="4" width="7" height="7" rx="1.5"/><rect x="4" y="13" width="7" height="7" rx="1.5"/><path d="M14 15h6"/><path d="M14 19h4"/></svg></button>
+      <button class="b" aria-label="Nápověda"><svg class="ic" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M9.5 9.5a2.5 2.5 0 0 1 4.8 1c0 1.7-2.3 2-2.3 3.5"/><path d="M12 17h.01"/></svg></button>
+    </div>
+    <button class="b" aria-label="Nastavení" style="background:#1F1D1A;color:#F4EFE6;width:56px;height:56px;border-radius:14px"><svg class="ic" viewBox="0 0 24 24"><path d="M4 7h10"/><path d="M18 7h2"/><circle cx="16" cy="7" r="2"/><path d="M4 17h2"/><path d="M10 17h10"/><circle cx="8" cy="17" r="2"/></svg></button>
+  </div>
+
+  <div style="position:absolute;left:24px;top:132px;width:1146px;height:328px;background:#E8620A;border-radius:4px;opacity:.55">
+    <div style="position:absolute;left:0;right:0;top:0;height:60px;background:#C95408"></div>
+    <sc-for list="{{rows}}" as="r" hint-placeholder-count="3">
+      <div style="position:absolute;left:0;right:0;top:{{r.y}};height:72px">
+        <div style="position:absolute;left:24px;top:18px;font:700 26px/1 'IBM Plex Sans'">{{r.name}}</div>
+        <div style="position:absolute;left:180px;right:16px;top:0;height:72px;background:rgba(255,255,255,.14);border-radius:6px">
+          <sc-for list="{{r.cells}}" as="c" hint-placeholder-count="4"><div class="chip" style="left:{{c.x}}">{{r.abbr}}</div></sc-for>
+        </div>
+      </div>
+    </sc-for>
+  </div>
+
+  <section aria-label="Výsledek běhu" style="position:absolute;left:24px;bottom:24px;width:920px;height:168px;border-radius:20px;background:#1F1D1A;color:#F4EFE6;display:flex;align-items:center;gap:32px;padding:0 28px;box-sizing:border-box">
+    <div style="display:flex;flex-direction:column;gap:2px;min-width:170px">
+      <div style="font:700 64px/1 'IBM Plex Sans'">98 %</div>
+      <div style="font:500 15px 'IBM Plex Sans';color:#B3ADA2">přesnost · 105 BPM</div>
+    </div>
+    <div style="display:flex;gap:6px;align-items:center" aria-label="3 hvězdy, třetí nová">
+      <svg class="st" viewBox="0 0 24 24" style="fill:#FF6B00"><polygon points="12 3 14.8 9 21 9.6 16.3 13.8 17.7 20 12 16.8 6.3 20 7.7 13.8 3 9.6 9.2 9"/></svg>
+      <svg class="st" viewBox="0 0 24 24" style="fill:#FF6B00"><polygon points="12 3 14.8 9 21 9.6 16.3 13.8 17.7 20 12 16.8 6.3 20 7.7 13.8 3 9.6 9.2 9"/></svg>
+      <div style="width:60px;height:60px;border-radius:50%;background:rgba(255,107,0,.22);display:flex;align-items:center;justify-content:center"><svg class="st" viewBox="0 0 24 24" style="fill:#FF6B00"><polygon points="12 3 14.8 9 21 9.6 16.3 13.8 17.7 20 12 16.8 6.3 20 7.7 13.8 3 9.6 9.2 9"/></svg></div>
+    </div>
+    <div style="flex:1;display:flex;flex-direction:column;gap:10px">
+      <div style="display:flex;align-items:center;gap:10px;font:600 20px 'IBM Plex Sans'"><svg class="ic" viewBox="0 0 24 24" style="color:#FF6B00;stroke-width:3"><path d="M5 12l5 5 9-10"/></svg>Opakování splněno</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <span style="height:32px;padding:0 12px;border-radius:16px;background:rgba(244,239,230,.12);display:flex;align-items:center;font:500 14px 'IBM Plex Sans'">další za 3 dny</span>
+        <span style="height:32px;padding:0 12px;border-radius:16px;background:#FF6B00;color:#1F1D1A;display:flex;align-items:center;gap:6px;font:600 14px 'IBM Plex Sans'"><svg class="ic" viewBox="0 0 24 24" style="width:16px;height:16px"><circle cx="12" cy="9" r="6"/><path d="M8.5 14L7 22l5-3 5 3-1.5-8"/></svg>Nový odznak: Návrat</span>
+      </div>
+    </div>
+    <button aria-label="Detail běhů" style="width:56px;height:56px;border-radius:14px;border:1.5px solid rgba(244,239,230,.35);background:transparent;color:#F4EFE6;display:flex;align-items:center;justify-content:center"><svg class="ic" viewBox="0 0 24 24" style="width:28px;height:28px"><path d="M4 20V10"/><path d="M10 20V4"/><path d="M16 20v-7"/><path d="M22 20H2"/></svg></button>
+  </section>
+
+  <div style="position:absolute;right:24px;bottom:24px;display:flex;flex-direction:column;gap:12px;width:200px">
+    <button style="height:78px;border:0;border-radius:14px;background:#FF6B00;font:700 22px 'IBM Plex Sans';color:#1F1D1A;display:flex;align-items:center;justify-content:center;gap:8px">Další<svg class="ic" viewBox="0 0 24 24"><path d="M9 5l7 7-7 7"/></svg></button>
+    <button style="height:78px;border:1.5px solid rgba(31,29,26,.28);border-radius:14px;background:#EBE5DA;font:600 20px 'IBM Plex Sans';color:#1F1D1A">Znovu</button>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1194,"height":834}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const S = 59.4;
+    const def = [
+      { name: 'Ride', abbr: 'RD', steps: [0, 2, 4, 6, 8, 10, 12, 14] },
+      { name: 'Snare', abbr: 'SN', steps: [4, 12] },
+      { name: 'Kick', abbr: 'KD', steps: [0, 7, 8, 10] }
+    ];
+    return { rows: def.map((r, i) => ({ name: r.name, abbr: r.abbr, y: (68 + i * 84) + 'px', cells: r.steps.map(s => ({ x: (s * S + 6) + 'px' })) })) };
+  }
+}
+</script>
+</body>
+</html>

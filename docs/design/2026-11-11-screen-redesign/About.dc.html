@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="cs">
+<head>
+<meta charset="utf-8">
+<title>O aplikaci</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&amp;family=Barlow+Condensed:wght@800&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0;font-family:'IBM Plex Sans',sans-serif;color:#1F1D1A}
+.ic{width:22px;height:22px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.r{display:flex;align-items:center;gap:14px;min-height:58px;padding:0 18px;border:0;border-top:1px solid rgba(31,29,26,.10);background:transparent;width:100%;font:500 17px 'IBM Plex Sans';color:#1F1D1A;box-sizing:border-box}
+</style>
+</helmet>
+<div style="width:1194px;height:834px;background:#F4EFE6;position:relative;overflow:hidden">
+  <button aria-label="Zpět" style="position:absolute;left:24px;top:24px;width:56px;height:56px;border:0;background:#E6DFD2;border-radius:14px;display:flex;align-items:center;justify-content:center"><svg class="ic" viewBox="0 0 24 24" style="width:24px;height:24px"><path d="M15 5l-7 7 7 7"/></svg></button>
+
+  <div style="position:absolute;left:337px;width:520px;top:70px;display:flex;flex-direction:column;align-items:center">
+    <div aria-hidden="true" style="width:132px;height:132px;border-radius:30px;background:#EBE5DA;box-shadow:0 2px 6px rgba(0,0,0,.12);display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;padding:24px;box-sizing:border-box">
+      <div style="background:#1F1D1A;border-radius:5px"></div>
+      <div style="background:#FF6B00;border-radius:5px;transform:rotate(8deg)"></div>
+      <div style="background:#1F1D1A;border-radius:5px"></div>
+      <div style="background:#1F1D1A;border-radius:5px"></div>
+    </div>
+    <h1 style="margin:28px 0 0;font:800 56px/1 'Barlow Condensed';letter-spacing:.02em">SMACK-A-PAD</h1>
+    <div style="margin-top:8px;font:500 16px 'IBM Plex Sans';color:#5E5950">Verze 1.0 (build [ČÍSLO])</div>
+
+    <div style="margin-top:36px;width:100%;border-radius:16px;background:#EBE5DA;border:1px solid rgba(31,29,26,.10);overflow:hidden">
+      <a href="#" class="r" style="border-top:0;text-decoration:none"><svg class="ic" viewBox="0 0 24 24"><path d="M4 6h16v12H4z"/><path d="M4 7l8 6 8-6"/></svg><span style="flex:1">Podpora</span><svg class="ic" viewBox="0 0 24 24"><path d="M9 5l7 7-7 7"/></svg></a>
+      <a href="#" class="r" style="text-decoration:none"><svg class="ic" viewBox="0 0 24 24"><path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z"/></svg><span style="flex:1">Ochrana soukromí</span><svg class="ic" viewBox="0 0 24 24"><path d="M9 5l7 7-7 7"/></svg></a>
+      <button class="r" aria-expanded="true"><svg class="ic" viewBox="0 0 24 24"><path d="M5 19V5h9l5 5v9z"/><path d="M14 5v5h5"/></svg><span style="flex:1;text-align:left">Licence písem</span><svg class="ic" viewBox="0 0 24 24"><path d="M6 15l6-6 6 6"/></svg></button>
+      <div style="padding:0 18px 16px 54px;font:500 14px/1.7 'IBM Plex Sans';color:#5E5950">IBM Plex Sans · SIL OFL 1.1<br>Barlow Condensed · SIL OFL 1.1</div>
+    </div>
+    <div style="margin-top:28px;font:500 14px 'IBM Plex Sans';color:#5E5950">© 2026 [AUTOR]</div>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1194,"height":834}}'>
+class Component extends DCLogic {
+  renderVals() { return {}; }
+}
+</script>
+</body>
+</html>

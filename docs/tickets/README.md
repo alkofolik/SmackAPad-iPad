@@ -186,3 +186,11 @@ Source: Jakub, retention and memory discussion; legacy "Trénink" concept 2026-1
 | 173 | One localisation path and a test that every key exists in both languages | Codex GPT-6.1 Sol, high (fallback Gemini 3.8 Pro, high) | ready-for-agent (any time; after 172 is tested to be safe) |
 | 174 | Split Persistence.swift into smaller files (no behaviour change) | Codex GPT-6.1 Sol, high (fallback Gemini 3.8 Pro, high) | ready-for-agent (after 173; before 162) |
 | 175 | Show and store the true (un-centred) timing error | Codex GPT-6.1 Sol, high (fallback Gemini 3.8 Pro, high) | implemented, awaiting iPad check |
+| 176 | Bug: a due review run does not stop after the review is met | Codex GPT-6.1 Sol, high (fallback Gemini 3.8 Pro, high) | ready-for-agent |
+| 177 | From memory: notes hide only after two good warm-up passes in a row | Codex GPT-6.1 Sol, high (fallback Gemini 3.8 Pro, high) | after 176 |
+| 178 | Practice: grouped icon toolbar, back arrow, two-line title, full English drum names | Codex GPT-6.1 Sol, high (fallback Gemini 3.8 Flash, high) | after 171 check and 172 |
+| 179 | Practice: HUD in fixed places, pass line under the band, end-of-run card, help legend | Codex GPT-6.1 Sol, high (fallback Gemini 3.8 Flash, high) | after 178 |
+| 180 | Mix: line-up before the start and a pause before every next lesson | Codex GPT-6.1 Sol, high (fallback Gemini 3.8 Pro, high) | after 179 |
+| 181 | One back arrow across the app; Home pads same size with short text | Codex GPT-6.1 Sol, medium (fallback Gemini 3.8 Flash, medium) | any time |
+| 182 | One Training screen (Today + Training merged) and new day summary | Codex GPT-6.1 Sol, high (fallback Gemini 3.8 Pro, high) | after 181, not in parallel with 180 |
+| 183 | Redesign Badges, About, Full version; collapsed instrument volumes; Library "Play next" | Codex GPT-6.1 Sol, medium (fallback Gemini 3.8 Flash, medium) | after 181 |

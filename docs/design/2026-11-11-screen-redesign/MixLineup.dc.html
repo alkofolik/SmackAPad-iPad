@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="cs">
+<head>
+<meta charset="utf-8">
+<title>Mix – přehled před startem</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0;font-family:'IBM Plex Sans',sans-serif;color:#1F1D1A}
+.ic{width:22px;height:22px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.sb{flex:1;height:52px;border-radius:12px;border:1.5px solid rgba(31,29,26,.28);background:#F4EFE6;display:flex;align-items:center;justify-content:center;gap:8px;font:600 16px 'IBM Plex Sans';color:#1F1D1A}
+.cell{height:12px;border-radius:2px;background:rgba(255,255,255,.16)}
+.cell.on{background:#F4EFE6}
+.tag{height:28px;padding:0 10px;border-radius:14px;background:#E6DFD2;display:flex;align-items:center;font:600 13px 'IBM Plex Sans'}
+</style>
+</helmet>
+<div style="width:1194px;height:834px;background:#F4EFE6;position:relative;overflow:hidden">
+  <div style="position:absolute;left:24px;right:24px;top:24px;height:56px;display:flex;align-items:center;gap:20px">
+    <button aria-label="Zpět" style="width:56px;height:56px;border:0;background:#E6DFD2;border-radius:14px;display:flex;align-items:center;justify-content:center"><svg class="ic" viewBox="0 0 24 24" style="width:24px;height:24px"><path d="M15 5l-7 7 7 7"/></svg></button>
+    <div>
+      <div style="font:700 28px/1.1 'IBM Plex Sans'">Denní mix</div>
+      <div style="font:500 15px 'IBM Plex Sans';color:#5E5950">3 lekce · každá 4 takty</div>
+    </div>
+  </div>
+
+  <div style="position:absolute;left:24px;right:24px;top:116px;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:24px">
+    <sc-for list="{{lessons}}" as="l" hint-placeholder-count="3">
+      <article style="border-radius:20px;background:#EBE5DA;border:1px solid rgba(31,29,26,.10);padding:20px;display:flex;flex-direction:column;gap:16px">
+        <div style="display:flex;align-items:flex-start;gap:14px">
+          <div style="width:40px;height:40px;border-radius:50%;background:#1F1D1A;color:#F4EFE6;display:flex;align-items:center;justify-content:center;font:700 18px 'IBM Plex Sans';flex:none">{{l.n}}</div>
+          <div style="min-width:0">
+            <div style="font:600 20px/1.2 'IBM Plex Sans'">{{l.name}}</div>
+            <div style="font:500 14px 'IBM Plex Sans';color:#5E5950">{{l.sub}}</div>
+          </div>
+        </div>
+        <div style="flex:1;display:flex;flex-direction:column;justify-content:center">
+        <div style="background:#E8620A;border-radius:10px;padding:12px;display:flex;flex-direction:column;gap:8px">
+          <sc-for list="{{l.rows}}" as="r" hint-placeholder-count="3">
+            <div style="display:flex;align-items:center;gap:10px">
+              <div style="width:60px;font:700 13px 'IBM Plex Sans';color:#1F1D1A">{{r.name}}</div>
+              <div style="flex:1;display:grid;grid-template-columns:repeat(16,minmax(0,1fr));gap:3px">
+                <sc-for list="{{r.cells}}" as="c" hint-placeholder-count="16"><div class="{{c.cls}}"></div></sc-for>
+              </div>
+            </div>
+          </sc-for>
+        </div>
+        </div>
+        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+          <span class="tag" style="background:#1F1D1A;color:#F4EFE6">{{l.bpm}} BPM</span>
+          <sc-for list="{{l.pads}}" as="p" hint-placeholder-count="3"><span class="tag">{{p}}</span></sc-for>
+        </div>
+        <div style="display:flex;gap:10px">
+          <button class="sb"><svg class="ic" viewBox="0 0 24 24"><path d="M7 10a5 5 0 0 1 10 0c0 3-3 4-3 7a3 3 0 0 1-6 0"/><path d="M10 10a2 2 0 0 1 4 0"/></svg>Poslech</button>
+          <button class="sb"><svg class="ic" viewBox="0 0 24 24"><path d="M4 20L15 6"/><path d="M20 20L9 6"/><circle cx="16" cy="5" r="1.8"/><circle cx="8" cy="5" r="1.8"/></svg>Vyzkoušet</button>
+        </div>
+      </article>
+    </sc-for>
+  </div>
+
+  <div style="position:absolute;left:24px;right:24px;bottom:24px;height:96px;border-radius:20px;background:#1F1D1A;color:#F4EFE6;display:flex;align-items:center;gap:20px;padding:0 16px 0 24px">
+    <div style="display:flex;align-items:center;gap:14px;flex:1">
+      <svg class="ic" viewBox="0 0 24 24" style="width:28px;height:28px"><path d="M9 4a3 3 0 0 0-3 3 3 3 0 0 0-2 5 3 3 0 0 0 2 5 3 3 0 0 0 6 1V6a2 2 0 0 0-3-2z"/><path d="M15 4a3 3 0 0 1 3 3 3 3 0 0 1 2 5 3 3 0 0 1-2 5 3 3 0 0 1-6 1"/></svg>
+      <label style="font:600 18px 'IBM Plex Sans';display:flex;align-items:center;gap:14px">Z paměti
+        <span style="width:56px;height:32px;border-radius:16px;background:#5E5950;position:relative;display:inline-block"><span style="position:absolute;left:3px;top:3px;width:26px;height:26px;border-radius:50%;background:#F4EFE6"></span></span>
+      </label>
+    </div>
+    <button style="height:64px;padding:0 20px;border-radius:14px;border:1.5px solid rgba(244,239,230,.35);background:transparent;color:#F4EFE6;font:600 18px 'IBM Plex Sans'">Jiný mix</button>
+    <button style="height:64px;width:260px;border:0;border-radius:14px;background:#FF6B00;color:#1F1D1A;font:700 22px 'IBM Plex Sans'">Začít mix</button>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1194,"height":834}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const mk = (rows) => rows.map(r => ({ name: r[0], cells: Array.from({ length: 16 }, (_, i) => ({ cls: 'cell' + (r[1].includes(i) ? ' on' : '') })) }));
+    const lessons = [
+      { n: 1, name: 'Groove, přechod a zpět', sub: 'Opakování', bpm: 90, pads: ['Hi-hat', 'Snare', 'Kick'],
+        rows: mk([['Hi-hat', [0,2,4,6,8,10,12,14]], ['Snare', [4,12,14]], ['Kick', [0,6,8]]]) },
+      { n: 2, name: 'UK funky 1 · synkopy rimu', sub: 'Opakování', bpm: 100, pads: ['Hi-hat', 'Rim', 'Kick'],
+        rows: mk([['Hi-hat', [0,2,4,6,8,10,12,14]], ['Rim', [3,7,10,13]], ['Kick', [0,8]]]) },
+      { n: 3, name: 'Hardgroove 1 · předrážky', sub: 'Opakování', bpm: 120, pads: ['Low tom', 'Kick'],
+        rows: mk([['Low tom', [3,7,11,15]], ['Kick', [0,4,8,12]]]) }
+    ];
+    return { lessons };
+  }
+}
+</script>
+</body>
+</html>

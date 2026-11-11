@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="cs">
+<head>
+<meta charset="utf-8">
+<title>Nastavení – zvuk</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0;font-family:'IBM Plex Sans',sans-serif;color:#1F1D1A}
+.ic{width:22px;height:22px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.grp{border-radius:16px;background:#EBE5DA;border:1px solid rgba(31,29,26,.10)}
+.r{display:flex;align-items:center;gap:16px;min-height:56px;padding:0 18px;border-top:1px solid rgba(31,29,26,.10)}
+.r:first-child{border-top:0}
+.l{font:500 16px 'IBM Plex Sans';flex:none;width:120px}
+.sl{flex:1;height:6px;border-radius:3px;background:#DDD5C8;position:relative}
+.sl i{position:absolute;left:0;top:0;bottom:0;border-radius:3px;background:#FF6B00}
+.sl b{position:absolute;top:-9px;width:24px;height:24px;border-radius:50%;background:#F4EFE6;box-shadow:0 1px 3px rgba(0,0,0,.35)}
+.v{font:500 14px 'IBM Plex Sans';color:#5E5950;width:52px;text-align:right}
+.h{font:700 12px 'IBM Plex Sans';letter-spacing:.08em;color:#5E5950;margin:0 0 8px 4px}
+.mini{display:flex;flex-direction:column;gap:8px;padding:12px 14px;border-radius:12px;background:#F4EFE6}
+</style>
+</helmet>
+<div style="width:720px;height:834px;background:#F4EFE6;position:relative;overflow:hidden;padding:24px;box-sizing:border-box;display:flex;flex-direction:column;gap:20px">
+  <div style="display:flex;align-items:center;gap:20px">
+    <button aria-label="Zpět" style="width:56px;height:56px;border:0;background:#E6DFD2;border-radius:14px;display:flex;align-items:center;justify-content:center"><svg class="ic" viewBox="0 0 24 24" style="width:24px;height:24px"><path d="M15 5l-7 7 7 7"/></svg></button>
+    <div style="font:700 28px 'IBM Plex Sans'">Nastavení</div>
+  </div>
+
+  <div>
+    <div class="h">ZVUK</div>
+    <div class="grp">
+      <div class="r"><span class="l" style="flex:1;width:auto">Sada zvuků</span><span style="font:500 16px 'IBM Plex Sans';color:#5E5950">Automaticky</span><svg class="ic" viewBox="0 0 24 24"><path d="M9 5l7 7-7 7"/></svg></div>
+      <div class="r"><span class="l">Metronom</span><div class="sl"><i style="width:60%"></i><b style="left:calc(60% - 12px)"></b></div><span class="v">−4 dB</span></div>
+      <div class="r"><span class="l">Pady</span><div class="sl"><i style="width:80%"></i><b style="left:calc(80% - 12px)"></b></div><span class="v">0 dB</span></div>
+      <div class="r"><span class="l">Pattern</span><div class="sl"><i style="width:50%"></i><b style="left:calc(50% - 12px)"></b></div><span class="v">−6 dB</span></div>
+      <button class="r" aria-expanded="true" style="width:100%;border:0;border-top:1px solid rgba(31,29,26,.10);background:transparent;color:#1F1D1A;cursor:pointer">
+        <span style="font:600 16px 'IBM Plex Sans';flex:1;text-align:left">Hlasitost nástrojů</span>
+        <span style="height:26px;padding:0 10px;border-radius:13px;background:#1F1D1A;color:#F4EFE6;font:600 13px 'IBM Plex Sans';display:flex;align-items:center">upraveno 2</span>
+        <svg class="ic" viewBox="0 0 24 24"><path d="M6 15l6-6 6 6"/></svg>
+      </button>
+      <div style="padding:4px 14px 14px;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px">
+        <sc-for list="{{inst}}" as="x" hint-placeholder-count="10">
+          <div class="mini">
+            <div style="display:flex;justify-content:space-between;font:500 14px 'IBM Plex Sans'"><span><b style="font-weight:700">{{x.a}}</b> {{x.n}}</span><span style="color:{{x.c}}">{{x.v}}</span></div>
+            <div class="sl"><i style="width:{{x.p}}"></i><b style="left:calc({{x.p}} - 12px)"></b></div>
+          </div>
+        </sc-for>
+      </div>
+      <div style="padding:0 14px 14px"><button style="height:44px;padding:0 16px;border:1.5px solid rgba(31,29,26,.28);border-radius:12px;background:#F4EFE6;font:600 15px 'IBM Plex Sans';color:#1F1D1A">Vrátit vše na 0 dB</button></div>
+    </div>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":720,"height":834}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const d = [['KD','Kick',0],['SN','Snare',0],['HH','Hi-hat',-3],['OH','Open hi-hat',0],['CR','Crash',-4],['RD','Ride',0],['TH','High tom',0],['TL','Low tom',0],['RM','Rim',0],['CP','Clap',0]];
+    const inst = d.map(([a, n, v]) => ({ a, n, v: (v === 0 ? '0' : '−' + Math.abs(v)) + ' dB', c: v === 0 ? '#5E5950' : '#1F1D1A', p: (80 + v * 4) + '%' }));
+    return { inst };
+  }
+}
+</script>
+</body>
+</html>

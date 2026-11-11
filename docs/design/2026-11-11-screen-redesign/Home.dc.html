@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="cs">
+<head>
+<meta charset="utf-8">
+<title>Domů</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&amp;family=Barlow+Condensed:wght@800&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0;font-family:'IBM Plex Sans',sans-serif;color:#1F1D1A}
+.ic{width:22px;height:22px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.pad{height:146px;border-radius:10px;border:0;background:linear-gradient(#ECE5DC,#DDD5C8);box-shadow:0 2px 0 rgba(0,0,0,.18),inset 0 1px 0 rgba(255,255,255,.6);position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;padding:0;color:#1F1D1A}
+.pad.hot{background:#FF6B00}
+.n{position:absolute;left:10px;top:8px;font:600 11px 'IBM Plex Sans';color:rgba(31,29,26,.6)}
+.t{font:800 22px/1 'Barlow Condensed';letter-spacing:.04em}
+.st{font:500 15px 'IBM Plex Sans';color:#5E5950;height:20px}
+.fd{position:absolute;width:8px;height:200px;border-radius:4px;background:#1F1D1A}
+.kn{position:absolute;left:-12px;width:32px;height:22px;border-radius:4px;background:linear-gradient(#F4EFE6,#CFC7BA);box-shadow:0 1px 2px rgba(0,0,0,.35)}
+</style>
+</helmet>
+<div style="width:1194px;height:834px;background:#F4EFE6;position:relative;overflow:hidden">
+  <h1 style="margin:0;position:absolute;left:0;right:0;top:44px;text-align:center;font:800 60px/1 'Barlow Condensed';letter-spacing:.02em">SMACK-A-PAD</h1>
+
+  <div class="fd" style="left:136px;top:326px"><div class="kn" style="top:40px"></div></div>
+  <div class="fd" style="left:212px;top:326px"><div class="kn" style="top:90px"></div></div>
+  <div class="fd" style="left:978px;top:326px"><div class="kn" style="top:12px"></div></div>
+  <div class="fd" style="left:1054px;top:326px"><div class="kn" style="top:130px"></div></div>
+
+  <div style="position:absolute;left:327px;top:148px;width:540px;height:540px;border-radius:18px;background:linear-gradient(#E9E3D9,#D8D0C2);box-shadow:0 2px 6px rgba(0,0,0,.15);padding:35px;box-sizing:border-box;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px">
+    <button class="pad hot"><span class="n">01</span><span class="t">DNES</span><span class="st" style="color:#1F1D1A">2 lekce</span></button>
+    <button class="pad"><span class="n">02</span><span class="t">KNIHOVNA</span><span class="st"></span></button>
+    <button class="pad"><span class="n">03</span><span class="t">POKRAČOVAT</span><span class="st">Soul 2</span></button>
+    <button class="pad"><span class="n">04</span><span class="t">INTRO</span><span class="st"></span></button>
+    <div aria-hidden="true" style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;padding:22px">
+      <div style="background:#1F1D1A;border-radius:4px"></div>
+      <div style="background:#FF6B00;border-radius:4px;transform:rotate(8deg)"></div>
+      <div style="background:#1F1D1A;border-radius:4px"></div>
+      <div style="background:#1F1D1A;border-radius:4px"></div>
+    </div>
+    <button class="pad"><span class="n">05</span><span class="t">OVLADAČ</span><span class="st">JP-Mini</span></button>
+    <button class="pad"><span class="n">06</span><span class="t">ODZNAKY</span><span class="st">14 / 55</span></button>
+    <button class="pad"><span class="n">07</span><span class="t">PLNÁ VERZE</span><span class="st">Odemknuto</span></button>
+    <button class="pad"><span class="n">08</span><span class="t">NASTAVENÍ</span><span class="st"></span></button>
+  </div>
+
+  <button style="position:absolute;left:327px;top:708px;width:540px;height:52px;border:0;border-radius:12px;background:#EBE5DA;display:flex;align-items:center;gap:12px;padding:0 18px;font:500 17px 'IBM Plex Sans';color:#1F1D1A"><svg class="ic" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M9.5 9.5a2.5 2.5 0 0 1 4.8 1c0 1.7-2.3 2-2.3 3.5"/><path d="M12 17h.01"/></svg><span style="flex:1;text-align:left">Jak to funguje</span><svg class="ic" viewBox="0 0 24 24"><path d="M9 5l7 7-7 7"/></svg></button>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1194,"height":834}}'>
+class Component extends DCLogic {
+  renderVals() { return {}; }
+}
+</script>
+</body>
+</html>
