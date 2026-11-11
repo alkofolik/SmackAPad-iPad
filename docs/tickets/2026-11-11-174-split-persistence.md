@@ -1,6 +1,6 @@
 # 174 — Split Persistence.swift into smaller files (no behaviour change)
 
-Status: ready-for-agent. Approved by Jakub on 2026-11-11. Corresponds to AI panel item #29. Run after ticket 173 (both touch `AppLanguage` / `Persistence.swift`) and before the iCloud sync ticket 162.
+Status: implemented. Seven incremental builds succeeded; the full suite passed 244 tests before and after the split on 2026-11-11. Awaiting Jakub’s manual iPad check. Approved by Jakub on 2026-11-11. Corresponds to AI panel item #29. Run after ticket 173 (both touch `AppLanguage` / `Persistence.swift`) and before the iCloud sync ticket 162.
 
 ## Goal
 
@@ -41,10 +41,10 @@ No new tests. The full suite must give the same count and result as before the s
 
 ## Acceptance criteria
 
-- [ ] Same test count and all passing.
-- [ ] No file in `Persistence/` has more than about 800 lines.
-- [ ] No logic, value or name changed; visibility changes (if any) listed.
-- [ ] File map documented.
+- [x] Same test count and all passing.
+- [x] No file in `Persistence/` has more than about 800 lines.
+- [x] No logic, value or name changed; visibility changes (if any) listed.
+- [x] File map documented.
 
 ### Manual iPad check for Jakub
 
@@ -57,3 +57,12 @@ Codex GPT-6.1 Sol, thinking high (fallback Gemini 3.8 Pro, high). Do not use Fla
 ## Done rule
 
 Build, full test suite per `AGENTS.md`, commit, stop for Jakub's iPad check. If the build fails twice, stop and report. Final report: max 5 lines.
+
+## Implementation notes
+
+- File map: `docs/design/2026-11-11-174-persistence-split.md`.
+- Split into seven files at existing top-level boundaries. The complete managers are 778 and 795 lines, so extensions and visibility changes are unnecessary. Visibility changes: none.
+- The 2,056 original declaration-body lines reconstruct byte for byte from the new files. The total increases from 2,069 to 2,110 lines solely because each file has its own header/imports.
+- Existing persistence files, tests and `project.pbxproj` are unchanged. No tests were added.
+- All seven block moves were followed by successful builds. The same full suite passed before and after: 244 tests, zero failures. Both test commands exited normally.
+- Manual iPad check above remains for Jakub.
