@@ -436,4 +436,89 @@ final class PracticeSessionTests: XCTestCase {
         XCTAssertEqual(session.bpm, expectedNextBpm, "Queued tempo must not revert inside a running pass")
         XCTAssertEqual(session.patternFrame.bpm, expectedNextBpm)
     }
+
+    @MainActor
+    func testOneBarDueReviewStopsAfterDecidingHiddenPassAndAlignsFadeVisibility() async throws {
+        let suite = "one-bar-due-review-\(UUID().uuidString)"
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))
+        defer { defaults.removePersistentDomain(forName: suite) }
+        let settings = SettingsManager(userDefaults: defaults)
+        settings.fadeMemoryNotes = true
+        let file = FileManager.default.temporaryDirectory.appendingPathComponent("\(suite).json")
+        defer { try? FileManager.default.removeItem(at: file) }
+        let progress = ProgressStore(fileURL: file, autoLoad: false)
+        let hits = stride(from: 0, to: 16, by: 4).map {
+            LessonHit(step: $0, padIndex: 12, hand: "L", velocity: 100)
+        }
+        let lesson = Lesson(id: 10_001, cat: "intro", title: "Kick on every beat", genre: "", tags: [],
+                            text: "", division: 16, bars: 1, startBpm: 60, targetBpm: 80,
+                            level: 1, src: "test", hits: hits)
+        let today = "2026-11-11"
+        let due = LessonProgress(passed: true, mastery: true, memory: true,
+                                 currentBpm: 80, reviewStep: 2, reviewDueDay: today)
+        let launches: [(String, LessonLaunch)] = [
+            ("review", .review(lesson)),
+            ("library", .library(lesson, progress: due, today: today))
+        ]
+
+        for (label, launch) in launches {
+            progress.setProgress(due, for: lesson.id)
+            let midi = MIDIInput(settings: settings)
+            var time = AVAudioTime.seconds(forHostTime: mach_absolute_time())
+            let session = PracticeSession(lesson: lesson, settings: settings, progress: progress, midi: midi,
+                                          initialFromMemory: launch.reviewTempo != nil, initialBpm: launch.reviewTempo,
+                                          clock: { time },
+                                          currentDay: { today })
+            defer { session.close() }
+            session.metronome = false
+            await session.prepare()
+            XCTAssertTrue(session.ready, session.errorMessage ?? "Sound preparation failed")
+
+            time = AVAudioTime.seconds(forHostTime: mach_absolute_time())
+            let firstStart = time + 0.6 + 240.0 / 80.0
+            session.start()
+            XCTAssertTrue(session.running)
+            XCTAssertTrue(session.fromMemory, "\(label) should start fromMemory")
+            XCTAssertEqual(session.bpm, 80, "\(label) should start at targetBpm")
+
+            var barVisibilities: [NoteVisibility] = []
+            for pass in 0..<4 {
+                let passStart = firstStart + Double(pass) * 12.0
+                for bar in 0..<4 {
+                    let barStart = passStart + Double(bar) * 3.0
+                    for hit in hits {
+                        time = barStart + Double(hit.step) * 15.0 / 80.0
+                        session.tick()
+                        midi.onPadEvent?(PadInputEvent(padIndex: hit.padIndex, velocity: 100, isNoteOn: true,
+                            timestamp: AVAudioTime.hostTime(forSeconds: time), deviceID: "test"))
+                        if hit.step == 0 {
+                            time = barStart + 0.05
+                            session.tick()
+                            barVisibilities.append(session.noteVisibility(at: session.patternFrame))
+                        }
+                    }
+                }
+                time = passStart + 11.6
+                session.tick()
+                time = passStart + 12.01
+                session.tick()
+
+                if pass < 3 {
+                    XCTAssertTrue(session.running, "\(label) should keep running after pass \(pass + 1)")
+                    XCTAssertFalse(session.finishedByReview, "\(label) must not finish before two hidden passes")
+                }
+            }
+
+            XCTAssertEqual(barVisibilities, [
+                .shown, .shown, .shown, .shown,
+                .faded, .faded, .faded, .faded,
+                .hidden, .hidden, .hidden, .hidden,
+                .hidden, .hidden, .hidden, .hidden
+            ], "\(label) note visibility must follow 4-bar scored runs")
+            XCTAssertFalse(session.running, "\(label) should stop automatically after deciding hidden pass")
+            XCTAssertTrue(session.finishedByReview, "\(label) should set finishedByReview")
+            XCTAssertNotNil(session.summary, "\(label) should produce a result summary")
+            XCTAssertNotNil(session.reviewFeedback, "\(label) should record review feedback")
+        }
+    }
 }

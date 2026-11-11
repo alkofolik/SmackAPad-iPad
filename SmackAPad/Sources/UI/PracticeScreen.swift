@@ -589,7 +589,7 @@ struct PracticeScreen: View {
         PatternField(lesson: session.practiceLesson, hits: session.patternHits,
                      position: frame.position, tapePosition: frame.tapePosition,
                      running: session.running && frame.countdown == nil,
-                     visibility: session.noteVisibility(pass: frame.pass),
+                     visibility: session.noteVisibility(at: frame),
                      fromMemory: session.fromMemory && !session.afterMe,
                      afterMe: session.afterMe,
                      scrolling: scrolling, visibleBars: [1, 2, 3, 4].contains(visibleBars) ? visibleBars : 4,

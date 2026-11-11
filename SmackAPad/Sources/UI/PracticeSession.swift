@@ -346,6 +346,15 @@ final class PracticeSession {
         )
     }
 
+    /// Maps a single-phrase cycle index (`PatternFrame.pass`) to the scored run number (`Pass.number`).
+    func runNumber(for framePass: Int) -> Int {
+        max(1, (max(1, framePass) - 1) / max(1, repeatsPerRun) + 1)
+    }
+
+    func noteVisibility(at frame: PatternFrame) -> NoteVisibility {
+        noteVisibility(pass: runNumber(for: frame.pass))
+    }
+
     var hits: [LessonHit] { lesson.hits(forPadCount: midi.activeProfile.padCount) }
     private(set) var kits: [SampleKit] = []
     var availableKitsDict: [String: SampleKit] {
@@ -510,7 +519,7 @@ final class PracticeSession {
 
     func runMeterFraction(at frame: PatternFrame) -> Double {
         let repeats = repeatsPerRun
-        let runNumber = (frame.pass - 1) / repeats + 1
+        let runNumber = runNumber(for: frame.pass)
         // The tape can reach the next run before the previous verdict is published.
         // Keep the finished block full until the verdict banks or drains it.
         if passes.contains(where: { $0.number == runNumber - 1 && $0.scorer != nil }) {

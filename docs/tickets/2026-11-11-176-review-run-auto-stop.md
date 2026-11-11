@@ -33,11 +33,27 @@ When a lesson is played as a review (From memory, goal tempo) and the review req
 
 Add a unit test that drives a short (1-bar) due review through enough qualifying hidden passes and asserts that the session asks to stop (`stopAfterPass`/`finishedByReview`). Run the full test suite.
 
+## Notes
+
+- **Reproduction (`reviewDueToday`, `iPad (A16)` simulator & code trace)**:
+  - Tested all three launch places for 1-bar Intro lesson `10001` ("Kick on every beat", `targetBpm: 80`):
+    1. **Library** (`LibraryScreen.open` via `LessonLaunch.library`)
+    2. **Home pad** (`HomeScreen` pad 1 `TODAY` -> `TodaySessionScreen`, pad 2 `LIBRARY` / pad 4 `INTRO` / pad 1 `CONTINUE` -> `LibraryScreen`)
+    3. **Today / Training** (`TodaySessionScreen`, `TrainingScreen.dueLessonRow`)
+  - All three launch paths reliably start `PracticeSession` with `fromMemory == true` and `bpm == 80`, and all three do set `stopAfterPass = true`, `finishedByReview = true`, and present `ResultCard` after `pass.number == 4` (Bar 16).
+- **Root cause**:
+  - On 1-bar lessons (`repeatsPerRun = 4`), `PracticeSession` combines 4 bars into each scored pass (`pass.number`). With `fadeMemoryNotes == true` (`LearningRules.firstHiddenMemoryPass = 3`, `LearningRules.reviewDecisionPasses = 2`, left untouched per ticket rules), Passes 1–2 (Bars 1–8) are treated as visible-note warm-ups and Passes 3–4 (Bars 9–16) are the deciding hidden passes.
+  - However, `PracticeScreen` passed 1-bar `frame.pass` to `PracticeSession.noteVisibility(pass:)`, and `ScrollingPattern` in `PatternField.swift` passed 1-bar `recordedPass` to `NoteVisibility.derive(...)`. Consequently, on `10001`, Bar 1 was `.shown`, Bar 2 was `.faded`, and Bars 3–4 of Pass 1 plus all 4 bars (Bars 5–8) of Pass 2 were already `.hidden`, while the HUD still labeled them as Pass 1 shown / Pass 2 fading and `ReviewScheduler` discarded Pass 1 (`94 %`) and blind Pass 2 (`100 %`) as warm-ups—forcing the loop through 8 more hidden bars before stopping after Pass 4.
+- **Fix**:
+  - `PracticeSession.swift`: added `runNumber(for:)` and `noteVisibility(at:)`, and reused `runNumber(for:)` in `runMeterFraction(at:)`.
+  - `PracticeScreen.swift`: switched to `session.noteVisibility(at: frame)`.
+  - `PatternField.swift`: passed `runBars` into `ScrollingPattern` and derived `visibilityPass` from `runTotal` (`runBars * 16`) so note fading aligns with scored 4-bar runs (Bars 1–4 `.shown`, Bars 5–8 `.faded`, Bars 9–16 `.hidden`).
+
 ## Acceptance criteria
 
-- [ ] Cause found and described in the ticket's notes.
-- [ ] A due review stops by itself once met, from Library, Home pad and Today/Training.
-- [ ] New test passes; the full suite passes.
+- [x] Cause found and described in the ticket's notes.
+- [x] A due review stops by itself once met, from Library, Home pad and Today/Training.
+- [x] New test passes; the full suite passes.
 
 ### Manual iPad check for Jakub
 

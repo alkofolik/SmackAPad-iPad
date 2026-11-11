@@ -136,7 +136,8 @@ struct PatternField: View {
                                              running: running, visibility: visibility, fromMemory: fromMemory, afterMe: afterMe,
                                              verdicts: verdicts, judgments: judgments, pass: pass,
                                              playedHits: playedHits, scoring: scoring,
-                                             missGraceSteps: missGraceSteps, band: band, scale: bandScale)
+                                             missGraceSteps: missGraceSteps, band: band, scale: bandScale,
+                                             runBars: runBars)
                         } else {
                             let currentBar = min(lesson.bars - 1, max(0, Int(position) / 16))
                             let first = (currentBar / max(1, count)) * max(1, count)
@@ -426,9 +427,11 @@ private struct ScrollingPattern: View {
     let missGraceSteps: Double
     let band: Color
     let scale: CGFloat
+    var runBars: Int = 4
 
     var body: some View {
         let total = max(16, lesson.bars * 16)
+        let runTotal = max(total, runBars * 16)
 
         ZStack {
             Canvas { context, size in
@@ -457,12 +460,13 @@ private struct ScrollingPattern: View {
                     guard globalStep >= 0 else { continue }
                     let step = (globalStep % total + total) % total
                     let recordedPass = globalStep / total + 1
+                    let visibilityPass = globalStep / runTotal + 1
                     let stepVisibility: NoteVisibility = afterMe ? .shown : NoteVisibility.derive(
                         fromMemory: fromMemory,
                         running: running,
                         listen: false,
                         isSectionLoop: false,
-                        pass: recordedPass,
+                        pass: visibilityPass,
                         fadeNotes: settings.fadeMemoryNotes
                     )
                     let x = markerX + CGFloat(Double(globalStep) - position) * cellWidth
