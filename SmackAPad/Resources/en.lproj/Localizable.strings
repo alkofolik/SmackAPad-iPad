@@ -879,7 +879,7 @@
 "help.memory.hiddenFromThird" = "Pass 3 onward · pattern hidden";
 "help.memory.hidden" = "Pattern hidden after the count-in";
 "help.reviews.timeline" = "★★ → +%lld → +%lld → +%lld → +%lld days → %@";
-"help.reviews.warmups" = "The first two passes are warm-ups with pattern fade on";
+"help.reviews.warmups" = "Notes hide after 2 good passes in a row (80 %+).";
 "help.reviews.twoPasses" = "Two qualifying passes in one review";
 "help.reviews.caption" = "Open a due lesson from Home, Training or Library. It starts ready for From memory at goal tempo.\nPass two full hidden passes at goal tempo or faster, each at least %lld %%. Play then stops. The second successful review on a different day earns ★★★.\nAfter two failed eligible passes, the schedule goes back one step and the review returns tomorrow. The exclamation mark means you played but the review did not count.\nFollow the gaps above from ★★ to the fourth successful review. Turn on Review reminder in Settings if you want a reminder.";
 "help.training.title" = "Today and Training";

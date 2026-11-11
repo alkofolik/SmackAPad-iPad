@@ -120,11 +120,11 @@ final class AfterMeSessionTests: XCTestCase {
             clock.time = start
             session.tick()
             XCTAssertEqual(session.afterMePhase(at: session.patternFrame), "Listen…")
-            XCTAssertEqual(session.noteVisibility(pass: 1), .hidden)
+            XCTAssertEqual(session.noteVisibility(at: session.patternFrame), .hidden)
             clock.time = start + 2
             session.tick()
             XCTAssertEqual(session.afterMePhase(at: session.patternFrame), "Your turn")
-            XCTAssertEqual(session.noteVisibility(pass: 2), .hidden)
+            XCTAssertEqual(session.noteVisibility(at: session.patternFrame), .hidden)
             for step in [16, 20, 24, 28] {
                 clock.time = start + Double(step) * 15 / 120
                 session.tick()

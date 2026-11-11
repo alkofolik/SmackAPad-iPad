@@ -128,6 +128,7 @@ final class PracticeSessionTests: XCTestCase {
                 session.tick()
                 step.outcome = try XCTUnwrap(session.todayStepOutcome)
                 XCTAssertEqual(step.outcome?.bestScore, 1)
+                XCTAssertEqual(session.completedWarmUps, min(pass + 1, LearningRules.warmUpPassesNeeded))
                 XCTAssertEqual(step.status, pass < 2 ? .didNotCount(.notesVisible)
                                : (pass == 2 ? .didNotCount(.unfinishedReview) : .passed))
                 if pass < 3 { XCTAssertEqual(progress.progress(for: lesson.id)?.reviewStep, 0) }

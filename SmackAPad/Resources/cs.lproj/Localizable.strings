@@ -882,7 +882,7 @@
 "help.memory.hiddenFromThird" = "Od 3. průchodu · pattern je skrytý";
 "help.memory.hidden" = "Pattern se skryje po odpočtu";
 "help.reviews.timeline" = "★★ → +%lld → +%lld → +%lld → +%lld dní → %@";
-"help.reviews.warmups" = "Při postupném mizení patternu jsou první dva průchody rozehrávka";
+"help.reviews.warmups" = "Noty zmizí po 2 úspěšných průchodech za sebou (80 % a víc).";
 "help.reviews.twoPasses" = "Dva úspěšné průchody v jednom opakování";
 "help.reviews.caption" = "Otevři lekci, která je na řadě, z Domova, Tréninku nebo Knihovny. Je připravená na hru Z paměti v cílovém tempu.\nZahraj dva celé skryté průchody v cílovém nebo vyšším tempu, každý aspoň na %lld %%. Hra se pak zastaví. Za druhé splněné opakování v jiný den získáš ★★★.\nPo dvou neúspěšných průchodech, které splnily podmínky opakování, se rozvrh vrátí o krok a lekce přijde na řadu zítra. Vykřičník znamená, že opakování bylo odehrané, ale nezapočítalo se.\nOsa ukazuje odstupy od ★★ až po čtvrté úspěšné opakování. Připomínku opakování zapneš v Nastavení.";
 "help.training.title" = "Dnes a Trénink";

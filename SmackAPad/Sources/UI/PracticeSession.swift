@@ -186,6 +186,7 @@ final class PracticeSession {
     @ObservationIgnored private var runPadCount = 16
     private(set) var finishedByStar: Int?
     private(set) var finishedByReview = false
+    private(set) var memoryWarmUp = LearningRules.MemoryWarmUp()
 
     private struct DailyReviewWindow {
         let day: String
@@ -326,22 +327,22 @@ final class PracticeSession {
         return settings.localized("Review · %lld of 2 passed", window?.state.successes ?? 0)
     }
 
+    public var completedWarmUps: Int {
+        memoryWarmUp.consecutivePasses
+    }
+
     public var showsMemoryFadePhase: Bool {
-        !afterMe && fromMemory && running && !listen && !isSectionLoop && settings.fadeMemoryNotes && passNumber < LearningRules.firstHiddenMemoryPass
+        !afterMe && fromMemory && running && !listen && !isSectionLoop && settings.fadeMemoryNotes
     }
 
-    public func memoryPhaseText(settings: SettingsManager) -> String {
-        passNumber == 1 ? settings.localized("Pass 1 · notes shown") : settings.localized("Pass 2 · notes fading")
-    }
-
-    public func noteVisibility(pass: Int) -> NoteVisibility {
+    public var noteVisibility: NoteVisibility {
         if afterMe { return .hidden }
         return NoteVisibility.derive(
             fromMemory: fromMemory,
             running: running,
             listen: listen,
             isSectionLoop: isSectionLoop,
-            pass: pass,
+            warmUp: memoryWarmUp,
             fadeNotes: settings.fadeMemoryNotes
         )
     }
@@ -352,7 +353,7 @@ final class PracticeSession {
     }
 
     func noteVisibility(at frame: PatternFrame) -> NoteVisibility {
-        noteVisibility(pass: runNumber(for: frame.pass))
+        noteVisibility
     }
 
     var hits: [LessonHit] { lesson.hits(forPadCount: midi.activeProfile.padCount) }
@@ -745,6 +746,7 @@ final class PracticeSession {
             judgmentVersion += 1
             completedPasses = 0
             earnedPass = false; earnedMastery = false; earnedMemory = false
+            memoryWarmUp = LearningRules.MemoryWarmUp()
             passNumber = 1
             currentRepetition = 1
             let first = now + 0.6
@@ -939,6 +941,7 @@ final class PracticeSession {
         settings.lastLessonID = lesson.id
         starStreak = practiceMode == .learning
             ? progress.learningCredit(lessonId: lesson.id, padCount: runPadCount) : StarStreak()
+        memoryWarmUp = LearningRules.MemoryWarmUp()
         passNumber = 1
         currentRepetition = 1
         lastResult = nil
@@ -1103,10 +1106,10 @@ final class PracticeSession {
             let runPassed: Bool
             var award: StarAward?
             let lessonReviewDue = progress.progress(for: lesson.id)?.reviewSchedule.isDueReview(on: currentDay()) == true
+            let memoryNotesHidden = memoryWarmUp.areNotesHidden(fadeNotes: settings.fadeMemoryNotes)
+            let isHiddenPass = !fromMemory || memoryNotesHidden
             if !isSectionLoop {
                 let saved = progress.progress(for: lesson.id)
-
-                let isHiddenPass = !fromMemory || !settings.fadeMemoryNotes || pass.number >= LearningRules.firstHiddenMemoryPass
 
                 let today = currentDay()
                 if let currentProgress = saved,
@@ -1119,8 +1122,7 @@ final class PracticeSession {
                         bpm: result.bpm,
                         targetBpm: lesson.targetBpm,
                         score: Float(result.score),
-                        pass: pass.number,
-                        fadeNotes: settings.fadeMemoryNotes
+                        notesHidden: memoryNotesHidden
                     )
                     var window = reviewWindows[lesson.id].flatMap { $0.day == today ? $0 : nil }
                         ?? DailyReviewWindow(day: today)
@@ -1128,7 +1130,7 @@ final class PracticeSession {
                     window.state = decision.window
                     window.outcome = decision.outcome
                     reviewWindows[lesson.id] = window
-                    reviewPendingReason = settings.fadeMemoryNotes && pass.number < LearningRules.firstHiddenMemoryPass
+                    reviewPendingReason = fromMemory && !memoryNotesHidden
                         ? .notesVisible : .unfinishedReview
                     if let outcome = decision.outcome, let feedback = outcome.feedback {
                         reviewFeedback = feedback
@@ -1181,8 +1183,7 @@ final class PracticeSession {
                     targetBpm: lesson.targetBpm,
                     score: result.score,
                     isSectionLoop: isSectionLoop,
-                    pass: pass.number,
-                    fadeNotes: settings.fadeMemoryNotes
+                    notesHidden: memoryNotesHidden
                 )
                 let memoryRunPassed = fromMemory && result.bpm >= lesson.targetBpm && result.score >= Scoring.passMark && isHiddenPass
                 let required = StarStreak.requiredRuns(expectedHits: result.expectedHitCount, isIntro: lesson.cat == "intro")
@@ -1246,7 +1247,6 @@ final class PracticeSession {
                 let currentAward = award ?? StarAward(previous: progress.progress(for: lesson.id),
                                                       passed: false, mastery: false, memory: false)
                 flushPendingProgress()
-                let isHiddenPass = !fromMemory || !settings.fadeMemoryNotes || pass.number >= LearningRules.firstHiddenMemoryPass
                 let runMemoryPass = fromMemory && isHiddenPass && result.score >= Scoring.passMark
                 if !runMemoryPass {
                     currentMixRoundMemory = false
@@ -1299,6 +1299,9 @@ final class PracticeSession {
             }
             // The tempo preference is saved once at STOP, not at every pass.
             if let error = progress.lastSaveError { errorMessage = error.localizedDescription }
+            if fromMemory && !isSectionLoop {
+                memoryWarmUp.recordPass(score: result.score, fadeNotes: settings.fadeMemoryNotes)
+            }
             if stopAfterPass { return }
         }
     }

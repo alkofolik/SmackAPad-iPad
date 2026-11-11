@@ -153,7 +153,7 @@ public struct ReviewScheduler: Sendable {
     }
 
     /// Pure function: schedule + run result + today → new schedule and feedback.
-    /// Under ticket 99, when fadeNotes is on, only hidden passes (pass >= 3) count as reviews.
+    /// Only hidden From-memory passes count as reviews.
     public static func evaluate(
         schedule: ScheduleState,
         today: String,
@@ -162,8 +162,7 @@ public struct ReviewScheduler: Sendable {
         bpm: Int,
         targetBpm: Int,
         score: Float,
-        pass: Int = LearningRules.firstHiddenMemoryPass,
-        fadeNotes: Bool = true
+        notesHidden: Bool = true
     ) -> Outcome {
         guard schedule.isDueReview(on: today) else {
             return Outcome(newSchedule: schedule, feedback: nil)
@@ -173,13 +172,16 @@ public struct ReviewScheduler: Sendable {
         guard isFullRun else {
             return Outcome(newSchedule: schedule, feedback: nil)
         }
-        // When notes fade out over the first passes in From memory, passes 1–2 do not count as reviews
-        if fadeNotes && pass < LearningRules.firstHiddenMemoryPass {
-            return Outcome(newSchedule: schedule, feedback: nil)
-        }
 
         let atGoalTempo = bpm >= targetBpm
-        if !fromMemory || !atGoalTempo {
+        if !fromMemory {
+            return Outcome(newSchedule: schedule, feedback: .doesNotCount(goalBpm: targetBpm))
+        }
+        // Warm-up passes with visible notes do not count as reviews
+        guard notesHidden else {
+            return Outcome(newSchedule: schedule, feedback: nil)
+        }
+        if !atGoalTempo {
             return Outcome(newSchedule: schedule, feedback: .doesNotCount(goalBpm: targetBpm))
         }
 

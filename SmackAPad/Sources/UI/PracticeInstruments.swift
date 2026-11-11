@@ -261,24 +261,28 @@ struct PlayingLastRunChip: View {
     }
 }
 
-/// Chip showing the current memory fade phase (Pass 1 · notes shown / Pass 2 · notes fading) in place of the run meter.
+/// Chip showing how many memory warm-up passes have succeeded (0, 1, or 2) with eye symbols.
 struct MemoryPhaseChip: View {
-    let phase: String
+    let completed: Int
+    let label: String
 
     var body: some View {
-        Text(phase)
-            .font(Theme.control)
-            .foregroundStyle(Theme.ink)
-            .lineLimit(1)
-            .padding(.horizontal, Theme.Space.small)
-            .frame(height: 48)
-            .background(Theme.surface, in: Rectangle())
-            .overlay(
-                Rectangle()
-                    .strokeBorder(Theme.hairline, lineWidth: 1)
-            )
-            .accessibilityElement(children: .ignore)
-            .accessibilityLabel(phase)
+        HStack(spacing: Theme.Space.tight) {
+            ForEach(0..<LearningRules.warmUpPassesNeeded, id: \.self) { index in
+                Image(systemName: index < completed ? "eye.slash.fill" : "eye")
+                    .font(Theme.control)
+                    .foregroundStyle(index < completed ? Theme.ink : Theme.secondary)
+            }
+        }
+        .padding(.horizontal, Theme.Space.small)
+        .frame(height: 48)
+        .background(Theme.surface, in: Rectangle())
+        .overlay(
+            Rectangle()
+                .strokeBorder(Theme.hairline, lineWidth: 1)
+        )
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(label)
     }
 }
 

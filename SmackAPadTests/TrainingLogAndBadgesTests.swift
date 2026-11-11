@@ -37,7 +37,7 @@ final class TrainingLogAndBadgesTests: XCTestCase {
         let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))
         defer { defaults.removePersistentDomain(forName: suite) }
         let settings = SettingsManager(userDefaults: defaults)
-        settings.fadeMemoryNotes = true // Passes 1-2 show notes (fading hints), so pass 1 is shown
+        settings.fadeMemoryNotes = true // Notes stay shown during memory warm-ups, so pass 1 is shown
 
         let hits = stride(from: 0, to: 64, by: 4).map {
             LessonHit(step: $0, padIndex: 12, hand: "L", velocity: 100)

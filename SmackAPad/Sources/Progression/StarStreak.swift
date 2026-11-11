@@ -31,8 +31,7 @@ public struct StarStreak: Codable, Equatable, Hashable, Sendable {
         targetBpm: Int,
         score: Double,
         isSectionLoop: Bool = false,
-        pass: Int = LearningRules.firstHiddenMemoryPass,
-        fadeNotes: Bool = true
+        notesHidden: Bool = true
     ) -> Bool {
         false
     }
@@ -46,8 +45,7 @@ public struct StarStreak: Codable, Equatable, Hashable, Sendable {
         targetBpm: Int,
         score: Double,
         isSectionLoop: Bool = false,
-        pass: Int = LearningRules.firstHiddenMemoryPass,
-        fadeNotes: Bool = true
+        notesHidden: Bool = true
     ) -> Bool {
         mayEarnMemoryCredit(
             masteryDay: progress?.masteryDay,
@@ -58,8 +56,7 @@ public struct StarStreak: Codable, Equatable, Hashable, Sendable {
             targetBpm: targetBpm,
             score: score,
             isSectionLoop: isSectionLoop,
-            pass: pass,
-            fadeNotes: fadeNotes
+            notesHidden: notesHidden
         )
     }
 

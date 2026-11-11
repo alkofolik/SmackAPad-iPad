@@ -84,8 +84,7 @@ final class Star3ReviewTests: XCTestCase {
             targetBpm: 100,
             score: 0.95,
             isSectionLoop: false,
-            pass: 3,
-            fadeNotes: true
+            notesHidden: true
         )
         XCTAssertFalse(earnsMemoryCredit)
     }

@@ -561,7 +561,12 @@ struct PracticeScreen: View {
     private func runMeter(frame: PatternFrame, scored: Bool) -> some View {
         if focusActive {
             if session.showsMemoryFadePhase {
-                MemoryPhaseChip(phase: session.memoryPhaseText(settings: settings))
+                let completed = session.completedWarmUps
+                let progressText = settings.localized("%lld / %lld", completed, LearningRules.warmUpPassesNeeded)
+                MemoryPhaseChip(
+                    completed: completed,
+                    label: "\(settings.localized("From memory")), \(progressText)"
+                )
             } else if let progress = session.starRunProgress {
                 RunMeterView(
                     progress: progress,

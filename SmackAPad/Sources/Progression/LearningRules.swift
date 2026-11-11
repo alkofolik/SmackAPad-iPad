@@ -31,8 +31,43 @@ public enum LearningRules {
     public static let reviewDecisionPasses = 2
     /// Passed spaced reviews required to award or migrate the memory star.
     public static let reviewsForMemoryStar = 2
-    /// First pass counted as hidden when memory notes fade out.
-    public static let firstHiddenMemoryPass = 3
+    /// Consecutive successful warm-up passes required before From-memory notes hide.
+    public static let warmUpPassesNeeded = 2
+
+    /// Tracks consecutive successful From-memory warm-up passes for one lesson run.
+    public struct MemoryWarmUp: Equatable, Sendable {
+        /// Consecutive warm-up passes completed at `passMark` or better (0...warmUpPassesNeeded).
+        public private(set) var consecutivePasses = 0
+
+        public init(consecutivePasses: Int = 0) {
+            self.consecutivePasses = max(0, min(LearningRules.warmUpPassesNeeded, consecutivePasses))
+        }
+
+        /// True once enough consecutive warm-ups have succeeded; notes stay hidden afterward.
+        public var notesHidden: Bool {
+            consecutivePasses >= LearningRules.warmUpPassesNeeded
+        }
+
+        /// Whether From-memory notes are hidden for the current pass under the fade setting.
+        public func areNotesHidden(fadeNotes: Bool) -> Bool {
+            !fadeNotes || notesHidden
+        }
+
+        /// Advances warm-up progress after a finished pass.
+        /// Tempo does not matter for warm-ups, and once notes hide they stay hidden.
+        public mutating func recordPass(score: Double, fadeNotes: Bool = true) {
+            guard fadeNotes else {
+                consecutivePasses = LearningRules.warmUpPassesNeeded
+                return
+            }
+            guard !notesHidden else { return }
+            if score >= LearningRules.passMark {
+                consecutivePasses += 1
+            } else {
+                consecutivePasses = 0
+            }
+        }
+    }
     /// Last review step, whose successful review settles the lesson.
     public static let lastReviewStep = 3
     /// Next-day delay for initial, migrated, failed and postponed reviews.
