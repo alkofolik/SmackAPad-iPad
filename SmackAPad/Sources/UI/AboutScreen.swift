@@ -12,11 +12,9 @@ public struct AboutDetailView: View {
     @Environment(SettingsManager.self) private var settings
     @Environment(\.dismiss) private var dismiss
 
-    var showsDoneButton: Bool = false
     var onDismiss: (() -> Void)? = nil
 
-    public init(showsDoneButton: Bool = false, onDismiss: (() -> Void)? = nil) {
-        self.showsDoneButton = showsDoneButton
+    public init(onDismiss: (() -> Void)? = nil) {
         self.onDismiss = onDismiss
     }
 
@@ -43,20 +41,14 @@ public struct AboutDetailView: View {
         .calmChassisBackground()
         .navigationTitle(settings.localized("About"))
         .navigationBarTitleDisplayMode(.inline)
+        .navigationBarBackButtonHidden(true)
         .toolbar {
-            ToolbarItem(placement: .principal) { ScreenHeader(title: settings.localized("About")) }
-            if showsDoneButton || onDismiss != nil {
-                PadToolbarItem(placement: .confirmationAction) {
-                    Button {
-                        if let onDismiss { onDismiss() } else { dismiss() }
-                    } label: {
-                        Text(settings.localized("Done"))
-                            .font(Theme.control)
-                            .frame(minHeight: Theme.Size.touch)
-                    }
-                    .buttonStyle(PadSecondaryButtonStyle())
+            PadToolbarItem(placement: .topBarLeading) {
+                BackButton {
+                    if let onDismiss { onDismiss() } else { dismiss() }
                 }
             }
+            ToolbarItem(placement: .principal) { ScreenHeader(title: settings.localized("About")) }
         }
     }
 }

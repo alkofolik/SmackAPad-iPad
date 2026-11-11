@@ -38,5 +38,17 @@ public enum AppLanguage: String, CaseIterable, Identifiable, Codable, Sendable {
         let format = localized(key)
         return String(format: format, locale: Locale(identifier: rawValue), arguments: arguments)
     }
+
+    /// Formats a lesson count with English and Czech singular/plural forms.
+    public func localizedLessonCount(_ count: Int) -> String {
+        switch self {
+        case .czech:
+            if count == 1 { return "1 lekce" }
+            if count >= 2 && count <= 4 { return "\(count) lekce" }
+            return "\(count) lekcí"
+        case .english:
+            return count == 1 ? localized("1 lesson") : localized("%lld lessons", count)
+        }
+    }
 }
 

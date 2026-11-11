@@ -308,12 +308,7 @@ struct LibraryScreen: View {
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             PadToolbarItem(placement: .topBarLeading) {
-                Button(action: onHome) {
-                    Text(settings.localized("Home"))
-                        .font(Theme.control)
-                        .frame(minHeight: Theme.Size.touch)
-                }
-                .buttonStyle(PadSecondaryButtonStyle())
+                BackButton(action: onHome)
             }
         }
     }

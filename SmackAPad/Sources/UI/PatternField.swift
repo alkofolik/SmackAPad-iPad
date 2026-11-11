@@ -122,7 +122,20 @@ struct PatternField: View {
                                 availableHeight / unscaledHeight)
 
             let contentHeight = max(availableHeight, unscaledHeight * bandScale)
-            let gutter: CGFloat = scrolling ? 0 : (PracticeBandStyle.showPadLabels ? 96 * bandScale : 0)
+            let topPadding = 56 * bandScale
+            let bottomPadding = 24 * bandScale
+            let rowHeight = max(
+                1,
+                (contentHeight - topPadding - bottomPadding - PracticeBandStyle.rowGap * bandScale * CGFloat(max(0, rows.count - 1)))
+                    / CGFloat(max(1, rows.count))
+            )
+            let labelLayout = PracticeBandStyle.bandLabelLayout(
+                rows: rows,
+                availableWidth: availableWidth,
+                rowHeight: rowHeight,
+                barCount: scrolling ? 1 : count
+            )
+            let gutter: CGFloat = scrolling ? 0 : labelLayout.gutter
 
             ZStack {
                 ScrollView(.vertical) {
@@ -132,7 +145,8 @@ struct PatternField: View {
                                              running: running, visibility: visibility, fromMemory: fromMemory, afterMe: afterMe,
                                              verdicts: verdicts, judgments: judgments, pass: pass,
                                              playedHits: playedHits, scoring: scoring,
-                                             missGraceSteps: missGraceSteps, band: band, scale: bandScale)
+                                             missGraceSteps: missGraceSteps, band: band, scale: bandScale,
+                                             labelLayout: labelLayout)
                         } else {
                             let currentBar = min(lesson.bars - 1, max(0, Int(position) / 16))
                             let first = (currentBar / max(1, count)) * max(1, count)
@@ -145,7 +159,8 @@ struct PatternField: View {
                                           verdicts: verdicts, feedback: feedback,
                                           playedHits: staticPlayed,
                                           scoring: scoring, missGraceSteps: missGraceSteps,
-                                          band: band, scale: bandScale, bpm: bpm, reduceMotion: reduceMotion,
+                                          band: band, scale: bandScale, labelLayout: labelLayout,
+                                          bpm: bpm, reduceMotion: reduceMotion,
                                           afterMe: afterMe)
                                 .frame(height: contentHeight)
                         }
@@ -242,19 +257,20 @@ private struct PatternLanes {
     }
 
     /// Drawn after every moving note, so old notes deliberately slide underneath.
-    func drawLabels(band: Color, context: inout GraphicsContext) {
-        guard PracticeBandStyle.showPadLabels else { return }
+    func drawLabels(band: Color, labelLayout: BandLabelLayout, context: inout GraphicsContext) {
+        guard PracticeBandStyle.showPadLabels, labelLayout.gutter > 0 else { return }
+        let backdropWidth = max(0, labelLayout.gutter + 6)
         for (row, pad) in rows.enumerated() {
-            let labelHeight = min(height, 44 * scale)
-            let rect = CGRect(x: -12, y: y(row) - labelHeight / 2, width: 100 * scale, height: labelHeight)
+            let rect = CGRect(x: -12, y: y(row) - height / 2, width: backdropWidth, height: height)
             context.fill(Path(roundedRect: rect, cornerRadius: 6), with: .color(band))
-            let duplicate = rows.filter { PadVoice.abbreviation($0) == PadVoice.abbreviation(pad) }.count > 1
-            context.draw(Text(PadVoice.abbreviation(pad)).font(Theme.canvasDisplay(fontSize)).foregroundColor(Theme.black),
-                         at: CGPoint(x: 0, y: y(row)), anchor: .leading)
-            if duplicate {
-                context.draw(Text(String(pad + 1)).font(Theme.canvasText(20 * scale)).monospacedDigit().foregroundColor(Theme.black),
-                             at: CGPoint(x: 56 * scale, y: y(row)), anchor: .leading)
-            }
+            let label = labelLayout.labels[pad] ?? PadVoice.displayName(pad)
+            context.draw(
+                Text(label)
+                    .font(Theme.canvasDisplay(labelLayout.fontSize))
+                    .foregroundColor(Theme.black),
+                at: CGPoint(x: 0, y: y(row)),
+                anchor: .leading
+            )
         }
     }
 }
@@ -298,12 +314,13 @@ private struct StaticPattern: View {
     let missGraceSteps: Double
     let band: Color
     let scale: CGFloat
+    let labelLayout: BandLabelLayout
     var bpm: Int = 60
     var reduceMotion: Bool = false
     var afterMe: Bool = false
 
     var body: some View {
-        let gutter: CGFloat = PracticeBandStyle.showPadLabels ? 96 * scale : 0
+        let gutter: CGFloat = labelLayout.gutter
         let barCount = max(1, bars.count)
         let totalSteps = barCount * 16
         let startStep = firstBar * 16
@@ -397,7 +414,7 @@ private struct StaticPattern: View {
                 }
 
                 // Pad labels appear once, on the left of the whole row of bars
-                lanes.drawLabels(band: band, context: &context)
+                lanes.drawLabels(band: band, labelLayout: labelLayout, context: &context)
             }
         }
     }
@@ -422,6 +439,7 @@ private struct ScrollingPattern: View {
     let missGraceSteps: Double
     let band: Color
     let scale: CGFloat
+    let labelLayout: BandLabelLayout
 
     var body: some View {
         let total = max(16, lesson.bars * 16)
@@ -494,7 +512,7 @@ private struct ScrollingPattern: View {
                     }
                 }
                 drawMarker(x: markerX, top: lanes.top - 4 * scale, bottom: rowBottom + 4, context: &context)
-                lanes.drawLabels(band: band, context: &context)
+                lanes.drawLabels(band: band, labelLayout: labelLayout, context: &context)
             }
         }
     }
@@ -813,10 +831,19 @@ struct HelpPatternBand: View {
     var body: some View {
         Canvas { context, size in
             let scale = min(size.height / 228, size.width / 400)
-            let gutter = 96 * scale
+            let lanes = PatternLanes(size: size, rows: Self.rows, scale: scale)
+            let labelLayout = PracticeBandStyle.bandLabelLayout(
+                rows: Self.rows,
+                availableWidth: size.width,
+                rowHeight: lanes.height,
+                barCount: bars,
+                maxFontSize: 22 * scale,
+                minFontSize: 11 * scale,
+                trailingPadding: 8 * scale
+            )
+            let gutter = labelLayout.gutter
             let stepCount = 16 * bars
             let stepWidth = (size.width - gutter) / CGFloat(stepCount)
-            let lanes = PatternLanes(size: size, rows: Self.rows, scale: scale)
             let x: (Double) -> CGFloat = { gutter + ($0 + 0.5) * stepWidth }
             lanes.drawRows(context: &context)
             for step in 0..<stepCount {
@@ -848,7 +875,7 @@ struct HelpPatternBand: View {
                     }
                 }
             }
-            lanes.drawLabels(band: band, context: &context)
+            lanes.drawLabels(band: band, labelLayout: labelLayout, context: &context)
         }
         .padding(.horizontal, Theme.Space.small)
         .frame(height: height)

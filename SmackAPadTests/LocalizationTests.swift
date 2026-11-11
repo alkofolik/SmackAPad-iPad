@@ -1,5 +1,6 @@
 import Foundation
 import XCTest
+@testable import SmackAPad
 
 final class LocalizationTests: XCTestCase {
     func testCataloguesHaveMatchingKeysFormatsAndNonemptyUniqueValues() throws {
@@ -66,6 +67,26 @@ final class LocalizationTests: XCTestCase {
         for key in czechReminderPluralKeys.sorted() {
             let value = try XCTUnwrap(czech[key], "cs: missing plural key \(key)")
             XCTAssertEqual(specifiers(in: key), specifiers(in: value), "Czech plural format: \(key)")
+        }
+    }
+
+    func testPadDisplayNamesMatchAcrossEnglishAndCzech() throws {
+        let suite = "LocalizationTests.PadDisplayNames.\(UUID().uuidString)"
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))
+        defer { defaults.removePersistentDomain(forName: suite) }
+
+        let settings = SettingsManager(userDefaults: defaults)
+        for pad in PadVoice.names.indices {
+            let canonical = PadVoice.displayName(pad)
+            settings.languagePreference = .english
+            let english = PadVoice.name(pad, settings: settings)
+            settings.languagePreference = .czech
+            let czech = PadVoice.name(pad, settings: settings)
+
+            XCTAssertEqual(english, canonical, "English name drifted for pad \(pad)")
+            XCTAssertEqual(czech, canonical, "Czech name must stay English for pad \(pad)")
+            XCTAssertEqual(settings.localized(canonical), canonical,
+                           "Localizable.strings must keep English drum name '\(canonical)' in Czech")
         }
     }
 }

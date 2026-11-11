@@ -119,7 +119,7 @@ struct ContentView: View {
                 target
             }
         } else if ProcessInfo.processInfo.arguments.contains("-about") {
-            let target = NavigationStack { AboutDetailView(showsDoneButton: true) }
+            let target = NavigationStack { AboutDetailView() }
             if ProcessInfo.processInfo.arguments.contains("-landscape") {
                 target
                     .frame(width: 1194, height: 834)
@@ -139,7 +139,7 @@ struct ContentView: View {
                 target
             }
         } else if ProcessInfo.processInfo.arguments.contains("-controller") {
-            let target = NavigationStack { ControllerSetupView(showsDoneButton: true) }
+            let target = NavigationStack { ControllerSetupView() }
             if ProcessInfo.processInfo.arguments.contains("-landscape") {
                 target
                     .frame(width: 1194, height: 834)

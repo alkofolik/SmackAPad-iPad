@@ -88,54 +88,269 @@ struct InstrumentButtonStyle: ButtonStyle {
     }
 }
 
+enum PracticeToolbarButtonAppearance {
+    case segmented
+    case outline
+    case solidDark
+}
+
+/// A 24×24 stroke vector icon matching the UI shape from Main.dc.html.
+enum PracticeToolbarIcon: Equatable {
+    case symbol(String)
+    case crossedSticks
+    case padLegend
+}
+
+private struct PracticeToolbarButtonStyle: ButtonStyle {
+    @Environment(\.isEnabled) private var isEnabled
+    let appearance: PracticeToolbarButtonAppearance
+    var selected: Bool = false
+    var size: CGSize = CGSize(width: 48, height: 48)
+
+    private var cornerRadius: CGFloat {
+        appearance == .solidDark ? 14 : 12
+    }
+
+    private var backgroundColor: Color {
+        switch appearance {
+        case .segmented, .outline:
+            return selected ? Theme.orange : .clear
+        case .solidDark:
+            return Theme.black
+        }
+    }
+
+    private var foregroundColor: Color {
+        switch appearance {
+        case .segmented, .outline:
+            return selected ? Theme.black : Theme.ink
+        case .solidDark:
+            return Theme.white
+        }
+    }
+
+    private var borderColor: Color {
+        switch appearance {
+        case .segmented:
+            return .clear
+        case .outline:
+            return selected ? .clear : Theme.ink.opacity(0.28)
+        case .solidDark:
+            return Theme.ink.opacity(0.18)
+        }
+    }
+
+    private var borderWidth: CGFloat {
+        switch appearance {
+        case .segmented: return 0
+        case .outline: return 1.5
+        case .solidDark: return 1
+        }
+    }
+
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .frame(width: size.width, height: size.height)
+            .foregroundStyle(foregroundColor)
+            .background(RoundedRectangle(cornerRadius: cornerRadius).fill(backgroundColor))
+            .overlay(
+                RoundedRectangle(cornerRadius: cornerRadius)
+                    .strokeBorder(borderColor, lineWidth: borderWidth)
+            )
+            .contentShape(RoundedRectangle(cornerRadius: cornerRadius))
+            .opacity(isEnabled ? (configuration.isPressed ? 0.72 : 1) : 0.4)
+    }
+}
+
+private struct PracticeToolbarHintModifier: ViewModifier {
+    let title: String
+    @State private var showingHint = false
+
+    func body(content: Content) -> some View {
+        content
+            .help(title)
+            .highPriorityGesture(LongPressGesture(minimumDuration: 0.5).onEnded { _ in showingHint = true })
+            .popover(isPresented: $showingHint, arrowEdge: .top) {
+                Text(title)
+                    .font(Theme.control)
+                    .padding(Theme.Space.regular)
+                    .foregroundStyle(Theme.ink)
+                    .background(Theme.background)
+                    .presentationCompactAdaptation(.popover)
+            }
+    }
+}
+
+extension View {
+    func practiceToolbarHint(_ title: String) -> some View {
+        modifier(PracticeToolbarHintModifier(title: title))
+    }
+}
+
+private struct CrossedSticksGlyph: View {
+    var body: some View {
+        Canvas { context, size in
+            let s = min(size.width, size.height) / 24
+            let style = StrokeStyle(lineWidth: 1.85 * s, lineCap: .round, lineJoin: .round)
+
+            var leftStick = Path()
+            leftStick.move(to: CGPoint(x: 4 * s, y: 20 * s))
+            leftStick.addLine(to: CGPoint(x: 15 * s, y: 6 * s))
+
+            var rightStick = Path()
+            rightStick.move(to: CGPoint(x: 20 * s, y: 20 * s))
+            rightStick.addLine(to: CGPoint(x: 9 * s, y: 6 * s))
+
+            let tipRadius = 1.8 * s
+            let leftTip = Path(ellipseIn: CGRect(
+                x: 8 * s - tipRadius, y: 5 * s - tipRadius,
+                width: tipRadius * 2, height: tipRadius * 2
+            ))
+            let rightTip = Path(ellipseIn: CGRect(
+                x: 16 * s - tipRadius, y: 5 * s - tipRadius,
+                width: tipRadius * 2, height: tipRadius * 2
+            ))
+
+            context.stroke(leftStick, with: .foreground, style: style)
+            context.stroke(rightStick, with: .foreground, style: style)
+            context.stroke(leftTip, with: .foreground, style: style)
+            context.stroke(rightTip, with: .foreground, style: style)
+        }
+        .frame(width: 22, height: 22)
+        .accessibilityHidden(true)
+    }
+}
+
+private struct PadLegendGlyph: View {
+    var body: some View {
+        Canvas { context, size in
+            let s = min(size.width, size.height) / 24
+            let style = StrokeStyle(lineWidth: 1.8 * s, lineCap: .round, lineJoin: .round)
+
+            let boxes = [
+                CGRect(x: 4 * s, y: 4 * s, width: 7 * s, height: 7 * s),
+                CGRect(x: 13 * s, y: 4 * s, width: 7 * s, height: 7 * s),
+                CGRect(x: 4 * s, y: 13 * s, width: 7 * s, height: 7 * s)
+            ]
+            for rect in boxes {
+                context.stroke(Path(roundedRect: rect, cornerRadius: 1.5 * s), with: .foreground, style: style)
+            }
+
+            var lines = Path()
+            lines.move(to: CGPoint(x: 14 * s, y: 15 * s))
+            lines.addLine(to: CGPoint(x: 20 * s, y: 15 * s))
+            lines.move(to: CGPoint(x: 14 * s, y: 19 * s))
+            lines.addLine(to: CGPoint(x: 18 * s, y: 19 * s))
+            context.stroke(lines, with: .foreground, style: style)
+        }
+        .frame(width: 22, height: 22)
+        .accessibilityHidden(true)
+    }
+}
+
 /// A tap performs the action; holding the icon reveals its localized name.
 struct PracticeIconButton: View {
     @Environment(\.isEnabled) private var isEnabled
-    let symbol: String
+    let icon: PracticeToolbarIcon
     let title: String
+    var appearance: PracticeToolbarButtonAppearance = .segmented
+    var width: CGFloat? = nil
     var count: Int? = nil
     var selected = false
     var accessibilityValue: String? = nil
     var accessibilityHint: String? = nil
     let action: () -> Void
-    @State private var showingHint = false
+
+    init(
+        symbol: String,
+        title: String,
+        appearance: PracticeToolbarButtonAppearance = .segmented,
+        width: CGFloat? = nil,
+        count: Int? = nil,
+        selected: Bool = false,
+        accessibilityValue: String? = nil,
+        accessibilityHint: String? = nil,
+        action: @escaping () -> Void
+    ) {
+        self.icon = .symbol(symbol)
+        self.title = title
+        self.appearance = appearance
+        self.width = width
+        self.count = count
+        self.selected = selected
+        self.accessibilityValue = accessibilityValue
+        self.accessibilityHint = accessibilityHint
+        self.action = action
+    }
+
+    init(
+        icon: PracticeToolbarIcon,
+        title: String,
+        appearance: PracticeToolbarButtonAppearance = .segmented,
+        width: CGFloat? = nil,
+        count: Int? = nil,
+        selected: Bool = false,
+        accessibilityValue: String? = nil,
+        accessibilityHint: String? = nil,
+        action: @escaping () -> Void
+    ) {
+        self.icon = icon
+        self.title = title
+        self.appearance = appearance
+        self.width = width
+        self.count = count
+        self.selected = selected
+        self.accessibilityValue = accessibilityValue
+        self.accessibilityHint = accessibilityHint
+        self.action = action
+    }
+
+    private var buttonSize: CGSize {
+        let base: CGFloat = appearance == .solidDark ? 56 : 48
+        return CGSize(width: width ?? base, height: base)
+    }
 
     var body: some View {
         Button(action: action) {
             buttonContent
-                .frame(width: Theme.Size.touch, height: Theme.Size.touch)
         }
-        .buttonStyle(PadIconButtonStyle(selected: selected ? true : nil))
+        .buttonStyle(PracticeToolbarButtonStyle(
+            appearance: appearance,
+            selected: selected,
+            size: buttonSize
+        ))
         .motion(value: isEnabled)
         .motion(value: selected)
         .accessibilityLabel(title)
         .modifier(OptionalAccessibilityModifier(value: accessibilityValue, hint: accessibilityHint))
         .accessibilityAddTraits(selected ? .isSelected : [])
-        .help(title)
-        .highPriorityGesture(LongPressGesture(minimumDuration: 0.5).onEnded { _ in showingHint = true })
-        .popover(isPresented: $showingHint, arrowEdge: .top) {
-            Text(title)
-                .font(Theme.control)
-                .padding(Theme.Space.regular)
-                .foregroundStyle(Theme.ink)
-                .background(Theme.background)
-                .presentationCompactAdaptation(.popover)
-        }
+        .practiceToolbarHint(title)
     }
 
     @ViewBuilder
     private var buttonContent: some View {
         if let count {
-            HStack(spacing: 3) {
-                Image(systemName: symbol)
-                    .font(.system(size: 17, weight: .medium))
+            HStack(spacing: 4) {
+                glyphView(symbolSize: 16)
                 Text("\(count)")
-                    .font(Theme.canvasDisplay(13))
+                    .font(Theme.strong(15))
                     .monospacedDigit()
             }
         } else {
-            Image(systemName: symbol)
-                .font(.system(size: 21, weight: .medium))
+            glyphView(symbolSize: 20)
+        }
+    }
+
+    @ViewBuilder
+    private func glyphView(symbolSize: CGFloat) -> some View {
+        switch icon {
+        case .symbol(let name):
+            Image(systemName: name)
+                .font(.system(size: symbolSize, weight: .medium))
+        case .crossedSticks:
+            CrossedSticksGlyph()
+        case .padLegend:
+            PadLegendGlyph()
         }
     }
 }
@@ -527,10 +742,16 @@ struct PadVoice {
     static let names = ["High tom", "Low tom", "Crash", "Ride", "Shaker", "Wood", "Cowbell", "Open hi-hat", "Hi-hat", "Clap", "Rim", "Hi-hat", "Kick", "Snare", "Snare", "Kick"]
     static let rowOrder = [8, 11, 7, 2, 3, 4, 5, 6, 9, 10, 13, 14, 0, 1, 12, 15]
     static func abbreviation(_ pad: Int) -> String { abbreviations.indices.contains(pad) ? abbreviations[pad] : "?" }
-    static func name(_ pad: Int, settings: SettingsManager? = nil) -> String {
+
+    /// Canonical English drum name shown in the band, legend, settings, and help across all locales.
+    static func displayName(_ pad: Int) -> String {
         guard names.indices.contains(pad) else { return "Pad \(pad + 1)" }
-        let raw = names[pad]
-        return settings?.localized(raw) ?? raw
+        return names[pad]
+    }
+
+    static func name(_ pad: Int, settings: SettingsManager? = nil) -> String {
+        _ = settings
+        return displayName(pad)
     }
 }
 

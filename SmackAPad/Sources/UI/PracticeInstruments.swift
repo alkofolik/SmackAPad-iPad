@@ -50,7 +50,7 @@ enum PracticeBandStyle {
     }
 
     private static let padWidths: [Int: CGFloat] = {
-        let font = UIFont(name: "IBMPlexSans-Bold", size: 32)!
+        let font = UIFont(name: "IBMPlexSans-Bold", size: 32) ?? .boldSystemFont(ofSize: 32)
         return Dictionary(uniqueKeysWithValues: PadVoice.abbreviations.indices.map {
             ($0, (PadVoice.abbreviation($0) as NSString).size(withAttributes: [.font: font]).width)
         })
@@ -61,9 +61,94 @@ enum PracticeBandStyle {
         return max(60, ceil((widest + 4) / 0.84)) * scale
     }
 
-    static func barWidth(rows: [Int], scale: CGFloat) -> CGFloat {
-        96 * scale + 16 * cellWidth(rows: rows, scale: scale)
+    static func bandLabelLayout(
+        rows: [Int],
+        availableWidth: CGFloat,
+        rowHeight: CGFloat,
+        barCount: Int = 1,
+        maxFontSize: CGFloat = 26,
+        minFontSize: CGFloat = 18,
+        trailingPadding: CGFloat = 12,
+        showLabels: Bool = PracticeBandStyle.showPadLabels
+    ) -> BandLabelLayout {
+        guard showLabels, !rows.isEmpty, availableWidth > 0 else {
+            return BandLabelLayout(gutter: 0, fontSize: maxFontSize, labels: [:])
+        }
+
+        let baseNames = Dictionary(uniqueKeysWithValues: rows.map { ($0, PadVoice.displayName($0)) })
+        var nameCounts: [String: Int] = [:]
+        for pad in rows {
+            nameCounts[baseNames[pad] ?? "", default: 0] += 1
+        }
+        let rawLabels = Dictionary(uniqueKeysWithValues: rows.map { pad -> (Int, String) in
+            let base = baseNames[pad] ?? PadVoice.displayName(pad)
+            if (nameCounts[base] ?? 0) > 1 {
+                return (pad, "\(base) \(pad + 1)")
+            }
+            return (pad, base)
+        })
+
+        let rowCappedFont: CGFloat = switch rows.count {
+        case ...3: maxFontSize
+        case 4: min(maxFontSize, 22)
+        case 5: min(maxFontSize, 20)
+        default: min(maxFontSize, minFontSize)
+        }
+        let heightCappedFont = max(minFontSize, floor(rowHeight * 0.62))
+        let startFont = max(minFontSize, min(rowCappedFont, heightCappedFont))
+
+        // Keep at least ~74–78% of width for pattern bars so labels never squeeze cells.
+        let maxFraction: CGFloat = barCount >= 3 ? 0.22 : 0.26
+        let maxGutter = max(48, min(220, availableWidth * maxFraction))
+
+        var chosenFont = minFontSize
+        var widestAtChosen: CGFloat = 0
+        var size = startFont
+        while size >= minFontSize {
+            let font = UIFont(name: "IBMPlexSans-Bold", size: size) ?? .boldSystemFont(ofSize: size)
+            let widest = rawLabels.values.map { textWidth($0, font: font) }.max() ?? 0
+            widestAtChosen = widest
+            if widest + trailingPadding <= maxGutter {
+                chosenFont = size
+                break
+            }
+            if size == minFontSize { break }
+            size = max(minFontSize, size - 0.5)
+        }
+
+        let font = UIFont(name: "IBMPlexSans-Bold", size: chosenFont) ?? .boldSystemFont(ofSize: chosenFont)
+        let fittedGutter = ceil(widestAtChosen + trailingPadding)
+        if fittedGutter <= maxGutter {
+            return BandLabelLayout(gutter: fittedGutter, fontSize: chosenFont, labels: rawLabels)
+        }
+
+        let maxTextWidth = max(12, floor(maxGutter - trailingPadding))
+        let truncatedLabels = rawLabels.mapValues { truncate($0, maxWidth: maxTextWidth, font: font) }
+        return BandLabelLayout(gutter: floor(maxGutter), fontSize: chosenFont, labels: truncatedLabels)
     }
+
+    private static func textWidth(_ string: String, font: UIFont) -> CGFloat {
+        (string as NSString).size(withAttributes: [.font: font]).width
+    }
+
+    private static func truncate(_ string: String, maxWidth: CGFloat, font: UIFont) -> String {
+        guard textWidth(string, font: font) > maxWidth else { return string }
+        var end = string.endIndex
+        while end > string.startIndex {
+            end = string.index(before: end)
+            let candidate = String(string[..<end]).trimmingCharacters(in: .whitespaces) + "…"
+            if textWidth(candidate, font: font) <= maxWidth {
+                return candidate
+            }
+        }
+        return "…"
+    }
+}
+
+struct BandLabelLayout: Equatable {
+    let gutter: CGFloat
+    let fontSize: CGFloat
+    let labels: [Int: String]
 }
 
 /// The orange band's tone carries ambient information that never needs reading:

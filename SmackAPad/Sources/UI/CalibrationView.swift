@@ -3,6 +3,7 @@ import SwiftUI
 
 @MainActor
 struct CalibrationView: View {
+    @Environment(\.dismiss) private var dismiss
     @Environment(\.scenePhase) private var scenePhase
     @State private var session: CalibrationSession
     @State private var touching = false
@@ -130,8 +131,12 @@ struct CalibrationView: View {
         .appFormStyle()
         .navigationTitle(settings.localized("Timing calibration"))
         .navigationBarTitleDisplayMode(.inline)
+        .navigationBarBackButtonHidden(true)
         .toolbar {
             ToolbarItem(placement: .principal) { ScreenHeader(title: settings.localized("Timing calibration")) }
+            PadToolbarItem(placement: .topBarLeading) {
+                BackButton { dismiss() }
+            }
         }
         .onAppear { session.attach() }
         .onDisappear { session.close() }

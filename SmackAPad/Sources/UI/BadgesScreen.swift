@@ -40,18 +40,13 @@ struct BadgesView: View {
             }
             .calmChassisBackground()
             .toolbar {
+                PadToolbarItem(placement: .topBarLeading) {
+                    BackButton {
+                        if let onDismiss { onDismiss() } else { dismiss() }
+                    }
+                }
                 ToolbarItem(placement: .principal) {
                     ScreenHeader(title: settings.localized("Badges"))
-                }
-                PadToolbarItem(placement: .confirmationAction) {
-                    Button {
-                        if let onDismiss { onDismiss() } else { dismiss() }
-                    } label: {
-                        Text(settings.localized("Done"))
-                            .font(Theme.control)
-                            .frame(minHeight: Theme.Size.touch)
-                    }
-                    .buttonStyle(PadSecondaryButtonStyle())
                 }
             }
         }

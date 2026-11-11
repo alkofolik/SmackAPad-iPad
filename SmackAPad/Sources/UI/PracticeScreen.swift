@@ -21,6 +21,7 @@ struct PracticeScreen: View {
     @AppStorage("smackapad.legend.shownOnce") private var legendShownOnce = false
     @State private var padLayoutModel: PadLayoutModel
     @State private var showingLegend = false
+    @State private var showingLoop = false
     @State private var showingTools = false
     @State private var showingTempo = false
     @State private var showingDetails = false
@@ -143,6 +144,8 @@ struct PracticeScreen: View {
             if running {
                 showingInfo = false
                 showingLegend = false
+                showingLoop = false
+                showingTools = false
                 showingStarRules = false
                 showingDetails = false
                 showingTempo = false
@@ -214,124 +217,114 @@ struct PracticeScreen: View {
     }
 
     private func topZone(isPortrait: Bool, width: CGFloat) -> some View {
-        let stacked = isPortrait || width < 1_100 || dynamicType.isAccessibilitySize
-        let layout = stacked
-            ? AnyLayout(VStackLayout(alignment: .leading, spacing: Theme.Space.small))
-            : AnyLayout(HStackLayout(spacing: Theme.Space.regular))
-        let toolsLayout = stacked
-            ? AnyLayout(FlowLayout(spacing: Theme.Space.controlGap))
-            : AnyLayout(HStackLayout(spacing: Theme.Space.controlGap))
+        let stacked = isPortrait || width < 960 || dynamicType.isAccessibilitySize
 
-        return layout {
-            let titleLayout = width < 600 || dynamicType.isAccessibilitySize
-                ? AnyLayout(VStackLayout(alignment: .leading, spacing: Theme.Space.small))
-                : AnyLayout(HStackLayout(spacing: Theme.Space.regular))
-            titleLayout {
-                libraryButton
-                titleAndSubtitle
-            }
-            .frame(maxWidth: .infinity, alignment: .leading)
+        return Group {
+            if stacked {
+                VStack(alignment: .leading, spacing: Theme.Space.small) {
+                    let headerLayout = width < 380 || dynamicType.isAccessibilitySize
+                        ? AnyLayout(VStackLayout(alignment: .leading, spacing: Theme.Space.small))
+                        : AnyLayout(HStackLayout(alignment: .center, spacing: 20))
+                    headerLayout {
+                        libraryButton
+                        titleAndSubtitle
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
 
-            toolsLayout {
-                modeButtons
-                patternTools.padding(.leading, Theme.Space.small)
-                helpTools(windowWidth: width)
+                    FlowLayout(spacing: 20) {
+                        modeGroup
+                        patternGroup
+                        infoGroup(windowWidth: width)
+                        settingsButton
+                    }
+                }
+            } else {
+                HStack(alignment: .center, spacing: 20) {
+                    libraryButton
+                    titleAndSubtitle
+                    modeGroup
+                    patternGroup
+                    infoGroup(windowWidth: width)
+                    settingsButton
+                }
             }
         }
-        .frame(maxWidth: .infinity)
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 
     private var libraryButton: some View {
-        Button {
+        BackButton {
             session.stop()
             reportStepResult()
             if let dismissLesson { dismissLesson() } else { dismiss() }
-        } label: {
-            Label(settings.localized(onStepResult != nil ? "Today" : (session.isMix ? "Training" : "Library")), systemImage: "square.grid.2x2")
-                .font(Theme.control)
         }
-        .buttonStyle(PadSecondaryButtonStyle())
-        .fixedSize(horizontal: true, vertical: false)
+        .practiceToolbarHint(settings.localized("Back"))
     }
 
     private var titleAndSubtitle: some View {
-        VStack(alignment: .leading, spacing: Theme.Space.tight) {
-            HStack(alignment: .firstTextBaseline, spacing: Theme.Space.small) {
-                Text(session.isMix
-                     ? settings.localized("Mix · %lld of %lld · %@", session.mixIndex + 1, session.mixLessons.count, settings.localized(session.lesson.title))
-                     : settings.localized(session.lesson.title))
-                    .font(Theme.rowTitle)
-                    .lineLimit(2)
-                    .fixedSize(horizontal: false, vertical: true)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                if !session.isMix {
-                    headerStars
-                        .fixedSize()
-                }
-            }
+        VStack(alignment: .leading, spacing: 2) {
+            Text(session.isMix
+                 ? settings.localized("Mix · %lld of %lld · %@", session.mixIndex + 1, session.mixLessons.count, settings.localized(session.lesson.title))
+                 : settings.localized(session.lesson.title))
+                .font(Theme.strong(22))
+                .foregroundStyle(Theme.ink)
+                .lineLimit(2)
+                .truncationMode(.tail)
+                .fixedSize(horizontal: false, vertical: true)
+                .frame(maxWidth: .infinity, alignment: .leading)
             lessonSubtitle
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
+        .frame(minWidth: 160, maxWidth: .infinity, alignment: .leading)
         .layoutPriority(1)
     }
 
-    @ViewBuilder
     private var headerStars: some View {
-        HStack(spacing: Theme.Space.tight) {
-            if session.savedProgress?.reviewSchedule.isSettled == true {
-                Image(systemName: "checkmark")
-                    .font(Theme.meta)
-                    .foregroundStyle(Theme.secondary)
-                    .accessibilityLabel(settings.localized("Settled"))
+        let earned = [
+            session.savedProgress?.passed ?? false,
+            session.savedProgress?.mastery ?? false,
+            session.savedProgress?.memory ?? false
+        ]
+        return HStack(spacing: 2) {
+            ForEach(earned.indices, id: \.self) { index in
+                Image(systemName: earned[index] ? "star.fill" : "star")
+                    .font(.system(size: 14, weight: .regular))
+                    .frame(width: 16, height: 16)
+                    .foregroundStyle(earned[index] ? Theme.orange : Theme.secondary)
             }
-            StarsView(record: session.savedProgress)
         }
     }
 
-    @ScaledMetric(relativeTo: .body) private var subtitleHeight: CGFloat = 22
-
+    @ViewBuilder
     private var lessonSubtitle: some View {
-        ZStack(alignment: .leading) {
-            if let message = session.errorMessage {
-                Text(message)
-            } else {
-                Text(settings.localized("Practice only · no stars"))
-                    .opacity(session.afterMe ? 1 : 0)
-                    .accessibilityHidden(!session.afterMe)
+        if let message = session.errorMessage {
+            Text(message)
+                .font(Theme.display(14))
+                .foregroundStyle(Theme.secondary)
+                .lineLimit(2)
+                .fixedSize(horizontal: false, vertical: true)
+        } else {
+            let barText = localizedBarCount(session.lesson.bars)
+            let earnedCount = [
+                session.savedProgress?.passed == true,
+                session.savedProgress?.mastery == true,
+                session.savedProgress?.memory == true
+            ].filter { $0 }.count
 
-                Group {
-                    if session.showsReviewStatus {
-                        Text(session.reviewStatusText(settings: settings))
-                    } else if session.fromMemory && session.savedProgress?.memory != true {
-                        Text(StarRequirement.requirementText(for: 2, progress: session.savedProgress, language: settings.languagePreference))
-                    } else {
-                        HStack(spacing: 0) {
-                            difficultyDots
-                            Text(" · \(localizedBarCount(session.lesson.bars))")
-                        }
-                        .accessibilityElement(children: .ignore)
-                        .accessibilityLabel(settings.localized("Difficulty %lld of 5, %@", session.lesson.level, localizedBarCount(session.lesson.bars)))
-                    }
+            HStack(spacing: 8) {
+                if !session.isMix {
+                    headerStars
                 }
-                .opacity(session.afterMe ? 0 : 1)
-                .accessibilityHidden(session.afterMe)
+                Text(barText)
+                    .font(Theme.display(14))
+                    .foregroundStyle(Theme.secondary)
             }
-        }
-        .font(Theme.meta)
-        .foregroundStyle(Theme.secondary)
-        .lineLimit(session.errorMessage == nil ? 1 : 2)
-        .minimumScaleFactor(0.85)
-        .frame(height: session.errorMessage == nil ? subtitleHeight : nil, alignment: .leading)
-        .animation(motion.animation(Theme.Motion.fast), value: session.afterMe)
-    }
-
-    private var difficultyDots: some View {
-        HStack(spacing: Theme.Space.tight) {
-            ForEach(1...5, id: \.self) { level in
-                Circle().fill(level <= session.lesson.level ? Theme.ink : Theme.background)
-                    .overlay(Circle().stroke(Theme.ink, lineWidth: 1))
-                    .frame(width: 8, height: 8)
-            }
+            .lineLimit(1)
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel(
+                session.isMix
+                    ? barText
+                    : "\(settings.localized("%lld of 3 stars", earnedCount)), \(barText)"
+            )
         }
     }
 
@@ -345,80 +338,161 @@ struct PracticeScreen: View {
         return settings.localized("%lld bars", bars)
     }
 
-    @ViewBuilder
-    private var modeButtons: some View {
-        if !session.isMix {
-            HStack(spacing: Theme.Space.segmentedGap) {
-                ForEach(LessonPlaybackMode.allCases, id: \.self) { mode in
-                    Button { session.selectPlaybackMode(mode) } label: {
-                        Text(settings.localized(mode.rawValue))
-                            .font(Theme.control)
-                            .padding(.horizontal, Theme.Space.regular)
-                            .frame(minHeight: Theme.Size.touch)
-                    }
-                    .buttonStyle(HardwareKeyButtonStyle(isSelected: session.playbackMode == mode))
-                }
+    private var modeGroup: some View {
+        HStack(spacing: 4) {
+            PracticeIconButton(
+                symbol: "ear",
+                title: settings.localized("Listen"),
+                appearance: .segmented,
+                selected: session.playbackMode == .listen
+            ) {
+                session.selectPlaybackMode(.listen)
             }
-            .lineLimit(1)
-            .fixedSize(horizontal: true, vertical: false)
-            .disabled(session.running)
-            .accessibilityLabel(settings.localized("Lesson mode"))
-        }
-    }
+            .disabled(session.running || session.isMix)
 
-    private var patternTools: some View {
-        HStack(spacing: Theme.Space.small) {
-            icon("eye.slash", settings.localized("From memory"), selected: session.fromMemory && !session.afterMe) {
+            PracticeIconButton(
+                icon: .crossedSticks,
+                title: settings.localized("Play"),
+                appearance: .segmented,
+                selected: session.playbackMode == .play
+            ) {
+                session.selectPlaybackMode(.play)
+            }
+            .disabled(session.running || (session.isMix && session.playbackMode != .play))
+
+            if !session.isMix {
+                PracticeIconButton(
+                    symbol: "bubble.left.and.bubble.right",
+                    title: settings.localized("After me"),
+                    appearance: .segmented,
+                    selected: session.playbackMode == .afterMe
+                ) {
+                    session.selectPlaybackMode(.afterMe)
+                }
+                .disabled(session.running)
+            }
+
+            Rectangle()
+                .fill(Theme.ink.opacity(0.2))
+                .frame(width: 1, height: 32)
+                .padding(.horizontal, 2)
+                .accessibilityHidden(true)
+
+            PracticeIconButton(
+                symbol: "brain.head.profile",
+                title: settings.localized("From memory"),
+                appearance: .segmented,
+                selected: session.fromMemory && !session.afterMe,
+                accessibilityValue: settings.localized(session.fromMemory ? "On" : "Off")
+            ) {
                 session.fromMemory.toggle()
             }
             .disabled(session.running || session.isMix || session.afterMe)
-            .accessibilityValue(settings.localized(session.fromMemory ? "On" : "Off"))
-
-            toolSeparator
-
-            HStack(spacing: Theme.Space.segmentedGap) {
-                let effectiveBars = min(max(1, visibleBars), session.lesson.bars)
-                icon("rectangle.split.2x2", settings.localized("Static view"),
-                     selected: !scrolling,
-                     count: session.lesson.bars > 1 ? effectiveBars : nil,
-                     accessibilityValue: staticViewAccessibilityValue(effectiveBars),
-                     accessibilityHint: session.lesson.bars > 1 ? settings.localized("Tap again to show more bars") : nil) {
-                    handleStaticViewTap()
-                }
-                icon("arrow.right.to.line", settings.localized("Scrolling view"), selected: scrolling) { scrolling = true }
-            }
-            .accessibilityElement(children: .contain)
-            .accessibilityLabel(settings.localized("Pattern view"))
-
-            toolSeparator
         }
+        .padding(4)
+        .background(Theme.surface, in: RoundedRectangle(cornerRadius: 16))
         .fixedSize(horizontal: true, vertical: false)
+        .accessibilityElement(children: .contain)
+        .accessibilityLabel(settings.localized("Lesson mode"))
     }
 
-    private func helpTools(windowWidth: CGFloat) -> some View {
-        HStack(spacing: Theme.Space.controlGap) {
-            icon("info.circle", settings.localized("Lesson info")) {
+    private var patternGroup: some View {
+        let maxSelectableBars = max(1, min(session.lesson.bars, 4))
+        let effectiveBars = min(max(1, visibleBars), maxSelectableBars)
+
+        return HStack(spacing: 4) {
+            PracticeIconButton(
+                symbol: "arrow.right.to.line",
+                title: settings.localized("Scrolling view"),
+                appearance: .segmented,
+                selected: scrolling,
+                accessibilityValue: settings.localized(scrolling ? "Scrolling view" : "Static view")
+            ) {
+                scrolling.toggle()
+            }
+
+            PracticeIconButton(
+                symbol: "rectangle.split.2x1",
+                title: settings.localized("Bars shown"),
+                appearance: .segmented,
+                width: 56,
+                count: effectiveBars,
+                selected: false,
+                accessibilityValue: staticViewAccessibilityValue(effectiveBars),
+                accessibilityHint: maxSelectableBars > 1 ? settings.localized("Tap again to show more bars") : nil
+            ) {
+                handleStaticViewTap()
+            }
+
+            if !session.isMix {
+                PracticeIconButton(
+                    symbol: "repeat",
+                    title: settings.localized("Section loop"),
+                    appearance: .segmented,
+                    selected: session.isSectionLoop || showingLoop,
+                    accessibilityValue: session.isSectionLoop
+                        ? "\(session.loopStartBar + 1)–\(session.loopEndBar + 1)"
+                        : settings.localized("All bars")
+                ) {
+                    closeToolbarPopovers(except: .loop)
+                    showingLoop.toggle()
+                }
+                .disabled(session.running || session.lesson.bars <= 1)
+                .popover(isPresented: $showingLoop, arrowEdge: .top) { barLoopPopover }
+            }
+        }
+        .padding(4)
+        .overlay(
+            RoundedRectangle(cornerRadius: 16)
+                .strokeBorder(Theme.ink, lineWidth: 1.5)
+        )
+        .fixedSize(horizontal: true, vertical: false)
+        .accessibilityElement(children: .contain)
+        .accessibilityLabel(settings.localized("Pattern view"))
+    }
+
+    private func infoGroup(windowWidth: CGFloat) -> some View {
+        HStack(spacing: 8) {
+            PracticeIconButton(
+                symbol: "info.circle",
+                title: settings.localized("Lesson info"),
+                appearance: .outline,
+                selected: showingInfo
+            ) {
                 didOpenHelpOrInfo = true
-                showingLegend = false
+                closeToolbarPopovers(except: .info)
                 showingInfo.toggle()
             }
-                .disabled(session.running)
-                .popover(isPresented: $showingInfo, arrowEdge: .top) { lessonInfo }
-            icon("list.bullet.rectangle", settings.localized("Legend")) { showingLegend.toggle() }
-                .disabled(session.running || session.countdown != nil)
-                .popover(isPresented: $showingLegend, arrowEdge: .top) {
-                    legend.onAppear {
-                        if showingLegend && helpPresentation == nil && !showingInfo
-                            && !session.running && session.countdown == nil && !session.patternHits.isEmpty {
-                            legendShownOnce = true
-                        }
+            .disabled(session.running)
+            .popover(isPresented: $showingInfo, arrowEdge: .top) { lessonInfo }
+
+            PracticeIconButton(
+                icon: .padLegend,
+                title: settings.localized("Pad legend"),
+                appearance: .outline,
+                selected: showingLegend
+            ) {
+                closeToolbarPopovers(except: .legend)
+                showingLegend.toggle()
+            }
+            .disabled(session.running || session.countdown != nil)
+            .popover(isPresented: $showingLegend, arrowEdge: .top) {
+                legend.onAppear {
+                    if showingLegend && helpPresentation == nil && !showingInfo
+                        && !session.running && session.countdown == nil && !session.patternHits.isEmpty {
+                        legendShownOnce = true
                     }
                 }
-            icon("questionmark.circle", settings.localized("help.title"), selected: helpPresentation != nil) {
+            }
+
+            PracticeIconButton(
+                symbol: "questionmark.circle",
+                title: settings.localized("help.title"),
+                appearance: .outline,
+                selected: helpPresentation != nil
+            ) {
                 didOpenHelpOrInfo = true
-                showingInfo = false
-                showingLegend = false
-                showingTools = false
+                closeToolbarPopovers()
                 showingTempo = false
                 showingDetails = false
                 showingStarRules = false
@@ -426,14 +500,86 @@ struct PracticeScreen: View {
             }
             .accessibilityFocused($helpFocused)
             .helpDeck(presentation: $helpPresentation, initialTopic: .lesson) { helpFocused = true }
-            icon("slider.horizontal.3", settings.localized("More tools")) { showingTools.toggle() }
-                .popover(isPresented: $showingTools, arrowEdge: .top) {
-                    PracticeTools(session: session, showPads: $showPads, openMIDI: {
-                        showingTools = false; showingMIDI = true
-                    })
-                }
         }
         .fixedSize(horizontal: true, vertical: false)
+    }
+
+    private var settingsButton: some View {
+        PracticeIconButton(
+            symbol: "switch.2",
+            title: settings.localized("Settings"),
+            appearance: .solidDark,
+            selected: showingTools
+        ) {
+            closeToolbarPopovers(except: .tools)
+            showingTools.toggle()
+        }
+        .popover(isPresented: $showingTools, arrowEdge: .top) {
+            PracticeTools(session: session, showPads: $showPads, openMIDI: {
+                showingTools = false; showingMIDI = true
+            })
+        }
+    }
+
+    private enum ToolbarPopover { case info, legend, loop, tools }
+
+    private func closeToolbarPopovers(except kept: ToolbarPopover? = nil) {
+        if kept != .info { showingInfo = false }
+        if kept != .legend { showingLegend = false }
+        if kept != .loop { showingLoop = false }
+        if kept != .tools { showingTools = false }
+    }
+
+    private var barLoopPopover: some View {
+        VStack(alignment: .leading, spacing: Theme.Space.regular) {
+            Text(settings.localized("Bar loop"))
+                .font(Theme.strong(18))
+
+            HStack(spacing: Theme.Space.regular) {
+                Text(settings.localized("First bar"))
+                    .font(Theme.control)
+                Spacer()
+                Picker(settings.localized("First bar"), selection: $session.loopStartBar) {
+                    ForEach(0..<session.lesson.bars, id: \.self) { bar in
+                        Text("\(bar + 1)").tag(bar)
+                    }
+                }
+                .labelsHidden()
+            }
+
+            HStack(spacing: Theme.Space.regular) {
+                Text(settings.localized("Last bar"))
+                    .font(Theme.control)
+                Spacer()
+                Picker(settings.localized("Last bar"), selection: $session.loopEndBar) {
+                    ForEach(session.loopStartBar..<session.lesson.bars, id: \.self) { bar in
+                        Text("\(bar + 1)").tag(bar)
+                    }
+                }
+                .labelsHidden()
+            }
+
+            if session.isSectionLoop {
+                Button(settings.localized("All bars")) {
+                    session.loopStartBar = 0
+                    session.loopEndBar = max(0, session.lesson.bars - 1)
+                }
+                .font(Theme.control)
+                .buttonStyle(PadSecondaryButtonStyle())
+            }
+
+            Text(settings.localized("Section loops do not earn lesson stars."))
+                .font(Theme.meta)
+                .foregroundStyle(Theme.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .padding(Theme.Space.page)
+        .frame(width: 280)
+        .foregroundStyle(Theme.ink)
+        .background(Theme.background)
+        .tint(Theme.ink)
+        .disabled(session.running || session.isMix)
+        .presentationCompactAdaptation(.popover)
     }
 
     private func handleStaticViewTap() {
@@ -441,10 +587,10 @@ struct PracticeScreen: View {
             scrolling = false
             return
         }
-        guard session.lesson.bars > 1 else { return }
-        let current = min(visibleBars, session.lesson.bars)
-        let next = current >= session.lesson.bars ? 1 : current + 1
-        visibleBars = next
+        let maxBars = min(session.lesson.bars, 4)
+        guard maxBars > 1 else { return }
+        let current = min(max(1, visibleBars), maxBars)
+        visibleBars = current >= maxBars ? 1 : current + 1
     }
 
     private func staticViewAccessibilityValue(_ bars: Int) -> String {
@@ -452,26 +598,6 @@ struct PracticeScreen: View {
             return settings.localized("%lld bar shown", 1)
         }
         return settings.localized("%lld bars shown", bars)
-    }
-
-    private var toolSeparator: some View {
-        Rectangle().fill(Theme.hairline).frame(width: 1, height: 28)
-            .accessibilityHidden(true)
-    }
-
-    private func icon(_ symbol: String, _ text: String, selected: Bool = false,
-                      count: Int? = nil, accessibilityValue: String? = nil,
-                      accessibilityHint: String? = nil,
-                      action: @escaping () -> Void) -> some View {
-        PracticeIconButton(
-            symbol: symbol,
-            title: text,
-            count: count,
-            selected: selected,
-            accessibilityValue: accessibilityValue,
-            accessibilityHint: accessibilityHint,
-            action: action
-        )
     }
 
     private var middleZone: some View {
@@ -1018,16 +1144,10 @@ struct PracticeScreen: View {
 
     private var tempoControls: some View {
         VStack(alignment: .leading, spacing: Theme.Space.regular) {
-            HStack {
+            HStack(spacing: Theme.Space.regular) {
+                BackButton { showingTempo = false }
                 Text(settings.localized("Tempo")).font(Theme.screenTitle)
                 Spacer()
-                Button {
-                    showingTempo = false
-                } label: {
-                    Text(settings.localized("Close"))
-                        .font(Theme.control)
-                        .textButtonTarget(alignment: .trailing)
-                }
             }
             Text("\(session.bpm) → \(session.lesson.targetBpm) BPM").font(Theme.control).monospacedDigit()
                         .contentTransition(motion.numeric).motion(value: session.bpm)
@@ -1082,6 +1202,7 @@ struct PracticeScreen: View {
         guard progression.isLessonOpen(lesson) else { return }
         showingInfo = false
         showingLegend = false
+        showingLoop = false
         showingTools = false
         showingTempo = false
         showingDetails = false
@@ -1095,17 +1216,11 @@ struct PracticeScreen: View {
     private func sessionResultsView(_ summary: RunSummary) -> some View {
         ScrollView {
             VStack(alignment: .leading, spacing: Theme.Space.regular) {
-                HStack {
+                HStack(spacing: Theme.Space.regular) {
+                    BackButton { showingDetails = false }
                     Text(settings.localized("Session results"))
                         .font(Theme.sectionTitle)
                     Spacer()
-                    Button {
-                        showingDetails = false
-                    } label: {
-                        Text(settings.localized("Close"))
-                            .font(Theme.control)
-                            .textButtonTarget(alignment: .trailing)
-                    }
                 }
 
                 if !session.runResults.isEmpty {
@@ -1194,14 +1309,10 @@ struct PracticeScreen: View {
     private var starRules: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: Theme.Space.regular) {
-                HStack {
+                HStack(spacing: Theme.Space.regular) {
+                    BackButton { showingStarRules = false }
                     Text(settings.localized("Star requirements")).font(Theme.sectionTitle)
                     Spacer()
-                    Button { showingStarRules = false } label: {
-                        Text(settings.localized("Close"))
-                            .font(Theme.control)
-                            .textButtonTarget(alignment: .trailing)
-                    }
                 }
                 ForEach(0..<3, id: \.self) { index in
                     HStack(alignment: .top, spacing: Theme.Space.small) {
@@ -1234,13 +1345,10 @@ struct PracticeScreen: View {
     private var legend: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: Theme.Space.regular) {
-                HStack {
+                HStack(spacing: Theme.Space.regular) {
+                    BackButton { showingLegend = false }
                     Text(settings.localized("Pad legend")).font(Theme.sectionTitle)
                     Spacer()
-                    Button { showingLegend = false } label: {
-                        Text(settings.localized("Close"))
-                            .textButtonTarget(alignment: .trailing)
-                    }
                 }
                 ForEach(Array(Set(session.patternHits.map { "\($0.padIndex):\($0.hand)" })).sorted(), id: \.self) { key in
                     let parts = key.split(separator: ":")
@@ -1265,14 +1373,10 @@ struct PracticeScreen: View {
     private var lessonInfo: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: Theme.Space.page) {
-                HStack {
+                HStack(spacing: Theme.Space.regular) {
+                    BackButton { showingInfo = false }
                     Text(settings.localized("Lesson info")).font(Theme.sectionTitle)
                     Spacer()
-                    Button { showingInfo = false } label: {
-                        Text(settings.localized("Close"))
-                            .font(Theme.control)
-                            .textButtonTarget(alignment: .trailing)
-                    }
                 }
 
                 VStack(alignment: .leading, spacing: Theme.Space.tight) {

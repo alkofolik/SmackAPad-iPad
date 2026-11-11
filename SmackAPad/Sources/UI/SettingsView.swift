@@ -362,17 +362,13 @@ public struct SettingsView: View {
             .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { windowWidth = $0 }
             .navigationTitle(settings.localized("Settings"))
             .navigationBarTitleDisplayMode(.inline)
+            .navigationBarBackButtonHidden(true)
             .toolbar {
                 ToolbarItem(placement: .principal) { ScreenHeader(title: settings.localized("Settings")) }
-                PadToolbarItem(placement: .confirmationAction) {
-                    Button {
+                PadToolbarItem(placement: .topBarLeading) {
+                    BackButton {
                         if let onDismiss { onDismiss() } else { dismiss() }
-                    } label: {
-                        Text(settings.localized("Done"))
-                            .font(Theme.control)
-                            .frame(minHeight: Theme.Size.touch)
                     }
-                    .buttonStyle(PadSecondaryButtonStyle())
                 }
             }
             .task {
@@ -451,6 +447,8 @@ public struct SettingsView: View {
 }
 
 private struct FontLicenceView: View {
+    @Environment(\.dismiss) private var dismiss
+
     private static let licence: String = {
         guard let url = Bundle.main.url(forResource: "ibmplexsans-OFL", withExtension: "txt"),
               let text = try? String(contentsOf: url, encoding: .utf8) else {
@@ -473,8 +471,12 @@ private struct FontLicenceView: View {
         .calmChassisBackground().foregroundStyle(Theme.ink)
         .navigationTitle("IBM Plex Sans")
         .navigationBarTitleDisplayMode(.inline)
+        .navigationBarBackButtonHidden(true)
         .toolbar {
             ToolbarItem(placement: .principal) { ScreenHeader(title: "IBM Plex Sans") }
+            PadToolbarItem(placement: .topBarLeading) {
+                BackButton { dismiss() }
+            }
         }
     }
 }

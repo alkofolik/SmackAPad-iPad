@@ -15,7 +15,6 @@ public struct ControllerSetupView: View {
     @Environment(MIDIInput.self) private var midi
     @Environment(\.dismiss) private var dismiss
 
-    var showsDoneButton: Bool
     var onDismiss: (() -> Void)? = nil
 
     @State private var showingMIDILearn = false
@@ -24,8 +23,7 @@ public struct ControllerSetupView: View {
     @State private var showingControlPadWarning = false
     @State private var bluetoothAccessMessage: String?
 
-    public init(showsDoneButton: Bool = false, onDismiss: (() -> Void)? = nil) {
-        self.showsDoneButton = showsDoneButton
+    public init(onDismiss: (() -> Void)? = nil) {
         self.onDismiss = onDismiss
     }
 
@@ -224,18 +222,12 @@ public struct ControllerSetupView: View {
         .appFormStyle()
         .navigationTitle(settings.localized("Controller"))
         .navigationBarTitleDisplayMode(.inline)
+        .navigationBarBackButtonHidden(true)
         .toolbar {
             ToolbarItem(placement: .principal) { ScreenHeader(title: settings.localized("Controller")) }
-            if showsDoneButton {
-                PadToolbarItem(placement: .confirmationAction) {
-                    Button {
-                        if let onDismiss { onDismiss() } else { dismiss() }
-                    } label: {
-                        Text(settings.localized("Done"))
-                            .font(Theme.control)
-                            .frame(minHeight: Theme.Size.touch)
-                    }
-                    .buttonStyle(PadSecondaryButtonStyle())
+            PadToolbarItem(placement: .topBarLeading) {
+                BackButton {
+                    if let onDismiss { onDismiss() } else { dismiss() }
                 }
             }
         }

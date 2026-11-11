@@ -57,12 +57,12 @@
 "Save" = "Uložit";
 "Crash" = "Crash";
 "Ride" = "Ride";
-"Open hi-hat" = "Otevřená hi-hat";
-"Clap" = "Tlesknutí";
-"Rim" = "Ráfek";
-"Hi-hat R" = "Hi-hat P";
-"Kick L" = "Kopák L";
-"Snare L" = "Virbl L";
+"Open hi-hat" = "Open hi-hat";
+"Clap" = "Clap";
+"Rim" = "Rim";
+"Hi-hat R" = "Hi-hat R";
+"Kick L" = "Kick L";
+"Snare L" = "Snare L";
 "Timing calibration" = "Kalibrace časování";
 "Calibration input" = "Kalibrovaný vstup";
 "On-screen pads" = "Dotykové pady";
@@ -231,14 +231,14 @@
 "Fills" = "Přechody";
 "Intro exercises" = "Intro";
 "You can practice any category at any time." = "Můžeš trénovat jakoukoli kategorii kdykoliv.";
-"High tom" = "Vysoký tom";
-"Low tom" = "Hluboký tom";
+"High tom" = "High tom";
+"Low tom" = "Low tom";
 "Shaker" = "Shaker";
-"Wood" = "Dřívko";
-"Cowbell" = "Kravský zvonec";
+"Wood" = "Wood";
+"Cowbell" = "Cowbell";
 "Hi-hat" = "Hi-hat";
-"Kick" = "Kopák";
-"Snare" = "Virbl";
+"Kick" = "Kick";
+"Snare" = "Snare";
 "%@, pad %lld" = "%@, pad %lld";
 
 "Path" = "Cesta";
@@ -306,7 +306,7 @@
 "Yes, lock again" = "Ano, zamknout";
 "Lock again" = "Znovu zamknout";
 "Manually unlocked · no stars yet" = "Ručně odemčeno · zatím bez hvězd";
-"Keep offbeat open hats steady over the kick." = "Drž otevřenou hi-hatku pravidelně na „a“ mezi údery kopáku.";
+"Keep offbeat open hats steady over the kick." = "Drž open hi-hat pravidelně na „a“ mezi údery kicku.";
 
 /* Learning and Challenge progression modes. */
 "Practice mode" = "Režim cvičení";
@@ -473,8 +473,9 @@
 
 // Home screen (ticket 61)
 "Home" = "Domů";
+"Back" = "Zpět";
 "Continue" = "Pokračovat";
-"Unlocked" = "Odemčeno";
+"Unlocked" = "Odemknuto";
 "Not measured" = "Nezměřeno";
 "Connect a controller" = "Připoj ovladač";
 "Controller" = "Ovladač";
@@ -825,7 +826,6 @@
 "Passed: %lld · Did not count: %lld" = "Splněno: %lld · Nezapočteno: %lld";
 "Today's session is over. Every played step is shown below." = "Dnešní trénink skončil. Výsledky jednotlivých kroků najdeš níže.";
 "%lld today" = "%lld dnes";
-"then new lesson" = "pak nová lekce";
 "Review queue" = "Fronta opakování";
 "%lld in queue · take these at your own pace" = "%lld ve frontě · pokračuj vlastním tempem";
 "Today's reviews are in the plan above. Nothing else is waiting in the queue." = "Dnešní opakování jsou v plánu nahoře. Ve frontě už nic dalšího nečeká.";

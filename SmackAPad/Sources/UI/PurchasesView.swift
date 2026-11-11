@@ -161,14 +161,10 @@ struct PurchaseSheet: View {
             }
             .calmChassisBackground().foregroundStyle(Theme.ink).tint(Theme.ink)
             .toolbar {
-                PadToolbarItem(placement: .cancellationAction) {
-                    Button {
+                PadToolbarItem(placement: .topBarLeading) {
+                    BackButton {
                         if let onDismiss { onDismiss() } else { dismiss() }
-                    } label: {
-                        Image(systemName: "xmark").frame(minWidth: Theme.Size.touch, minHeight: Theme.Size.touch)
                     }
-                    .buttonStyle(PadIconButtonStyle())
-                    .accessibilityLabel(settings.localized("Close"))
                 }
             }
         }
@@ -177,6 +173,10 @@ struct PurchaseSheet: View {
             store.message = nil
             if store.products.isEmpty { await store.loadProducts() }
         }
-        .onChange(of: owned) { _, value in if value { dismiss() } }
+        .onChange(of: owned) { _, value in
+            if value {
+                if let onDismiss { onDismiss() } else { dismiss() }
+            }
+        }
     }
 }

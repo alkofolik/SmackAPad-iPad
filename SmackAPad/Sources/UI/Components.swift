@@ -387,6 +387,66 @@ struct PadToolbarItem<Content: View>: ToolbarContent {
     }
 }
 
+private struct BackPadButtonStyle: ButtonStyle {
+    @Environment(\.accessibilityReduceMotion) private var reduced
+    @Environment(\.isEnabled) private var enabled
+
+    func makeBody(configuration: Configuration) -> some View {
+        let policy = Theme.Motion.Policy(reduced: reduced)
+        let pressed = configuration.isPressed
+        let shape = RoundedRectangle(cornerRadius: 14)
+
+        configuration.label
+            .foregroundStyle(enabled ? Theme.ink : Theme.ink.opacity(0.35))
+            .frame(width: 56, height: 56)
+            .background {
+                shape
+                    .fill(enabled ? Theme.surface : Theme.disabledFill)
+                    .allowsHitTesting(false)
+            }
+            .contentShape(shape)
+            .overlay {
+                if enabled {
+                    shape
+                        .fill(policy.reduced ? Color.black : Color.white)
+                        .opacity(pressed ? (policy.reduced ? Theme.Skin.Pad.reducedPressOpacity : Theme.Skin.Pad.flashOpacity) : 0)
+                        .animation(policy.reduced ? nil : policy.animation(Theme.Motion.padFlash), value: pressed)
+                        .allowsHitTesting(false)
+                }
+            }
+            .scaleEffect(enabled ? policy.scale(pressed ? Theme.Skin.Pad.pressedScale : 1) : 1)
+            .offset(y: enabled ? policy.offset(pressed ? Theme.Skin.Pad.pressedY : 0) : 0)
+            .animation(enabled ? policy.animation(pressed ? Theme.Motion.padFlash : Theme.Motion.padPress) : nil, value: pressed)
+    }
+}
+
+/// Shared top-left back button used across screens, sheets, and info popovers.
+struct BackButton: View {
+    @Environment(SettingsManager.self) private var settings
+    let action: () -> Void
+
+    var body: some View {
+        ZStack {
+            // Secondary hidden trigger so both Esc and ⌘[ invoke back from a hardware keyboard.
+            Button("", action: action)
+                .keyboardShortcut("[", modifiers: .command)
+                .frame(width: 1, height: 1)
+                .opacity(0)
+                .allowsHitTesting(false)
+                .accessibilityHidden(true)
+
+            Button(action: action) {
+                Image(systemName: "chevron.left")
+                    .font(.system(size: 20, weight: .semibold))
+            }
+            .buttonStyle(BackPadButtonStyle())
+            .accessibilityLabel(settings.localized("Back"))
+            .keyboardShortcut(.escape, modifiers: [])
+        }
+        .frame(width: 56, height: 56)
+    }
+}
+
 extension View {
     func calmChassisBackground() -> some View { modifier(CalmChassisBackground()) }
     func satinPlate() -> some View { background { SatinPlateSurface() } }

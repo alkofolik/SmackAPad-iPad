@@ -184,12 +184,7 @@ public struct TrainingScreen: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 PadToolbarItem(placement: .topBarLeading) {
-                    Button(action: onHome) {
-                        Text(settings.localized("Home"))
-                            .font(Theme.control)
-                            .frame(minHeight: Theme.Size.touch)
-                    }
-                    .buttonStyle(PadSecondaryButtonStyle())
+                    BackButton(action: onHome)
                 }
             }
             .task(id: refreshID) {
@@ -645,14 +640,7 @@ public struct TrainingScreen: View {
         let offColor = Theme.ledOff
         let litColor = isSettled ? Theme.orange : Theme.ink
 
-        let lessonCountPlural: String = {
-            if settings.languagePreference == .czech {
-                if count == 1 { return "1 lekce" }
-                if count >= 2 && count <= 4 { return "\(count) lekce" }
-                return "\(count) lekcí"
-            }
-            return count == 1 ? settings.localized("1 lesson") : settings.localized("%lld lessons", count)
-        }()
+        let lessonCountPlural = settings.languagePreference.localizedLessonCount(count)
 
         return VStack(alignment: .leading, spacing: 6) {
             // Segment stack: 8 segments, top to bottom is 7 down to 0
@@ -693,14 +681,7 @@ public struct TrainingScreen: View {
                 ForEach(forecast, id: \.day) { entry in
                     let isToday = (entry.day == today)
                     let (shortName, fullName) = weekdayNames(from: entry.day)
-                    let countPlural: String = {
-                        if settings.languagePreference == .czech {
-                            if entry.count == 1 { return "1 lekce" }
-                            if entry.count >= 2 && entry.count <= 4 { return "\(entry.count) lekce" }
-                            return "\(entry.count) lekcí"
-                        }
-                        return entry.count == 1 ? settings.localized("1 lesson") : settings.localized("%lld lessons", entry.count)
-                    }()
+                    let countPlural = settings.languagePreference.localizedLessonCount(entry.count)
 
                     let offset = AppCalendar.daysBetween(today, entry.day) ?? 0
                     let targetGroup: WaitingGroup? = {

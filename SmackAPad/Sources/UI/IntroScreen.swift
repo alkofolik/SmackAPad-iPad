@@ -101,13 +101,8 @@ public struct IntroScreen: View {
                     ScrollView {
                         VStack(alignment: .leading, spacing: Theme.Space.page) {
                             HStack {
+                                BackButton { showingRules = false }
                                 Spacer()
-                                Button { showingRules = false } label: {
-                                    Text(settings.localized("Close"))
-                                        .font(Theme.control)
-                                        .frame(minHeight: Theme.Size.touch)
-                                }
-                                .buttonStyle(PadSecondaryButtonStyle())
                             }
                             IntroRulesCard(passedCount: passedCount, masteredCount: masteredCount,
                                            totalCount: introLessons.count)

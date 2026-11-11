@@ -139,7 +139,7 @@ struct TodaySessionScreen: View {
                             TodayStepperView(plan: coordinator.plan, isLandscape: isLandscape)
 
                             if coordinator.plan.finished {
-                                TodaySummaryView(plan: coordinator.plan, onHome: onHome)
+                                TodaySummaryView(plan: coordinator.plan)
                                     .transition(policy.cardStep)
                             } else {
                                 masterConsole(isLandscape: isLandscape)
@@ -162,13 +162,8 @@ struct TodaySessionScreen: View {
             .foregroundStyle(Theme.ink)
             .calmChassisBackground()
             .toolbar {
-                PadToolbarItem(placement: .confirmationAction) {
-                    Button(action: onHome) {
-                        Text(settings.localized("Home"))
-                            .font(Theme.control)
-                            .frame(minHeight: Theme.Size.touch)
-                    }
-                    .buttonStyle(PadSecondaryButtonStyle())
+                PadToolbarItem(placement: .topBarLeading) {
+                    BackButton(action: onHome)
                 }
             }
         }
@@ -261,7 +256,7 @@ struct TodaySessionScreen: View {
                     .satinPlate()
                 }
             } else {
-                TodaySummaryView(plan: coordinator.plan, onHome: onHome)
+                TodaySummaryView(plan: coordinator.plan)
             }
         } else if let step = coordinator.currentStep {
             NextStepPreparationView(step: step, isDayStart: true, plan: coordinator.plan,
@@ -809,7 +804,6 @@ private struct NextStepPreparationView: View {
 private struct TodaySummaryView: View {
     @Environment(SettingsManager.self) private var settings
     let plan: TodayPlan
-    let onHome: () -> Void
 
     private func newLessonValue(_ step: TodayPlan.Step) -> String {
         if let outcome = step.outcome, outcome.played, let score = outcome.bestScore {
@@ -922,14 +916,6 @@ private struct TodaySummaryView: View {
                 }
             }
             .frame(maxWidth: 520, alignment: .leading)
-
-            Button(action: onHome) {
-                Text(settings.localized("Home"))
-                    .font(Theme.strong(18))
-                    .padding(.horizontal, 36)
-                    .frame(minHeight: 52)
-            }
-            .buttonStyle(PadPrimaryButtonStyle())
         }
         .padding(40)
         .frame(maxWidth: 700)

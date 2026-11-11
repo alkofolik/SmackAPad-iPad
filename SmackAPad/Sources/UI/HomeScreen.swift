@@ -333,15 +333,79 @@ struct PadLightBar: View {
     }
 }
 
+/// Pure subtitle and target helpers for the 8 Home pads so logic stays testable without views.
+enum HomePadSubtitles {
+    static func singleLine(_ text: String) -> String {
+        text
+            .replacingOccurrences(of: "\r\n", with: " ")
+            .replacingOccurrences(of: "\n", with: " ")
+            .replacingOccurrences(of: "\r", with: " ")
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    static func today(plan: TodayPlan?, language: AppLanguage) -> String? {
+        guard let plan, !plan.finished else { return nil }
+        let remaining = max(0, plan.steps.count - plan.index)
+        guard remaining > 0 else { return nil }
+        return singleLine(language.localizedLessonCount(remaining))
+    }
+
+    static func library() -> String? {
+        nil
+    }
+
+    static func continueLesson(lastPlayedLesson: Lesson?, language: AppLanguage) -> String? {
+        guard let lastPlayedLesson else { return nil }
+        let localized = singleLine(language.localized(lastPlayedLesson.title))
+        return localized.isEmpty ? nil : localized
+    }
+
+    static func continueTarget(
+        lastPlayedLesson: Lesson?,
+        introFirstLesson: Lesson?,
+        pathFirstLesson: Lesson?
+    ) -> Lesson? {
+        lastPlayedLesson ?? introFirstLesson ?? pathFirstLesson
+    }
+
+    static func intro() -> String? {
+        nil
+    }
+
+    static func controller(connectedName: String?, language: AppLanguage) -> String {
+        if let connectedName {
+            let trimmed = singleLine(connectedName)
+            if !trimmed.isEmpty {
+                return trimmed
+            }
+        }
+        return singleLine(language.localized("Not connected"))
+    }
+
+    static func badges(earned: Int, total: Int) -> String {
+        "\(earned) / \(total)"
+    }
+
+    static func fullVersion(hasFullAccess: Bool, price: String?, language: AppLanguage) -> String? {
+        if hasFullAccess {
+            return singleLine(language.localized("Unlocked"))
+        }
+        guard let price else { return nil }
+        let trimmed = singleLine(price)
+        return trimmed.isEmpty ? nil : trimmed
+    }
+
+    static func settings() -> String? {
+        nil
+    }
+}
+
 /// A tactile button pad on the Home screen.
 struct HomePadView: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     let title: String
     let subtitle: String?
-    var subtitleVariants: [String]? = nil
-    var secondarySubtitle: String? = nil
-    var secondarySubtitleVariants: [String]? = nil
     var numericTransitionValue: Int? = nil
     var accessibilityText: String? = nil
     var accessibilityValue: String? = nil
@@ -357,7 +421,7 @@ struct HomePadView: View {
         Button(action: action) {
             VStack(spacing: Theme.Space.tight) {
                 Spacer(minLength: 0)
-                let titleSize = (isHero ? 19.0 : 16.0) * (cellSize / 146.0)
+                let titleSize = 22.0 * (cellSize / 146.0)
                 Text(title.uppercased())
                     .font(Theme.padTitle(size: titleSize))
                     .tracking(titleSize * 0.03)
@@ -366,56 +430,9 @@ struct HomePadView: View {
                     .lineLimit(1)
                     .minimumScaleFactor(0.75)
 
-                if let subtitleVariants, !subtitleVariants.isEmpty {
-                    ViewThatFits(in: .vertical) {
-                        ForEach(subtitleVariants, id: \.self) { variant in
-                            Text(variant)
-                                .font(Theme.meta)
-                                .foregroundStyle(isHero ? Theme.black : Theme.secondary)
-                                .multilineTextAlignment(.center)
-                                .lineLimit(nil)
-                                .minimumScaleFactor(0.75)
-                        }
-                    }
-                } else if let subtitle, !subtitle.isEmpty {
-                    if let numericTransitionValue {
-                        Text(subtitle)
-                            .font(Theme.meta)
-                            .foregroundStyle(isHero ? Theme.black : Theme.secondary)
-                            .multilineTextAlignment(.center)
-                            .lineLimit(nil)
-                            .minimumScaleFactor(0.75)
-                            .contentTransition(policy.numeric)
-                            .motion(value: numericTransitionValue)
-                    } else {
-                        Text(subtitle)
-                            .font(Theme.meta)
-                            .foregroundStyle(isHero ? Theme.black : Theme.secondary)
-                            .multilineTextAlignment(.center)
-                            .lineLimit(nil)
-                            .minimumScaleFactor(0.75)
-                    }
-                }
-
-                if let secondarySubtitleVariants, !secondarySubtitleVariants.isEmpty {
-                    ViewThatFits(in: .vertical) {
-                        ForEach(secondarySubtitleVariants, id: \.self) { variant in
-                            Text(variant)
-                                .font(Theme.meta)
-                                .foregroundStyle(Theme.secondary)
-                                .multilineTextAlignment(.center)
-                                .lineLimit(nil)
-                                .minimumScaleFactor(0.75)
-                        }
-                    }
-                } else if let secondarySubtitle, !secondarySubtitle.isEmpty {
-                    Text(secondarySubtitle)
-                        .font(Theme.meta)
-                        .foregroundStyle(Theme.secondary)
-                        .multilineTextAlignment(.center)
-                        .lineLimit(nil)
-                        .minimumScaleFactor(0.75)
-                }
+                let trimmedSubtitle = subtitle.map(HomePadSubtitles.singleLine) ?? ""
+                let hasSubtitle = !trimmedSubtitle.isEmpty
+                subtitleText(trimmedSubtitle: trimmedSubtitle, hasSubtitle: hasSubtitle, policy: policy)
                 Spacer(minLength: 0)
             }
             .padding(.horizontal, Theme.Space.small)
@@ -485,13 +502,37 @@ struct HomePadView: View {
         .modifier(AccessibilityValueModifier(value: accessibilityValue))
     }
 
+    @ViewBuilder
+    private func subtitleText(
+        trimmedSubtitle: String,
+        hasSubtitle: Bool,
+        policy: Theme.Motion.Policy
+    ) -> some View {
+        let base = Text(hasSubtitle ? trimmedSubtitle : " ")
+            .font(Theme.meta)
+            .foregroundStyle(isHero ? Theme.black : Theme.secondary)
+            .multilineTextAlignment(.center)
+            .lineLimit(1)
+            .truncationMode(.tail)
+            .opacity(hasSubtitle ? 1 : 0)
+            .accessibilityHidden(!hasSubtitle)
+
+        if let numericTransitionValue, hasSubtitle {
+            base
+                .contentTransition(policy.numeric)
+                .motion(value: numericTransitionValue)
+        } else {
+            base
+        }
+    }
+
     private var defaultAccessibilityText: String {
         var parts: [String] = [title]
-        if let sub = subtitleVariants?.first ?? subtitle, !sub.isEmpty {
-            parts.append(sub)
-        }
-        if let sec = secondarySubtitleVariants?.first ?? secondarySubtitle, !sec.isEmpty {
-            parts.append(sec)
+        if let subtitle {
+            let trimmed = HomePadSubtitles.singleLine(subtitle)
+            if !trimmed.isEmpty {
+                parts.append(trimmed)
+            }
         }
         return parts.joined(separator: ", ")
     }
@@ -609,7 +650,6 @@ struct HomeWordmarkView: View {
 @MainActor
 /// Destinations opened from Home pads with pad-to-screen zoom navigation transition (ticket 113).
 enum HomePadDestination: Identifiable, Equatable {
-    case today(TodayPlan)
     case continueToLesson(Lesson)
     case continueToLibrary
     case library(LibraryLaunchTarget)
@@ -623,7 +663,6 @@ enum HomePadDestination: Identifiable, Equatable {
 
     var id: String {
         switch self {
-        case .today: return "pad-today"
         case .continueToLesson, .continueToLibrary: return "pad-continue"
         case .library: return "pad-library"
         case .training: return "pad-training"
@@ -860,11 +899,7 @@ public struct HomeScreen: View {
         #endif
         .padPresentation(item: $activeDestination, namespace: homeNamespace) { destination in
             #if DEBUG
-            if case .today = destination {
-                destinationView(for: destination)
-            } else {
-                destinationView(for: destination).debugTestMarker()
-            }
+            destinationView(for: destination).debugTestMarker()
             #else
             destinationView(for: destination)
             #endif
@@ -901,17 +936,6 @@ public struct HomeScreen: View {
     @ViewBuilder
     private func destinationView(for destination: HomePadDestination) -> some View {
         switch destination {
-        case .today(let plan):
-            TodaySessionScreen(plan: plan) {
-                activeDestination = nil
-            }
-            .environment(store)
-            .environment(settings)
-            .environment(progress)
-            .environment(progression)
-            .environment(badgeStore)
-            .environment(midi)
-
         case .continueToLesson, .continueToLibrary, .library, .intro:
             let target = destination.libraryTarget ?? .none
             let initialProgress = switch target {
@@ -950,7 +974,7 @@ public struct HomeScreen: View {
 
         case .controller:
             NavigationStack {
-                ControllerSetupView(showsDoneButton: true, onDismiss: {
+                ControllerSetupView(onDismiss: {
                     activeDestination = nil
                 })
             }
@@ -996,7 +1020,7 @@ public struct HomeScreen: View {
 
         case .about:
             NavigationStack {
-                AboutDetailView(showsDoneButton: true, onDismiss: {
+                AboutDetailView(onDismiss: {
                     activeDestination = nil
                 })
             }
@@ -1033,16 +1057,16 @@ public struct HomeScreen: View {
     @ViewBuilder
     private func gridContent(cellSize: CGFloat, gap: CGFloat) -> some View {
         VStack(spacing: gap) {
-            // Row 0: Continue/Start (1) · Library (2) · Training (3)
+            // Row 0: Today (1) · Library (2) · Continue (3)
             HStack(spacing: gap) {
                 bootPad(pad1(cellSize: cellSize), isVisible: padVisible[0])
-                    .padSource(todayPlan != nil ? "pad-today" : "pad-continue", in: homeNamespace)
+                    .padSource("pad-training", in: homeNamespace)
                     .frame(width: cellSize, height: cellSize)
                 bootPad(pad2(cellSize: cellSize), isVisible: padVisible[1])
                     .padSource("pad-library", in: homeNamespace)
                     .frame(width: cellSize, height: cellSize)
                 bootPad(pad3(cellSize: cellSize), isVisible: padVisible[2])
-                    .padSource("pad-training", in: homeNamespace)
+                    .padSource("pad-continue", in: homeNamespace)
                     .frame(width: cellSize, height: cellSize)
             }
             // Row 1: Intro (4) · Centre Logo Pad (About) · Controller (5)
@@ -1113,179 +1137,30 @@ public struct HomeScreen: View {
         savedTodayPlan = json
     }
 
-    private func todaySubtitle(_ plan: TodayPlan) -> String {
-        let count = settings.localized("%lld today", plan.reviewCount)
-        return plan.hasNewLesson ? count + " · " + settings.localized("then new lesson") : count
-    }
-
-    private func todaySubtitleVariants(_ plan: TodayPlan) -> [String] {
-        let full = todaySubtitle(plan)
-        var variants = [full]
-        if full.contains(" · ") {
-            let short = full.components(separatedBy: " · ")[0].trimmingCharacters(in: .whitespaces)
-            if !variants.contains(short) { variants.append(short) }
-        }
-        let count = "\(plan.reviewCount)"
-        if !variants.contains(count) { variants.append(count) }
-        return variants
-    }
-
-    private func lessonSubtitleVariants(lesson: Lesson) -> [String] {
-        let title = settings.localized(lesson.title)
-        let record = progress.progress(for: lesson.id)
-        let stars = LibraryStarFilter.stars(record)
-        let starSuffix = stars > 0 ? " · \(String(repeating: "★", count: stars))" : ""
-        let fullSubtitle = "\(title)\(starSuffix)"
-
-        var variants: [String] = [fullSubtitle]
-
-        // 1. Short form if lesson has one (e.g. prefix before " · ")
-        if title.contains(" · ") {
-            let shortForm = title.components(separatedBy: " · ")[0].trimmingCharacters(in: .whitespaces)
-            let withStars = "\(shortForm)\(starSuffix)"
-            if !variants.contains(withStars) { variants.append(withStars) }
-            if !variants.contains(shortForm) { variants.append(shortForm) }
-        }
-
-        // 2. Lesson number plus first words that fit on a whole word boundary
-        let number: Int? = lesson.intro?.number
-            ?? progression.catalog.path.firstIndex(where: { $0.id == lesson.id }).map { $0 + 1 }
-            ?? (progression.catalog.lessons.filter { $0.cat == lesson.cat }.firstIndex { $0.id == lesson.id }.map { $0 + 1 })
-
-        let words = title.split(separator: " ").map(String.init)
-        let numPrefix = number.map { "\($0). " } ?? ""
-
-        for count in stride(from: words.count - 1, through: 1, by: -1) {
-            var prefix = words.prefix(count).joined(separator: " ")
-            if prefix.hasSuffix(" ·") { prefix = String(prefix.dropLast(2)) }
-            if prefix.hasSuffix(",") || prefix.hasSuffix("·") { prefix = String(prefix.dropLast()) }
-            let candidateWithStars = "\(numPrefix)\(prefix)\(starSuffix)"
-            if !variants.contains(candidateWithStars) { variants.append(candidateWithStars) }
-            let candidate = "\(numPrefix)\(prefix)"
-            if !variants.contains(candidate) { variants.append(candidate) }
-        }
-
-        if let number {
-            let numWithStars = "\(number)\(starSuffix)"
-            if !variants.contains(numWithStars) { variants.append(numWithStars) }
-            let numOnly = "\(number)"
-            if !variants.contains(numOnly) { variants.append(numOnly) }
-        }
-
-        return variants
-    }
-
-    static func wordBoundaryVariants(for text: String) -> [String] {
-        let words = text.split(separator: " ").map(String.init)
-        guard words.count > 1 else { return [text] }
-        var variants: [String] = [text]
-        for count in stride(from: words.count - 1, through: 1, by: -1) {
-            var prefix = words.prefix(count).joined(separator: " ")
-            if prefix.hasSuffix(" ·") {
-                prefix = String(prefix.dropLast(2))
-            } else if prefix.hasSuffix(",") || prefix.hasSuffix("·") {
-                prefix = String(prefix.dropLast())
-            }
-            if !prefix.isEmpty && !variants.contains(prefix) {
-                variants.append(prefix)
-            }
-        }
-        return variants
-    }
-
     private func pad1(cellSize: CGFloat) -> some View {
-        if let plan = todayPlan {
-            let label = settings.localized("Today").uppercased(with: Locale(identifier: settings.languagePreference.rawValue))
-            let subtitle = todaySubtitle(plan)
-            let variants = todaySubtitleVariants(plan)
-            return AnyView(HomePadView(
-                title: label,
-                subtitle: subtitle,
-                subtitleVariants: variants,
-                accessibilityText: "\(label), \(subtitle)",
-                padNumber: 1,
-                cellSize: cellSize,
-                isHero: true
-            ) {
-                // Keep the same Mix visible on Training even if reviews change recency first.
-                if let mix = plan.steps.first(where: { $0.kind == .mix }) {
-                    var saved = (try? JSONDecoder().decode([String: [Int]].self, from: Data(dailyMixes.utf8))) ?? [:]
-                    saved = saved.filter { $0.key.hasPrefix(calendarDay + ":") }
-                    saved["\(calendarDay):\(midi.activeProfile.padCount)"] = mix.lessonIDs
-                    if let data = try? JSONEncoder().encode(saved), let json = String(data: data, encoding: .utf8) {
-                        dailyMixes = json
-                    }
-                }
-                activeDestination = .today(plan)
-            })
-        }
-        let isFirstRun = settings.lastLessonID == 0
-        let label = settings.localized(isFirstRun ? "Start" : "Continue").uppercased(with: Locale(identifier: settings.languagePreference.rawValue))
-
-        let targetLesson: Lesson? = {
-            if isFirstRun {
-                return progression.catalog.introLessons.first ?? progression.catalog.path.first
-            }
-            let source = NextLessonSource(rawValue: settings.nextLessonSource) ?? .path
-            return progression.nextLesson(after: lessonStore.lesson(for: settings.lastLessonID), source: source) ?? progression.catalog.path.first
-        }()
-
-        let subtitle: String? = {
-            guard let targetLesson else { return nil }
-            let title = settings.localized(targetLesson.title)
-            let record = progress.progress(for: targetLesson.id)
-            let stars = LibraryStarFilter.stars(record)
-            if stars > 0 {
-                return "\(title) · \(String(repeating: "★", count: stars))"
-            }
-            return title
-        }()
-
-        let variants: [String]? = {
-            guard let targetLesson else { return nil }
-            return lessonSubtitleVariants(lesson: targetLesson)
-        }()
-
-        let accessibility: String? = {
-            guard let subtitle else { return label }
-            return "\(label), \(subtitle)"
-        }()
-
-        return AnyView(HomePadView(
-            title: label,
-            subtitle: subtitle,
-            subtitleVariants: variants,
-            accessibilityText: accessibility,
-            padNumber: 1,
-            cellSize: cellSize,
-            isHero: true
-        ) {
-            if let targetLesson {
-                activeDestination = .continueToLesson(targetLesson)
-                onNavigateToLibrary(.lesson(targetLesson))
-                AppNavigation.shared.openLibrary(.lesson(targetLesson))
-            } else {
-                activeDestination = .continueToLibrary
-                onNavigateToLibrary(.none)
-                AppNavigation.shared.openLibrary(.none)
-            }
-        })
-    }
-
-    private func pad2(cellSize: CGFloat) -> some View {
-        let label = settings.localized("Library").uppercased(with: Locale(identifier: settings.languagePreference.rawValue))
-        let allLessons = progression.catalog.path
-        let three = allLessons.filter { LibraryStarFilter.stars(progress.progress(for: $0.id)) == 3 }.count
-        let two = allLessons.filter { LibraryStarFilter.stars(progress.progress(for: $0.id)) == 2 }.count
-        let one = allLessons.filter { LibraryStarFilter.stars(progress.progress(for: $0.id)) == 1 }.count
-        let earnedStars = three * 3 + two * 2 + one
-        let maxStars = allLessons.count * 3
-        let subtitle = "\(earnedStars) / \(maxStars) ★"
+        let label = settings.localized("Today").uppercased(with: Locale(identifier: settings.languagePreference.rawValue))
+        let subtitle = HomePadSubtitles.today(plan: todayPlan, language: settings.languagePreference)
 
         return HomePadView(
             title: label,
             subtitle: subtitle,
-            numericTransitionValue: earnedStars,
+            padNumber: 1,
+            cellSize: cellSize,
+            isHero: true
+        ) {
+            TrainingOpenMeasurement.begin()
+            activeDestination = .training
+            onNavigateToTraining()
+            AppNavigation.shared.openTraining()
+        }
+    }
+
+    private func pad2(cellSize: CGFloat) -> some View {
+        let label = settings.localized("Library").uppercased(with: Locale(identifier: settings.languagePreference.rawValue))
+
+        return HomePadView(
+            title: label,
+            subtitle: HomePadSubtitles.library(),
             padNumber: 2,
             cellSize: cellSize,
             isHero: false
@@ -1299,22 +1174,34 @@ public struct HomeScreen: View {
     private var hasProgress: Bool { hasAnyLessonProgress(progress.records) }
 
     private func pad3(cellSize: CGFloat) -> some View {
-        let label = settings.localized("Training").uppercased(with: Locale(identifier: settings.languagePreference.rawValue))
-        let dueCount = progress.dueLessonsCount(today: calendarDay)
+        let label = settings.localized("Continue").uppercased(with: Locale(identifier: settings.languagePreference.rawValue))
+        let lastLesson = settings.lastLessonID == 0 ? nil : lessonStore.lesson(for: settings.lastLessonID)
+        let targetLesson = HomePadSubtitles.continueTarget(
+            lastPlayedLesson: lastLesson,
+            introFirstLesson: progression.catalog.introLessons.first,
+            pathFirstLesson: progression.catalog.path.first
+        )
+        let subtitle = HomePadSubtitles.continueLesson(
+            lastPlayedLesson: lastLesson,
+            language: settings.languagePreference
+        )
 
         return HomePadView(
             title: label,
-            subtitle: nil,
-            accessibilityText: label,
-            isLit: hasProgress && dueCount > 0,
+            subtitle: subtitle,
             padNumber: 3,
             cellSize: cellSize,
             isHero: false
         ) {
-            TrainingOpenMeasurement.begin()
-            activeDestination = .training
-            onNavigateToTraining()
-            AppNavigation.shared.openTraining()
+            if let targetLesson {
+                activeDestination = .continueToLesson(targetLesson)
+                onNavigateToLibrary(.lesson(targetLesson))
+                AppNavigation.shared.openLibrary(.lesson(targetLesson))
+            } else {
+                activeDestination = .continueToLibrary
+                onNavigateToLibrary(.none)
+                AppNavigation.shared.openLibrary(.none)
+            }
         }
     }
 
@@ -1322,7 +1209,7 @@ public struct HomeScreen: View {
         let label = settings.localized("Intro").uppercased(with: Locale(identifier: settings.languagePreference.rawValue))
         return HomePadView(
             title: label,
-            subtitle: nil,
+            subtitle: HomePadSubtitles.intro(),
             isLit: animationFinished && progress.loadedSuccessfully && !hasProgress && !tutorialBlocksInput,
             padNumber: 4,
             cellSize: cellSize,
@@ -1337,29 +1224,20 @@ public struct HomeScreen: View {
 
     private func pad5(cellSize: CGFloat) -> some View {
         let label = settings.localized("Controller").uppercased(with: Locale(identifier: settings.languagePreference.rawValue))
-        let profileName = settings.displayName(for: settings.activeProfile())
-
-        let inputName: String = {
+        let connectedName: String? = {
             if let selectedID = midi.selectedSourceID {
-                return midi.sources.first(where: { $0.id == selectedID })?.name ?? settings.localized("Not connected")
-            } else if let firstSource = midi.sources.first {
-                return firstSource.name
-            } else {
-                return settings.localized("Not connected")
+                return midi.sources.first(where: { $0.id == selectedID })?.name
             }
+            return midi.sources.first?.name
         }()
-
-        let voiceOverText = "\(label), \(inputName), \(profileName)"
-        let inputVariants = Self.wordBoundaryVariants(for: inputName)
-        let profileVariants = Self.wordBoundaryVariants(for: profileName)
+        let subtitle = HomePadSubtitles.controller(
+            connectedName: connectedName,
+            language: settings.languagePreference
+        )
 
         return HomePadView(
             title: label,
-            subtitle: inputName,
-            subtitleVariants: inputVariants,
-            secondarySubtitle: profileName,
-            secondarySubtitleVariants: profileVariants,
-            accessibilityText: voiceOverText,
+            subtitle: subtitle,
             padNumber: 5,
             cellSize: cellSize,
             isHero: false
@@ -1370,7 +1248,7 @@ public struct HomeScreen: View {
 
     private func pad6(cellSize: CGFloat) -> some View {
         let label = settings.localized("Badges").uppercased(with: Locale(identifier: settings.languagePreference.rawValue))
-        let subtitle = "\(badgeStore.earnedCount) / \(badgeStore.totalCount)"
+        let subtitle = HomePadSubtitles.badges(earned: badgeStore.earnedCount, total: badgeStore.totalCount)
 
         return HomePadView(
             title: label,
@@ -1386,7 +1264,12 @@ public struct HomeScreen: View {
 
     private func pad7(cellSize: CGFloat) -> some View {
         let label = settings.localized("Full version").uppercased(with: Locale(identifier: settings.languagePreference.rawValue))
-        let subtitle = store.hasFullAccess ? settings.localized("Unlocked") : settings.localized("Unlock")
+        let price = store.products[StoreManager.fullID]?.displayPrice
+        let subtitle = HomePadSubtitles.fullVersion(
+            hasFullAccess: store.hasFullAccess,
+            price: price,
+            language: settings.languagePreference
+        )
 
         return HomePadView(title: label, subtitle: subtitle, padNumber: 7, cellSize: cellSize, isHero: false) {
             activeDestination = .purchases
@@ -1395,7 +1278,13 @@ public struct HomeScreen: View {
 
     private func pad8(cellSize: CGFloat) -> some View {
         let label = settings.localized("Settings").uppercased(with: Locale(identifier: settings.languagePreference.rawValue))
-        return HomePadView(title: label, subtitle: nil, padNumber: 8, cellSize: cellSize, isHero: false) {
+        return HomePadView(
+            title: label,
+            subtitle: HomePadSubtitles.settings(),
+            padNumber: 8,
+            cellSize: cellSize,
+            isHero: false
+        ) {
             activeDestination = .settings
         }
     }

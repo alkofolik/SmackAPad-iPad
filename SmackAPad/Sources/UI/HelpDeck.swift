@@ -92,12 +92,14 @@ struct HelpDeck: View {
     @AccessibilityFocusState private var headingFocus: Page?
     @State private var topic: HelpTopic?
     @State private var tutorialIndex: Int?
+    @State private var cameFromContents: Bool
     private let firstLaunch: Bool
     private let onClose: () -> Void
 
     init(initialTopic: HelpTopic? = nil, firstLaunch: Bool = false, onClose: @escaping () -> Void) {
         _topic = State(initialValue: initialTopic)
         _tutorialIndex = State(initialValue: firstLaunch ? 0 : nil)
+        _cameFromContents = State(initialValue: initialTopic == nil)
         self.firstLaunch = firstLaunch
         self.onClose = onClose
     }
@@ -156,7 +158,8 @@ struct HelpDeck: View {
     }
 
     private func header(for page: Page) -> some View {
-        HStack(alignment: .top, spacing: Theme.Space.regular) {
+        HStack(alignment: .center, spacing: Theme.Space.regular) {
+            BackButton { backAction(for: page) }
             Text(settings.localized(page.titleKey))
                 .font(Theme.display(headingSize))
                 .fixedSize(horizontal: false, vertical: true)
@@ -164,12 +167,21 @@ struct HelpDeck: View {
                 .accessibilityValue(tutorialIndex.map(tutorialPosition) ?? "")
                 .accessibilityFocused($headingFocus, equals: page)
                 .frame(maxWidth: .infinity, minHeight: Theme.Size.touch, alignment: .leading)
-            Button(action: close) {
-                controlLabel(tutorialIndex == nil ? "Close" : "Skip")
-                    .textButtonTarget(alignment: .trailing)
+        }
+    }
+
+    private func backAction(for page: Page) {
+        switch page {
+        case .contents:
+            onClose()
+        case .topic:
+            if cameFromContents {
+                topic = nil
+            } else {
+                onClose()
             }
-            .buttonStyle(.plain)
-            .keyboardShortcut(.cancelAction)
+        case .tutorial:
+            close()
         }
     }
 
@@ -205,7 +217,10 @@ struct HelpDeck: View {
             .buttonStyle(.plain)
             .frame(maxWidth: .infinity, alignment: .leading)
         case .topic:
-            Button { topic = nil } label: {
+            Button {
+                cameFromContents = true
+                topic = nil
+            } label: {
                 controlLabel("help.nav.topics")
             }
             .buttonStyle(PadSecondaryButtonStyle())
