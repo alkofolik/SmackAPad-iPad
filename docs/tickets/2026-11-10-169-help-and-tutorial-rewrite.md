@@ -1,6 +1,6 @@
 # 169 — Rewrite help and first-launch tutorial
 
-Status: ready-for-agent. Approved by Jakub on 2026-11-10 (all five questions in the T163 report answered yes; the pass-mark question is handled in T170).
+Status: ready-for-human. Implemented in `e467be9`; build and the full test plan verified on 2026-11-11. Awaiting Jakub's manual iPad checks below. Approved by Jakub on 2026-11-10 (all five questions in the T163 report answered yes; the pass-mark question is handled in T170).
 
 ## Goal
 
@@ -45,3 +45,9 @@ Codex GPT-6.1 Sol, high. Lots of copy that must match code behaviour exactly.
 ## Done rule
 
 Build, full `SmackAPad` test plan per `AGENTS.md`, commit, stop for Jakub's iPad check.
+
+## Verification — 2026-11-11
+
+- The existing implementation includes five tutorial cards, twelve help topics, the Practice entry on The lesson screen, the Review star name, and separate Start / Start of plan keys.
+- `xcodebuild build test -project SmackAPad.xcodeproj -scheme SmackAPad -testPlan SmackAPad -destination 'platform=iOS Simulator,id=29546CEC-E603-4A3B-AF2F-28711105A8E5' -parallel-testing-enabled NO` succeeded on the iPad (A16), iOS 27.0 simulator: 244 tests, zero failures. Log finalization completed normally.
+- No additional implementation changes were needed. Acceptance criteria remain unchecked pending the manual iPad checks.
