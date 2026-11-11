@@ -673,7 +673,6 @@
 "Mix" = "Mix";
 "New mix" = "Jiný mix";
 "Mix needs two lessons with two stars." = "Mix potřebuje dvě lekce se dvěma hvězdami.";
-"Mix · %lld of %lld · %@" = "Mix · %lld ze %lld · %@";
 "Mix results" = "Výsledky mixu";
 "Bars: %@" = "Takty: %@";
 "%lld not measured" = "%lld nezměřeno";
@@ -3335,3 +3334,14 @@
 "Unlock for %@" = "Odemknout za %@";
 "Restore purchase" = "Obnovit nákup";
 "Purchased" = "Zakoupeno";
+
+/* Ticket 180: Mix line-up and pause between lessons. */
+"Start mix" = "Spustit mix";
+"Another mix" = "Jiný mix";
+"%@ · %lld bar each" = "%@ · po %lld taktu";
+"%@ · %lld bars each" = "%@ · po %lld taktech";
+"%@ · %@" = "%@ · %@";
+"%lld BPM" = "%lld BPM";
+"MIX %lld / %lld" = "MIX %lld / %lld";
+"%lld · %@ · %lld %%" = "%lld · %@ · %lld %%";
+"%lld · %@ · %@" = "%lld · %@ · %@";

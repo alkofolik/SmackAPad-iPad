@@ -62,6 +62,18 @@ enum TrainingMix {
         return groups.max { Set($0.map(\.cat)).count < Set($1.map(\.cat)).count } ?? []
     }
 
+    /// Re-rolls a mix selection, retrying once if the first draw matches `currentIDs`.
+    static func reroll(excluding currentIDs: [Int], lessons: [Lesson], progress: [Int: LessonProgress],
+                       padCount: Int, openLessonIDs: Set<Int>, day: String) -> [Lesson] {
+        var chosen = select(lessons: lessons, progress: progress, padCount: padCount,
+                            openLessonIDs: openLessonIDs, day: day, draw: UInt64.random(in: 1...1_000_000))
+        if Set(chosen.map(\.id)) == Set(currentIDs) {
+            chosen = select(lessons: lessons, progress: progress, padCount: padCount,
+                            openLessonIDs: openLessonIDs, day: day, draw: UInt64.random(in: 1...1_000_000))
+        }
+        return chosen
+    }
+
     /// Stable across processes; Swift's Hasher intentionally is not.
     private static func rank(_ value: String) -> UInt64 {
         value.utf8.reduce(14_695_981_039_346_656_037) { ($0 ^ UInt64($1)) &* 1_099_511_628_211 }

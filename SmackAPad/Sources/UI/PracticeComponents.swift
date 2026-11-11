@@ -404,6 +404,7 @@ struct TransportControls: View {
     let start: () -> Void
     let stop: () -> Void
     let restart: () -> Void
+    var skipAction: (() -> Void)? = nil
 
     var body: some View {
         if showsResult {
@@ -485,20 +486,34 @@ struct TransportControls: View {
             .disabled(!running && !enabled)
             .opacity(running || enabled ? 1 : 0.5)
 
-            Button(action: restart) {
-                HStack(spacing: Theme.Space.small) {
-                    PracticeGlyph(kind: .restart).frame(width: 18, height: 18)
-                    Text(settings.localized("Restart"))
+            if !running, let skipAction {
+                Button(action: skipAction) {
+                    Text(settings.localized("Skip"))
                         .font(Theme.action)
                         .lineLimit(1)
-                        .fixedSize()
+                        .minimumScaleFactor(0.8)
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
                 }
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .buttonStyle(PadSecondaryButtonStyle())
+                .frame(width: squareSize, height: buttonHeight)
+                .disabled(!enabled)
+                .opacity(enabled ? 1 : 0.5)
+            } else {
+                Button(action: restart) {
+                    HStack(spacing: Theme.Space.small) {
+                        PracticeGlyph(kind: .restart).frame(width: 18, height: 18)
+                        Text(settings.localized("Restart"))
+                            .font(Theme.action)
+                            .lineLimit(1)
+                            .fixedSize()
+                    }
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                }
+                .buttonStyle(PadSecondaryButtonStyle())
+                .frame(width: squareSize, height: buttonHeight)
+                .disabled(!enabled)
+                .opacity(enabled ? 1 : 0.5)
             }
-            .buttonStyle(PadSecondaryButtonStyle())
-            .frame(width: squareSize, height: buttonHeight)
-            .disabled(!enabled)
-            .opacity(enabled ? 1 : 0.5)
         }
         .frame(width: squareSize, height: squareSize)
         .motion(Theme.Motion.standard, value: running)

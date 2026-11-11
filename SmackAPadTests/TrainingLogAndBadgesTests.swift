@@ -86,6 +86,8 @@ final class TrainingLogAndBadgesTests: XCTestCase {
         await session.tick()?.value
 
         XCTAssertEqual(session.lesson.id, second.id)
+        XCTAssertFalse(session.running)
+        session.start()
 
         // Advance into second lesson (4 count-in beats at 120 BPM = 2s, anchor offset 0.6s)
         let startSecond = time + 0.6 + 2

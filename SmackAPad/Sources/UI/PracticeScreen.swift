@@ -40,6 +40,7 @@ struct PracticeScreen: View {
 
     init(lesson: Lesson, settings: SettingsManager, progress: ProgressStore, midi: MIDIInput,
          initialFromMemory: Bool = false, initialBpm: Int? = nil, mixLessons: [Lesson] = [], initialAfterMe: Bool = false,
+         unscored: Bool = false,
          onStepResult: ((PracticeStepOutcome) -> Void)? = nil) {
         self.onStepResult = onStepResult
         _session = State(initialValue: PracticeSession(
@@ -50,7 +51,8 @@ struct PracticeScreen: View {
             initialFromMemory: initialFromMemory,
             initialBpm: initialBpm,
             mixLessons: mixLessons,
-            initialAfterMe: initialAfterMe
+            initialAfterMe: initialAfterMe,
+            unscored: unscored
         ))
         if let initialPads = midi.padIndices {
             let initialPadCount = midi.activeProfile.padCount
@@ -132,9 +134,9 @@ struct PracticeScreen: View {
             await session.prepare()
             updatePadLayoutModel()
             handleDebugLaunchArguments()
-            if session.isMix {
+            if session.isMix && !session.unscored && session.mixIndex == 0 && session.mixResults.isEmpty {
                 session.start()
-            } else if !Task.isCancelled {
+            } else if !Task.isCancelled && !session.isMix {
                 showFirstLegendIfNeeded()
             }
         }
@@ -281,9 +283,7 @@ struct PracticeScreen: View {
 
     private var titleAndSubtitle: some View {
         VStack(alignment: .leading, spacing: 2) {
-            Text(session.isMix
-                 ? settings.localized("Mix · %lld of %lld · %@", session.mixIndex + 1, session.mixLessons.count, settings.localized(session.lesson.title))
-                 : settings.localized(session.lesson.title))
+            Text(settings.localized(session.lesson.title))
                 .font(Theme.strong(22))
                 .foregroundStyle(Theme.ink)
                 .lineLimit(2)
@@ -347,13 +347,7 @@ struct PracticeScreen: View {
     }
 
     private func localizedBarCount(_ bars: Int) -> String {
-        if bars == 1 {
-            return settings.localized("1 bar")
-        }
-        if settings.languagePreference == .czech && bars >= 5 {
-            return "\(bars) taktů"
-        }
-        return settings.localized("%lld bars", bars)
+        settings.localizedBarCount(bars)
     }
 
     private var modeGroup: some View {
@@ -625,6 +619,8 @@ struct PracticeScreen: View {
                 && (!session.afterMe || frame.pass.isMultiple(of: 2))
             let showingResult = isShowingResult
             let passLineReserve: CGFloat = session.running ? 24 : 0
+            let showMixHeader = session.isMix && !focusActive && !showingResult
+            let mixHeaderReserve: CGFloat = showMixHeader ? 40 : 0
 
             VStack(spacing: Theme.Space.small) {
                 if focusActive || session.listen {
@@ -643,11 +639,15 @@ struct PracticeScreen: View {
 
                 GeometryReader { geometry in
                     let rows = Set(session.patternHits.map(\.padIndex)).count
-                    let bandAvailableHeight = max(0, geometry.size.height - passLineReserve)
+                    let bandAvailableHeight = max(0, geometry.size.height - passLineReserve - mixHeaderReserve)
                     let bandHeight = min(bandAvailableHeight,
                         PracticeBandStyle.bandHeight(rows: rows, availableHeight: bandAvailableHeight))
 
                     VStack(spacing: Theme.Space.controlGap) {
+                        if showMixHeader {
+                            mixStatusHeader
+                        }
+
                         practiceBand(frame: frame, scored: scored)
                             .frame(height: bandHeight)
                             .opacity(showingResult ? 0.55 : 1)
@@ -741,6 +741,86 @@ struct PracticeScreen: View {
                 .minimumScaleFactor(0.65)
                 .id(event.id)
         }
+    }
+
+    @ViewBuilder
+    private var mixStatusHeader: some View {
+        HStack(spacing: Theme.Space.small) {
+            if let prev = session.previousMixResult {
+                previousMixResultChip(index: prev.index, result: prev.result)
+            }
+            Spacer(minLength: Theme.Space.small)
+            mixProgressChip
+                .layoutPriority(1)
+        }
+        .frame(maxWidth: .infinity)
+    }
+
+    private func previousMixResultChip(index: Int, result: MixLessonResult) -> some View {
+        let iconName: String
+        let iconColor: Color
+        if result.score == nil {
+            iconName = "forward.end"
+            iconColor = Theme.secondary
+        } else if result.met {
+            iconName = "checkmark"
+            iconColor = Theme.orange
+        } else if !result.counted {
+            iconName = "exclamationmark.circle"
+            iconColor = Theme.orange
+        } else {
+            iconName = "xmark"
+            iconColor = Theme.ink
+        }
+
+        let labelText: String
+        if let score = result.score {
+            labelText = settings.localized("%lld · %@ · %lld %%", index + 1, settings.localized(result.title), Int(score.rounded()))
+        } else {
+            labelText = settings.localized("%lld · %@ · %@", index + 1, settings.localized(result.title), settings.localized("Skipped"))
+        }
+
+        return HStack(spacing: 6) {
+            Image(systemName: iconName)
+                .font(.system(size: 11, weight: .bold))
+                .foregroundStyle(iconColor)
+            Text(labelText)
+                .font(Theme.display(13).weight(.semibold).monospacedDigit())
+                .foregroundStyle(Theme.ink)
+                .lineLimit(1)
+                .truncationMode(.tail)
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 6)
+        .background(Theme.white, in: Capsule())
+        .overlay(Capsule().strokeBorder(Theme.hairline, lineWidth: 1))
+    }
+
+    private var mixProgressChip: some View {
+        HStack(spacing: 10) {
+            Text(settings.localized("MIX %lld / %lld", session.mixIndex + 1, session.mixLessons.count))
+                .font(Theme.strong(12).monospacedDigit())
+                .foregroundStyle(Theme.white)
+                .lineLimit(1)
+
+            HStack(spacing: 4) {
+                ForEach(session.mixLessons.indices, id: \.self) { index in
+                    let fill: Color = if index < session.mixIndex {
+                        Theme.white
+                    } else if index == session.mixIndex {
+                        Theme.orange
+                    } else {
+                        Theme.white.opacity(0.28)
+                    }
+                    Capsule()
+                        .fill(fill)
+                        .frame(width: 20, height: 5)
+                }
+            }
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 7)
+        .background(Theme.black, in: Capsule())
     }
 
     private func practiceBand(frame: PatternFrame, scored: Bool) -> some View {
@@ -1025,7 +1105,7 @@ struct PracticeScreen: View {
     }
 
     private func tempoSquare(s: CGFloat, spaceAbove: CGFloat) -> some View {
-        let editable = !session.isMix && !session.running && session.ready && session.available
+        let editable = !session.running && session.ready && session.available
         return Button {
             showingDetails = false
             showingStarRules = false
@@ -1141,7 +1221,12 @@ struct PracticeScreen: View {
                 dismissDebugResult()
                 showingInfo = false
                 session.restart()
-            }
+            },
+            skipAction: (session.isMix && !session.running && !showingResult) ? {
+                dismissDebugResult()
+                showingInfo = false
+                session.skipMixLesson()
+            } : nil
         )
     }
 

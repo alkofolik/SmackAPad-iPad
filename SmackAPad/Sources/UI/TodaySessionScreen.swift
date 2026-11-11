@@ -51,6 +51,14 @@ final class TodaySessionCoordinator {
         save()
     }
 
+    func replaceCurrentMixLessons(_ lessons: [Lesson]) {
+        guard !plan.finished, plan.steps.indices.contains(plan.index),
+              plan.steps[plan.index].kind == .mix,
+              lessons.count >= LearningRules.minimumMixLessons else { return }
+        plan.steps[plan.index].lessonIDs = lessons.map(\.id)
+        save()
+    }
+
     func skip(progress: ProgressStore) {
         guard !plan.finished else { return }
         plan = plan.reconcilingReviews(with: progress.records)
@@ -110,6 +118,10 @@ struct TodaySessionScreen: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var coordinator: TodaySessionCoordinator
     @State private var showingPractice = false
+    @State private var todayMixLessons: [Lesson] = []
+    @State private var todayMixFromMemory = false
+    @State private var mixFlowEnteredPractice = false
+    @AppStorage("smackapad.training.dailyMixes") private var dailyMixes = "{}"
     let onHome: () -> Void
 
     init(plan: TodayPlan, onHome: @escaping () -> Void) {
@@ -193,18 +205,32 @@ struct TodaySessionScreen: View {
             }
         }
         .fullScreenCover(isPresented: $showingPractice, onDismiss: {
+            if coordinator.currentStep?.kind == .mix && !mixFlowEnteredPractice {
+                return
+            }
             withAnimation(Theme.Motion.Policy(reduced: reduceMotion).animation(Theme.Motion.cardStep)) {
                 coordinator.leavePractice(progress: progress)
             }
         }) {
-            if let step = coordinator.currentStep,
-               let lesson = step.lessonIDs.first.flatMap({ LessonStore.shared.lesson(for: $0) }) {
-                let launch: LessonLaunch = step.kind == .review ? .review(lesson) : .lesson(lesson)
-                PracticeScreen(lesson: lesson, settings: settings, progress: progress, midi: midi,
-                               initialFromMemory: launch.reviewTempo != nil,
-                               initialBpm: launch.reviewTempo,
-                               mixLessons: step.kind == .mix ? step.lessonIDs.compactMap { LessonStore.shared.lesson(for: $0) } : [],
-                               onStepResult: { coordinator.record($0) })
+            if let step = coordinator.currentStep {
+                if step.kind == .mix, !todayMixLessons.isEmpty {
+                    MixFlowScreen(
+                        lessons: $todayMixLessons,
+                        fromMemory: $todayMixFromMemory,
+                        onAnotherMix: { rerollTodayMix() },
+                        onMixStarted: {
+                            mixFlowEnteredPractice = true
+                            coordinator.continueSession()
+                        },
+                        onStepResult: { coordinator.record($0) }
+                    )
+                } else if let lesson = step.lessonIDs.first.flatMap({ LessonStore.shared.lesson(for: $0) }) {
+                    let launch: LessonLaunch = step.kind == .review ? .review(lesson) : .lesson(lesson)
+                    PracticeScreen(lesson: lesson, settings: settings, progress: progress, midi: midi,
+                                   initialFromMemory: launch.reviewTempo != nil,
+                                   initialBpm: launch.reviewTempo,
+                                   onStepResult: { coordinator.record($0) })
+                }
             }
         }
     }
@@ -278,8 +304,37 @@ struct TodaySessionScreen: View {
             coordinator.skip(progress: progress)
             return
         }
+        if step.kind == .mix {
+            todayMixLessons = lessons
+            mixFlowEnteredPractice = false
+            showingPractice = true
+            return
+        }
         coordinator.continueSession()
         showingPractice = true
+    }
+
+    private func rerollTodayMix() {
+        let openIDs = Set(progression.catalog.lessons.filter {
+            store.isUnlocked($0) && progression.isLessonOpen($0)
+        }.map(\.id))
+        let chosen = TrainingMix.reroll(
+            excluding: todayMixLessons.map(\.id),
+            lessons: progression.catalog.lessons,
+            progress: progress.records,
+            padCount: midi.activeProfile.padCount,
+            openLessonIDs: openIDs,
+            day: coordinator.plan.day
+        )
+        guard chosen.count >= LearningRules.minimumMixLessons else { return }
+        todayMixLessons = chosen
+        coordinator.replaceCurrentMixLessons(chosen)
+        var saved = (try? JSONDecoder().decode([String: [Int]].self, from: Data(dailyMixes.utf8))) ?? [:]
+        saved[coordinator.plan.day] = chosen.map(\.id)
+        if let data = try? JSONEncoder().encode(saved),
+           let json = String(data: data, encoding: .utf8) {
+            dailyMixes = json
+        }
     }
 
     private func skipStep() {

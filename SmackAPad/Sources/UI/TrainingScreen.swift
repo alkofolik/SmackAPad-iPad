@@ -213,8 +213,15 @@ public struct TrainingScreen: View {
                 PracticeLessonDestination(launch: .afterMe(lesson))
             }
             .fullScreenCover(isPresented: $showingMix) {
-                if let first = playingMix.first {
-                    PracticeLessonDestination(launch: .mix(first, lessons: playingMix, fromMemory: mixFromMemory))
+                if !playingMix.isEmpty {
+                    MixFlowScreen(
+                        lessons: $playingMix,
+                        fromMemory: $mixFromMemory,
+                        onAnotherMix: {
+                            refreshMix(newDraw: true)
+                            playingMix = mixLessons
+                        }
+                    )
                 }
             }
             .fullScreenCover(isPresented: $showingToday) {

@@ -49,14 +49,18 @@ final class TrainingMixSessionTests: XCTestCase {
                                 timestamp: AVAudioTime.hostTime(forSeconds: time), deviceID: "test"))
                         }
                         time = start + 8.01
-                        session.tick()
+                        await session.tick()?.value
                         if isMix {
-                            XCTAssertTrue(session.running)
+                            XCTAssertFalse(session.running)
+                            XCTAssertNil(session.summary)
+                            XCTAssertEqual(session.mixIndex, 1)
                             XCTAssertEqual(session.lesson.id, second.id)
                             XCTAssertEqual(session.bpm, 90)
-                            XCTAssertEqual(session.countdown, 4)
+                            XCTAssertNil(session.countdown)
                             XCTAssertEqual(session.mixResults.count, 2)
                             XCTAssertEqual(session.mixResults.first?.score, playAllHits ? 1 : 0.5)
+                            XCTAssertEqual(session.previousMixResult?.index, 0)
+                            XCTAssertEqual(session.previousMixResult?.result.score, playAllHits ? 1 : 0.5)
                             XCTAssertNil(session.tempoUpEvent)
                         }
                         session.stop()
@@ -127,6 +131,17 @@ final class TrainingMixSessionTests: XCTestCase {
                 session.start()
 
                 for (lessonIndex, currentLesson) in allLessons.enumerated() {
+                    if lessonIndex > 0 {
+                        XCTAssertFalse(session.running, "Session must wait paused before lesson \(lessonIndex + 1)")
+                        XCTAssertNil(session.summary)
+                        XCTAssertEqual(session.mixIndex, lessonIndex)
+                        XCTAssertEqual(session.lesson.id, currentLesson.id)
+                        XCTAssertNil(session.countdown)
+                        time += 5.0
+                        XCTAssertNil(session.tick())
+                        XCTAssertFalse(session.running, "Session must not start until start() is called")
+                        session.start()
+                    }
                     XCTAssertTrue(session.running, "Session should be running during lesson \(lessonIndex + 1)")
                     XCTAssertEqual(session.lesson.id, currentLesson.id)
 
@@ -185,5 +200,113 @@ final class TrainingMixSessionTests: XCTestCase {
                 XCTAssertEqual(progress.trainingLog.mixRounds, 1, "An interrupted round must not be recorded")
             }
         }
+    }
+
+    @MainActor
+    func testPauseBetweenMixLessonsAllowsTempoEditAndSkipFinishesWithoutResult() async throws {
+        let suite = "mix-pause-skip-\(UUID().uuidString)"
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))
+        defer { defaults.removePersistentDomain(forName: suite) }
+        let settings = SettingsManager(userDefaults: defaults)
+
+        let hits = stride(from: 0, to: 64, by: 4).map {
+            LessonHit(step: $0, padIndex: 12, hand: "L", velocity: 100)
+        }
+        let lessons = (1...3).map { idx in
+            Lesson(id: 71_000 + idx, cat: "test", title: "Mix \(idx)", genre: "Rock", tags: [],
+                   text: "", division: 16, bars: 4, startBpm: 80, targetBpm: 120, level: 1,
+                   src: "Test", hits: hits)
+        }
+
+        let file = FileManager.default.temporaryDirectory.appendingPathComponent("\(suite).json")
+        defer { try? FileManager.default.removeItem(at: file) }
+        let progress = ProgressStore(fileURL: file, autoLoad: false)
+        let midi = MIDIInput(settings: settings)
+        var time = AVAudioTime.seconds(forHostTime: mach_absolute_time())
+
+        let session = PracticeSession(
+            lesson: lessons[0],
+            settings: settings,
+            progress: progress,
+            midi: midi,
+            mixLessons: lessons,
+            clock: { time },
+            currentDay: { "2026-11-05" }
+        )
+        session.metronome = false
+        await session.prepare()
+        defer { session.close() }
+        XCTAssertTrue(session.ready)
+
+        // Play lesson 1 cleanly
+        time = AVAudioTime.seconds(forHostTime: mach_absolute_time())
+        session.start()
+        let start1 = time + 0.6 + 4 * (60.0 / 120.0)
+        for hit in lessons[0].hits(forPadCount: 16) {
+            time = start1 + Double(hit.step) * 15 / 120
+            session.tick()
+            midi.onPadEvent?(PadInputEvent(padIndex: hit.padIndex, velocity: 100, isNoteOn: true,
+                timestamp: AVAudioTime.hostTime(forSeconds: time), deviceID: "test"))
+        }
+        time = start1 + Double(lessons[0].bars) * 240 / 120 + 0.01
+        await session.tick()?.value
+
+        // Paused at lesson 2: does not auto-start, previous result recorded, tempo editable
+        XCTAssertFalse(session.running)
+        XCTAssertNil(session.summary)
+        XCTAssertEqual(session.mixIndex, 1)
+        XCTAssertEqual(session.lesson.id, lessons[1].id)
+        XCTAssertEqual(session.previousMixResult?.index, 0)
+        XCTAssertEqual(session.previousMixResult?.result.score, 1.0)
+        session.setTempo(95)
+        XCTAssertEqual(session.bpm, 95)
+
+        // Calling skipMixLesson advances to lesson 3 in stopped state without writing a score for lesson 2
+        await session.skipMixLesson()?.value
+        XCTAssertFalse(session.running)
+        XCTAssertNil(session.summary)
+        XCTAssertEqual(session.mixIndex, 2)
+        XCTAssertEqual(session.lesson.id, lessons[2].id)
+        XCTAssertEqual(session.bpm, 120)
+        XCTAssertNil(session.mixResults[1].score)
+        XCTAssertEqual(session.previousMixResult?.index, 1)
+        XCTAssertNil(session.previousMixResult?.result.score)
+
+        // Calling start() on lesson 3 starts lesson 3 (not lesson 1!) and preserves previous mix results
+        session.setTempo(100)
+        session.start()
+        XCTAssertTrue(session.running)
+        XCTAssertEqual(session.mixIndex, 2)
+        XCTAssertEqual(session.lesson.id, lessons[2].id)
+        XCTAssertEqual(session.bpm, 100)
+        XCTAssertEqual(session.mixResults[0].score, 1.0)
+        XCTAssertNil(session.mixResults[1].score)
+
+        // Stop early -> Skip from the last lesson finishes the mix without recording a completed round
+        session.stop()
+        XCTAssertNotNil(session.summary)
+
+        // Also test direct skip on the last lesson from paused state
+        let session2 = PracticeSession(
+            lesson: lessons[0],
+            settings: settings,
+            progress: progress,
+            midi: midi,
+            mixLessons: lessons,
+            clock: { time },
+            currentDay: { "2026-11-05" }
+        )
+        session2.metronome = false
+        await session2.prepare()
+        defer { session2.close() }
+        await session2.skipMixLesson()?.value
+        await session2.skipMixLesson()?.value
+        XCTAssertEqual(session2.mixIndex, 2)
+        XCTAssertNil(session2.summary)
+        await session2.skipMixLesson()?.value
+        XCTAssertNotNil(session2.summary)
+        XCTAssertFalse(session2.isMixFullyMet)
+        XCTAssertTrue(session2.mixResults.allSatisfy { $0.score == nil })
+        XCTAssertEqual(progress.trainingLog.mixRounds, 0, "Skipped rounds must not count as completed mix rounds")
     }
 }

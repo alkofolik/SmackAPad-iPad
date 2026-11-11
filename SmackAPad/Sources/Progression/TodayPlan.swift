@@ -7,7 +7,7 @@ struct TodayPlan: Codable, Equatable {
     struct Step: Codable, Equatable {
         enum Kind: String, Codable { case review, newLesson, mix }
         let kind: Kind
-        let lessonIDs: [Int]
+        var lessonIDs: [Int]
         var outcome: PracticeStepOutcome?
 
         /// Shared by the step marks, handoff and summary. A score alone cannot pass a review.

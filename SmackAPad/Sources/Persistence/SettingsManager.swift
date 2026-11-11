@@ -270,6 +270,16 @@ public final class SettingsManager: @unchecked Sendable {
         return String(format: format, locale: Locale(identifier: languagePreference.rawValue), arguments: arguments)
     }
 
+    public func localizedBarCount(_ bars: Int) -> String {
+        if bars == 1 {
+            return localized("1 bar")
+        }
+        if languagePreference == .czech && bars >= 5 {
+            return "\(bars) taktů"
+        }
+        return localized("%lld bars", bars)
+    }
+
     public var bpmStepEnum: BpmStep {
         get { BpmStep.from(raw: bpmStep) }
         set { bpmStep = newValue.rawValue }

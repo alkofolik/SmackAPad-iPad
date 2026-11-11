@@ -671,7 +671,6 @@
 "Mix" = "Mix";
 "New mix" = "New mix";
 "Mix needs two lessons with two stars." = "Mix needs two lessons with two stars.";
-"Mix · %lld of %lld · %@" = "Mix · %lld of %lld · %@";
 "Mix results" = "Mix results";
 "Bars: %@" = "Bars: %@";
 "%lld not measured" = "%lld not measured";
@@ -3330,3 +3329,14 @@
 "Unlock for %@" = "Unlock for %@";
 "Restore purchase" = "Restore purchase";
 "Purchased" = "Purchased";
+
+/* Ticket 180: Mix line-up and pause between lessons. */
+"Start mix" = "Start mix";
+"Another mix" = "Another mix";
+"%@ · %lld bar each" = "%@ · %lld bar each";
+"%@ · %lld bars each" = "%@ · %lld bars each";
+"%@ · %@" = "%@ · %@";
+"%lld BPM" = "%lld BPM";
+"MIX %lld / %lld" = "MIX %lld / %lld";
+"%lld · %@ · %lld %%" = "%lld · %@ · %lld %%";
+"%lld · %@ · %@" = "%lld · %@ · %@";

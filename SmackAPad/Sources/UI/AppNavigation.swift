@@ -39,11 +39,10 @@ enum LessonLaunch: Identifiable {
     case lesson(Lesson)
     case review(Lesson)
     case afterMe(Lesson)
-    case mix(Lesson, lessons: [Lesson], fromMemory: Bool)
 
     var lesson: Lesson {
         switch self {
-        case .lesson(let lesson), .review(let lesson), .afterMe(let lesson), .mix(let lesson, _, _):
+        case .lesson(let lesson), .review(let lesson), .afterMe(let lesson):
             return lesson
         }
     }
@@ -75,9 +74,6 @@ struct PracticeLessonDestination: View {
         case .afterMe(let lesson):
             PracticeScreen(lesson: lesson, settings: settings, progress: progress, midi: midi,
                            initialAfterMe: true)
-        case .mix(let lesson, let lessons, let fromMemory):
-            PracticeScreen(lesson: lesson, settings: settings, progress: progress, midi: midi,
-                           initialFromMemory: fromMemory, mixLessons: lessons)
         }
     }
 }
