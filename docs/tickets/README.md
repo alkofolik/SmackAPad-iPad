@@ -181,3 +181,4 @@ Source: Jakub, retention and memory discussion; legacy "Trénink" concept 2026-1
 | 168 | Mix finishes by itself and shows the result | Codex GPT-6.1 Sol, high | any time (before 165 if both touch PracticeScreen) |
 | 169 | Rewrite help and first-launch tutorial (5 cards, topic list, review star rename, Czech "Start" fix) | Codex GPT-6.1 Sol, high | after 170 |
 | 170 | One pass mark: 80 % for all lessons | Codex GPT-6.1 Sol, medium (fallback Gemini 3.8 Flash, medium) | any time, before 169 |
+| 171 | Practice HUD follow-ups: BPM vanishes after tempo-up, larger indicators, lesson title, calmer idle layout | Codex GPT-6.1 Sol, high (fallback Gemini 3.8 Flash, high) | after 165; part D waits for Jakub's decision |
