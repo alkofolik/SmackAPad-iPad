@@ -182,3 +182,4 @@ Source: Jakub, retention and memory discussion; legacy "Trénink" concept 2026-1
 | 169 | Rewrite help and first-launch tutorial (5 cards, topic list, review star rename, Czech "Start" fix) | Codex GPT-6.1 Sol, high | after 170 |
 | 170 | One pass mark: 80 % for all lessons | Codex GPT-6.1 Sol, medium (fallback Gemini 3.8 Flash, medium) | any time, before 169 |
 | 171 | Practice HUD follow-ups: BPM vanishes after tempo-up, larger indicators, lesson title, calmer idle layout | Codex GPT-6.1 Sol, high (fallback Gemini 3.8 Flash, high) | after 165 |
+| 172 | Learning rules in one place (LearningRules.swift, no behaviour change) | Codex GPT-6.1 Sol, high (fallback Gemini 3.8 Pro, high) | any time (after 171 is tested, to avoid clashing in PracticeSession) |
