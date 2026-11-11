@@ -1,6 +1,6 @@
 # 168 — Mix: finish by itself and show the result
 
-Status: ready-for-agent. Approved by Jakub on 2026-11-10.
+Status: implemented and verified, pending Jakub's iPad check. Approved by Jakub on 2026-11-10.
 
 ## Problem
 
@@ -27,6 +27,23 @@ Session test with a 2- and 3-lesson mix on the test clock: after the last lesson
 ### Manual iPad check for Jakub
 
 Start a mix from Training/Today, play through to the last lesson, and check that it stops and shows the result without pressing STOP.
+
+- Check the per-lesson marks and newly earned star animation, including a memory warm-up or unfinished review that must not show as fully met.
+- Press START again: the first lesson starts and already earned progress remains.
+- Press STOP during a mix: it stops without counting an unfinished round.
+
+## Implementation notes
+
+- Training explicitly describes the mix as each lesson played once. Today, Home, and LessonPicker do not depend on endless mix playback.
+- The existing automatic finish is retained. The wrapping advance and state used only by repeated live rounds are removed; stopped sessions cannot schedule another lesson.
+- Results reuse the existing per-lesson marks, review feedback, and `StarBurst` animation. Review and memory eligibility rules are unchanged; an unfinished review is not marked as met.
+- The session test covers two- and three-lesson mixes, ordinary and memory rounds, review eligibility, complete results, exactly one recorded round, idle ticks after completion, and START/STOP with retained progress.
+
+## Verification — 2026-11-11
+
+- Build and full `SmackAPad` test plan passed on the iPad (A16), iOS 27.0 simulator: 244 tests, 0 failures.
+- Command: `xcodebuild test -project SmackAPad.xcodeproj -scheme SmackAPad -testPlan SmackAPad -destination 'platform=iOS Simulator,id=29546CEC-E603-4A3B-AF2F-28711105A8E5' -derivedDataPath DerivedData`.
+- Manual acceptance checks above remain for Jakub on the iPad.
 
 ## Files to read
 

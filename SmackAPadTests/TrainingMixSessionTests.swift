@@ -71,74 +71,119 @@ final class TrainingMixSessionTests: XCTestCase {
 
     @MainActor
     func testMixStopsAutomaticallyAfterLastLessonForTwoAndThreeLessons() async throws {
+        let scenarios: [(fromMemory: Bool, fadeNotes: Bool, reviewDue: Bool, met: Bool, counted: Bool)] = [
+            (false, true, false, true, true),  // Ordinary practice.
+            (false, true, true, false, false), // Due review played with notes.
+            (true, true, false, false, false), // Memory warm-up with visible notes.
+            (true, false, false, true, true),  // A completed hidden memory round.
+            (true, false, true, false, true)   // An eligible pass, but the review is not decided yet.
+        ]
         for lessonCount in [2, 3] {
-            let suite = "mix-auto-stop-\(lessonCount)-\(UUID().uuidString)"
-            let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))
-            defer { defaults.removePersistentDomain(forName: suite) }
-            let settings = SettingsManager(userDefaults: defaults)
+            for scenario in scenarios {
+                let suite = "mix-auto-stop-\(lessonCount)-\(UUID().uuidString)"
+                let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))
+                defer { defaults.removePersistentDomain(forName: suite) }
+                let settings = SettingsManager(userDefaults: defaults)
+                settings.fadeMemoryNotes = scenario.fadeNotes
 
-            let hits = stride(from: 0, to: 64, by: 4).map {
-                LessonHit(step: $0, padIndex: 12, hand: "L", velocity: 100)
-            }
-            let allLessons = (1...lessonCount).map { idx in
-                Lesson(id: 70_000 + idx, cat: "test", title: "Lesson \(idx)", genre: "Rock", tags: [],
-                       text: "", division: 16, bars: 4, startBpm: 120, targetBpm: 120, level: 1,
-                       src: "Test", hits: hits)
-            }
-
-            let file = FileManager.default.temporaryDirectory.appendingPathComponent("\(suite).json")
-            defer { try? FileManager.default.removeItem(at: file) }
-            let progress = ProgressStore(fileURL: file, autoLoad: false)
-            let midi = MIDIInput(settings: settings)
-            var time = AVAudioTime.seconds(forHostTime: mach_absolute_time())
-
-            let session = PracticeSession(
-                lesson: allLessons[0],
-                settings: settings,
-                progress: progress,
-                midi: midi,
-                mixLessons: allLessons,
-                clock: { time },
-                currentDay: { "2026-11-05" }
-            )
-            session.metronome = false
-            await session.prepare()
-            defer { session.close() }
-            XCTAssertTrue(session.ready)
-
-            time = AVAudioTime.seconds(forHostTime: mach_absolute_time())
-            session.start()
-
-            for (lessonIndex, currentLesson) in allLessons.enumerated() {
-                XCTAssertTrue(session.running, "Session should be running during lesson \(lessonIndex + 1)")
-                XCTAssertEqual(session.lesson.id, currentLesson.id)
-
-                let start = time + 0.6 + 4 * (60.0 / 120.0)
-                for hit in currentLesson.hits(forPadCount: 16) {
-                    time = start + Double(hit.step) * 15 / 120
-                    session.tick()
-                    midi.onPadEvent?(PadInputEvent(padIndex: hit.padIndex, velocity: 100, isNoteOn: true,
-                        timestamp: AVAudioTime.hostTime(forSeconds: time), deviceID: "test"))
+                let hits = stride(from: 0, to: 64, by: 4).map {
+                    LessonHit(step: $0, padIndex: 12, hand: "L", velocity: 100)
                 }
-                time = start + Double(currentLesson.bars) * 240 / 120 + 0.01
-                await session.tick()?.value
+                let allLessons = (1...lessonCount).map { idx in
+                    Lesson(id: 70_000 + idx, cat: "test", title: "Lesson \(idx)", genre: "Rock", tags: [],
+                           text: "", division: 16, bars: 4, startBpm: 120, targetBpm: 120, level: 1,
+                           src: "Test", hits: hits)
+                }
+
+                let file = FileManager.default.temporaryDirectory.appendingPathComponent("\(suite).json")
+                defer { try? FileManager.default.removeItem(at: file) }
+                let progress = ProgressStore(fileURL: file, autoLoad: false)
+                if scenario.reviewDue || scenario.fromMemory {
+                    for lesson in allLessons {
+                        progress.setProgress(LessonProgress(passed: true, mastery: true, currentBpm: 120,
+                            masteryDay: "2026-11-04", reviewStep: scenario.reviewDue ? 0 : nil,
+                            reviewDueDay: scenario.reviewDue ? "2026-11-05" : nil), for: lesson.id)
+                    }
+                }
+                let midi = MIDIInput(settings: settings)
+                var time = AVAudioTime.seconds(forHostTime: mach_absolute_time())
+
+                let session = PracticeSession(
+                    lesson: allLessons[0],
+                    settings: settings,
+                    progress: progress,
+                    midi: midi,
+                    initialFromMemory: scenario.fromMemory,
+                    mixLessons: allLessons,
+                    clock: { time },
+                    currentDay: { "2026-11-05" }
+                )
+                session.metronome = false
+                await session.prepare()
+                defer { session.close() }
+                XCTAssertTrue(session.ready)
+
+                time = AVAudioTime.seconds(forHostTime: mach_absolute_time())
+                session.start()
+
+                for (lessonIndex, currentLesson) in allLessons.enumerated() {
+                    XCTAssertTrue(session.running, "Session should be running during lesson \(lessonIndex + 1)")
+                    XCTAssertEqual(session.lesson.id, currentLesson.id)
+
+                    let start = time + 0.6 + 4 * (60.0 / 120.0)
+                    for hit in currentLesson.hits(forPadCount: 16) {
+                        time = start + Double(hit.step) * 15 / 120
+                        session.tick()
+                        midi.onPadEvent?(PadInputEvent(padIndex: hit.padIndex, velocity: 100, isNoteOn: true,
+                            timestamp: AVAudioTime.hostTime(forSeconds: time), deviceID: "test"))
+                    }
+                    time = start + Double(currentLesson.bars) * 240 / 120 + 0.01
+                    await session.tick()?.value
+                }
+
+                // After the last lesson's pass, the session is stopped automatically
+                XCTAssertFalse(session.running, "Session must stop automatically after the last lesson")
+                XCTAssertNil(session.countdown, "No countdown should be active after mix completion")
+                XCTAssertEqual(session.mixResults.count, lessonCount, "All lessons must be in mixResults")
+                XCTAssertEqual(session.mixResults.map(\.id), allLessons.map(\.id))
+                XCTAssertTrue(session.mixResults.allSatisfy { $0.score != nil }, "All mixResults must have completed scores")
+                XCTAssertTrue(session.mixResults.allSatisfy { $0.met == scenario.met },
+                              "The marks must reflect memory and review requirements, not only the score")
+                XCTAssertTrue(session.mixResults.allSatisfy { $0.counted == scenario.counted },
+                              "The marks must distinguish eligible passes from warm-ups")
+                XCTAssertEqual(progress.trainingLog.mixRounds, 1, "recordFinishedMixRound must be called exactly once")
+                XCTAssertNotNil(session.summary, "Session summary must be populated")
+                XCTAssertEqual(session.isMixFullyMet, scenario.met)
+                XCTAssertEqual(session.summary?.passed, scenario.met)
+                if !scenario.reviewDue && !scenario.fromMemory {
+                    XCTAssertTrue(session.mixResults.allSatisfy {
+                        $0.starEvent?.award.fresh == [true, true, false]
+                    }, "The result must retain each lesson's newly earned stars")
+                }
+
+                // Nothing is scheduled after: advancing time further does not start anything
+                time += 10.0
+                XCTAssertNil(session.tick())
+                XCTAssertFalse(session.running, "Session must remain stopped")
+                XCTAssertNil(session.countdown, "No countdown should be scheduled")
+                XCTAssertEqual(session.lesson.id, allLessons.last?.id)
+                XCTAssertEqual(session.runResults.count, lessonCount)
+                XCTAssertEqual(progress.trainingLog.mixRounds, 1, "Later ticks must not record the round again")
+
+                let earnedProgress = allLessons.map { progress.progress(for: $0.id) }
+                session.start()
+                XCTAssertTrue(session.running)
+                XCTAssertEqual(session.mixIndex, 0, "START must return to the first lesson")
+                XCTAssertEqual(session.lesson.id, allLessons[0].id)
+                XCTAssertTrue(session.mixResults.allSatisfy { $0.score == nil && $0.starEvent == nil })
+                XCTAssertEqual(allLessons.map { progress.progress(for: $0.id) }, earnedProgress,
+                               "START must retain earned progress")
+                session.stop()
+                XCTAssertNil(session.tick())
+                XCTAssertFalse(session.running)
+                XCTAssertNil(session.countdown)
+                XCTAssertEqual(progress.trainingLog.mixRounds, 1, "An interrupted round must not be recorded")
             }
-
-            // After the last lesson's pass, the session is stopped automatically
-            XCTAssertFalse(session.running, "Session must stop automatically after the last lesson")
-            XCTAssertNil(session.countdown, "No countdown should be active after mix completion")
-            XCTAssertEqual(session.mixResults.count, lessonCount, "All lessons must be in mixResults")
-            XCTAssertTrue(session.mixResults.allSatisfy { $0.score != nil }, "All mixResults must have completed scores")
-            XCTAssertTrue(session.mixResults.allSatisfy { $0.met }, "All lessons should be marked as met")
-            XCTAssertEqual(progress.trainingLog.mixRounds, 1, "recordFinishedMixRound must be called exactly once")
-            XCTAssertNotNil(session.summary, "Session summary must be populated")
-            XCTAssertTrue(session.isMixFullyMet, "isMixFullyMet should be true")
-
-            // Nothing is scheduled after: advancing time further does not start anything
-            time += 10.0
-            session.tick()
-            XCTAssertFalse(session.running, "Session must remain stopped")
-            XCTAssertNil(session.countdown, "No countdown should be scheduled")
         }
     }
 }

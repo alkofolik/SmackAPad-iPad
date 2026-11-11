@@ -792,16 +792,12 @@ struct PracticeScreen: View {
                                 .lineLimit(1)
                             Spacer(minLength: 0)
                             if result.score != nil {
-                                HStack(spacing: 2) {
-                                    ForEach(0..<3, id: \.self) { starIdx in
-                                        let earned = result.earnedStars.indices.contains(starIdx) && result.earnedStars[starIdx]
-                                        let fresh = result.freshStars.indices.contains(starIdx) && result.freshStars[starIdx]
-                                        Image(systemName: earned ? "star.fill" : "star")
-                                            .font(.system(size: 11, weight: .semibold))
-                                            .foregroundStyle(earned ? PracticeBandStyle.orange : Theme.ink.opacity(0.3))
-                                            .scaleEffect(fresh ? 1.25 : 1.0)
-                                    }
-                                }
+                                StarBurst(
+                                    earned: result.earnedStars,
+                                    event: result.starEvent,
+                                    announcement: result.starEvent.map { starAnnouncement(for: $0) } ?? "",
+                                    size: 11
+                                )
                             }
                             Text(result.score.map { "\(Int(($0 * 100).rounded())) %" } ?? "—")
                                 .monospacedDigit()
@@ -809,7 +805,8 @@ struct PracticeScreen: View {
                         Text(mixBarSummary(result))
                             .foregroundStyle(Theme.secondary)
                             .fixedSize(horizontal: false, vertical: true)
-                        if let review = session.reviewStatusText(for: result.id, settings: settings) {
+                        if let review = result.reviewFeedback?.message(language: settings.languagePreference)
+                            ?? session.reviewStatusText(for: result.id, settings: settings) {
                             Text(review)
                                 .foregroundStyle(Theme.secondary)
                                 .fixedSize(horizontal: false, vertical: true)

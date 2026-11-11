@@ -73,7 +73,6 @@ struct MixLessonResult: Identifiable {
     var met: Bool = false
     var counted: Bool = true
     var earnedStars: [Bool] = [false, false, false]
-    var freshStars: [Bool] = [false, false, false]
     var starEvent: StarEvent?
     var reviewFeedback: ReviewScheduler.ReviewFeedback?
 }
@@ -95,8 +94,6 @@ final class PracticeSession {
         return mixResults.allSatisfy { $0.met }
     }
     @ObservationIgnored private var mixNeedsAdvance = false
-    @ObservationIgnored private var mixAppearances: [Int: Int] = [:]
-    @ObservationIgnored private var mixStreaks: [Int: StarStreak] = [:]
     @ObservationIgnored private var mixBarVerdicts: [Int: BarVerdict] = [:]
     @ObservationIgnored private var mixFreshStars: [Bool] = [false, false, false]
     @ObservationIgnored private var mixEarnedStars: [Bool] = [false, false, false]
@@ -679,8 +676,6 @@ final class PracticeSession {
                 loopStartBar = 0
                 loopEndBar = lesson.bars - 1
                 midi.setLesson(lesson)
-                mixAppearances = [:]
-                mixStreaks = [:]
                 mixNeedsAdvance = false
                 currentMixRoundMemory = true
                 mixBarVerdicts = [:]
@@ -696,7 +691,6 @@ final class PracticeSession {
                         met: false,
                         counted: true,
                         earnedStars: [record?.passed ?? false, record?.mastery ?? false, record?.memory ?? false],
-                        freshStars: [false, false, false],
                         starEvent: nil,
                         reviewFeedback: nil
                     )
@@ -713,7 +707,7 @@ final class PracticeSession {
             summary = nil
             lastResult = nil
             bestResponseScore = nil
-            // STOP abandons an undecided window; Mix keeps it only across live rounds.
+            // STOP abandons undecided review windows; decided outcomes survive restarts.
             let today = currentDay()
             reviewWindows = reviewWindows.filter { $0.value.day == today && $0.value.outcome != nil }
             reviewFeedback = afterMe ? nil : reviewWindows[lesson.id]?.outcome?.feedback
@@ -789,6 +783,7 @@ final class PracticeSession {
         let accuracy = currentRunAccuracy
         flushPendingProgress()
         stopAfterPass = false
+        mixNeedsAdvance = false
         running = false
         BluetoothTimingDiagnostics.shared.stopRun()
         midi.resetControlPickup()
@@ -916,11 +911,12 @@ final class PracticeSession {
         if isMix { mixBarVerdicts[(currentRepetition - 1) * lesson.bars + bar] = verdict }
     }
 
-    /// Flush the old round before loading the kit and scheduling the next one.
+    /// Move to the next lesson in this round, without wrapping back to the first.
     private func advanceMix() -> Task<Void, Never>? {
         mixNeedsAdvance = false
+        guard mixIndex + 1 < mixLessons.count else { return nil }
         midi.setPracticeSound(nil)
-        mixIndex = (mixIndex + 1) % mixLessons.count
+        mixIndex += 1
         lesson = mixLessons[mixIndex]
         bpm = PracticeTempo.clamp(lesson.targetBpm)
         loopStartBar = 0
@@ -932,13 +928,12 @@ final class PracticeSession {
         record.currentBpm = bpm
         progress.setProgress(record, for: lesson.id, autoSave: false)
         settings.lastLessonID = lesson.id
-        starStreak = mixStreaks[lesson.id] ?? (practiceMode == .learning
-            ? progress.learningCredit(lessonId: lesson.id, padCount: runPadCount) : StarStreak())
-        passNumber = (mixAppearances[lesson.id] ?? 0) + 1
+        starStreak = practiceMode == .learning
+            ? progress.learningCredit(lessonId: lesson.id, padCount: runPadCount) : StarStreak()
+        passNumber = 1
         currentRepetition = 1
         lastResult = nil
         lastVerdict = nil
-        if !isMix { starEvent = nil }
         reviewFeedback = reviewWindows[lesson.id].flatMap {
             $0.day == currentDay() ? $0.outcome?.feedback : nil
         }
@@ -983,15 +978,16 @@ final class PracticeSession {
     /// Internal so session tests can advance a supplied host clock without waiting.
     @discardableResult
     func tick() -> Task<Void, Never>? {
+        guard running else { return nil }
         if let kitTask { return kitTask }
         let time = now
         finishCompleted(at: time)
-        if isMix, mixNeedsAdvance {
-            return advanceMix()
-        }
         if stopAfterPass {
             stop()
             return nil
+        }
+        if isMix, mixNeedsAdvance {
+            return advanceMix()
         }
         let horizon = time + 0.5
         // Decide the next BPM from the run's result as known so far. Notes whose
@@ -1097,6 +1093,7 @@ final class PracticeSession {
             }
             let runPassed: Bool
             var award: StarAward?
+            let lessonReviewDue = progress.progress(for: lesson.id)?.reviewSchedule.isDueReview(on: currentDay()) == true
             if !isSectionLoop {
                 let saved = progress.progress(for: lesson.id)
 
@@ -1240,36 +1237,28 @@ final class PracticeSession {
                 let currentAward = award ?? StarAward(previous: progress.progress(for: lesson.id),
                                                       passed: false, mastery: false, memory: false)
                 flushPendingProgress()
-                mixStreaks[lesson.id] = starStreak
-                mixAppearances[lesson.id, default: 0] += 1
                 let isHiddenPass = !fromMemory || !settings.fadeMemoryNotes || pass.number >= LearningRules.firstHiddenMemoryPass
                 let runMemoryPass = fromMemory && isHiddenPass && result.score >= Scoring.passMark
                 if !runMemoryPass {
                     currentMixRoundMemory = false
                 }
 
-                let lessonReviewDue = progress.progress(for: lesson.id)?.reviewSchedule.isDueReview(on: currentDay()) == true
                 let lessonMet: Bool = {
-                    if fromMemory {
-                        return runMemoryPass
-                    }
-                    if lessonReviewDue, let feedback = reviewFeedback {
-                        switch feedback {
+                    if lessonReviewDue {
+                        switch reviewFeedback {
                         case .passed, .settled: return true
-                        case .failed, .doesNotCount: return false
+                        case .failed, .doesNotCount, nil: return false
                         }
                     }
+                    if fromMemory { return runMemoryPass }
                     return runPassed
                 }()
 
                 let lessonCounted: Bool = {
-                    if fromMemory {
-                        return isHiddenPass
+                    if lessonReviewDue {
+                        return fromMemory && isHiddenPass && result.bpm >= lesson.targetBpm
                     }
-                    if lessonReviewDue, let feedback = reviewFeedback {
-                        if case .doesNotCount = feedback { return false }
-                    }
-                    return true
+                    return !fromMemory || isHiddenPass
                 }()
 
                 let lessonStarEvent = currentAward.fresh.contains(true) ? StarEvent(award: currentAward) : nil
@@ -1286,7 +1275,6 @@ final class PracticeSession {
                     mixResults[index].met = lessonMet
                     mixResults[index].counted = lessonCounted
                     mixResults[index].earnedStars = currentAward.earned
-                    mixResults[index].freshStars = currentAward.fresh
                     mixResults[index].starEvent = lessonStarEvent
                     mixResults[index].reviewFeedback = reviewFeedback
                 }
