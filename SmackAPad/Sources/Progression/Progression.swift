@@ -13,13 +13,13 @@ import Observation
 /// Progression constants specified in SPEC §3.7 and DECISIONS §15.
 public enum ProgressionConstant {
     /// Number of passed lessons in the current category required to unlock the next category.
-    public static let kLessonsToUnlock: Int = 5
+    public static let kLessonsToUnlock: Int = LearningRules.categoryLessonsToUnlock
 
     /// Stage access requires half the preceding stage, rounded up, capped here.
-    public static let maximumStageCompletions = 10
+    public static let maximumStageCompletions = LearningRules.maximumStageCompletions
 
     public static func requiredStageCompletions(lessonCount: Int) -> Int {
-        min((lessonCount + 1) / 2, maximumStageCompletions)
+        min((lessonCount + 1) / LearningRules.stageCompletionDivisor, maximumStageCompletions)
     }
 
     /// Key used to store manually (soft) unlocked category IDs in UserDefaults.

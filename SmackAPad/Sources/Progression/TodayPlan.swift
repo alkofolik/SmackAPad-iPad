@@ -88,7 +88,7 @@ struct TodayPlan: Codable, Equatable {
 
         init(dueLessonIDs: [Int], plan: TodayPlan?) {
             todayIDs = plan.map { $0.steps.filter { $0.kind == .review }.flatMap(\.lessonIDs) }
-                ?? Array(dueLessonIDs.prefix(2))
+                ?? Array(dueLessonIDs.prefix(LearningRules.dailyReviewLimit))
             let selected = Set(todayIDs)
             queueIDs = dueLessonIDs.filter { !selected.contains($0) }
         }
@@ -97,9 +97,9 @@ struct TodayPlan: Codable, Equatable {
     /// `dueLessonIDs` comes from `ReviewQueue.order`, already ordered by fragility (lowest reviewStep first, then most days late, then earlier masteryDay, then lesson id).
     static func make(day: String, dueLessonIDs: [Int], nextLessonID: Int?, mixLessonIDs: [Int]) -> TodayPlan? {
         guard !dueLessonIDs.isEmpty else { return nil }
-        var steps = dueLessonIDs.prefix(2).map { Step(kind: .review, lessonIDs: [$0]) }
+        var steps = dueLessonIDs.prefix(LearningRules.dailyReviewLimit).map { Step(kind: .review, lessonIDs: [$0]) }
         if let nextLessonID { steps.append(Step(kind: .newLesson, lessonIDs: [nextLessonID])) }
-        if mixLessonIDs.count >= 2 { steps.append(Step(kind: .mix, lessonIDs: mixLessonIDs)) }
+        if mixLessonIDs.count >= LearningRules.minimumMixLessons { steps.append(Step(kind: .mix, lessonIDs: mixLessonIDs)) }
         return TodayPlan(day: day, steps: steps)
     }
 

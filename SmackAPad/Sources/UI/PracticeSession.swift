@@ -84,7 +84,7 @@ final class PracticeSession {
     private static weak var audioOwner: PracticeSession?
     private(set) var lesson: Lesson
     let mixLessons: [Lesson]
-    var isMix: Bool { mixLessons.count >= 2 }
+    var isMix: Bool { mixLessons.count >= LearningRules.minimumMixLessons }
     private(set) var mixIndex = 0
     private(set) var mixResults: [MixLessonResult] = []
     var isMixFullyMet: Bool {
@@ -232,7 +232,11 @@ final class PracticeSession {
             duration = Double(lesson.bars) * 240 / Double(bpm)
             let hits = lesson.hits(forPadCount: padCount)
             let lastHit = Double(hits.map(\.step).max() ?? 0) * 15 / Double(bpm)
-            let window = lesson.level <= 2 ? 0.2 : lesson.level <= 4 ? 0.175 : 0.15
+            let window = lesson.level <= LearningRules.beginnerTimingMaximumLevel
+                ? LearningRules.beginnerTimingMilliseconds.maximum / 1_000
+                : lesson.level <= LearningRules.intermediateTimingMaximumLevel
+                    ? LearningRules.intermediateTimingMilliseconds.maximum / 1_000
+                    : LearningRules.advancedTimingMilliseconds.maximum / 1_000
             responseStart = callLesson.map { start + Double($0.bars) * 240 / Double(bpm) }
             finalTime = callLesson == nil ? start + max(duration, lastHit + window) : start + duration
             scorer = listen ? nil : ScoringEngine(lesson: lesson, bpm: bpm,
@@ -254,7 +258,7 @@ final class PracticeSession {
             guard let responseStart else { return true }
             // Host-clock round trips can land a hit that is exactly on the boundary a
             // few nanoseconds early, so the response start gets a 0.1 ms tolerance.
-            return time >= responseStart - 0.0001 && time < start + duration
+            return time >= responseStart - LearningRules.afterMeResponseToleranceSeconds && time < start + duration
         }
     }
 
@@ -272,10 +276,10 @@ final class PracticeSession {
          mixLessons: [Lesson] = [], initialAfterMe: Bool = false,
          clock: @escaping () -> Double = { AVAudioTime.seconds(forHostTime: mach_absolute_time()) },
          currentDay: @escaping () -> String = { AppCalendar.today() }) {
-        let activeLesson = mixLessons.count >= 2 ? mixLessons[0] : lesson
+        let activeLesson = mixLessons.count >= LearningRules.minimumMixLessons ? mixLessons[0] : lesson
         self.lesson = activeLesson
         self.mixLessons = mixLessons
-        self.playbackMode = initialAfterMe && mixLessons.count < 2 ? .afterMe : .play
+        self.playbackMode = initialAfterMe && mixLessons.count < LearningRules.minimumMixLessons ? .afterMe : .play
         self.starStreak = settings.practiceMode == .learning
             ? progress.learningCredit(lessonId: activeLesson.id, padCount: midi.activeProfile.padCount) : StarStreak()
         self.practiceMode = settings.practiceMode
@@ -287,7 +291,7 @@ final class PracticeSession {
         self.fromMemory = initialFromMemory
         loopEndBar = activeLesson.bars - 1
         let saved = initialBpm ?? progress.progress(for: activeLesson.id)?.currentBpm ?? activeLesson.startBpm
-        bpm = PracticeTempo.clamp(mixLessons.count >= 2 ? activeLesson.targetBpm : (saved > 0 ? saved : activeLesson.startBpm))
+        bpm = PracticeTempo.clamp(mixLessons.count >= LearningRules.minimumMixLessons ? activeLesson.targetBpm : (saved > 0 ? saved : activeLesson.startBpm))
     }
 
     public var isDueReview: Bool {
@@ -326,7 +330,7 @@ final class PracticeSession {
     }
 
     public var showsMemoryFadePhase: Bool {
-        !afterMe && fromMemory && running && !listen && !isSectionLoop && settings.fadeMemoryNotes && passNumber < 3
+        !afterMe && fromMemory && running && !listen && !isSectionLoop && settings.fadeMemoryNotes && passNumber < LearningRules.firstHiddenMemoryPass
     }
 
     public func memoryPhaseText(settings: SettingsManager) -> String {
@@ -396,7 +400,7 @@ final class PracticeSession {
     var repeatsPerRun: Int {
         if afterMe { return 2 }
         guard !listen, !isSectionLoop else { return 1 }
-        return max(1, Int((4.0 / Double(lesson.bars)).rounded()))
+        return max(1, Int((LearningRules.practiceRunBars / Double(lesson.bars)).rounded()))
     }
     var practiceLesson: Lesson {
         guard isSectionLoop else { return lesson }
@@ -688,7 +692,7 @@ final class PracticeSession {
                         id: $0.id,
                         title: $0.title,
                         score: nil,
-                        unmeasuredBars: $0.bars * max(1, Int((4.0 / Double($0.bars)).rounded())),
+                        unmeasuredBars: $0.bars * max(1, Int((LearningRules.practiceRunBars / Double($0.bars)).rounded())),
                         met: false,
                         counted: true,
                         earnedStars: [record?.passed ?? false, record?.mastery ?? false, record?.memory ?? false],
@@ -1096,7 +1100,7 @@ final class PracticeSession {
             if !isSectionLoop {
                 let saved = progress.progress(for: lesson.id)
 
-                let isHiddenPass = !fromMemory || !settings.fadeMemoryNotes || pass.number >= 3
+                let isHiddenPass = !fromMemory || !settings.fadeMemoryNotes || pass.number >= LearningRules.firstHiddenMemoryPass
 
                 let today = currentDay()
                 if let currentProgress = saved,
@@ -1118,7 +1122,7 @@ final class PracticeSession {
                     window.state = decision.window
                     window.outcome = decision.outcome
                     reviewWindows[lesson.id] = window
-                    reviewPendingReason = settings.fadeMemoryNotes && pass.number < 3
+                    reviewPendingReason = settings.fadeMemoryNotes && pass.number < LearningRules.firstHiddenMemoryPass
                         ? .notesVisible : .unfinishedReview
                     if let outcome = decision.outcome, let feedback = outcome.feedback {
                         reviewFeedback = feedback
@@ -1238,7 +1242,7 @@ final class PracticeSession {
                 flushPendingProgress()
                 mixStreaks[lesson.id] = starStreak
                 mixAppearances[lesson.id, default: 0] += 1
-                let isHiddenPass = !fromMemory || !settings.fadeMemoryNotes || pass.number >= 3
+                let isHiddenPass = !fromMemory || !settings.fadeMemoryNotes || pass.number >= LearningRules.firstHiddenMemoryPass
                 let runMemoryPass = fromMemory && isHiddenPass && result.score >= Scoring.passMark
                 if !runMemoryPass {
                     currentMixRoundMemory = false

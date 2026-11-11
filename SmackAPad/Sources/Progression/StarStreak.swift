@@ -14,9 +14,9 @@ public enum PracticeMode: String, CaseIterable, Codable, Sendable {
 public struct StarStreak: Codable, Equatable, Hashable, Sendable {
     /// Alternative Learning qualification; the normal score threshold remains valid too.
     static func learningPassed(score: Double, perfectOrGoodHits: Int, expectedHits: Int, errors: Int) -> Bool {
-        expectedHits > 0 && score >= 0.6 &&
-        Double(perfectOrGoodHits) / Double(expectedHits) >= 0.85 &&
-        errors <= max(1, expectedHits / 10)
+        expectedHits > 0 && score >= LearningRules.learningMinimumScore &&
+        Double(perfectOrGoodHits) / Double(expectedHits) >= LearningRules.learningMinimumGoodHitRatio &&
+        errors <= max(LearningRules.learningMinimumErrorAllowance, expectedHits / LearningRules.learningHitsPerAllowedError)
     }
 
     /// Decides whether a run qualifies to earn memory credit toward Star 3.
@@ -31,7 +31,7 @@ public struct StarStreak: Codable, Equatable, Hashable, Sendable {
         targetBpm: Int,
         score: Double,
         isSectionLoop: Bool = false,
-        pass: Int = 3,
+        pass: Int = LearningRules.firstHiddenMemoryPass,
         fadeNotes: Bool = true
     ) -> Bool {
         false
@@ -46,7 +46,7 @@ public struct StarStreak: Codable, Equatable, Hashable, Sendable {
         targetBpm: Int,
         score: Double,
         isSectionLoop: Bool = false,
-        pass: Int = 3,
+        pass: Int = LearningRules.firstHiddenMemoryPass,
         fadeNotes: Bool = true
     ) -> Bool {
         mayEarnMemoryCredit(
@@ -63,7 +63,7 @@ public struct StarStreak: Codable, Equatable, Hashable, Sendable {
         )
     }
 
-    static let minimumHitsPerStar = 16
+    static let minimumHitsPerStar = LearningRules.minimumHitsPerStar
     public static func forgetAll() {}
     private(set) var passedRuns = 0
     private(set) var masteryRuns = 0
@@ -76,8 +76,8 @@ public struct StarStreak: Codable, Equatable, Hashable, Sendable {
     }
 
     static func requiredRuns(expectedHits: Int, isIntro: Bool = false) -> Int {
-        let runs = min(4, (minimumHitsPerStar - 1) / max(1, expectedHits) + 1)
-        return isIntro ? max(runs, 3) : runs
+        let runs = min(LearningRules.maximumRunsPerStar, (minimumHitsPerStar - 1) / max(1, expectedHits) + 1)
+        return isIntro ? max(runs, LearningRules.minimumIntroRunsPerStar) : runs
     }
 
     /// `passedRequired` is the shorter requirement for the first star (the intro minimum

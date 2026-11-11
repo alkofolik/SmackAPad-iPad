@@ -15,7 +15,7 @@ import Foundation
 /// - Passing step 3 marks the lesson settled ("upevněno")
 public struct ReviewScheduler: Sendable {
     /// The review interval gaps in days corresponding to steps 0, 1, 2, 3.
-    public static let gaps: [Int] = [1, 3, 7, 21]
+    public static let gaps: [Int] = LearningRules.reviewGapsDays
 
     /// Encapsulates the review schedule state of a lesson.
     public struct ScheduleState: Equatable, Hashable, Sendable {
@@ -109,7 +109,7 @@ public struct ReviewScheduler: Sendable {
 
         public init() {}
 
-        public var isDecided: Bool { successes >= 2 || failures >= 2 }
+        public var isDecided: Bool { successes >= LearningRules.reviewDecisionPasses || failures >= LearningRules.reviewDecisionPasses }
     }
 
     public struct WindowOutcome: Equatable, Sendable {
@@ -142,7 +142,7 @@ public struct ReviewScheduler: Sendable {
         switch feedback {
         case .passed, .settled:
             let step = outcome.newSchedule.reviewStep ?? 0
-            return step >= 2 || outcome.newSchedule.isSettled
+            return step >= LearningRules.reviewsForMemoryStar || outcome.newSchedule.isSettled
         case .failed, .doesNotCount:
             return false
         }
@@ -162,7 +162,7 @@ public struct ReviewScheduler: Sendable {
         bpm: Int,
         targetBpm: Int,
         score: Float,
-        pass: Int = 3,
+        pass: Int = LearningRules.firstHiddenMemoryPass,
         fadeNotes: Bool = true
     ) -> Outcome {
         guard schedule.isDueReview(on: today) else {
@@ -174,7 +174,7 @@ public struct ReviewScheduler: Sendable {
             return Outcome(newSchedule: schedule, feedback: nil)
         }
         // When notes fade out over the first passes in From memory, passes 1–2 do not count as reviews
-        if fadeNotes && pass < 3 {
+        if fadeNotes && pass < LearningRules.firstHiddenMemoryPass {
             return Outcome(newSchedule: schedule, feedback: nil)
         }
 
@@ -187,8 +187,8 @@ public struct ReviewScheduler: Sendable {
         let passed = score >= Float(Scoring.passMark)
 
         if passed {
-            if currentStep >= 3 {
-                let newSched = ScheduleState(reviewStep: 3, reviewDueDay: nil, settled: true, lastReviewedDay: today)
+            if currentStep >= LearningRules.lastReviewStep {
+                let newSched = ScheduleState(reviewStep: LearningRules.lastReviewStep, reviewDueDay: nil, settled: true, lastReviewedDay: today)
                 return Outcome(newSchedule: newSched, feedback: .settled)
             } else {
                 let nextStep = currentStep + 1
@@ -199,7 +199,7 @@ public struct ReviewScheduler: Sendable {
             }
         } else {
             let newStep = max(0, currentStep - 1)
-            let tomorrow = AppCalendar.addingDays(1, to: today) ?? today
+            let tomorrow = AppCalendar.addingDays(LearningRules.nextDayReviewDelay, to: today) ?? today
             let newSched = ScheduleState(reviewStep: newStep, reviewDueDay: tomorrow, settled: false, lastReviewedDay: today)
             return Outcome(newSchedule: newSched, feedback: .failed(newStep: newStep))
         }
@@ -209,19 +209,19 @@ public struct ReviewScheduler: Sendable {
     public static func postpone(_ schedule: ScheduleState, today: String) -> ScheduleState {
         guard schedule.isDueReview(on: today) else { return schedule }
         var postponed = schedule
-        postponed.reviewDueDay = AppCalendar.addingDays(1, to: today) ?? today
+        postponed.reviewDueDay = AppCalendar.addingDays(LearningRules.nextDayReviewDelay, to: today) ?? today
         return postponed
     }
 
     /// Initial schedule when star 2 is first earned: scheduled for masteryDay + 1.
     public static func initialSchedule(masteryDay: String) -> ScheduleState {
-        let firstDue = AppCalendar.addingDays(1, to: masteryDay) ?? masteryDay
+        let firstDue = AppCalendar.addingDays(LearningRules.nextDayReviewDelay, to: masteryDay) ?? masteryDay
         return ScheduleState(reviewStep: 0, reviewDueDay: firstDue, settled: false)
     }
 
     /// Migration schedule for lessons that already had star 2 before this update: first review tomorrow.
     public static func migrationSchedule(today: String) -> ScheduleState {
-        let tomorrow = AppCalendar.addingDays(1, to: today) ?? today
+        let tomorrow = AppCalendar.addingDays(LearningRules.nextDayReviewDelay, to: today) ?? today
         return ScheduleState(reviewStep: 0, reviewDueDay: tomorrow, settled: false)
     }
 

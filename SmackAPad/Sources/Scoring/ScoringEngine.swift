@@ -2,7 +2,7 @@ import Darwin
 
 /// Scoring thresholds and constants.
 public enum Scoring {
-    public static let passMark: Double = 0.8
+    public static let passMark: Double = LearningRules.passMark
 }
 
 /// Timing feedback is independent of score weight: every match counts equally.
@@ -50,9 +50,6 @@ public struct ScoringResult: Equatable, Sendable {
 /// One pattern attempt, using native mach timestamps for both its start and input.
 /// Call on a single serial owner. MIDI mapping/BLE fallback happen before receive().
 public struct ScoringEngine: Sendable {
-    // Suppress pad bounce and re-sends without swallowing fast intentional rolls.
-    private static let duplicateWindowNanoseconds: Double = 25_000_000
-
     private struct ExpectedHit: Sendable {
         let index: Int
         let padIndex: Int
@@ -108,9 +105,9 @@ public struct ScoringEngine: Sendable {
         }
         let windows: (Double, Double, Double)
         switch lesson.level {
-        case 1...2: windows = (45, 100, 200)
-        case 3...4: windows = (38, 85, 175)
-        default: windows = (30, 70, 150)
+        case 1...LearningRules.beginnerTimingMaximumLevel: windows = LearningRules.beginnerTimingMilliseconds
+        case (LearningRules.beginnerTimingMaximumLevel + 1)...LearningRules.intermediateTimingMaximumLevel: windows = LearningRules.intermediateTimingMilliseconds
+        default: windows = LearningRules.advancedTimingMilliseconds
         }
         perfectNanoseconds = windows.0 * 1_000_000
         goodNanoseconds = windows.1 * 1_000_000
@@ -121,7 +118,7 @@ public struct ScoringEngine: Sendable {
     public mutating func receive(padIndex: Int, at timestamp: UInt64) -> HitFeedback {
         if let previous = lastAcceptedTimestampByPad[padIndex] {
             let distance = timestamp >= previous ? timestamp - previous : previous - timestamp
-            if Double(distance) * nanosecondsPerTick <= Self.duplicateWindowNanoseconds {
+            if Double(distance) * nanosecondsPerTick <= LearningRules.duplicateHitWindowNanoseconds {
                 return HitFeedback(expectedHitIndex: nil, expectedStep: nil, judgment: .ignored, timingErrorMilliseconds: nil)
             }
         }
@@ -144,7 +141,7 @@ public struct ScoringEngine: Sendable {
         guard let candidate else {
             extraHitCount += 1
             consecutiveExtraHits += 1
-            if consecutiveExtraHits >= 2 && timingCenterNanoseconds != 0 {
+            if consecutiveExtraHits >= LearningRules.extraHitsToResetTimingCenter && timingCenterNanoseconds != 0 {
                 timingCenterNanoseconds = 0
                 currentEvaluationCenterNanoseconds = 0
                 timingSamples.removeAll()
@@ -161,9 +158,9 @@ public struct ScoringEngine: Sendable {
         // errors before the adaptive shift prevents feeding the correction back
         // into itself. Grade this hit before learning from it.
         let sample = calibrated - candidate.nanoseconds
-        if abs(sample) <= 110_000_000 {
+        if abs(sample) <= LearningRules.timingCenterSampleLimitNanoseconds {
             timingSamples.append(sample)
-            if timingSamples.count > 8 { timingSamples.removeFirst() }
+            if timingSamples.count > LearningRules.timingCenterSampleCount { timingSamples.removeFirst() }
             let sorted = timingSamples.sorted()
             let middle = sorted.count / 2
             timingCenterNanoseconds = sorted.count.isMultiple(of: 2)
@@ -182,7 +179,10 @@ public struct ScoringEngine: Sendable {
         let matches = matchedIndices.count
         let denominator = expected + extraHitCount
         let score = denominator > 0 ? Double(matches) / Double(denominator) : 0
-        let allowedErrors = isIntro || expected <= 15 ? 0 : expected <= 32 ? 1 : 2
+        let allowedErrors = isIntro || expected <= LearningRules.shortCleanRunMaximumHits
+            ? LearningRules.shortCleanRunAllowedErrors
+            : expected <= LearningRules.mediumCleanRunMaximumHits
+                ? LearningRules.mediumCleanRunAllowedErrors : LearningRules.longCleanRunAllowedErrors
         let clean = expected > 0 && expected - matches + extraHitCount <= allowedErrors
         return ScoringResult(
             expectedHitCount: expected, matchedHitCount: matches, extraHitCount: extraHitCount,
@@ -209,7 +209,10 @@ public struct ScoringEngine: Sendable {
         let misses = evaluatedHits.count - matches
         let denominator = evaluatedHits.count + extraHitCount
         let score = denominator > 0 ? Double(matches) / Double(denominator) : 0
-        let allowedErrors = isIntro || expectedHits.count <= 15 ? 0 : expectedHits.count <= 32 ? 1 : 2
+        let allowedErrors = isIntro || expectedHits.count <= LearningRules.shortCleanRunMaximumHits
+            ? LearningRules.shortCleanRunAllowedErrors
+            : expectedHits.count <= LearningRules.mediumCleanRunMaximumHits
+                ? LearningRules.mediumCleanRunAllowedErrors : LearningRules.longCleanRunAllowedErrors
         let clean = !evaluatedHits.isEmpty && misses + extraHitCount <= allowedErrors
         return ScoringResult(
             expectedHitCount: evaluatedHits.count,

@@ -8,7 +8,7 @@ enum TrainingMix {
         let pool = candidates(lessons: lessons, progress: progress, padCount: padCount,
                               openLessonIDs: openLessonIDs)
         let saved = (try? JSONDecoder().decode([String: [Int]].self, from: Data(savedJSON.utf8))) ?? [:]
-        if let ids = saved["\(day):\(padCount)"], ids.count >= 2,
+        if let ids = saved["\(day):\(padCount)"], ids.count >= LearningRules.minimumMixLessons,
            Set(ids).count == ids.count {
             let cached = ids.compactMap { id in pool.first { $0.id == id } }
             if cached.count == ids.count { return cached }
@@ -41,7 +41,7 @@ enum TrainingMix {
         }
         let windows = (1...5).map { low in ordered.filter { (low...(low + 1)).contains($0.level) } }
         let count = min(3, windows.map(\.count).max() ?? 0)
-        guard count >= 2 else { return [] }
+        guard count >= LearningRules.minimumMixLessons else { return [] }
         let eligible = ordered.filter { anchor in
             windows.contains { $0.count >= count && $0.contains { $0.id == anchor.id } }
         }

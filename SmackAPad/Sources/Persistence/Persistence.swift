@@ -1238,7 +1238,7 @@ public struct ProgressRoot: Codable, Equatable, Sendable {
 
         // Old progress: reviewsPassed starts at least at the passes implied by the schedule
         let impliedPasses = self.lessons.values.reduce(0) { sum, record in
-            sum + (record.settled == true ? 4 : (record.reviewStep ?? 0))
+            sum + (record.settled == true ? LearningRules.settledReviewPasses : (record.reviewStep ?? 0))
         }
         self.trainingLog.reviewsPassed = max(self.trainingLog.reviewsPassed, impliedPasses)
     }
@@ -1491,7 +1491,7 @@ public final class ProgressStore: @unchecked Sendable {
     public static func migrateTwoReviewsStar3(in records: inout [Int: LessonProgress]) -> Bool {
         var changed = false
         for (id, record) in records {
-            let passedTwoReviews = (record.reviewStep ?? 0) >= 2 || record.settled == true
+            let passedTwoReviews = (record.reviewStep ?? 0) >= LearningRules.reviewsForMemoryStar || record.settled == true
             if passedTwoReviews && !record.memory {
                 var updated = record
                 updated.memory = true
@@ -1973,7 +1973,7 @@ public final class ProgressStore: @unchecked Sendable {
         if passed {
             trainingLog.reviewsPassed += 1
             if let failDay = record.lastReviewFailDay,
-               AppCalendar.addingDays(1, to: failDay) == today {
+               AppCalendar.addingDays(LearningRules.nextDayReviewDelay, to: failDay) == today {
                 trainingLog.bounceBacks += 1
             }
             record.lastReviewFailDay = nil
