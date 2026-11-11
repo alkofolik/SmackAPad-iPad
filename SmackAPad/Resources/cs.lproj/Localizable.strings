@@ -3345,3 +3345,31 @@
 "MIX %lld / %lld" = "MIX %lld / %lld";
 "%lld · %@ · %lld %%" = "%lld · %@ · %lld %%";
 "%lld · %@ · %@" = "%lld · %@ · %@";
+
+/* Ticket 182: One Training screen and new Day summary. */
+"Extra mix" = "Mix navíc";
+"Memory and next 7 days" = "Paměť a příštích 7 dní";
+"End training" = "Konec tréninku";
+"Summary" = "Shrnutí";
+"App plays, you repeat." = "Aplikace zahraje, ty zopakuješ.";
+"each once" = "každá jednou";
+"1 · REVIEWS" = "1 · OPAKOVÁNÍ";
+"2 · NEW LESSON" = "2 · NOVÁ LEKCE";
+"3 · MIX · OPTIONAL" = "3 · MIX · NEPOVINNÝ";
+"daySummary.title" = "HOTOVO\nNA DNEŠEK";
+"training.doneForToday" = "Hotovo na dnešek";
+"training.now" = "teď";
+"training.fromMemoryGoalTempo" = "zpaměti · cílové tempo";
+"training.noReviews" = "Žádné opakování";
+"training.nothingDue" = "Pro dnešek nic";
+"training.reviewPassed.one" = "1 splněna";
+"training.reviewPassed.few" = "%lld splněny";
+"training.reviewPassed.many" = "%lld splněno";
+"training.reviewTomorrow.one" = "1 zítra";
+"training.reviewTomorrow.many" = "%lld zítra";
+"training.reviewLeft.one" = "1 zbývá";
+"training.reviewLeft.few" = "%lld zbývají";
+"training.reviewLeft.many" = "%lld zbývá";
+"daySummary.reviewTag" = "%lld · OPAKOVÁNÍ";
+"daySummary.newLessonTag" = "%lld · NOVÁ LEKCE";
+"daySummary.mixTag" = "%lld · MIX";

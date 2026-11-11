@@ -172,4 +172,93 @@ final class TodayPlanTests: XCTestCase {
                                                       lastReviewedDay: "2026-11-05")
         XCTAssertEqual(ReviewScheduler.postpone(schedule, today: "2026-11-05"), schedule)
     }
+
+    @MainActor
+    func testStartingReviewFromTodayPanelAndReviewQueueOnSameDayCountsOnce() {
+        let today = AppCalendar.today()
+        let yesterday = AppCalendar.addingDays(-1, to: today) ?? today
+        let suiteName = "TodayPlanTests.\(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: suiteName)!
+        defer { defaults.removePersistentDomain(forName: suiteName) }
+
+        func completeReviewRun(for lessonID: Int, in progress: ProgressStore) -> ReviewScheduler.Outcome? {
+            var window = ReviewScheduler.WindowState()
+            var decidedOutcome: ReviewScheduler.Outcome?
+            for _ in 0..<LearningRules.reviewDecisionPasses {
+                let schedule = progress.progress(for: lessonID)?.reviewSchedule ?? ReviewScheduler.ScheduleState()
+                let pass = ReviewScheduler.evaluate(
+                    schedule: schedule,
+                    today: today,
+                    isFullRun: true,
+                    fromMemory: true,
+                    bpm: 100,
+                    targetBpm: 100,
+                    score: 0.9,
+                    notesHidden: true
+                )
+                let stepDecision = ReviewScheduler.advanceWindow(window, with: pass)
+                window = stepDecision.window
+                if let outcome = stepDecision.outcome {
+                    decidedOutcome = outcome
+                }
+            }
+            if let outcome = decidedOutcome {
+                progress.updateReviewSchedule(outcome.newSchedule, for: lessonID, autoSave: false)
+                progress.recordReviewRun(lessonId: lessonID, passed: true, today: today, autoSave: false)
+            }
+            return decidedOutcome
+        }
+
+        // Case 1: Played in Review queue first, then opened from Today panel.
+        let queueFirstFile = FileManager.default.temporaryDirectory.appendingPathComponent("\(suiteName)-queue-first.json")
+        defer { try? FileManager.default.removeItem(at: queueFirstFile) }
+        let progress1 = ProgressStore(fileURL: queueFirstFile, autoLoad: false)
+        progress1.setProgress(
+            LessonProgress(passed: true, mastery: true, masteryDay: yesterday, reviewStep: 0, reviewDueDay: today),
+            for: 1
+        )
+        let plan1 = TodayPlan.make(day: today, dueLessonIDs: [1], nextLessonID: 99, mixLessonIDs: [])!
+
+        let firstQueueOutcome = completeReviewRun(for: 1, in: progress1)
+        XCTAssertNotNil(firstQueueOutcome?.feedback)
+        XCTAssertEqual(progress1.progress(for: 1)?.reviewStep, 1)
+        XCTAssertEqual(progress1.trainingLog.reviewsPassed, 1)
+
+        let coordinator1 = TodaySessionCoordinator(plan: plan1, defaults: defaults)
+        coordinator1.reconcileReviews(progress: progress1)
+        XCTAssertEqual(coordinator1.plan.reviewSummary.passed, 1)
+        XCTAssertEqual(coordinator1.plan.index, 1)
+
+        let repeatAttempt1 = completeReviewRun(for: 1, in: progress1)
+        XCTAssertNil(repeatAttempt1)
+        XCTAssertEqual(progress1.progress(for: 1)?.reviewStep, 1)
+        XCTAssertEqual(progress1.trainingLog.reviewsPassed, 1)
+
+        // Case 2: Started from Today panel first, then replayed from Review queue on the same day.
+        let todayFirstFile = FileManager.default.temporaryDirectory.appendingPathComponent("\(suiteName)-today-first.json")
+        defer { try? FileManager.default.removeItem(at: todayFirstFile) }
+        let progress2 = ProgressStore(fileURL: todayFirstFile, autoLoad: false)
+        progress2.setProgress(
+            LessonProgress(passed: true, mastery: true, masteryDay: yesterday, reviewStep: 0, reviewDueDay: today),
+            for: 2
+        )
+        let plan2 = TodayPlan.make(day: today, dueLessonIDs: [2], nextLessonID: 99, mixLessonIDs: [])!
+
+        let coordinator2 = TodaySessionCoordinator(plan: plan2, defaults: defaults)
+        coordinator2.continueSession()
+        let todayOutcome = completeReviewRun(for: 2, in: progress2)
+        XCTAssertNotNil(todayOutcome?.feedback)
+        coordinator2.record(PracticeStepOutcome(bestScore: 0.9, reviewFeedback: todayOutcome?.feedback))
+        coordinator2.leavePractice(progress: progress2)
+
+        XCTAssertEqual(coordinator2.plan.reviewSummary.passed, 1)
+        XCTAssertEqual(progress2.progress(for: 2)?.reviewStep, 1)
+        XCTAssertEqual(progress2.trainingLog.reviewsPassed, 1)
+
+        let queueReplay = completeReviewRun(for: 2, in: progress2)
+        XCTAssertNil(queueReplay)
+        XCTAssertEqual(progress2.progress(for: 2)?.reviewStep, 1)
+        XCTAssertEqual(progress2.trainingLog.reviewsPassed, 1)
+        XCTAssertEqual(coordinator2.plan.reconcilingReviews(with: progress2.records).reviewSummary.passed, 1)
+    }
 }

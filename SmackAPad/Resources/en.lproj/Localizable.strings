@@ -3340,3 +3340,31 @@
 "MIX %lld / %lld" = "MIX %lld / %lld";
 "%lld · %@ · %lld %%" = "%lld · %@ · %lld %%";
 "%lld · %@ · %@" = "%lld · %@ · %@";
+
+/* Ticket 182: One Training screen and new Day summary. */
+"Extra mix" = "Extra mix";
+"Memory and next 7 days" = "Memory and next 7 days";
+"End training" = "End training";
+"Summary" = "Summary";
+"App plays, you repeat." = "App plays, you repeat.";
+"each once" = "each once";
+"1 · REVIEWS" = "1 · REVIEWS";
+"2 · NEW LESSON" = "2 · NEW LESSON";
+"3 · MIX · OPTIONAL" = "3 · MIX · OPTIONAL";
+"daySummary.title" = "DONE FOR\nTODAY";
+"training.doneForToday" = "Done for today";
+"training.now" = "now";
+"training.fromMemoryGoalTempo" = "from memory · goal tempo";
+"training.noReviews" = "No reviews";
+"training.nothingDue" = "Nothing due today";
+"training.reviewPassed.one" = "1 passed";
+"training.reviewPassed.few" = "%lld passed";
+"training.reviewPassed.many" = "%lld passed";
+"training.reviewTomorrow.one" = "1 tomorrow";
+"training.reviewTomorrow.many" = "%lld tomorrow";
+"training.reviewLeft.one" = "1 left";
+"training.reviewLeft.few" = "%lld left";
+"training.reviewLeft.many" = "%lld left";
+"daySummary.reviewTag" = "%lld · REVIEW";
+"daySummary.newLessonTag" = "%lld · NEW LESSON";
+"daySummary.mixTag" = "%lld · MIX";

@@ -36,6 +36,8 @@ public struct TrainingScreen: View {
     @State private var playingMix: [Lesson] = []
     @State private var showingMix = false
     @State private var mixFromMemory = false
+    @State private var showingQueue = false
+    @State private var isMemoryExpanded = false
     @State private var showingBadges = false
     @State private var showingToday = false
     @State private var activeTodayPlan: TodayPlan?
@@ -101,8 +103,6 @@ public struct TrainingScreen: View {
         let afterMeCandidates: [Lesson]
         let memoryCounts: [Int]
         let forecast: [(day: String, count: Int)]
-        let stats: BadgeProgressStats
-        let badges: [BadgeDefinition]
         let hasMasteredLesson: Bool
         let nearestDueDay: String?
         let waitingTomorrow: [Lesson]
@@ -132,44 +132,49 @@ public struct TrainingScreen: View {
 
                 ScrollView {
                     VStack(alignment: .leading, spacing: Theme.Space.page) {
+                        header
+
                         if data == nil {
                             ProgressView()
                                 .frame(maxWidth: .infinity, minHeight: 160)
                                 .accessibilityLabel(settings.localized("Training"))
                         } else {
-                            todayBand
+                            todayPanel(isLandscape: isLandscape)
 
                             if isLandscape {
-                                HStack(alignment: .top, spacing: Theme.Space.page) {
-                                    memoryMeterPanel
-                                        .frame(maxWidth: .infinity)
-                                    next7DaysPanel
-                                        .frame(maxWidth: .infinity)
+                                Grid(alignment: .topLeading, horizontalSpacing: 24, verticalSpacing: 24) {
+                                    GridRow {
+                                        extraMixCard
+                                            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+                                        afterMeCard
+                                            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+                                    }
                                 }
                             } else {
-                                memoryMeterPanel
-                                next7DaysPanel
+                                extraMixCard
+                                afterMeCard
                             }
 
-                            dueNowPanel
-
-                            waitingPanel
-
-                            if isLandscape {
-                                HStack(alignment: .top, spacing: Theme.Space.page) {
-                                    mixPanel
-                                        .frame(maxWidth: .infinity, maxHeight: .infinity)
-                                    afterMePanel
-                                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                            VStack(spacing: 8) {
+                                reviewQueueRow
+                                memoryAndForecastRow
+                                if isMemoryExpanded {
+                                    if isLandscape {
+                                        HStack(alignment: .top, spacing: Theme.Space.page) {
+                                            memoryMeterPanel
+                                                .frame(maxWidth: .infinity)
+                                            next7DaysPanel
+                                                .frame(maxWidth: .infinity)
+                                        }
+                                        .padding(.top, 8)
+                                    } else {
+                                        memoryMeterPanel
+                                            .padding(.top, 8)
+                                        next7DaysPanel
+                                    }
                                 }
-                            } else {
-                                mixPanel
-                                afterMePanel
+                                trainingBadgesRow
                             }
-
-                            trainingBadgesPanel(isLandscape: isLandscape)
-
-                            settledPanel
                         }
 
                         Spacer(minLength: Theme.Space.page)
@@ -180,11 +185,14 @@ public struct TrainingScreen: View {
                 }
             }
             .calmChassisBackground()
-            .navigationTitle(settings.localized("Training"))
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                PadToolbarItem(placement: .topBarLeading) {
-                    BackButton(action: onHome)
+            .navigationBarBackButtonHidden(true)
+            .toolbar(.hidden, for: .navigationBar)
+            .navigationDestination(isPresented: $showingQueue) {
+                reviewQueueDestination
+            }
+            .navigationDestination(isPresented: $showingBadges) {
+                BadgesView(initialGroup: .training) {
+                    showingBadges = false
                 }
             }
             .task(id: refreshID) {
@@ -229,125 +237,113 @@ public struct TrainingScreen: View {
                     TodaySessionScreen(plan: plan) { showingToday = false }
                 }
             }
-            .sheet(isPresented: $showingBadges) {
-                BadgesView()
-            }
         }
         .environment(\.lessonNamespace, lessonNamespace)
         .practiceLessonPresentation(launch: $selectedLesson, namespace: lessonNamespace)
     }
 
-    // MARK: - 1. Today Band
+    private var header: some View {
+        HStack(spacing: 16) {
+            BackButton(action: onHome)
+
+            Text(settings.localized("Training"))
+                .font(Theme.boldDisplay(28))
+                .foregroundStyle(Theme.ink)
+                .lineLimit(1)
+
+            Spacer(minLength: 16)
+
+            Text(DayDateFormatter.format(today, language: settings.languagePreference))
+                .font(Theme.text(15))
+                .foregroundStyle(Theme.secondary)
+                .lineLimit(1)
+        }
+        .frame(height: 56)
+    }
+
+    // MARK: - 1. Today Panel
+
+    private enum StepCardVisualState {
+        case current
+        case done(exclamation: Bool)
+        case upcoming
+        case optional
+    }
+
+    private var effectiveNextStep: TodayPlan.Step? {
+        guard let plan = currentPlan, !plan.finished else { return nil }
+        let candidates = plan.steps.dropFirst(plan.index)
+        return candidates.first { step in
+            if step.kind == .review, step.outcome?.hasDecidedReview == true { return false }
+            if step.outcome?.played == true { return false }
+            return true
+        }
+    }
+
+    private var effectiveCurrentKind: TodayPlan.Step.Kind? {
+        if isPlanFinished { return nil }
+        if let step = effectiveNextStep { return step.kind }
+        if currentPlan == nil {
+            if !reviewLoad.todayIDs.isEmpty { return .review }
+            if nextLesson != nil { return .newLesson }
+            if mixLessons.count >= LearningRules.minimumMixLessons { return .mix }
+        }
+        return nil
+    }
 
     @ViewBuilder
-    private var todayBand: some View {
-        let finished = isPlanFinished
-        let isEmptyFirstRun = data?.hasMasteredLesson != true && dueLessons.isEmpty
+    private func todayPanel(isLandscape: Bool) -> some View {
+        let isEmptyFirstRun = data?.hasMasteredLesson != true
+            && dueLessons.isEmpty
+            && currentPlan?.steps.contains(where: { $0.outcome?.played == true }) != true
+            && currentPlan?.finished != true
 
-        VStack(alignment: .leading, spacing: Theme.Space.regular) {
-            // Band Header
-            HStack(alignment: .firstTextBaseline) {
-                Text(settings.localized(finished ? "That's enough for today" : "Today").uppercased(with: Locale(identifier: settings.languagePreference.rawValue)))
-                    .font(Theme.strong(32))
-                    .foregroundStyle(Theme.black)
-
-                Spacer(minLength: Theme.Space.small)
-
-                Text(bandMetaText(finished: finished))
-                    .font(Theme.meta)
-                    .foregroundStyle(Theme.black.opacity(0.8))
-            }
+        VStack(alignment: .leading, spacing: 18) {
+            Text(settings.localized("Today").uppercased(with: Locale(identifier: settings.languagePreference.rawValue)))
+                .font(Theme.padTitle(size: 40))
+                .foregroundStyle(Theme.black)
+                .accessibilityAddTraits(.isHeader)
 
             if isEmptyFirstRun {
                 emptyFirstRunBlock
-            } else {
-                // Three step blocks stay in one row even in portrait
-                HStack(spacing: 12) {
-                    reviewStepBlock
-                    newLessonStepBlock
-                    mixStepBlock
-                }
-            }
-
-            // Band Footer
-            if !finished && !isEmptyFirstRun {
-                HStack(alignment: .center, spacing: Theme.Space.regular) {
-                    Text(settings.localized("Nothing is locked. You can skip any step."))
-                        .font(Theme.text(15))
-                        .foregroundStyle(Theme.black)
-                        .fixedSize(horizontal: false, vertical: true)
-
-                    Spacer(minLength: Theme.Space.small)
-
-                    ViewThatFits(in: .horizontal) {
-                        HStack(spacing: Theme.Space.controlGap) {
-                            notTodayButton
-                            startTodayTrainingButton
-                        }
-                        VStack(spacing: Theme.Space.controlGap) {
-                            startTodayTrainingButton
-                            notTodayButton
-                        }
+            } else if isLandscape {
+                Grid(alignment: .topLeading, horizontalSpacing: 12, verticalSpacing: 12) {
+                    GridRow {
+                        reviewStepCard
+                            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+                        newLessonStepCard
+                            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+                        mixStepCard
+                            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+                        continueButton
+                            .frame(width: 200)
+                            .frame(maxHeight: .infinity)
                     }
                 }
-            } else if finished {
-                finishedSummaryView
+            } else {
+                VStack(spacing: 12) {
+                    Grid(alignment: .topLeading, horizontalSpacing: 12, verticalSpacing: 12) {
+                        GridRow {
+                            reviewStepCard
+                                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+                            newLessonStepCard
+                                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+                        }
+                        GridRow {
+                            mixStepCard
+                                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+                                .gridCellColumns(2)
+                        }
+                    }
+
+                    continueButton
+                        .frame(maxWidth: .infinity, minHeight: 68)
+                }
             }
         }
-        .padding(20)
-        .background(Theme.orange)
-        .overlay(Rectangle().stroke(Theme.black, lineWidth: 2))
-    }
-
-    private var notTodayButton: some View {
-        Button {
-            postponeTodayReviews()
-        } label: {
-            Text(settings.localized("Not today"))
-                .font(Theme.strong(18))
-                .frame(minHeight: Theme.Size.touch)
-        }
-        .buttonStyle(PadSecondaryButtonStyle())
-        .disabled(dueLessons.isEmpty)
-        .opacity(dueLessons.isEmpty ? 0.4 : 1.0)
-    }
-
-    private var startTodayTrainingButton: some View {
-        Button {
-            startTodayTraining()
-        } label: {
-            Text(settings.localized("START TODAY'S TRAINING"))
-                .font(Theme.strong(18))
-                .frame(minHeight: Theme.Size.touch)
-        }
-        .buttonStyle(PadSecondaryButtonStyle())
-    }
-
-    private func bandMetaText(finished: Bool) -> String {
-        let dateStr = formattedTodayDate()
-        let dueStr = settings.localized("%lld today", reviewLoad.todayIDs.count)
-        return "\(dateStr) · \(dueStr)"
-    }
-
-    private func formattedTodayDate() -> String {
-        let parts = today.split(separator: "-").compactMap { Int($0) }
-        guard parts.count == 3 else { return today }
-        var comp = DateComponents()
-        comp.year = parts[0]; comp.month = parts[1]; comp.day = parts[2]
-        var cal = Calendar(identifier: .gregorian)
-        cal.timeZone = .current
-        guard let date = cal.date(from: comp) else { return today }
-
-        let locale = Locale(identifier: settings.languagePreference.rawValue)
-        let fmt = DateFormatter()
-        fmt.locale = locale
-        if settings.languagePreference == .czech {
-            fmt.dateFormat = "EEEE d. M."
-        } else {
-            fmt.dateFormat = "EEEE d MMM"
-        }
-        let str = fmt.string(from: date)
-        return str.prefix(1).uppercased(with: locale) + str.dropFirst()
+        .padding(24)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(Theme.orange, in: RoundedRectangle(cornerRadius: 24))
     }
 
     private var emptyFirstRunBlock: some View {
@@ -362,7 +358,7 @@ public struct TrainingScreen: View {
                     if let next = nextLesson {
                         Text(settings.localized(next.title))
                             .font(Theme.text(15))
-                            .foregroundStyle(Theme.black.opacity(0.85))
+                            .foregroundStyle(Theme.black.opacity(0.75))
                     }
                 }
                 Spacer()
@@ -370,236 +366,291 @@ public struct TrainingScreen: View {
                     .font(Theme.strong(18))
                     .foregroundStyle(Theme.black)
             }
-            .padding(14)
-            .frame(maxWidth: .infinity, minHeight: 90, alignment: .leading)
-            .background(Theme.white)
-            .overlay(RoundedRectangle(cornerRadius: 14).stroke(Theme.black, lineWidth: 2))
-            .clipShape(RoundedRectangle(cornerRadius: 14))
-            .contentShape(Rectangle())
+            .padding(16)
+            .frame(maxWidth: .infinity, minHeight: 88, alignment: .leading)
+            .background(Theme.white, in: RoundedRectangle(cornerRadius: 14))
+            .contentShape(RoundedRectangle(cornerRadius: 14))
         }
         .buttonStyle(.plain)
         .lessonSource(nextLesson?.id ?? 0)
     }
 
-    private var reviewStepBlock: some View {
+    private var reviewStepCard: some View {
         let count = reviewLoad.todayIDs.count
-        let state: StepLedState = {
-            if let saved = currentPlan, saved.reviewCount > 0, saved.reviewSummary.passed == saved.reviewCount {
-                return .done
-            }
-            if let symbol = currentPlan?.steps.lazy.compactMap(\.markerSymbol).first {
-                return .didNotCount(symbol)
-            }
-            if isPlanFinished { return .off }
-            return count > 0 ? .todo : .off
+        let summary = currentPlan?.reviewSummary ?? TodayPlan.ReviewSummary(notPlayed: count)
+        let isCurrent = effectiveCurrentKind == .review
+        let isDone = count > 0 && summary.played == count && !isCurrent
+
+        let visualState: StepCardVisualState = {
+            if isCurrent { return .current }
+            if isDone { return .done(exclamation: summary.didNotCount > 0) }
+            return .upcoming
         }()
 
-        let detailText: String = {
-            if count == 0 {
-                return settings.localized("No reviews due")
-            } else if settings.languagePreference == .czech {
-                if count == 1 {
-                    return "1 lekce zpaměti v cílovém tempu"
-                } else if count >= 2 && count <= 4 {
-                    return "\(count) lekce zpaměti v cílovém tempu"
-                } else {
-                    return "\(count) lekcí zpaměti v cílovém tempu"
+        let title = count > 0
+            ? settings.languagePreference.localizedLessonCount(count)
+            : settings.localized("training.noReviews")
+
+        let subtitle = reviewStatusDetail(count: count, summary: summary)
+
+        return stepCardView(
+            tag: settings.localized("1 · REVIEWS"),
+            title: title,
+            subtitle: subtitle,
+            visualState: visualState
+        )
+    }
+
+    private var newLessonStepCard: some View {
+        let planLessonID = currentPlan?.steps.first(where: { $0.kind == .newLesson })?.lessonIDs.first
+        let lesson = planLessonID.flatMap { lessonStore.lesson(for: $0) } ?? nextLesson
+        let savedStep = currentPlan?.steps.first(where: { $0.kind == .newLesson })
+        let isCurrent = effectiveCurrentKind == .newLesson
+        let isDone = savedStep?.status == .passed || savedStep?.status == .played
+
+        let visualState: StepCardVisualState = {
+            if isCurrent { return .current }
+            if isDone { return .done(exclamation: false) }
+            return .upcoming
+        }()
+
+        let title = lesson.map { settings.localized($0.title) } ?? settings.localized("All lessons completed")
+        let subtitle: String = {
+            guard let lesson else { return "" }
+            return lesson.bars > 1
+                ? settings.localized("%lld bars · %lld BPM", lesson.bars, lesson.targetBpm)
+                : settings.localized("1 bar · %lld BPM", lesson.targetBpm)
+        }()
+
+        return stepCardView(
+            tag: settings.localized("2 · NEW LESSON"),
+            title: title,
+            subtitle: subtitle,
+            visualState: visualState
+        )
+    }
+
+    private var mixStepCard: some View {
+        let savedStep = currentPlan?.steps.first(where: { $0.kind == .mix })
+        let count = savedStep?.lessonIDs.count ?? mixLessons.count
+        let hasMix = count >= LearningRules.minimumMixLessons
+        let isCurrent = effectiveCurrentKind == .mix
+        let isDone = savedStep?.status == .passed || savedStep?.status == .played
+
+        let visualState: StepCardVisualState = {
+            if isCurrent { return .current }
+            if isDone { return .done(exclamation: false) }
+            return .optional
+        }()
+
+        let title = hasMix
+            ? settings.languagePreference.localizedLessonCount(count)
+            : settings.localized("Mix")
+        let subtitle = hasMix
+            ? settings.localized("each once")
+            : settings.localized("Mix needs two lessons with two stars.")
+
+        return stepCardView(
+            tag: settings.localized("3 · MIX · OPTIONAL"),
+            title: title,
+            subtitle: subtitle,
+            visualState: visualState
+        )
+    }
+
+    private func stepCardView(
+        tag: String,
+        title: String,
+        subtitle: String,
+        visualState: StepCardVisualState
+    ) -> some View {
+        let shape = RoundedRectangle(cornerRadius: 14)
+
+        return VStack(alignment: .leading, spacing: 6) {
+            HStack(spacing: 6) {
+                Text(tag)
+                    .font(Theme.strong(12))
+                    .tracking(0.4)
+                    .foregroundStyle(Theme.black.opacity(0.65))
+                    .lineLimit(1)
+
+                Spacer(minLength: 4)
+
+                switch visualState {
+                case .current:
+                    Text(settings.localized("training.now"))
+                        .font(Theme.strong(12))
+                        .foregroundStyle(Theme.black)
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 2)
+                        .background(Theme.orange.opacity(0.24), in: Capsule())
+                case .done(let exclamation):
+                    Image(systemName: exclamation ? "exclamationmark.circle" : "checkmark")
+                        .font(.system(size: 14, weight: .bold))
+                        .foregroundStyle(Theme.black)
+                case .upcoming, .optional:
+                    EmptyView()
                 }
-            } else {
-                return count == 1
-                    ? settings.localized("1 lesson from memory at goal tempo")
-                    : settings.localized("%lld lessons from memory at goal tempo", count)
-            }
-        }()
-
-        return stepBlockView(
-            number: settings.localized("STEP 1"),
-            title: settings.localized("Review"),
-            detail: detailText,
-            state: state
-        )
-    }
-
-    private var newLessonStepBlock: some View {
-        let hasLesson = nextLesson != nil
-        let state: StepLedState = {
-            if let saved = currentPlan, saved.steps.contains(where: { $0.kind == .newLesson && $0.status == .passed }) {
-                return .done
-            }
-            return hasLesson ? .todo : .off
-        }()
-
-        let detail = nextLesson.map { settings.localized($0.title) } ?? settings.localized("All lessons completed")
-
-        return stepBlockView(
-            number: settings.localized("STEP 2"),
-            title: settings.localized("New lesson"),
-            detail: detail,
-            state: state
-        )
-    }
-
-    private var mixStepBlock: some View {
-        let count = mixLessons.count
-        let hasMix = count >= 2
-        let state: StepLedState = {
-            if let saved = currentPlan, saved.steps.contains(where: { $0.kind == .mix && $0.status == .passed }) {
-                return .done
-            }
-            return hasMix ? .todo : .off
-        }()
-
-        let detailText: String = {
-            if !hasMix {
-                return settings.localized("Mix needs two lessons with two stars.")
-            } else if settings.languagePreference == .czech {
-                if count == 1 {
-                    return "1 lekce, každá jednou"
-                } else if count >= 2 && count <= 4 {
-                    return "\(count) lekce, každá jednou"
-                } else {
-                    return "\(count) lekcí, každá jednou"
-                }
-            } else {
-                return count == 1
-                    ? settings.localized("1 lesson, once")
-                    : settings.localized("%lld lessons, each once", count)
-            }
-        }()
-
-        return stepBlockView(
-            number: settings.localized("STEP 3 · OPTIONAL"),
-            title: settings.localized("Mix"),
-            detail: detailText,
-            state: state
-        )
-    }
-
-    private enum StepLedState: Equatable {
-        case todo, done, off
-        case didNotCount(String)
-
-        var accessibilityText: String {
-            switch self {
-            case .todo: return "To do"
-            case .done: return "Done"
-            case .off: return "Nothing to do"
-            case .didNotCount: return "Did not count"
-            }
-        }
-    }
-
-    private func stepBlockView(number: String, title: String, detail: String, state: StepLedState) -> some View {
-        VStack(alignment: .leading, spacing: 6) {
-            HStack {
-                Text(number)
-                    .font(Theme.strong(12).monospaced())
-                    .foregroundStyle(Theme.black.opacity(0.8))
-                Spacer()
-                ledView(state: state)
             }
 
             Text(title)
-                .font(Theme.strong(22))
+                .font(Theme.boldDisplay(22))
                 .foregroundStyle(Theme.black)
-                .lineLimit(1)
-
-            Text(detail)
-                .font(Theme.text(14))
-                .foregroundStyle(Theme.black.opacity(0.85))
                 .lineLimit(2)
                 .fixedSize(horizontal: false, vertical: true)
 
+            if !subtitle.isEmpty {
+                Text(subtitle)
+                    .font(Theme.text(13))
+                    .foregroundStyle(Theme.black.opacity(0.68))
+                    .lineLimit(2)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+
             Spacer(minLength: 0)
         }
-        .padding(14)
-        .frame(maxWidth: .infinity, minHeight: 118, alignment: .topLeading)
-        .background(state == .done ? Color.clear : Theme.white)
-        .overlay(
-            RoundedRectangle(cornerRadius: 14)
-                .strokeBorder(Theme.black, style: StrokeStyle(lineWidth: 2, dash: state == .done ? [6, 4] : []))
-        )
-        .clipShape(RoundedRectangle(cornerRadius: 14))
+        .padding(16)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+        .background {
+            if case .optional = visualState {
+                shape.fill(Theme.white.opacity(0.35))
+            } else {
+                shape.fill(Theme.white)
+            }
+        }
+        .overlay {
+            switch visualState {
+            case .current:
+                shape.strokeBorder(Theme.black, lineWidth: 3)
+            case .optional:
+                shape.strokeBorder(Theme.black.opacity(0.4), style: StrokeStyle(lineWidth: 1.5, dash: [6, 4]))
+            case .done, .upcoming:
+                EmptyView()
+            }
+        }
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel("\(number), \(title), \(settings.localized(state.accessibilityText)), \(detail)")
+        .accessibilityLabel("\(tag), \(title), \(subtitle)")
     }
 
-    private func ledView(state: StepLedState) -> some View {
-        ZStack {
-            switch state {
-            case .todo:
-                Circle()
-                    .fill(Theme.orange)
-                    .frame(width: 14, height: 14)
-                    .overlay(Circle().stroke(Theme.black, lineWidth: 2))
-                    .shadow(color: Theme.orange.opacity(0.55), radius: 3)
-            case .done:
-                Circle()
-                    .fill(Theme.black)
-                    .frame(width: 14, height: 14)
-                    .overlay(Circle().stroke(Theme.black, lineWidth: 2))
-            case .off:
-                Circle()
-                    .fill(Theme.ledOff)
-                    .frame(width: 14, height: 14)
-                    .overlay(Circle().stroke(Theme.black, lineWidth: 2))
-            case .didNotCount(let symbol):
-                Image(systemName: symbol)
-                    .font(.system(size: 14, weight: .semibold))
-                    .foregroundStyle(Theme.black)
-                    .frame(width: 14, height: 14)
+    private var continueButton: some View {
+        let isFinished = isPlanFinished
+        let canLaunch = isFinished || currentPlan != nil || nextLesson != nil || mixLessons.count >= LearningRules.minimumMixLessons
+
+        return Button {
+            startTodayTraining()
+        } label: {
+            VStack(alignment: .leading, spacing: 4) {
+                Text(settings.localized(isFinished ? "Summary" : "Continue"))
+                    .font(Theme.boldDisplay(22))
+                    .foregroundStyle(Theme.white)
+                    .lineLimit(1)
+
+                Text(continueSubtitle)
+                    .font(Theme.text(13))
+                    .foregroundStyle(Theme.white.opacity(0.68))
+                    .lineLimit(2)
+                    .multilineTextAlignment(.leading)
+                    .fixedSize(horizontal: false, vertical: true)
             }
+            .padding(16)
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
         }
+        .buttonStyle(TrainingActionButtonStyle(variant: .dark))
+        .disabled(!canLaunch)
     }
 
-    private var finishedSummaryView: some View {
-        VStack(alignment: .leading, spacing: Theme.Space.small) {
-            if let saved = currentPlan {
-                VStack(alignment: .leading, spacing: 4) {
-                    Text(settings.localized("Reviews played: %lld of %lld", saved.reviewSummary.played, saved.reviewCount))
-                    Text(settings.localized("Passed: %lld · Did not count: %lld", saved.reviewSummary.passed, saved.reviewSummary.didNotCount))
-                }
-                .font(Theme.strong(18))
-                .foregroundStyle(Theme.black)
+    private var continueSubtitle: String {
+        if isPlanFinished {
+            return settings.localized("training.doneForToday")
+        }
+        if let step = effectiveNextStep {
+            if step.kind == .mix {
+                return "\(settings.localized("Mix")) · \(settings.languagePreference.localizedLessonCount(step.lessonIDs.count))"
+            }
+            if let id = step.lessonIDs.first, let lesson = lessonStore.lesson(for: id) {
+                return settings.localized(lesson.title)
             }
         }
+        if let next = nextLesson {
+            return settings.localized(next.title)
+        }
+        if mixLessons.count >= LearningRules.minimumMixLessons {
+            return "\(settings.localized("Mix")) · \(settings.languagePreference.localizedLessonCount(mixLessons.count))"
+        }
+        return ""
     }
 
-    private func postponeTodayReviews() {
-        for lesson in dueLessons {
-            progress.postponeReview(for: lesson.id, today: today)
+    private func reviewStatusDetail(count: Int, summary: TodayPlan.ReviewSummary) -> String {
+        guard count > 0 else {
+            return settings.localized("training.nothingDue")
         }
-        if var plan = TodayPlan.decode(savedTodayPlan, today: today), !plan.finished {
-            plan = plan.reconcilingReviews(with: progress.records)
-            for step in plan.steps where step.kind == .review && step.outcome?.played != true {
-                if let id = step.lessonIDs.first {
-                    progress.postponeReview(for: id, today: today)
-                }
-            }
-            plan.finished = true
-            if let data = try? JSONEncoder().encode(plan), let json = String(data: data, encoding: .utf8) {
-                savedTodayPlan = json
-            }
+        if summary.played == 0 {
+            return isPlanFinished
+                ? settings.localized("Not played")
+                : settings.localized("training.fromMemoryGoalTempo")
         }
+        var parts: [String] = []
+        if summary.passed > 0 {
+            parts.append(localizedPlural(
+                summary.passed,
+                one: "training.reviewPassed.one",
+                few: "training.reviewPassed.few",
+                many: "training.reviewPassed.many"
+            ))
+        }
+        if summary.didNotCount > 0 {
+            parts.append(localizedPlural(
+                summary.didNotCount,
+                one: "training.reviewTomorrow.one",
+                few: "training.reviewTomorrow.many",
+                many: "training.reviewTomorrow.many"
+            ))
+        }
+        if summary.notPlayed > 0 && !isPlanFinished {
+            parts.append(localizedPlural(
+                summary.notPlayed,
+                one: "training.reviewLeft.one",
+                few: "training.reviewLeft.few",
+                many: "training.reviewLeft.many"
+            ))
+        }
+        return parts.joined(separator: " · ")
+    }
+
+    private func localizedPlural(_ count: Int, one: String, few: String, many: String) -> String {
+        if count == 1 {
+            return settings.localized(one)
+        }
+        if settings.languagePreference == .czech && (2...4).contains(count) {
+            return settings.localized(few, count)
+        }
+        return settings.localized(many, count)
+    }
+
+    private func preserveTodayPlan(for lessonID: Int) {
+        guard TodayPlan.decode(savedTodayPlan, today: today) == nil,
+              let plan = currentPlan,
+              plan.steps.contains(where: { $0.kind == .review && $0.lessonIDs.first == lessonID }),
+              let json = plan.encoded else { return }
+        savedTodayPlan = json
     }
 
     private func startTodayTraining() {
-        if let plan = currentPlan, !plan.finished {
+        if let plan = currentPlan {
             activeTodayPlan = plan
             showingToday = true
             return
         }
-        // Construct fallback plan with available new lesson or mix
         var steps: [TodayPlan.Step] = []
         if let next = nextLesson {
             steps.append(.init(kind: .newLesson, lessonIDs: [next.id]))
         }
-        if mixLessons.count >= 2 {
+        if mixLessons.count >= LearningRules.minimumMixLessons {
             steps.append(.init(kind: .mix, lessonIDs: mixLessons.map(\.id)))
         }
         if !steps.isEmpty {
             let plan = TodayPlan(day: today, steps: steps)
-            if let data = try? JSONEncoder().encode(plan), let json = String(data: data, encoding: .utf8) {
+            if let json = plan.encoded {
                 savedTodayPlan = json
             }
             activeTodayPlan = plan
@@ -634,7 +685,11 @@ public struct TrainingScreen: View {
         }
         .padding(Theme.Space.regular)
         .frame(maxWidth: .infinity, alignment: .topLeading)
-        .satinPlate()
+        .background(Theme.surface, in: RoundedRectangle(cornerRadius: 20))
+        .overlay {
+            RoundedRectangle(cornerRadius: 20)
+                .strokeBorder(Theme.hairline, lineWidth: 1)
+        }
     }
 
     private func meterColumn(label: String, count: Int, largest: Int, isSettled: Bool, accessibilityPrefix: String) -> some View {
@@ -712,21 +767,24 @@ public struct TrainingScreen: View {
                     .padding(.vertical, 8)
                     .padding(.horizontal, 2)
                     .frame(maxWidth: .infinity)
-                    .background(isToday ? Theme.surface : Color.clear)
-                    .overlay(Rectangle().stroke(isToday ? Theme.ink : Theme.hairline, lineWidth: 2))
+                    .background(isToday ? Theme.background : Color.clear, in: RoundedRectangle(cornerRadius: 10))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 10)
+                            .stroke(isToday ? Theme.ink : Theme.hairline, lineWidth: isToday ? 2 : 1)
+                    )
                     .overlay(alignment: .bottom) {
                         if isToday {
                             HardwareLightBar(active: true, breathes: false)
                         }
                     }
-                    .contentShape(Rectangle())
+                    .clipShape(RoundedRectangle(cornerRadius: 10))
+                    .contentShape(RoundedRectangle(cornerRadius: 10))
 
                     if isTappable {
                         Button {
                             if let targetGroup {
-                                withAnimation(.easeInOut(duration: 0.2)) {
-                                    expandedWaitingGroup = targetGroup
-                                }
+                                expandedWaitingGroup = targetGroup
+                                showingQueue = true
                             }
                         } label: {
                             cellContent
@@ -749,7 +807,11 @@ public struct TrainingScreen: View {
         }
         .padding(Theme.Space.regular)
         .frame(maxWidth: .infinity, alignment: .topLeading)
-        .satinPlate()
+        .background(Theme.surface, in: RoundedRectangle(cornerRadius: 20))
+        .overlay {
+            RoundedRectangle(cornerRadius: 20)
+                .strokeBorder(Theme.hairline, lineWidth: 1)
+        }
     }
 
     private func weekdayNames(from dayString: String) -> (short: String, full: String) {
@@ -903,6 +965,7 @@ public struct TrainingScreen: View {
         let step = (record?.reviewStep ?? 0) + 1
 
         return Button {
+            preserveTodayPlan(for: lesson.id)
             selectedLesson = .review(lesson)
         } label: {
             HStack(alignment: .center, spacing: Theme.Space.regular) {
@@ -1097,62 +1160,83 @@ public struct TrainingScreen: View {
         }
     }
 
-    // MARK: - 4. Mix & Play after me
+    // MARK: - 4. Extra Mix & Play After Me Cards
 
     private var mixCandidates: [Lesson] { data?.mixCandidates ?? [] }
     private var openMixLessonIDs: Set<Int> { data?.openLessonIDs ?? [] }
     private var mixLessons: [Lesson] { data?.mixLessons ?? [] }
 
-    private var mixPanel: some View {
-        VStack(alignment: .leading, spacing: Theme.Space.regular) {
-            panelHeader(settings.localized("Mix"))
+    private var extraMixCard: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            HStack(alignment: .center, spacing: 12) {
+                Text(settings.localized("Extra mix"))
+                    .textCase(.uppercase)
+                    .font(Theme.strong(13))
+                    .tracking(0.6)
+                    .foregroundStyle(Theme.secondary)
+                    .lineLimit(1)
 
-            VStack(alignment: .leading, spacing: Theme.Space.small) {
-                ForEach(Array(mixLessons.enumerated()), id: \.element.id) { index, lesson in
-                    Text("\(index + 1). \(settings.localized(lesson.title))")
-                        .font(Theme.rowTitle)
-                        .foregroundStyle(Theme.ink)
-                        .lineLimit(1)
+                Spacer(minLength: 8)
+
+                Toggle(isOn: $mixFromMemory) {
+                    Text(settings.localized("From memory"))
+                        .font(Theme.text(14))
+                        .foregroundStyle(Theme.secondary)
                 }
-                if mixLessons.count < 2 {
+                .fixedSize()
+                .tint(Theme.orange)
+                .disabled(mixLessons.count < LearningRules.minimumMixLessons)
+            }
+
+            VStack(alignment: .leading, spacing: 6) {
+                if mixLessons.count >= LearningRules.minimumMixLessons {
+                    ForEach(mixLessons) { lesson in
+                        Text(settings.localized(lesson.title))
+                            .font(Theme.strong(17))
+                            .foregroundStyle(Theme.ink)
+                            .lineLimit(1)
+                    }
+                } else {
                     Text(settings.localized("Mix needs two lessons with two stars."))
-                        .font(Theme.meta)
+                        .font(Theme.text(15))
                         .foregroundStyle(Theme.secondary)
                 }
             }
 
-            Toggle(settings.localized("From memory"), isOn: $mixFromMemory)
-                .font(Theme.control)
-                .tint(Theme.ink)
-                .frame(minHeight: Theme.Size.touch)
-                .disabled(mixLessons.count < 2)
+            Spacer(minLength: 8)
 
-            HStack(spacing: Theme.Space.regular) {
+            HStack(spacing: 12) {
+                Button {
+                    refreshMix(newDraw: true)
+                } label: {
+                    Text(settings.localized("Another mix"))
+                        .font(Theme.strong(16))
+                        .frame(maxWidth: .infinity)
+                        .frame(height: 56)
+                }
+                .buttonStyle(TrainingActionButtonStyle(variant: .secondary))
+                .disabled(mixLessons.count < LearningRules.minimumMixLessons)
+
                 Button {
                     playingMix = mixLessons
                     showingMix = true
                 } label: {
-                    Text(settings.localized("Start"))
-                        .font(Theme.action)
-                        .frame(minHeight: Theme.Size.control)
+                    Text(settings.localized("Start mix"))
+                        .font(Theme.strong(16))
+                        .frame(maxWidth: .infinity)
+                        .frame(height: 56)
                 }
-                .buttonStyle(PadPrimaryButtonStyle())
-                .disabled(mixLessons.count < 2)
-
-                Button {
-                    refreshMix(newDraw: true)
-                } label: {
-                    Text(settings.localized("New mix"))
-                        .font(Theme.control)
-                        .frame(minHeight: Theme.Size.touch)
-                }
-                .buttonStyle(PadSecondaryButtonStyle())
-                .disabled(mixLessons.count < 2)
+                .buttonStyle(TrainingActionButtonStyle(variant: .primary))
+                .disabled(mixLessons.count < LearningRules.minimumMixLessons)
             }
         }
-        .padding(Theme.Space.regular)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .satinPlate()
+        .padding(20)
+        .frame(maxWidth: .infinity, alignment: .topLeading)
+        .background(Theme.surface, in: RoundedRectangle(cornerRadius: 20))
+        .overlay {
+            RoundedRectangle(cornerRadius: 20)
+                .strokeBorder(Theme.hairline, lineWidth: 1)
+        }
     }
 
     private func refreshMix(newDraw: Bool = false) {
@@ -1189,112 +1273,182 @@ public struct TrainingScreen: View {
         afterMeLessonID = (another ? pool.randomElement() : pool.first)?.id ?? candidates.first?.id
     }
 
-    private var afterMePanel: some View {
+    private var afterMeCard: some View {
         let candidate = afterMeCandidates.first(where: { $0.id == afterMeLessonID })
 
-        return VStack(alignment: .leading, spacing: Theme.Space.regular) {
-            panelHeader(settings.localized("Play after me"))
+        return VStack(alignment: .leading, spacing: 14) {
+            Text(settings.localized("Play after me"))
+                .textCase(.uppercase)
+                .font(Theme.strong(13))
+                .tracking(0.6)
+                .foregroundStyle(Theme.secondary)
+                .lineLimit(1)
 
             if let lesson = candidate {
-                HStack(spacing: Theme.Space.regular) {
+                HStack(spacing: 12) {
                     Text(settings.localized(lesson.title))
-                        .font(Theme.rowTitle)
+                        .font(Theme.boldDisplay(22))
                         .foregroundStyle(Theme.ink)
                         .lineLimit(1)
-                    Spacer(minLength: Theme.Space.small)
+
+                    Spacer(minLength: 8)
+
                     StarsView(record: progress.progress(for: lesson.id), lesson: lesson)
                 }
 
-                Text(settings.localized("App plays, you repeat. Without sheet music."))
-                    .font(Theme.meta)
+                Text(settings.localized("App plays, you repeat."))
+                    .font(Theme.text(15))
                     .foregroundStyle(Theme.secondary)
-
-                HStack(spacing: Theme.Space.regular) {
-                    Button {
-                        selectedAfterMeLesson = lesson
-                    } label: {
-                        Text(settings.localized("Start"))
-                            .font(Theme.action)
-                            .frame(minHeight: Theme.Size.control)
-                    }
-                    .buttonStyle(PadPrimaryButtonStyle())
-
-                    Button {
-                        chooseAfterMeLesson(another: true)
-                    } label: {
-                        Text(settings.localized("Another lesson"))
-                            .font(Theme.control)
-                            .frame(minHeight: Theme.Size.touch)
-                    }
-                    .buttonStyle(PadSecondaryButtonStyle())
-                    .disabled(afterMeCandidates.count < 2)
-                }
             } else {
                 Text(settings.localized("Learn a lesson to play after me."))
-                    .font(Theme.meta)
+                    .font(Theme.text(15))
                     .foregroundStyle(Theme.secondary)
             }
-        }
-        .padding(Theme.Space.regular)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .satinPlate()
-    }
 
-    // MARK: - 5. Training Badges
+            Spacer(minLength: 8)
 
-    private var availableTrainingBadges: [BadgeDefinition] {
-        let allTraining = badgeStore.definitions.filter { $0.group == .training }
-        let unearned = allTraining.filter { !badgeStore.isEarned(badgeId: $0.id) }
-        if !unearned.isEmpty {
-            return Array(unearned.prefix(3))
-        }
-        // If all are earned, show the three most recent
-        let sortedEarned = allTraining.sorted { a, b in
-            let dateA = badgeStore.earnedDate(for: a.id) ?? .distantPast
-            let dateB = badgeStore.earnedDate(for: b.id) ?? .distantPast
-            return dateA > dateB
-        }
-        return Array(sortedEarned.prefix(3))
-    }
-
-    private func trainingBadgesPanel(isLandscape: Bool) -> some View {
-        let badges = data?.badges ?? []
-
-        return VStack(alignment: .leading, spacing: Theme.Space.regular) {
-            HStack(alignment: .firstTextBaseline) {
-                panelHeader(settings.localized("Training badges"))
-                Spacer()
+            HStack(spacing: 12) {
                 Button {
-                    showingBadges = true
+                    chooseAfterMeLesson(another: true)
                 } label: {
-                    Text(settings.localized("All badges ›"))
+                    Text(settings.localized("Another lesson"))
                         .font(Theme.strong(16))
-                        .foregroundStyle(Theme.ink)
-                        .underline()
+                        .frame(maxWidth: .infinity)
+                        .frame(height: 56)
                 }
-                .buttonStyle(.plain)
-            }
+                .buttonStyle(TrainingActionButtonStyle(variant: .secondary))
+                .disabled(afterMeCandidates.count < 2)
 
-            LazyVGrid(
-                columns: [GridItem(.adaptive(minimum: 120, maximum: 160), spacing: 14)],
-                alignment: .leading,
-                spacing: 14
-            ) {
-                ForEach(badges) { badge in
-                    if let stats = data?.stats {
-                        BadgeTile(
-                            badge: badge,
-                            stats: stats,
-                            earnedDate: badgeStore.earnedDate(for: badge.id),
-                            compact: true
-                        )
+                Button {
+                    if let candidate {
+                        selectedAfterMeLesson = candidate
                     }
+                } label: {
+                    Text(settings.localized("Start"))
+                        .font(Theme.strong(16))
+                        .frame(maxWidth: .infinity)
+                        .frame(height: 56)
                 }
+                .buttonStyle(TrainingActionButtonStyle(variant: .primary))
+                .disabled(candidate == nil)
             }
         }
-        .padding(Theme.Space.regular)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .satinPlate()
+        .padding(20)
+        .frame(maxWidth: .infinity, alignment: .topLeading)
+        .background(Theme.surface, in: RoundedRectangle(cornerRadius: 20))
+        .overlay {
+            RoundedRectangle(cornerRadius: 20)
+                .strokeBorder(Theme.hairline, lineWidth: 1)
+        }
+    }
+
+    // MARK: - 5. Compact Rows & Queue Screen
+
+    private var reviewQueueRow: some View {
+        trainingListRow(
+            title: settings.localized("Review queue"),
+            detail: "\(queuedLessons.count)",
+            chevron: "chevron.right"
+        ) {
+            showingQueue = true
+        }
+    }
+
+    private var memoryAndForecastRow: some View {
+        trainingListRow(
+            title: settings.localized("Memory and next 7 days"),
+            detail: nil,
+            chevron: isMemoryExpanded ? "chevron.up" : "chevron.down"
+        ) {
+            withAnimation(.easeInOut(duration: 0.2)) {
+                isMemoryExpanded.toggle()
+            }
+        }
+    }
+
+    private var trainingBadgesRow: some View {
+        let trainingDefs = badgeStore.definitions.filter { $0.group == .training }
+        let earnedCount = trainingDefs.filter { badgeStore.earnedDate(for: $0.id) != nil }.count
+
+        return trainingListRow(
+            title: settings.localized("Training badges"),
+            detail: "\(earnedCount) / \(trainingDefs.count)",
+            chevron: "chevron.right"
+        ) {
+            showingBadges = true
+        }
+    }
+
+    private func trainingListRow(
+        title: String,
+        detail: String?,
+        chevron: String,
+        action: @escaping () -> Void
+    ) -> some View {
+        let shape = RoundedRectangle(cornerRadius: 14)
+
+        return Button(action: action) {
+            HStack(spacing: 12) {
+                Text(title)
+                    .font(Theme.strong(16))
+                    .foregroundStyle(Theme.ink)
+                    .lineLimit(1)
+
+                Spacer(minLength: 12)
+
+                if let detail {
+                    Text(detail)
+                        .font(Theme.text(15).monospacedDigit())
+                        .foregroundStyle(Theme.secondary)
+                }
+
+                Image(systemName: chevron)
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundStyle(Theme.secondary)
+            }
+            .padding(.horizontal, 20)
+            .frame(maxWidth: .infinity, minHeight: 60)
+            .background(Theme.surface, in: shape)
+            .overlay {
+                shape.strokeBorder(Theme.hairline, lineWidth: 1)
+            }
+            .contentShape(shape)
+        }
+        .buttonStyle(.plain)
+    }
+
+    private var reviewQueueDestination: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: Theme.Space.page) {
+                HStack(spacing: 16) {
+                    BackButton {
+                        showingQueue = false
+                    }
+
+                    Text(settings.localized("Review queue"))
+                        .font(Theme.boldDisplay(28))
+                        .foregroundStyle(Theme.ink)
+                        .lineLimit(1)
+
+                    Spacer()
+                }
+                .frame(height: 56)
+
+                dueNowPanel
+
+                waitingPanel
+
+                settledPanel
+
+                Spacer(minLength: Theme.Space.page)
+            }
+            .padding(Theme.Space.page)
+            .frame(maxWidth: 1240, alignment: .leading)
+            .frame(maxWidth: .infinity)
+        }
+        .calmChassisBackground()
+        .navigationBarBackButtonHidden(true)
+        .toolbar(.hidden, for: .navigationBar)
     }
 
     // MARK: - 6. Settled
@@ -1502,10 +1656,6 @@ public struct TrainingScreen: View {
             afterMeCandidates: afterMe,
             memoryCounts: counts,
             forecast: ReviewForecast.dueCounts(playableRecords, from: today, days: 7).map { ($0.day, $0.count) },
-            stats: BadgeEvaluator.evaluate(progress: records, catalog: progression.catalog,
-                definitions: badgeStore.definitions, currentlyEarned: Set(badgeStore.records.keys),
-                trainingLog: progress.trainingLog).stats,
-            badges: availableTrainingBadges,
             hasMasteredLesson: progress.hasAnyMasteredLesson,
             nearestDueDay: nearestDueDay,
             waitingTomorrow: waitingTomorrow,

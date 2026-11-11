@@ -7,7 +7,15 @@ struct BadgesView: View {
     @Environment(ProgressionManager.self) private var progression
     @Environment(SettingsManager.self) private var settings
     @Environment(\.dismiss) private var dismiss
+    let initialGroup: BadgeGroup?
     var onDismiss: (() -> Void)? = nil
+    @State private var selectedGroup: BadgeGroup?
+
+    init(initialGroup: BadgeGroup? = nil, onDismiss: (() -> Void)? = nil) {
+        self.initialGroup = initialGroup
+        self.onDismiss = onDismiss
+        _selectedGroup = State(initialValue: initialGroup)
+    }
 
     private var stats: BadgeProgressStats {
         BadgeEvaluator.evaluate(
@@ -19,9 +27,27 @@ struct BadgesView: View {
         ).stats
     }
 
+    private var visibleGroups: [BadgeGroup] {
+        if let selectedGroup { return [selectedGroup] }
+        return BadgeGroup.allCases
+    }
+
+    private var displayedBadges: [BadgeDefinition] {
+        guard let selectedGroup else { return badgeStore.definitions }
+        return badgeStore.definitions.filter { $0.group == selectedGroup }
+    }
+
+    private var displayedEarnedCount: Int {
+        displayedBadges.filter { badgeStore.earnedDate(for: $0.id) != nil }.count
+    }
+
+    private var displayedTotalCount: Int {
+        displayedBadges.count
+    }
+
     private var overallFraction: Double {
-        guard badgeStore.totalCount > 0 else { return 0 }
-        return min(1.0, max(0.0, Double(badgeStore.earnedCount) / Double(badgeStore.totalCount)))
+        guard displayedTotalCount > 0 else { return 0 }
+        return min(1.0, max(0.0, Double(displayedEarnedCount) / Double(displayedTotalCount)))
     }
 
     var body: some View {
@@ -29,11 +55,31 @@ struct BadgesView: View {
             header
                 .padding(.horizontal, Theme.Space.page)
                 .padding(.top, Theme.Space.page)
-                .padding(.bottom, 20)
+                .padding(.bottom, initialGroup == nil ? 20 : 12)
+
+            if let initialGroup {
+                HStack(spacing: 8) {
+                    FilterChip(
+                        title: settings.localized(initialGroup.title),
+                        selected: selectedGroup == initialGroup
+                    ) {
+                        selectedGroup = initialGroup
+                    }
+                    FilterChip(
+                        title: settings.localized("All"),
+                        selected: selectedGroup == nil
+                    ) {
+                        selectedGroup = nil
+                    }
+                    Spacer()
+                }
+                .padding(.horizontal, Theme.Space.page)
+                .padding(.bottom, 16)
+            }
 
             ScrollView {
                 VStack(alignment: .leading, spacing: 14) {
-                    ForEach(BadgeGroup.allCases) { group in
+                    ForEach(visibleGroups) { group in
                         let groupBadges = badgeStore.definitions.filter { $0.group == group }
                         if !groupBadges.isEmpty {
                             badgeGroupPanel(group: group, badges: groupBadges)
@@ -75,15 +121,15 @@ struct BadgesView: View {
                 .frame(width: 220, height: 8)
                 .accessibilityHidden(true)
 
-                (Text("\(badgeStore.earnedCount) ")
+                (Text("\(displayedEarnedCount) ")
                     .font(Theme.boldDisplay(20))
                     .foregroundColor(Theme.ink)
-                + Text("/ \(badgeStore.totalCount)")
+                + Text("/ \(displayedTotalCount)")
                     .font(Theme.display(20))
                     .foregroundColor(Theme.secondary))
                 .monospacedDigit()
                 .fixedSize()
-                .accessibilityLabel(settings.localized("Badges %lld / %lld", badgeStore.earnedCount, badgeStore.totalCount))
+                .accessibilityLabel(settings.localized("Badges %lld / %lld", displayedEarnedCount, displayedTotalCount))
             }
         }
         .frame(height: 56)
