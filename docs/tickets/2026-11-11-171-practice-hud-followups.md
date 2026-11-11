@@ -1,6 +1,6 @@
 # 171 — Practice HUD follow-ups: BPM disappears, indicators too small, lesson title, calmer idle layout
 
-Status: draft. Parts A–C are clear and ready. Part D (idle layout) needs Jakub's decision on the open question at the end before an agent starts it. Follows ticket 165 (tested by Jakub on the iPad on 2026-11-11; mostly passed).
+Status: ready-for-agent. Jakub decided on 2026-11-11: the band MAY move or grow between idle and running, with one smooth animation (this replaces the "band must not move" rule of ticket 165). Follows ticket 165 (tested by Jakub on the iPad on 2026-11-11; mostly passed).
 
 ## Goal
 
@@ -27,10 +27,10 @@ Enlarge, keeping the 165 design (B1 pip, C2 stepped LED meter, three colours, no
 - Agent: reproduce in the simulator with the lesson stopped, in landscape, portrait, a narrow split window and Czech, with 1-line and long titles, with and without header stars and the subtitle line. Candidate causes to check: title wrapping or clipping in `titleAndSubtitle` (`PracticeScreen.swift` ~255) when `topZone` stacks (`width < 850`), competition with the mode/pattern/help tools row, `BadgeBanner` overlay on top of the top zone, subtitle height reservation, or something left over from the 165 fade (opacity or frame not restored after STOP).
 - Fix what is actually wrong. If the title does not fit, allow two lines before truncating; never overlap the stars or the tools.
 
-### D. Calmer idle layout (needs Jakub's decision, see open question)
+### D. Calmer idle layout (decided: band may move smoothly)
 - The space reserved above the band for the HUD row (`hudHeight` + `phaseHeight` in `middleZone`) only matters while a lesson runs. In idle (not `focusActive`) the layout may use that space differently, for example: title and stars on a larger, calmer header; tools grouped; band and pad area larger.
 - Whatever idle layout is chosen, the HUD row must have its full height available during a lesson (focus mode), and Listen mode keeps its full chrome.
-- If the band is allowed to move or resize between idle and running, the change must be one smooth `Theme.Motion.standard` animation at START and STOP and must not cause a jump during count-in. If it is not allowed, only the top bar and the area *outside* the band zone can be rearranged.
+- The band may move or resize between idle and running: one smooth `Theme.Motion.standard` animation at START and STOP, no jump during count-in (Reduce Motion: 0.15 s fade or instant).
 - Propose the layout as a short HTML preview first (as in ticket 164) and let Jakub choose before building. Do not change scoring, input or MIDI code.
 
 ### General
@@ -56,7 +56,7 @@ None required for A–C (layout only). If a pure sizing or priority helper is ex
 - [ ] After a tempo-up the BPM readout is still visible, together with the banner, in landscape, portrait, narrow window and Czech.
 - [ ] BPM readout, timing cue and run meter are clearly larger and readable at playing distance; nothing overlaps the band.
 - [ ] Lesson title and stars look correct with the lesson stopped (cause found and fixed, or reported if not reproducible).
-- [ ] Part D delivered as an approved preview first, then built; HUD row and focus mode from 165 still work.
+- [ ] Part D delivered as a preview approved by Jakub first, then built; HUD row and focus mode from 165 still work.
 - [ ] Build succeeds and the full test suite passes.
 
 ### Manual iPad checks for Jakub
@@ -74,6 +74,6 @@ Codex GPT-6.1 Sol, high (layout stability across window sizes). Fallback: Gemini
 
 Build, run the full test suite per `AGENTS.md`, commit, stop for Jakub's iPad check.
 
-## Open question for Jakub (blocks part D)
+## Decision (Jakub, 2026-11-11)
 
-In idle, may the orange band move or grow between idle and running (with a smooth animation), or must it stay exactly in place as in 165?
+The band may move or grow between idle and running, animated smoothly. Delete the old 165 rule and any code or test that keeps the band frame fixed.
