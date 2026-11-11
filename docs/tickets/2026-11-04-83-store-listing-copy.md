@@ -1,6 +1,6 @@
 # 83 — App Store listing texts and review notes (EN + CS)
 
-Status: parked (App Store release track, not scheduled). Source: Claude's pre-release audit, 2026-11-04.
+Status: done. Texts approved by Jakub on 2026-11-11 (docs/store/listing.md); re-check lesson counts and the name before submission. Source: Claude's pre-release audit, 2026-11-04.
 
 ## Why
 

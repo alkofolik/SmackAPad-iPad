@@ -99,7 +99,7 @@ Source: Claude's pre-release audit. Checklist with the full chronological list: 
 | 79 | Privacy manifest, export-compliance key, Release-build hygiene | Gemini 3.8 Flash, high | 1st |
 | 81 | Public support + privacy policy pages (EN/CS); Jakub chooses hosting first | Gemini 3.8 Flash, medium | parallel with 79 |
 | 80 | Settings → About: version, support/privacy links, sound and font credits | Gemini 3.8 Flash, high | after 81 (needs URLs) |
-| 83 | App Store listing texts and review notes (EN/CS) | Claude (Opus), medium | any time |
+| 83 | App Store listing texts and review notes (EN/CS) | Claude (Opus), medium | done (texts approved by Jakub 2026-11-11, docs/store/listing.md) |
 | 82 | App Store screenshots 13" iPad via UI test | Codex GPT-6.1 Sol, high | last, when UI is frozen |
 
 ## iPad feedback (2026-11-05)
