@@ -2,7 +2,7 @@
 //  SmackAPadTests.swift
 //  SmackAPadTests
 //
-//  Validation tests for ported legacy data files (JSON, WAVs, i18n, licenses).
+//  Validation tests for ported legacy data files (JSON, WAVs, licenses).
 //
 
 import XCTest
@@ -151,17 +151,6 @@ final class SmackAPadDataPortTests: XCTestCase {
             let licenseURL = loader.resolveSampleURL(for: licensePath)
             XCTAssertNotNil(licenseURL, "LICENSE.txt missing for kit: \(kit)")
         }
-    }
-
-    // MARK: - 7. Localisation cs.tsv
-
-    func testCzechLocalisationTSVLoads() throws {
-        let loader = DataLoader.shared
-        let tsvContent = try loader.loadLocalizationTSV()
-
-        XCTAssertFalse(tsvContent.isEmpty, "cs.tsv content should not be empty")
-        let lines = tsvContent.components(separatedBy: .newlines)
-        XCTAssertGreaterThan(lines.count, 100, "cs.tsv should have substantial translation lines")
     }
 
     // MARK: - 8. Extensible Content Architecture

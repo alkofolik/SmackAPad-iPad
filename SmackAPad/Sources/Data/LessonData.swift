@@ -451,9 +451,7 @@ public final class DataLoader: Sendable {
         let candidates = [
             "Data",
             "Resources/Data",
-            "Resources",
-            "i18n",
-            "Resources/i18n"
+            "Resources"
         ]
 
         for candidate in candidates {
@@ -521,16 +519,6 @@ public final class DataLoader: Sendable {
     public func loadSampleKitList(bundle: Bundle = .main) throws -> [SampleKit] {
         let dict = try loadSampleKits(bundle: bundle)
         return dict.values.sorted { $0.kitId < $1.kitId }
-    }
-
-    /// Loads Czech localisation strings from `cs.tsv`.
-    public func loadLocalizationTSV(bundle: Bundle = .main) throws -> String {
-        let url = try findResourceURL(named: "cs", withExtension: "tsv", in: bundle)
-        do {
-            return try String(contentsOf: url, encoding: .utf8)
-        } catch {
-            throw DataLoaderError.unreadableData(url.path, error.localizedDescription)
-        }
     }
 
     // MARK: Sample URL Resolver

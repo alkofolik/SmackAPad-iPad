@@ -1,6 +1,6 @@
 # 173 — One localisation path and a test that every key exists in both languages
 
-Status: ready-for-agent. Approved by Jakub on 2026-11-11. Corresponds to AI panel item #31. No behaviour or look change.
+Status: implemented. Build and all 244 tests passed on 2026-11-11; awaiting Jakub’s manual iPad check. Approved by Jakub on 2026-11-11. Corresponds to AI panel item #31. No behaviour or look change.
 
 ## Goal
 
@@ -37,9 +37,9 @@ The new test above. The full existing suite (238+ tests) must pass unchanged, ex
 
 ## Acceptance criteria
 
-- [ ] No `czechTSVLookup` or any second translation path remains.
-- [ ] The new test passes and fails if a key is removed from either file (check once by hand, then restore).
-- [ ] The inventory lists what was fixed and what stays open.
+- [x] No `czechTSVLookup` or any second translation path remains.
+- [x] The new test passes and fails if a key is removed from either file (check once by hand, then restore).
+- [x] The inventory lists what was fixed and what stays open.
 
 ### Manual iPad check for Jakub
 
@@ -52,3 +52,12 @@ Codex GPT-6.1 Sol, thinking high (fallback Gemini 3.8 Pro, high). Do not use Fla
 ## Done rule
 
 Build, full test suite per `AGENTS.md`, commit, stop for Jakub's iPad check. Final report: max 5 lines.
+
+## Implementation notes
+
+- Inventory: `docs/design/2026-11-11-173-localization-inventory.md`.
+- Moved all 2,399 effective TSV entries missing from Czech; preserved all existing catalogue values and removed the TSV resource, loader, fallback and its obsolete test.
+- No `String.LocalizationValue` call sites existed; removed its unused overloads and separate lookup. Both remaining format overloads forward to the string-key lookup. Reminder bodies use that same path with their original plural rules.
+- Added one catalogue test for key parity, explicit Czech plural exceptions, duplicates, format specifiers and empty values. The required missing-key check failed as expected; the key was restored.
+- `xcodebuild build test` on iPad (A16), iOS 27.0 simulator: build succeeded and 244 tests passed with zero failures; exited normally.
+- Manual iPad check above remains for Jakub.

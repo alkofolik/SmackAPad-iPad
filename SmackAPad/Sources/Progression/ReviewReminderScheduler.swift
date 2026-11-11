@@ -25,17 +25,17 @@ public final class ReviewReminderScheduler: @unchecked Sendable {
         switch language {
         case .czech:
             if count == 1 {
-                return "1 lekce čeká na opakování"
+                return language.localized("1 lekce čeká na opakování")
             } else if count >= 2 && count <= 4 {
-                return String(format: "%lld lekce čekají na opakování", count)
+                return language.localized("%lld lekce čekají na opakování", count)
             } else {
-                return String(format: "%lld lekcí čeká na opakování", count)
+                return language.localized("%lld lekcí čeká na opakování", count)
             }
         case .english:
             if count == 1 {
-                return "1 lesson due for review"
+                return language.localized("1 lesson due for review")
             } else {
-                return String(format: "%lld lessons due for review", count)
+                return language.localized("%lld lessons due for review", count)
             }
         }
     }
