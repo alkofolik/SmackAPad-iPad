@@ -19,56 +19,108 @@ struct BadgesView: View {
         ).stats
     }
 
-    var body: some View {
-        NavigationStack {
-            ScrollView {
-                VStack(alignment: .leading, spacing: Theme.Space.wide) {
-                    Text(settings.localized("Badges %lld / %lld", badgeStore.earnedCount, badgeStore.totalCount))
-                        .font(Theme.display(24))
-                        .foregroundStyle(Theme.ink)
-                        .padding(.top, Theme.Space.small)
+    private var overallFraction: Double {
+        guard badgeStore.totalCount > 0 else { return 0 }
+        return min(1.0, max(0.0, Double(badgeStore.earnedCount) / Double(badgeStore.totalCount)))
+    }
 
+    var body: some View {
+        VStack(spacing: 0) {
+            header
+                .padding(.horizontal, Theme.Space.page)
+                .padding(.top, Theme.Space.page)
+                .padding(.bottom, 20)
+
+            ScrollView {
+                VStack(alignment: .leading, spacing: 14) {
                     ForEach(BadgeGroup.allCases) { group in
                         let groupBadges = badgeStore.definitions.filter { $0.group == group }
                         if !groupBadges.isEmpty {
-                            badgeGroupSection(group: group, badges: groupBadges)
+                            badgeGroupPanel(group: group, badges: groupBadges)
                         }
                     }
                 }
                 .padding(.horizontal, Theme.Space.page)
-                .padding(.vertical, Theme.Space.regular)
-            }
-            .calmChassisBackground()
-            .toolbar {
-                PadToolbarItem(placement: .topBarLeading) {
-                    BackButton {
-                        if let onDismiss { onDismiss() } else { dismiss() }
-                    }
-                }
-                ToolbarItem(placement: .principal) {
-                    ScreenHeader(title: settings.localized("Badges"))
-                }
+                .padding(.bottom, Theme.Space.page)
             }
         }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(Theme.background.ignoresSafeArea())
+        .navigationBarBackButtonHidden(true)
+        .toolbar(.hidden, for: .navigationBar)
+    }
+
+    private var header: some View {
+        HStack(spacing: 20) {
+            BackButton {
+                if let onDismiss { onDismiss() } else { dismiss() }
+            }
+
+            Text(settings.localized("Badges"))
+                .font(Theme.boldDisplay(28))
+                .foregroundStyle(Theme.ink)
+                .lineLimit(1)
+
+            Spacer(minLength: 16)
+
+            HStack(spacing: 14) {
+                ZStack(alignment: .leading) {
+                    Capsule()
+                        .fill(Theme.starColor(for: 0))
+                        .frame(width: 220, height: 8)
+                    Capsule()
+                        .fill(Theme.orange)
+                        .frame(width: 220 * overallFraction, height: 8)
+                }
+                .frame(width: 220, height: 8)
+                .accessibilityHidden(true)
+
+                (Text("\(badgeStore.earnedCount) ")
+                    .font(Theme.boldDisplay(20))
+                    .foregroundColor(Theme.ink)
+                + Text("/ \(badgeStore.totalCount)")
+                    .font(Theme.display(20))
+                    .foregroundColor(Theme.secondary))
+                .monospacedDigit()
+                .fixedSize()
+                .accessibilityLabel(settings.localized("Badges %lld / %lld", badgeStore.earnedCount, badgeStore.totalCount))
+            }
+        }
+        .frame(height: 56)
     }
 
     @ViewBuilder
-    private func badgeGroupSection(group: BadgeGroup, badges: [BadgeDefinition]) -> some View {
-        VStack(alignment: .leading, spacing: Theme.Space.regular) {
-            SectionHeader(title: settings.localized(group.title))
+    private func badgeGroupPanel(group: BadgeGroup, badges: [BadgeDefinition]) -> some View {
+        let earnedInGroup = badges.filter { badgeStore.earnedDate(for: $0.id) != nil }.count
 
-            LazyVGrid(
-                columns: [GridItem(.adaptive(minimum: 150), spacing: 14)],
-                spacing: 14
-            ) {
-                ForEach(badges) { badge in
-                    BadgeTile(
-                        badge: badge,
-                        stats: stats,
-                        earnedDate: badgeStore.earnedDate(for: badge.id)
-                    )
+        VStack(alignment: .leading, spacing: 14) {
+            HStack(alignment: .firstTextBaseline, spacing: 12) {
+                Text(settings.localized(group.title))
+                    .font(Theme.strong(19))
+                    .foregroundStyle(Theme.ink)
+
+                Text("\(earnedInGroup) / \(badges.count)")
+                    .font(Theme.display(15).monospacedDigit())
+                    .foregroundStyle(Theme.secondary)
+            }
+
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(alignment: .top, spacing: 10) {
+                    ForEach(badges) { badge in
+                        BadgeTile(
+                            badge: badge,
+                            stats: stats,
+                            earnedDate: badgeStore.earnedDate(for: badge.id)
+                        )
+                    }
                 }
             }
+            .scrollBounceBehavior(.basedOnSize)
         }
+        .padding(.top, 18)
+        .padding(.horizontal, 20)
+        .padding(.bottom, 14)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(Theme.surface, in: RoundedRectangle(cornerRadius: 20))
     }
 }

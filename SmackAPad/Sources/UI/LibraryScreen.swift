@@ -669,17 +669,42 @@ struct LibraryScreen: View {
                 })
             }
             filters(matching: matching)
-            ScreenHeader(title: group.stage.map {
+            let stageTitle = group.stage.map {
                 settings.localized("Level %lld · %@", $0.level, settings.localized(group.title))
-            } ?? settings.localized(group.title)) {
-                courseProgressIndicator(group: group, shown: filtered.count, total: group.lessons.count)
-                Button { if let next { open(next) } } label: {
-                    Text(settings.localized("Play next"))
-                        .font(Theme.control)
-                        .frame(minHeight: Theme.Size.touch)
+            } ?? settings.localized(group.title)
+            let playNextButton = Button { if let next { open(next) } } label: {
+                Text(settings.localized("Play next"))
+                    .font(Theme.control)
+                    .lineLimit(1)
+                    .frame(height: Theme.Size.touch)
+            }
+            .buttonStyle(PadPrimaryButtonStyle())
+            .frame(height: Theme.Size.touch)
+            .fixedSize(horizontal: true, vertical: false)
+            .disabled(next == nil)
+
+            ViewThatFits(in: .horizontal) {
+                HStack(alignment: .center, spacing: Theme.Space.regular) {
+                    Text(stageTitle)
+                        .font(Theme.screenTitle)
+                        .foregroundStyle(Theme.ink)
+                        .fixedSize()
+                    Spacer(minLength: 0)
+                    courseProgressIndicator(group: group, shown: filtered.count, total: group.lessons.count)
+                        .fixedSize(horizontal: true, vertical: false)
+                    playNextButton
                 }
-                .buttonStyle(PadPrimaryButtonStyle())
-                .disabled(next == nil)
+                VStack(alignment: .leading, spacing: Theme.Space.small) {
+                    HStack(alignment: .center, spacing: Theme.Space.regular) {
+                        Text(stageTitle)
+                            .font(Theme.screenTitle)
+                            .foregroundStyle(Theme.ink)
+                            .fixedSize(horizontal: false, vertical: true)
+                        Spacer(minLength: 0)
+                        playNextButton
+                    }
+                    courseProgressIndicator(group: group, shown: filtered.count, total: group.lessons.count)
+                }
             }
             .padding(.bottom, Theme.Space.small)
             if let stage = group.stage, !progression.isStageOpen(stage) || progression.canRelockStage(stage) {

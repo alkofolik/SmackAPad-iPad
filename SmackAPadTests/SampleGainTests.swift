@@ -81,4 +81,23 @@ final class SampleGainTests: XCTestCase {
         XCTAssertTrue(relaunched.instrumentTrims.isEmpty)
         XCTAssertTrue(SettingsManager(userDefaults: defaults).instrumentTrims.isEmpty)
     }
+
+    func testChangedInstrumentTrimCountCountsOnlyNonZeroVoices() {
+        XCTAssertEqual(SettingsManager.changedInstrumentTrimCount([:]), 0)
+        XCTAssertEqual(SettingsManager.changedInstrumentTrimCount(["kick": 0, "snare": 0]), 0)
+        XCTAssertEqual(SettingsManager.changedInstrumentTrimCount(["kick": 0, "hat": -3, "crash": -4]), 2)
+
+        let name = "SampleGainTests-ChangedCount-\(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: name)!
+        defer { defaults.removePersistentDomain(forName: name) }
+
+        let settings = SettingsManager(userDefaults: defaults)
+        XCTAssertEqual(settings.changedInstrumentTrimCount, 0)
+        settings.instrumentTrims = ["hat": -3, "crash": -4, "snare": 0]
+        XCTAssertEqual(settings.changedInstrumentTrimCount, 2)
+        settings.instrumentTrims["hat"] = 0
+        XCTAssertEqual(settings.changedInstrumentTrimCount, 1)
+        settings.resetInstrumentTrims()
+        XCTAssertEqual(settings.changedInstrumentTrimCount, 0)
+    }
 }

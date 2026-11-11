@@ -150,6 +150,15 @@ public final class SettingsManager: @unchecked Sendable {
         trims.mapValues(SampleGain.clampTrim).filter { $0.value != 0 }
     }
 
+    /// Number of instruments whose trim differs from 0 dB after clamping.
+    public static func changedInstrumentTrimCount(_ trims: [String: Int]) -> Int {
+        cleanTrims(trims).count
+    }
+
+    public var changedInstrumentTrimCount: Int {
+        Self.changedInstrumentTrimCount(instrumentTrims)
+    }
+
     public func resetInstrumentTrims() { instrumentTrims = [:] }
 
     public var libraryView: String {

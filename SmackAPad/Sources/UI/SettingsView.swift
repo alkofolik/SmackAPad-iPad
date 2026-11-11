@@ -19,6 +19,7 @@ public struct SettingsView: View {
     @Environment(\.dismiss) private var dismiss
 
     @State private var kits: [SampleKit] = []
+    @State private var isInstrumentVolumeExpanded = false
     @State private var notificationsDenied = false
     @State private var helpPresentation: HelpPresentation?
     @State private var windowWidth: CGFloat = 0
@@ -35,6 +36,13 @@ public struct SettingsView: View {
             return midi.sources.first?.name
         }()
         return name ?? settings.localized("Not connected")
+    }
+
+    private var selectedKitTitle: String {
+        if settings.selectedKitId == "auto" {
+            return settings.localized("Automatic")
+        }
+        return kits.first { $0.kitId == settings.selectedKitId }?.name ?? settings.selectedKitId
     }
 
     var onDismiss: (() -> Void)? = nil
@@ -81,58 +89,102 @@ public struct SettingsView: View {
                     DebugDeveloperSection()
                     #endif
 
-                    // MARK: 1. Kit Selection
+                    // MARK: 1. Sound
                     Section {
-                        Picker(settings.localized("Sound kit"), selection: $settings.selectedKitId) {
-                            Text(settings.localized("Automatic")).font(Theme.rowTitle).tag("auto")
-                            ForEach(kits) { kit in
-                                Text(kit.name).font(Theme.rowTitle).tag(kit.kitId)
+                        NavigationLink {
+                            SoundKitSelectionView(kits: kits)
+                        } label: {
+                            HStack {
+                                Text(settings.localized("Sound set"))
+                                    .font(Theme.display(16))
+                                    .foregroundStyle(Theme.ink)
+                                Spacer()
+                                Text(selectedKitTitle)
+                                    .font(Theme.display(16))
+                                    .foregroundStyle(Theme.secondary)
                             }
+                            .frame(minHeight: Theme.Size.touch)
                         }
-                        .pickerStyle(.menu)
-                    } header: {
-                        SectionHeader(title: settings.localized("Sound kit"))
-                    } footer: {
-                        Text(settings.localized("All 8 kits are bundled with the app for practice and playback."))
-                            .font(Theme.meta)
-                            .foregroundStyle(Theme.secondary)
-                    }
-
-                    // MARK: 1b. Sound Volumes
-                    Section {
-                        VolumeSliderRow(
+                        SoundSliderRow(
                             title: settings.localized("Metronome"),
                             value: $settings.metronomeVolume
                         )
-                        VolumeSliderRow(
+                        SoundSliderRow(
                             title: settings.localized("Pads"),
                             value: $settings.padsVolume
                         )
-                        VolumeSliderRow(
-                            title: settings.localized("Pattern sound"),
+                        SoundSliderRow(
+                            title: settings.localized("settings.sound.pattern"),
                             value: $settings.patternVolume
                         )
+                        Button {
+                            withAnimation(.easeOut(duration: 0.2)) {
+                                isInstrumentVolumeExpanded.toggle()
+                            }
+                        } label: {
+                            HStack(spacing: 12) {
+                                Text(settings.localized("Instrument volume"))
+                                    .font(Theme.strong(16))
+                                    .foregroundStyle(Theme.ink)
+                                Spacer()
+                                let changedCount = settings.changedInstrumentTrimCount
+                                if changedCount > 0 {
+                                    Text(settings.localized("changed %lld", changedCount))
+                                        .font(Theme.strong(13).monospacedDigit())
+                                        .foregroundStyle(Theme.background)
+                                        .padding(.horizontal, 10)
+                                        .frame(height: 26)
+                                        .background(Theme.ink, in: Capsule())
+                                }
+                                Image(systemName: isInstrumentVolumeExpanded ? "chevron.up" : "chevron.down")
+                                    .font(.system(size: 14, weight: .semibold))
+                                    .foregroundStyle(Theme.ink)
+                            }
+                            .frame(minHeight: Theme.Size.touch)
+                            .contentShape(Rectangle())
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityValue(settings.localized(isInstrumentVolumeExpanded ? "Expanded" : "Collapsed"))
+
+                        if isInstrumentVolumeExpanded {
+                            VStack(alignment: .leading, spacing: 12) {
+                                LazyVGrid(
+                                    columns: [
+                                        GridItem(.flexible(), spacing: 8),
+                                        GridItem(.flexible(), spacing: 8)
+                                    ],
+                                    spacing: 8
+                                ) {
+                                    ForEach(InstrumentTrimCell.roles, id: \.self) { voice in
+                                        InstrumentTrimCell(voice: voice)
+                                    }
+                                }
+
+                                Button {
+                                    settings.resetInstrumentTrims()
+                                } label: {
+                                    Text(settings.localized("Reset all to 0 dB"))
+                                        .font(Theme.strong(15))
+                                        .foregroundStyle(settings.instrumentTrims.isEmpty ? Theme.secondary : Theme.ink)
+                                        .padding(.horizontal, 16)
+                                        .frame(height: 44)
+                                        .background(Theme.background, in: RoundedRectangle(cornerRadius: 12))
+                                        .overlay {
+                                            RoundedRectangle(cornerRadius: 12)
+                                                .strokeBorder(Theme.ink.opacity(settings.instrumentTrims.isEmpty ? 0.12 : 0.28), lineWidth: 1.5)
+                                        }
+                                }
+                                .buttonStyle(.plain)
+                                .disabled(settings.instrumentTrims.isEmpty)
+                            }
+                            .padding(.top, 4)
+                            .padding(.bottom, 6)
+                            .listRowSeparator(.hidden)
+                        }
                     } header: {
                         SectionHeader(title: settings.localized("Sound"))
                     } footer: {
-                        Text(settings.localized("Separate volume for metronome, pads and pattern playback."))
-                            .font(Theme.meta)
-                            .foregroundStyle(Theme.secondary)
-                    }
-
-                    // MARK: 1c. Instrument volumes
-                    Section {
-                        ForEach(InstrumentTrimRow.roles, id: \.self) { voice in
-                            InstrumentTrimRow(voice: voice)
-                        }
-                        Button(settings.localized("Reset instrument volumes")) {
-                            settings.resetInstrumentTrims()
-                        }
-                        .disabled(settings.instrumentTrims.isEmpty)
-                    } header: {
-                        SectionHeader(title: settings.localized("Instrument volumes"))
-                    } footer: {
-                        Text(settings.localized("Fine-tune single instruments for all lessons and sound kits. 0 dB is the default."))
+                        Text(settings.localized("All 8 kits are bundled with the app for practice and playback."))
                             .font(Theme.meta)
                             .foregroundStyle(Theme.secondary)
                     }
@@ -612,8 +664,100 @@ private struct LegacyProgressImportSection: View {
 }
 #endif
 
-/// One slider per instrument role (ticket 166): -12 dB to +6 dB, 0 dB default.
-private struct InstrumentTrimRow: View {
+private struct SoundKitSelectionView: View {
+    @Environment(SettingsManager.self) private var settings
+    @Environment(\.dismiss) private var dismiss
+    let kits: [SampleKit]
+
+    var body: some View {
+        Form {
+            Section {
+                kitRow(id: "auto", title: settings.localized("Automatic"))
+                ForEach(kits) { kit in
+                    kitRow(id: kit.kitId, title: kit.name)
+                }
+            }
+            .listRowBackground(Theme.surface)
+        }
+        .appFormStyle()
+        .navigationTitle(settings.localized("Sound set"))
+        .navigationBarTitleDisplayMode(.inline)
+        .navigationBarBackButtonHidden(true)
+        .toolbar {
+            ToolbarItem(placement: .principal) { ScreenHeader(title: settings.localized("Sound set")) }
+            PadToolbarItem(placement: .topBarLeading) {
+                BackButton { dismiss() }
+            }
+        }
+    }
+
+    private func kitRow(id: String, title: String) -> some View {
+        Button {
+            settings.selectedKitId = id
+            dismiss()
+        } label: {
+            HStack {
+                Text(title)
+                    .font(Theme.control)
+                    .foregroundStyle(Theme.ink)
+                Spacer()
+                if settings.selectedKitId == id {
+                    Image(systemName: "checkmark")
+                        .font(.system(size: 16, weight: .semibold))
+                        .foregroundStyle(Theme.orange)
+                }
+            }
+            .frame(minHeight: Theme.Size.touch)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+    }
+}
+
+/// One-line volume row with label left, slider middle, and dB readout right.
+private struct SoundSliderRow: View {
+    let title: String
+    @Binding var value: Int
+
+    var body: some View {
+        HStack(spacing: 16) {
+            Text(title)
+                .font(Theme.display(16))
+                .foregroundStyle(Theme.ink)
+                .frame(width: 120, alignment: .leading)
+                .lineLimit(1)
+                .minimumScaleFactor(0.85)
+
+            Slider(
+                value: Binding(
+                    get: { Double(value) },
+                    set: { value = SettingsManager.clampVolume(Int($0.rounded())) }
+                ),
+                in: 0...100,
+                step: 5
+            )
+            .tint(Theme.orange)
+            .frame(minHeight: Theme.Size.minimumTouch)
+
+            Text(Self.formatDB(fromPercent: value))
+                .font(Theme.display(14).monospacedDigit())
+                .foregroundStyle(Theme.secondary)
+                .frame(width: 56, alignment: .trailing)
+                .lineLimit(1)
+        }
+        .frame(minHeight: 56)
+    }
+
+    static func formatDB(fromPercent percent: Int) -> String {
+        guard percent > 0 else { return "−∞ dB" }
+        guard percent < 100 else { return "0 dB" }
+        let db = Int((20.0 * log10(Double(percent) / 100.0)).rounded())
+        return db == 0 ? "0 dB" : "−\(abs(db)) dB"
+    }
+}
+
+/// Compact 2-column cell per instrument role: bold abbreviation + English name, dB value, slider.
+private struct InstrumentTrimCell: View {
     @Environment(SettingsManager.self) private var settings
     let voice: String
 
@@ -629,16 +773,31 @@ private struct InstrumentTrimRow: View {
     private var pad: Int { AudioEngine.defaultPadVoices.firstIndex(of: voice) ?? 0 }
     private var trim: Int { settings.instrumentTrims[voice] ?? 0 }
 
+    private var formattedTrim: String {
+        if trim == 0 { return "0 dB" }
+        if trim > 0 { return "+\(trim) dB" }
+        return "−\(abs(trim)) dB"
+    }
+
     var body: some View {
-        VStack(alignment: .leading, spacing: Theme.Space.tight) {
-            HStack {
-                Text("\(PadVoice.abbreviation(pad)) · \(PadVoice.name(pad, settings: settings))")
-                    .font(Theme.control)
-                Spacer()
-                Text(String(format: "%+d dB", trim))
-                    .font(Theme.meta).monospacedDigit()
-                    .foregroundStyle(Theme.secondary)
+        VStack(alignment: .leading, spacing: 8) {
+            HStack(spacing: 6) {
+                (Text(PadVoice.abbreviation(pad))
+                    .font(Theme.strong(14))
+                + Text(" \(PadVoice.displayName(pad))")
+                    .font(Theme.display(14)))
+                .foregroundColor(Theme.ink)
+                .lineLimit(1)
+                .minimumScaleFactor(0.85)
+
+                Spacer(minLength: 4)
+
+                Text(formattedTrim)
+                    .font(Theme.display(14).monospacedDigit())
+                    .foregroundStyle(trim == 0 ? Theme.secondary : Theme.ink)
+                    .lineLimit(1)
             }
+
             Slider(
                 value: Binding(
                     get: { Double(trim) },
@@ -652,9 +811,11 @@ private struct InstrumentTrimRow: View {
                 step: 1
             )
             .tint(Theme.orange)
-            .frame(minHeight: Theme.Size.minimumTouch)
+            .frame(minHeight: 36)
             .contentShape(Rectangle())
         }
-        .padding(.vertical, Theme.Space.tight)
+        .padding(.vertical, 12)
+        .padding(.horizontal, 14)
+        .background(Theme.background, in: RoundedRectangle(cornerRadius: 12))
     }
 }

@@ -3316,3 +3316,22 @@
 "OK" = "OK";
 "Delete profile \"%@\"?" = "Smazat profil „%@“?";
 "%lld of %lld" = "%lld z %lld";
+
+/* Ticket 183: Badges, Settings Sound, About, Full version. */
+"Sound set" = "Sada zvuků";
+"settings.sound.pattern" = "Pattern";
+"Instrument volume" = "Hlasitost nástrojů";
+"changed %lld" = "upraveno %lld";
+"Reset all to 0 dB" = "Vrátit vše na 0 dB";
+"Version %@ (build %@)" = "Verze %@ (build %@)";
+"Support" = "Podpora";
+"Privacy" = "Ochrana soukromí";
+"Font licences" = "Licence písem";
+"paywall.title" = "PLNÁ\nVERZE";
+"Whole library" = "Celá knihovna";
+"All %lld Path stages and lessons across %lld genres" = "Všechny úrovně Cesty (%lld) a lekce napříč %lld žánry";
+"Progress by stars" = "Postup podle hvězd";
+"More stages unlock as you collect stars" = "Další stupně se odemykají, jak sbíráš hvězdy";
+"Unlock for %@" = "Odemknout za %@";
+"Restore purchase" = "Obnovit nákup";
+"Purchased" = "Zakoupeno";

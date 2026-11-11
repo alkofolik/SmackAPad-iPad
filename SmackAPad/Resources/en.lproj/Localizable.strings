@@ -3311,3 +3311,22 @@
 "OK" = "OK";
 "Delete profile \"%@\"?" = "Delete profile \"%@\"?";
 "%lld of %lld" = "%lld of %lld";
+
+/* Ticket 183: Badges, Settings Sound, About, Full version. */
+"Sound set" = "Sound set";
+"settings.sound.pattern" = "Pattern";
+"Instrument volume" = "Instrument volume";
+"changed %lld" = "changed %lld";
+"Reset all to 0 dB" = "Reset all to 0 dB";
+"Version %@ (build %@)" = "Version %@ (build %@)";
+"Support" = "Support";
+"Privacy" = "Privacy";
+"Font licences" = "Font licences";
+"paywall.title" = "FULL\nVERSION";
+"Whole library" = "Whole library";
+"All %lld Path stages and lessons across %lld genres" = "All %lld Path stages and lessons across %lld genres";
+"Progress by stars" = "Progress by stars";
+"More stages unlock as you collect stars" = "More stages unlock as you collect stars";
+"Unlock for %@" = "Unlock for %@";
+"Restore purchase" = "Restore purchase";
+"Purchased" = "Purchased";

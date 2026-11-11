@@ -388,6 +388,7 @@ struct PadToolbarItem<Content: View>: ToolbarContent {
 }
 
 private struct BackPadButtonStyle: ButtonStyle {
+    var onDark = false
     @Environment(\.accessibilityReduceMotion) private var reduced
     @Environment(\.isEnabled) private var enabled
 
@@ -395,13 +396,15 @@ private struct BackPadButtonStyle: ButtonStyle {
         let policy = Theme.Motion.Policy(reduced: reduced)
         let pressed = configuration.isPressed
         let shape = RoundedRectangle(cornerRadius: 14)
+        let foreground = onDark ? Theme.white : Theme.ink
+        let fill = onDark ? Theme.white.opacity(0.12) : Theme.surface
 
         configuration.label
-            .foregroundStyle(enabled ? Theme.ink : Theme.ink.opacity(0.35))
+            .foregroundStyle(enabled ? foreground : foreground.opacity(0.35))
             .frame(width: 56, height: 56)
             .background {
                 shape
-                    .fill(enabled ? Theme.surface : Theme.disabledFill)
+                    .fill(enabled ? fill : Theme.disabledFill)
                     .allowsHitTesting(false)
             }
             .contentShape(shape)
@@ -423,6 +426,7 @@ private struct BackPadButtonStyle: ButtonStyle {
 /// Shared top-left back button used across screens, sheets, and info popovers.
 struct BackButton: View {
     @Environment(SettingsManager.self) private var settings
+    var onDark = false
     let action: () -> Void
 
     var body: some View {
@@ -439,11 +443,37 @@ struct BackButton: View {
                 Image(systemName: "chevron.left")
                     .font(.system(size: 20, weight: .semibold))
             }
-            .buttonStyle(BackPadButtonStyle())
+            .buttonStyle(BackPadButtonStyle(onDark: onDark))
             .accessibilityLabel(settings.localized("Back"))
             .keyboardShortcut(.escape, modifiers: [])
         }
         .frame(width: 56, height: 56)
+    }
+}
+
+/// Four-pad brand mark with a tilted orange top-right pad.
+struct PadLogoGrid: View {
+    var neutralColor: Color = Theme.ink
+    var gap: CGFloat = 10
+    var padRadius: CGFloat = 5
+
+    var body: some View {
+        VStack(spacing: gap) {
+            HStack(spacing: gap) {
+                RoundedRectangle(cornerRadius: padRadius)
+                    .fill(neutralColor)
+                RoundedRectangle(cornerRadius: padRadius)
+                    .fill(Theme.orange)
+                    .rotationEffect(.degrees(8))
+            }
+            HStack(spacing: gap) {
+                RoundedRectangle(cornerRadius: padRadius)
+                    .fill(neutralColor)
+                RoundedRectangle(cornerRadius: padRadius)
+                    .fill(neutralColor)
+            }
+        }
+        .accessibilityHidden(true)
     }
 }
 
