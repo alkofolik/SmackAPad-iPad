@@ -185,3 +185,4 @@ Source: Jakub, retention and memory discussion; legacy "Trénink" concept 2026-1
 | 172 | Learning rules in one place (LearningRules.swift, no behaviour change) | Codex GPT-6.1 Sol, high (fallback Gemini 3.8 Pro, high) | any time (after 171 is tested, to avoid clashing in PracticeSession) |
 | 173 | One localisation path and a test that every key exists in both languages | Codex GPT-6.1 Sol, high (fallback Gemini 3.8 Pro, high) | ready-for-agent (any time; after 172 is tested to be safe) |
 | 174 | Split Persistence.swift into smaller files (no behaviour change) | Codex GPT-6.1 Sol, high (fallback Gemini 3.8 Pro, high) | ready-for-agent (after 173; before 162) |
+| 175 | Show and store the true (un-centred) timing error | Codex GPT-6.1 Sol, high (fallback Gemini 3.8 Pro, high) | implemented, awaiting iPad check |
