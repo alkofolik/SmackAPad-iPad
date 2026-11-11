@@ -7,6 +7,72 @@ final class PracticeSessionTests: XCTestCase {
     override func setUp() { super.setUp(); StarStreak.forgetAll() }
 
     @MainActor
+    func testSteadyEightyMillisecondsLateStaysVisibleWithoutChangingMatchingOrStars() async throws {
+        let suite = "true-timing-error-\(UUID().uuidString)"
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))
+        defer { defaults.removePersistentDomain(forName: suite) }
+        let settings = SettingsManager(userDefaults: defaults)
+        let file = FileManager.default.temporaryDirectory.appendingPathComponent("\(suite).json")
+        defer { try? FileManager.default.removeItem(at: file) }
+        let progress = ProgressStore(fileURL: file, autoLoad: false)
+        let midi = MIDIInput(settings: settings)
+        let hits = stride(from: 0, to: 64, by: 4).map {
+            LessonHit(step: $0, padIndex: 12, hand: "L", velocity: 100)
+        }
+        let lesson = Lesson(id: 40_175, cat: "test", title: "True timing error", genre: "", tags: [],
+                            text: "", division: 16, bars: 4, startBpm: 120, targetBpm: 120,
+                            level: 5, src: "test", hits: hits)
+        var time = AVAudioTime.seconds(forHostTime: mach_absolute_time())
+        let session = PracticeSession(lesson: lesson, settings: settings, progress: progress, midi: midi,
+                                      clock: { time })
+        session.metronome = false
+        await session.prepare()
+        defer { session.close() }
+        XCTAssertTrue(session.ready, session.errorMessage ?? "Sound preparation failed")
+        time = AVAudioTime.seconds(forHostTime: mach_absolute_time())
+        let firstStart = time + 0.6 + 2
+        session.start()
+        XCTAssertTrue(session.running)
+
+        let required = StarStreak.requiredRuns(expectedHits: hits.count, isIntro: false)
+        for pass in 0..<required {
+            let start = firstStart + Double(pass) * 8
+            for (index, hit) in hits.enumerated() {
+                time = start + Double(hit.step) * 15 / 120 + 0.080
+                session.tick()
+                midi.onPadEvent?(PadInputEvent(padIndex: hit.padIndex, velocity: 100, isNoteOn: true,
+                    timestamp: AVAudioTime.hostTime(forSeconds: time), deviceID: "test"))
+                // At level 5, the first +80 ms hit is off; the learned centre makes the rest perfect.
+                XCTAssertEqual(session.hitJudgments[pass + 1]?[hit], index == 0 ? .off : .perfect)
+            }
+            time = start + 7.6
+            session.tick()
+            time = start + 8.01
+            session.tick()
+            let result = try XCTUnwrap(session.lastResult)
+            XCTAssertEqual(result.expectedHitCount, 16)
+            XCTAssertEqual(result.matchedHitCount, 16)
+            XCTAssertEqual(result.extraHitCount, 0)
+            XCTAssertEqual(result.perfectOrGoodHitCount, 15)
+            XCTAssertEqual(result.score, 1)
+            XCTAssertTrue(result.passed)
+            XCTAssertTrue(result.mastery)
+        }
+
+        XCTAssertFalse(session.running)
+        XCTAssertEqual(session.summary?.finishedByStar, 2)
+        XCTAssertEqual(session.summary?.score, 1)
+        XCTAssertEqual(progress.progress(for: lesson.id)?.passed, true)
+        XCTAssertEqual(progress.progress(for: lesson.id)?.mastery, true)
+        XCTAssertEqual(progress.progress(for: lesson.id)?.memory, false)
+        XCTAssertEqual(session.timingHistory.samples.count, min(32, required * hits.count))
+        for sample in session.timingHistory.samples {
+            XCTAssertEqual(sample.errorMilliseconds, 80, accuracy: 0.001)
+        }
+        XCTAssertGreaterThan(session.timingHistory.cueOffset(at: Date()), 0)
+    }
+
+    @MainActor
     func testTodayAndLibraryReportPerfectWarmupsAndAdvanceTheSameReviewSchedule() async throws {
         let suite = "today-review-state-\(UUID().uuidString)"
         let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))

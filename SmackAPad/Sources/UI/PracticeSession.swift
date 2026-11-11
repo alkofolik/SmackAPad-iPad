@@ -1337,7 +1337,7 @@ final class PracticeSession {
         }
         if let best {
             best.0.scorer = best.1
-            if let error = best.3.timingErrorMilliseconds {
+            if let error = best.3.calibratedTimingErrorMilliseconds {
                 timingHistory.record(errorMilliseconds: error,
                                      maximumMilliseconds: best.1.maximumTimingMilliseconds,
                                      goodMilliseconds: best.1.goodTimingMilliseconds)
@@ -1371,7 +1371,7 @@ final class PracticeSession {
             resolvedTimestamp: event.timestamp,
             usedReceiptTime: event.usedReceiptTime,
             expectedStep: matchedFeedback?.expectedStep,
-            timingErrorMs: matchedFeedback?.timingErrorMilliseconds,
+            timingErrorMs: matchedFeedback?.calibratedTimingErrorMilliseconds,
             timingCenterMs: currentScorerCenter,
             passNumber: matchedPassNumber
         )

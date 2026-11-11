@@ -17,17 +17,21 @@ public struct HitFeedback: Equatable, Sendable {
     public let judgment: HitJudgment
     /// Signed error after calibration and timing-center correction; nil for unmatched input.
     public let timingErrorMilliseconds: Double?
+    /// Signed error after calibration only, for display and storage; nil for unmatched input.
+    public let calibratedTimingErrorMilliseconds: Double?
 
     public init(
         expectedHitIndex: Int?,
         expectedStep: Int? = nil,
         judgment: HitJudgment,
-        timingErrorMilliseconds: Double?
+        timingErrorMilliseconds: Double?,
+        calibratedTimingErrorMilliseconds: Double? = nil
     ) {
         self.expectedHitIndex = expectedHitIndex
         self.expectedStep = expectedStep
         self.judgment = judgment
         self.timingErrorMilliseconds = timingErrorMilliseconds
+        self.calibratedTimingErrorMilliseconds = calibratedTimingErrorMilliseconds
     }
 }
 
@@ -168,7 +172,8 @@ public struct ScoringEngine: Sendable {
                 : sorted[middle]
         }
         return HitFeedback(expectedHitIndex: candidate.index, expectedStep: candidate.step, judgment: judgment,
-                           timingErrorMilliseconds: error / 1_000_000)
+                           timingErrorMilliseconds: error / 1_000_000,
+                           calibratedTimingErrorMilliseconds: sample / 1_000_000)
     }
 
     /// Snapshot once the caller has stopped input after the last maximum timing window.
