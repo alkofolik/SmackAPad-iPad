@@ -637,11 +637,9 @@
 
 "Difficulty %lld of 5, %@" = "Obtížnost %lld z 5, %@";
 "Tempo %lld BPM, goal %lld" = "Tempo %lld BPM, cíl %lld";
-"Again" = "Znovu";
 "Session results" = "Výsledky sezení";
 "Shows all runs" = "Zobrazí všechny běhy";
 "Run %lld" = "Běh %lld";
-"Last run %lld percent, %lld BPM, %@" = "Poslední běh %lld procent, %lld BPM, %@";
 "Result %lld percent, %lld of 3 stars, %@" = "Výsledek %lld procent, %lld ze 3 hvězd, %@";
 "Review star: pass two reviews on different days · %lld of 2" = "Hvězda za opakování: splň dvě opakování v různých dnech · %lld ze 2";
 
@@ -655,19 +653,21 @@
 "Review · step %lld of 4" = "Opakování · krok %lld ze 4";
 "Review · %lld of 2 passed" = "Opakování · splněno %lld ze 2";
 "Review not passed · again tomorrow · practice goes on" = "Opakování nesplněno · znovu zítra · hraješ dál";
-"Play on" = "Hrát dál";
 "Review passed · next in %lld days" = "Opakování splněno · další za %lld dní";
 "Review passed · next in 1 day" = "Opakování splněno · další za 1 den";
 "Lesson settled" = "Lekce je upevněná";
 "Review not passed · again tomorrow" = "Opakování nesplněno · znovu zítra";
 "Does not count · play from memory at %lld BPM" = "Nepočítá se · hraj zpaměti při %lld BPM";
+"Review passed" = "Opakování splněno";
+"Review not passed" = "Opakování nesplněno";
+"next in 1 day" = "další za 1 den";
+"next in %lld days" = "další za %lld dní";
+"again tomorrow" = "znovu zítra";
 
 
 
 /* Ticket 99: From memory fading notes */
 "Fade notes in From memory" = "Nápověda zpaměti postupně mizí";
-"Pass 1 · notes shown" = "Průchod 1 · noty vidět";
-"Pass 2 · notes fading" = "Průchod 2 · noty mizí";
 
 /* Ticket 100: Training Mix. */
 "Mix" = "Mix";
@@ -865,7 +865,15 @@
 "help.tutorial.whereNext.title" = "Kam dál";
 "help.tutorial.whereNext.caption" = "Začni v Intru. Podrobnosti najdeš pod tlačítkem Pravidla.\nVšechny lekce najdeš v Knihovně.\nOpakování najdeš v Tréninku. Když jsou na řadě, pomůže ti plán Dnes.\nV lekci klepni na otazník. Na Domově a v Nastavení najdeš Jak to funguje.";
 "help.lesson.title" = "Obrazovka lekce";
-"help.lesson.caption" = "1 Informace o lekci · 2 Legenda zkratek padů · 3 Nápověda\n4 Další nástroje: takty, zvuk a smyčka. Část lekce si ve smyčce procvičíš bez hvězd.\n5 Z paměti · 6 Statické nebo posouvané zobrazení. Dalším klepnutím na statické změníš počet taktů.\n7 Tempo · 8 Požadavky na hvězdy · 9 Začít, Stop a Znovu";
+"help.lesson.caption" = "1 Režim · 2 Z paměti · 3 Posuvný / statický · 4 Takty · 5 Smyčka · 6 Info · 7 Legenda · 8 Nápověda · 9 Nastavení · 10 Tempo · 11 Začít / Stop / Znovu";
+"Mode" = "Režim";
+"Listen · Play · After me" = "Poslech · Hra · Po mně";
+"notes hide after 2 good passes in a row" = "noty zmizí po 2 úspěšných průchodech za sebou";
+"Scrolling / static view" = "Posuvný / statický pohled";
+"practice, no stars" = "na procvičení, bez hvězd";
+"Help" = "Nápověda";
+"tap to change" = "klepni pro změnu";
+"Start · Stop · Restart" = "Začít · Stop · Znovu";
 "help.modes.title" = "Režimy";
 "help.modes.caption" = "Poslech: poslouchej pattern a klidně se přidej. Tempo se samo nezvyšuje a hvězdy nezískáš.\nHra: hraj pattern a sbírej hvězdy. Metronom i zvuk patternu přepneš v Dalších nástrojích.\nPo mně: poslechni si, co aplikace zahraje, a pak to zopakuj. Za odpověď dostaneš skóre, hvězdy nezískáš.";
 "help.signals.title" = "Barvy a ukazatele";

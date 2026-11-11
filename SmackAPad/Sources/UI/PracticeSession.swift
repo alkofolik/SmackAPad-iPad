@@ -331,6 +331,10 @@ final class PracticeSession {
         memoryWarmUp.consecutivePasses
     }
 
+    public var memoryWarmUpNotesHidden: Bool {
+        memoryWarmUp.areNotesHidden(fadeNotes: settings.fadeMemoryNotes)
+    }
+
     public var showsMemoryFadePhase: Bool {
         !afterMe && fromMemory && running && !listen && !isSectionLoop && settings.fadeMemoryNotes
     }
@@ -508,6 +512,15 @@ final class PracticeSession {
         if saved?.passed != true { return (starStreak.passedRuns, passedRequired, "Passed", 0) }
         if saved?.mastery != true { return (starStreak.masteryRuns, required, "Goal tempo", 1) }
         return nil
+    }
+
+    var reviewRunProgress: (count: Int, required: Int, settled: Bool)? {
+        guard !listen, !afterMe, !isSectionLoop, isDueReview else { return nil }
+        let today = currentDay()
+        let window = reviewWindows[lesson.id].flatMap { $0.day == today ? $0 : nil }
+        let count = window?.outcome != nil ? LearningRules.reviewDecisionPasses : (window?.state.successes ?? 0)
+        let settled = (savedProgress?.reviewSchedule.reviewStep ?? 0) >= LearningRules.lastReviewStep
+        return (min(LearningRules.reviewDecisionPasses, count), LearningRules.reviewDecisionPasses, settled)
     }
     var available: Bool { midi.padIndices != nil }
     var patternFrame: PatternFrame { tapeFrame(seconds: now) }

@@ -135,7 +135,6 @@ struct PatternField: View {
                 rowHeight: rowHeight,
                 barCount: scrolling ? 1 : count
             )
-            let gutter: CGFloat = scrolling ? 0 : labelLayout.gutter
 
             ZStack {
                 ScrollView(.vertical) {
@@ -168,12 +167,6 @@ struct PatternField: View {
                     .frame(height: contentHeight)
                 }
                 .scrollBounceBehavior(.basedOnSize)
-
-                if lesson.bars > 1 {
-                    PatternPassProgress(position: position, bars: lesson.bars, gutter: gutter)
-                        .padding(.bottom, Theme.Space.small)
-                        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottom)
-                }
 
                 if scoring && countdown == nil {
                     BandTopSpineRuler(
@@ -213,14 +206,7 @@ struct PatternField: View {
                     return settings.localized(running ? (pass.isMultiple(of: 2) ? "Your turn" : "Listen…") : "After me")
                 }
                 if fromMemory && scoring {
-                    switch visibility {
-                    case .shown:
-                        return settings.localized("Pass 1 · notes shown")
-                    case .faded:
-                        return settings.localized("Pass 2 · notes fading")
-                    case .hidden:
-                        return settings.localized("From memory, notes hidden")
-                    }
+                    return settings.localized(visibility == .hidden ? "From memory, notes hidden" : "From memory")
                 }
                 if visibility == .hidden {
                     return settings.localized("From memory, notes hidden")
@@ -621,41 +607,6 @@ private func drawMarker(x: CGFloat, top: CGFloat, bottom: CGFloat, context: inou
     cap.addLines([CGPoint(x: x + 5, y: top - 3), CGPoint(x: x, y: top + 3)])
     cap.closeSubpath()
     context.fill(cap, with: .color(Theme.black))
-}
-
-/// A single thin line at the bottom edge of the pattern band with bar notches.
-private struct PatternPassProgress: View {
-    @Environment(SettingsManager.self) private var settings
-    let position: Double
-    let bars: Int
-    var gutter: CGFloat = 0
-
-    var body: some View {
-        let count = max(1, bars)
-        let totalSteps = Double(count * 16)
-        let localPosition = position.truncatingRemainder(dividingBy: totalSteps)
-        let fraction = totalSteps > 0 ? min(1, max(0, localPosition / totalSteps)) : 0
-        Canvas { context, size in
-            let y = size.height - 2
-            let trackWidth = max(1, size.width - gutter)
-            context.fill(Path(CGRect(x: gutter, y: y - 1, width: trackWidth, height: 1.5)),
-                         with: .color(Theme.black.opacity(0.25)))
-            if fraction > 0 {
-                context.fill(Path(CGRect(x: gutter, y: y - 1, width: trackWidth * fraction, height: 2)),
-                             with: .color(Theme.black))
-            }
-            for bar in 1..<count {
-                let x = min(size.width - 1, max(gutter + 1, gutter + trackWidth * Double(bar) / Double(count)))
-                context.fill(Path(CGRect(x: x - 0.5, y: y - 4, width: 1, height: 6)),
-                             with: .color(Theme.black))
-            }
-        }
-        .frame(height: 8)
-        .accessibilityElement(children: .ignore)
-        .accessibilityLabel(settings.localized("Position in the current pass"))
-        .accessibilityValue(settings.localized("Bar %lld / %lld, %lld percent",
-            min(count, Int(position) / 16 + 1), count, Int(fraction * 100)))
-    }
 }
 
 /// A thin ruler (8 pt high) along the top edge of the orange band, spanning the band width.

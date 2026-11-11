@@ -38,7 +38,10 @@ final class FirstRunAndLegibilityTests: XCTestCase {
             "Techniques", "MIDI controller", "Details", "Settled", "Did not count", "New lesson", "Mix",
             "Tempo knob", "Play pads with keyboard", "Sound kit", "Timing calibration", "Back up progress",
             "Fade notes in From memory", "Start of plan",
-            "Review star: pass two reviews on different days · %lld of 2", "Run finished: star 3 earned, review"
+            "Review star: pass two reviews on different days · %lld of 2", "Run finished: star 3 earned, review",
+            "Review passed", "Review not passed", "next in 1 day", "next in %lld days", "again tomorrow",
+            "Mode", "Listen · Play · After me", "notes hide after 2 good passes in a row",
+            "Scrolling / static view", "practice, no stars", "Help", "tap to change", "Start · Stop · Restart"
         ]
         keys += HelpTopic.allCases.flatMap { [$0.titleKey, $0.captionKey] }
         keys += TutorialCard.allCases.flatMap { [$0.titleKey, $0.captionKey] }

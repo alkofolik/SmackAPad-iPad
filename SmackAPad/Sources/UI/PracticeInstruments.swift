@@ -275,134 +275,284 @@ enum InstrumentTile {
     static let height: CGFloat = 80
 }
 
-/// A small chip showing the result of one finished run.
-struct RunResultChip: View {
-    let run: PracticeRunResult
+/// Thin pass-progress bar displayed below the orange band across its full width.
+/// At a pass boundary the completed fill fades out over 150 ms while the new fill starts from 0.
+struct PassProgressBar: View {
+    @Environment(SettingsManager.self) private var settings
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    let pass: Int
+    let position: Double
+    let bars: Int
+    let active: Bool
+    let date: Date
+
+    @State private var lastPass = 1
+    @State private var fadeStart: Date?
+
+    private let fadeDuration: TimeInterval = 0.15
+
+    var body: some View {
+        let count = max(1, bars)
+        let totalSteps = Double(count * 16)
+        let clampedPosition = active ? min(totalSteps, max(0, position)) : 0
+        let fraction = totalSteps > 0 ? min(1, max(0, clampedPosition / totalSteps)) : 0
+        let oldOpacity: Double = {
+            guard !reduceMotion, let start = fadeStart else { return 0 }
+            let elapsed = max(0, date.timeIntervalSince(start))
+            return max(0, 1 - elapsed / fadeDuration)
+        }()
+
+        Canvas { context, size in
+            let trackHeight: CGFloat = 6
+            let trackY = (size.height - trackHeight) / 2
+            let trackRect = CGRect(x: 0, y: trackY, width: size.width, height: trackHeight)
+            context.fill(Path(roundedRect: trackRect, cornerRadius: 3), with: .color(Theme.ink.opacity(0.14)))
+
+            if oldOpacity > 0 {
+                context.fill(Path(roundedRect: trackRect, cornerRadius: 3),
+                             with: .color(Theme.ink.opacity(oldOpacity)))
+            }
+
+            if fraction > 0 {
+                let fillWidth = max(trackHeight, size.width * fraction)
+                let fillRect = CGRect(x: 0, y: trackY, width: min(size.width, fillWidth), height: trackHeight)
+                context.fill(Path(roundedRect: fillRect, cornerRadius: 3), with: .color(Theme.ink))
+            }
+
+            for bar in 1..<count {
+                let x = min(size.width - 2, max(0, size.width * Double(bar) / Double(count) - 1))
+                let reached = Double(bar) / Double(count) <= fraction || oldOpacity > 0.35
+                let tickColor = reached ? Theme.background : Theme.secondary.opacity(0.65)
+                context.fill(Path(CGRect(x: x, y: 0, width: 2, height: size.height)),
+                             with: .color(tickColor))
+            }
+        }
+        .frame(height: 12)
+        .onChange(of: pass) { oldValue, newValue in
+            if active && !reduceMotion && newValue > oldValue {
+                fadeStart = date
+            } else {
+                fadeStart = nil
+            }
+            lastPass = newValue
+        }
+        .onChange(of: active) { _, isActive in
+            if !isActive { fadeStart = nil }
+        }
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(settings.localized("Position in the current pass"))
+        .accessibilityValue(settings.localized("Bar %lld / %lld, %lld percent",
+            min(count, Int(clampedPosition) / 16 + 1), count, Int((fraction * 100).rounded())))
+    }
+}
+
+/// Top-right lesson-requirements progress cluster: warm-up eyes, counted passes, and live %.
+struct PracticeProgressMeter: View {
+    @Environment(SettingsManager.self) private var settings
+
+    @ScaledMetric(relativeTo: .body) private var blockHeight: CGFloat = 40
+    @ScaledMetric(relativeTo: .body) private var eyeSize: CGFloat = 34
+
+    let showWarmUps: Bool
+    let completedWarmUps: Int
+    let starProgress: (count: Int, required: Int, name: String, starIndex: Int)?
+    let reviewProgress: (count: Int, required: Int, settled: Bool)?
+    let fraction: Double
+    let verdict: RunVerdict?
+    let starMomentActive: Bool
+    let currentAccuracy: Double?
+
+    private var accuracyText: String {
+        guard let currentAccuracy else { return "—\u{00a0}%" }
+        return "\(Int((currentAccuracy * 100).rounded()))\u{00a0}%"
+    }
 
     var body: some View {
         HStack(spacing: Theme.Space.small) {
-            verdictMark
-            VStack(alignment: .leading, spacing: 1) {
-                Text("\(Int((run.score * 100).rounded()))\u{00a0}%")
-                    .font(Theme.strong(16))
-                    .monospacedDigit()
-                    .lineLimit(1)
-                Text("\(run.bpm)\u{00a0}BPM")
-                    .font(Theme.meta)
-                    .foregroundStyle(Theme.secondary)
-                    .monospacedDigit()
-                    .lineLimit(1)
+            if showWarmUps {
+                warmUpEyes
+                if starProgress != nil || reviewProgress != nil {
+                    Rectangle()
+                        .fill(Theme.hairline)
+                        .frame(width: 1, height: blockHeight * 0.65)
+                        .accessibilityHidden(true)
+                }
             }
-            Spacer(minLength: 0)
+
+            if let starProgress {
+                RunMeterView(
+                    progress: starProgress,
+                    fraction: fraction,
+                    verdict: verdict,
+                    starMomentActive: starMomentActive
+                )
+            } else if let reviewProgress {
+                RunMeterView(
+                    badgeTitle: settings.localized("Review"),
+                    count: reviewProgress.count,
+                    required: reviewProgress.required,
+                    accessibilityTarget: settings.localized("Review"),
+                    fraction: fraction,
+                    verdict: verdict,
+                    starMomentActive: starMomentActive
+                )
+            }
+
+            Text(accuracyText)
+                .font(Theme.rowTitle)
+                .fontWeight(.bold)
+                .monospacedDigit()
+                .foregroundStyle(currentAccuracy == nil ? Theme.secondary : Theme.ink)
+                .frame(minWidth: 62, alignment: .trailing)
+                .padding(.horizontal, Theme.Space.small)
+                .frame(height: blockHeight)
+                .background(Theme.surface, in: Capsule())
+                .overlay { Capsule().strokeBorder(Theme.hairline, lineWidth: 1) }
+                .accessibilityLabel(settings.localized("Accuracy"))
+                .accessibilityValue(accuracyText)
         }
-        .padding(.horizontal, Theme.Space.small)
-        .frame(width: 96, height: 48)
-        .background(Theme.surface, in: Rectangle())
-        .overlay(
-            Rectangle()
-                .strokeBorder(Theme.hairline, lineWidth: 1)
-        )
+        .fixedSize()
     }
 
-    private var verdictMark: some View {
-        ZStack {
-            if run.passed {
-                Rectangle()
-                    .fill(Theme.orange)
-                    .frame(width: 5, height: 24)
-            } else {
-                Rectangle()
-                    .strokeBorder(Theme.markWrong, lineWidth: 1.5)
-                    .frame(width: 5, height: 24)
-            }
-        }
-        .frame(width: 5, height: 24)
-    }
-}
-
-/// A single chip showing only the last finished run while playing.
-struct PlayingLastRunChip: View {
-    @Environment(\.accessibilityReduceMotion) private var reduced
-    @Environment(SettingsManager.self) private var settings
-    let lastRun: PracticeRunResult?
-
-    var body: some View {
-        ZStack {
-            if let lastRun {
-                RunResultChip(run: lastRun)
-                    .id(lastRun.id)
-                    .transition(reduced ? .identity : .opacity)
-                    .accessibilityElement(children: .ignore)
-                    .accessibilityLabel(settings.localized(
-                        "Last run %lld percent, %lld BPM, %@",
-                        Int((lastRun.score * 100).rounded()),
-                        lastRun.bpm,
-                        settings.localized(lastRun.passed ? "passed" : "not passed")
-                    ))
-            }
-        }
-        .frame(width: 96, height: 48)
-        .animation(reduced ? nil : .easeInOut(duration: 0.3), value: lastRun?.id)
-    }
-}
-
-/// Chip showing how many memory warm-up passes have succeeded (0, 1, or 2) with eye symbols.
-struct MemoryPhaseChip: View {
-    let completed: Int
-    let label: String
-
-    var body: some View {
-        HStack(spacing: Theme.Space.tight) {
+    private var warmUpEyes: some View {
+        let progressText = settings.localized("%lld / %lld", completedWarmUps, LearningRules.warmUpPassesNeeded)
+        return HStack(spacing: Theme.Space.tight + 2) {
             ForEach(0..<LearningRules.warmUpPassesNeeded, id: \.self) { index in
-                Image(systemName: index < completed ? "eye.slash.fill" : "eye")
-                    .font(Theme.control)
-                    .foregroundStyle(index < completed ? Theme.ink : Theme.secondary)
+                let done = index < completedWarmUps
+                Image(systemName: done ? "eye.slash.fill" : "eye")
+                    .font(.system(size: 16, weight: .semibold))
+                    .foregroundStyle(done ? Theme.white : Theme.secondary)
+                    .frame(width: eyeSize, height: eyeSize)
+                    .background(done ? Theme.black : Theme.surface, in: Circle())
+                    .overlay {
+                        Circle().strokeBorder(done ? .clear : Theme.hairline, lineWidth: 1)
+                    }
             }
         }
-        .padding(.horizontal, Theme.Space.small)
-        .frame(height: 48)
-        .background(Theme.surface, in: Rectangle())
-        .overlay(
-            Rectangle()
-                .strokeBorder(Theme.hairline, lineWidth: 1)
-        )
+        .frame(height: blockHeight)
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel(label)
+        .accessibilityLabel("\(settings.localized("From memory")), \(progressText)")
     }
 }
 
-/// Result card taking the left two thirds of the bottom zone after STOP.
-struct ResultCard: View {
-    @Environment(SettingsManager.self) private var settings
-    let summary: RunSummary
-    let runs: [PracticeRunResult]
-    let saved: LessonProgress?
-    let event: StarEvent?
-    let announcement: String
-    var reviewMessage: String? = nil
-    var badgeText: String? = nil
-    let cardWidth: CGFloat
-    let cardHeight: CGFloat
-    let openRules: () -> Void
-    let openSessionResults: () -> Void
-    var starRulesAttachment: AnyView? = nil
+struct EndOfRunChip: Equatable, Identifiable {
+    var id: String { "\(isOrange):\(icon ?? ""):\(text)" }
+    let text: String
+    let isOrange: Bool
+    let icon: String?
+}
 
-    private var scorePercent: Int {
-        Int((summary.score * 100).rounded())
+struct EndOfRunStatus: Equatable {
+    let icon: String
+    let tintOrange: Bool
+    let title: String
+}
+
+/// Pure presentation model for the end-of-run card, separated for deterministic tests.
+struct EndOfRunCardModel: Equatable {
+    let scorePercent: Int
+    let bpm: Int
+    let showsStars: Bool
+    let earnedStars: [Bool]
+    let status: EndOfRunStatus
+    let chips: [EndOfRunChip]
+
+    static func build(
+        summary: RunSummary,
+        runs: [PracticeRunResult],
+        saved: LessonProgress?,
+        reviewFeedback: ReviewScheduler.ReviewFeedback?,
+        badgeMessage: String?,
+        isAfterMe: Bool,
+        isSectionLoop: Bool,
+        bestResponseScore: Double?,
+        language: AppLanguage
+    ) -> EndOfRunCardModel {
+        let scorePercent = Int((summary.score * 100).rounded())
+        let earnedStars = [saved?.passed == true, saved?.mastery == true, saved?.memory == true]
+
+        let status: EndOfRunStatus
+        var chips: [EndOfRunChip] = []
+
+        if let reviewFeedback {
+            switch reviewFeedback {
+            case .passed(_, let gapDays):
+                status = EndOfRunStatus(icon: "checkmark", tintOrange: true, title: language.localized("Review passed"))
+                chips.append(EndOfRunChip(text: nextReviewGapText(days: gapDays, language: language), isOrange: false, icon: nil))
+            case .settled:
+                status = EndOfRunStatus(icon: "checkmark", tintOrange: true, title: language.localized("Lesson settled"))
+            case .failed:
+                status = EndOfRunStatus(icon: "xmark", tintOrange: false, title: language.localized("Review not passed"))
+                chips.append(EndOfRunChip(text: language.localized("again tomorrow"), isOrange: false, icon: nil))
+            case .doesNotCount(let goalBpm):
+                status = EndOfRunStatus(icon: "exclamationmark.circle", tintOrange: false, title: language.localized("Not counted"))
+                chips.append(EndOfRunChip(text: "\(language.localized("From memory")) · \(goalBpm) BPM", isOrange: false, icon: nil))
+            }
+        } else if isAfterMe {
+            status = EndOfRunStatus(
+                icon: summary.score >= Scoring.passMark ? "checkmark" : "repeat",
+                tintOrange: summary.score >= Scoring.passMark,
+                title: language.localized("Practice only · no stars")
+            )
+            if let bestResponseScore {
+                let bestPct = Int((bestResponseScore * 100).rounded())
+                chips.append(EndOfRunChip(
+                    text: "\(language.localized("Best response")): \(bestPct)\u{00a0}%",
+                    isOrange: false,
+                    icon: nil
+                ))
+            }
+        } else if isSectionLoop {
+            status = EndOfRunStatus(icon: "repeat", tintOrange: false, title: language.localized("Section loop"))
+            chips.append(EndOfRunChip(text: language.localized("Practice only · no stars"), isOrange: false, icon: nil))
+        } else if summary.passes == 0 {
+            status = EndOfRunStatus(icon: "exclamationmark.circle", tintOrange: false, title: language.localized("Not counted"))
+        } else if summary.passed || runs.last?.passed == true || summary.score >= Scoring.passMark {
+            status = EndOfRunStatus(icon: "checkmark", tintOrange: true, title: language.localized("Passed"))
+        } else {
+            let notPassed = language.localized("not passed")
+            let title = notPassed.prefix(1).uppercased(with: Locale(identifier: language == .czech ? "cs" : "en")) + notPassed.dropFirst()
+            status = EndOfRunStatus(icon: "xmark", tintOrange: false, title: title)
+        }
+
+        if reviewFeedback == nil, summary.firstStar2 {
+            chips.append(EndOfRunChip(text: language.localized("Comes back tomorrow for a review"), isOrange: false, icon: nil))
+        }
+
+        if reviewFeedback == nil, !isAfterMe, !isSectionLoop, !runs.isEmpty {
+            let bestScore = runs.map(\.score).max() ?? summary.score
+            let bestPercent = Int((bestScore * 100).rounded())
+            chips.append(EndOfRunChip(text: runSummaryText(count: runs.count, bestPercent: bestPercent, language: language), isOrange: false, icon: nil))
+        }
+
+        if let badgeMessage {
+            chips.append(EndOfRunChip(text: badgeMessage, isOrange: true, icon: "rosette"))
+        }
+
+        return EndOfRunCardModel(
+            scorePercent: scorePercent,
+            bpm: summary.bpm,
+            showsStars: !isAfterMe,
+            earnedStars: earnedStars,
+            status: status,
+            chips: chips
+        )
     }
 
-    private var bestPercent: Int {
-        let bestScore = runs.map(\.score).max() ?? summary.score
-        return Int((bestScore * 100).rounded())
+    static func nextReviewGapText(days: Int, language: AppLanguage) -> String {
+        if language == .czech {
+            if days == 1 { return language.localized("next in 1 day") }
+            if days >= 2 && days <= 4 { return "další za \(days) dny" }
+            return language.localized("next in %lld days", days)
+        }
+        return days == 1
+            ? language.localized("next in 1 day")
+            : language.localized("next in %lld days", days)
     }
 
-    private var starCount: Int {
-        [saved?.passed == true, saved?.mastery == true, saved?.memory == true].filter { $0 }.count
-    }
-
-    private var runSummaryText: String {
-        let count = runs.count
-        if settings.languagePreference == .czech {
+    static func runSummaryText(count: Int, bestPercent: Int, language: AppLanguage) -> String {
+        if language == .czech {
             let runsWord: String
             if count == 1 {
                 runsWord = "1 běh"
@@ -412,70 +562,94 @@ struct ResultCard: View {
                 runsWord = "\(count) běhů"
             }
             return "\(runsWord) · nejlepší \(bestPercent)\u{00a0}%"
-        } else {
-            let runsWord = count == 1 ? "1 run" : "\(count) runs"
-            return "\(runsWord) · best \(bestPercent)%"
         }
+        let runsWord = count == 1 ? "1 run" : "\(count) runs"
+        return "\(runsWord) · best \(bestPercent)%"
+    }
+}
+
+/// Modern black end-of-run card replacing the old summary strip.
+struct ResultCard: View {
+    @Environment(SettingsManager.self) private var settings
+    @Environment(\.accessibilityReduceMotion) private var reduced
+
+    let summary: RunSummary
+    let runs: [PracticeRunResult]
+    let saved: LessonProgress?
+    let event: StarEvent?
+    let announcement: String
+    var reviewFeedback: ReviewScheduler.ReviewFeedback? = nil
+    var badgeText: String? = nil
+    var isAfterMe: Bool = false
+    var isSectionLoop: Bool = false
+    var bestResponseScore: Double? = nil
+    let cardWidth: CGFloat?
+    let openRules: () -> Void
+    let openSessionResults: () -> Void
+    var starRulesAttachment: AnyView? = nil
+
+    @State private var revealedStars: Set<Int> = []
+    @State private var poppingStar: Int? = nil
+
+    private var model: EndOfRunCardModel {
+        EndOfRunCardModel.build(
+            summary: summary,
+            runs: runs,
+            saved: saved,
+            reviewFeedback: reviewFeedback,
+            badgeMessage: badgeText,
+            isAfterMe: isAfterMe,
+            isSectionLoop: isSectionLoop,
+            bestResponseScore: bestResponseScore,
+            language: settings.languagePreference
+        )
     }
 
-    private var voiceOverLabel: String {
-        let count = runs.count
-        let runPart: String
-        let noticePart: String = {
-            if let badgeText { return ", " + badgeText }
-            if saved?.memory != true && (saved?.mastery == true || summary.mastery) {
-                return ", " + StarRequirement.requirementText(for: 2, progress: saved, language: settings.languagePreference)
-            }
-            return ""
-        }()
-        if settings.languagePreference == .czech {
-            let runsWord: String
-            if count == 1 {
-                runsWord = "1 běh"
-            } else if count >= 2 && count <= 4 {
-                runsWord = "\(count) běhy"
-            } else {
-                runsWord = "\(count) běhů"
-            }
-            runPart = "\(runsWord), nejlepší \(bestPercent) procent"
-            return "Výsledek \(scorePercent) procent, \(starCount) ze 3 hvězd\(noticePart), \(runPart)"
-        } else {
-            let runsWord = count == 1 ? "1 run" : "\(count) runs"
-            runPart = "\(runsWord), best \(bestPercent) percent"
-            return "Result \(scorePercent) percent, \(starCount) of 3 stars\(noticePart), \(runPart)"
-        }
+    private var accuracySubtitle: String {
+        let locale = Locale(identifier: settings.languagePreference == .czech ? "cs" : "en")
+        let word = settings.localized("Accuracy").lowercased(with: locale)
+        return "\(word) · \(model.bpm) BPM"
+    }
+
+    private var isCompactWidth: Bool {
+        if let cardWidth { return cardWidth < 580 }
+        return false
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: Theme.Space.small) {
-            if let reviewMessage {
-                Text(reviewMessage)
-                    .font(Theme.display(22))
-                    .fontWeight(.semibold)
-                    .fixedSize(horizontal: false, vertical: true)
+        Group {
+            if isCompactWidth {
+                VStack(alignment: .leading, spacing: Theme.Space.regular) {
+                    HStack(alignment: .center, spacing: Theme.Space.regular) {
+                        scoreColumn
+                        Spacer(minLength: 0)
+                        if model.showsStars {
+                            starsRow
+                        }
+                        detailButton
+                    }
+                    statusAndChips
+                }
+            } else {
+                HStack(alignment: .center, spacing: Theme.Space.wide) {
+                    scoreColumn
+                    if model.showsStars {
+                        starsRow
+                    }
+                    statusAndChips
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                    detailButton
+                }
             }
-            HStack(spacing: Theme.Space.regular) {
-                scoreColumn
-                Spacer(minLength: 0)
-                starsColumn
-                Spacer(minLength: 0)
-                runSummaryColumn
-            }
         }
-        .padding(.horizontal, Theme.Space.regular)
-        .frame(width: cardWidth, height: cardHeight)
-        .satinPlate()
-        .contentShape(RoundedRectangle(cornerRadius: Theme.Skin.Plate.radius))
-        .onTapGesture {
-            openSessionResults()
-        }
-        .accessibilityElement(children: .ignore)
-        .accessibilityLabel([reviewMessage, voiceOverLabel].compactMap { $0 }.joined(separator: ". "))
-        .accessibilityHint(settings.localized("Shows all runs"))
-        .accessibilityAction(named: settings.localized("Star requirements")) {
-            openRules()
-        }
-        .task {
+        .padding(.horizontal, Theme.Space.handoff)
+        .padding(.vertical, Theme.Space.regular)
+        .frame(width: cardWidth)
+        .frame(minHeight: 168)
+        .foregroundStyle(Theme.white)
+        .background(Theme.black, in: RoundedRectangle(cornerRadius: 20))
+        .task(id: event?.id ?? summary.id) {
+            await animateFreshStars()
             if event == nil, !announcement.isEmpty {
                 UIAccessibility.post(notification: .announcement, argument: announcement)
             }
@@ -483,109 +657,169 @@ struct ResultCard: View {
     }
 
     private var scoreColumn: some View {
-        VStack(spacing: 2) {
-            Text("\(scorePercent)\u{00a0}%")
-                .font(Theme.display(reviewMessage == nil ? min(56, cardHeight * 0.36) : 18))
-                .fontWeight(.bold)
+        VStack(alignment: .leading, spacing: 2) {
+            Text("\(model.scorePercent)\u{00a0}%")
+                .font(Theme.boldDisplay(isCompactWidth ? 48 : 64))
                 .monospacedDigit()
+                .foregroundStyle(Theme.white)
                 .lineLimit(1)
-                .minimumScaleFactor(0.6)
-            Text(settings.localized("Last run"))
-                .font(Theme.meta)
-                .foregroundStyle(Theme.Skin.Display.secondary)
+                .minimumScaleFactor(0.65)
+            Text(accuracySubtitle)
+                .font(Theme.text(15))
+                .monospacedDigit()
+                .foregroundStyle(Theme.white.opacity(0.68))
                 .lineLimit(1)
-                .minimumScaleFactor(0.8)
         }
-        .padding(.horizontal, 6)
-        .padding(.vertical, 4)
-        .insetDisplay()
+        .frame(minWidth: isCompactWidth ? 110 : 164, alignment: .leading)
     }
 
-    private var starsColumn: some View {
-        VStack(spacing: 2) {
-            Button(action: openRules) {
-                HStack(spacing: Theme.Space.tight) {
-                    if saved?.reviewSchedule.isSettled == true {
-                        Image(systemName: "checkmark")
-                            .font(Theme.meta)
-                            .foregroundStyle(Theme.secondary)
-                            .accessibilityLabel(settings.localized("Settled"))
+    private var starsRow: some View {
+        Button(action: openRules) {
+            HStack(spacing: 6) {
+                ForEach(0..<3, id: \.self) { index in
+                    let earned = model.earnedStars[index]
+                    let isFresh = event?.award.fresh[index] == true
+                    let visible = earned && (!isFresh || reduced || revealedStars.contains(index))
+                    let popping = poppingStar == index && !reduced
+
+                    ZStack {
+                        if isFresh && visible {
+                            Circle()
+                                .fill(Theme.orange.opacity(0.22))
+                                .frame(width: 60, height: 60)
+                                .transition(.opacity)
+                        }
+                        Image(systemName: visible ? "star.fill" : "star")
+                            .font(.system(size: isCompactWidth ? 34 : 44, weight: .regular))
+                            .foregroundStyle(visible ? Theme.orange : Theme.white.opacity(0.28))
+                            .scaleEffect(popping ? 1.14 : 1)
                     }
-                    StarBurst(
-                        earned: [saved?.passed == true, saved?.mastery == true, saved?.memory == true],
-                        event: event,
-                        announcement: announcement
-                    )
-                }
-                .contentShape(Rectangle())
-            }
-            .buttonStyle(.plain)
-            .background {
-                if let starRulesAttachment {
-                    starRulesAttachment
+                    .frame(width: isFresh ? 60 : (isCompactWidth ? 36 : 44), height: 60)
                 }
             }
-
-            if let badgeText {
-                Text(badgeText)
-                    .font(Theme.meta)
-                    .foregroundStyle(Theme.secondary)
-                    .lineLimit(1)
-            } else if saved?.memory != true && (saved?.mastery == true || summary.mastery) {
-                Text(StarRequirement.requirementText(for: 2, progress: saved, language: settings.languagePreference))
-                    .font(Theme.meta)
-                    .foregroundStyle(Theme.secondary)
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.8)
-            }
-        }
-    }
-
-    private var runSummaryColumn: some View {
-        HStack(spacing: Theme.Space.tight) {
-            Text(runSummaryText)
-                .font(Theme.meta)
-                .foregroundStyle(Theme.secondary)
-                .lineLimit(1)
-            Image(systemName: "chevron.right")
-                .font(Theme.meta)
-                .foregroundStyle(Theme.secondary)
-        }
-    }
-}
-
-/// Offered after the 2nd star while the 3rd is missing: one tap starts Play from memory.
-struct MemoryChallengeButtonStyle: ButtonStyle {
-    var customHeight: CGFloat? = nil
-
-    func makeBody(configuration: Configuration) -> some View {
-        configuration.label
-            .font(Theme.action)
-            .foregroundStyle(Theme.black)
-            .lineLimit(1)
-            .padding(.horizontal, Theme.Space.regular)
-            .frame(height: customHeight)
-            .frame(minHeight: customHeight == nil ? Theme.Size.control : nil)
-            .background(PracticeBandStyle.orange.opacity(configuration.isPressed ? 0.8 : 1))
-            .overlay(Rectangle().stroke(Theme.ink, lineWidth: Theme.Size.border))
-            .opacity(configuration.isPressed ? 0.65 : 1)
             .contentShape(Rectangle())
-            .motion(value: configuration.isPressed)
+        }
+        .buttonStyle(.plain)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(settings.localized("%lld of 3 stars", model.earnedStars.filter { $0 }.count))
+        .accessibilityHint(settings.localized("Star requirements"))
+        .background {
+            if let starRulesAttachment {
+                starRulesAttachment
+            }
+        }
+    }
+
+    private var statusAndChips: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack(spacing: 10) {
+                Image(systemName: model.status.icon)
+                    .font(.system(size: 18, weight: .bold))
+                    .foregroundStyle(model.status.tintOrange ? Theme.orange : Theme.white.opacity(0.75))
+                    .accessibilityHidden(true)
+                Text(model.status.title)
+                    .font(Theme.strong(20))
+                    .foregroundStyle(Theme.white)
+                    .lineLimit(2)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+
+            if !model.chips.isEmpty {
+                FlowLayout(spacing: 8) {
+                    ForEach(model.chips) { chip in
+                        HStack(spacing: 6) {
+                            if let icon = chip.icon {
+                                Image(systemName: icon)
+                                    .font(.system(size: 14, weight: .semibold))
+                                    .accessibilityHidden(true)
+                            }
+                            Text(chip.text)
+                                .font(Theme.text(14).weight(chip.isOrange ? .semibold : .medium))
+                                .lineLimit(1)
+                        }
+                        .foregroundStyle(chip.isOrange ? Theme.black : Theme.white)
+                        .padding(.horizontal, 12)
+                        .frame(height: 32)
+                        .background(
+                            chip.isOrange ? Theme.orange : Theme.white.opacity(0.12),
+                            in: Capsule()
+                        )
+                    }
+                }
+            }
+        }
+    }
+
+    private var detailButton: some View {
+        ResultDetailButton(action: openSessionResults)
+    }
+
+    @MainActor
+    private func animateFreshStars() async {
+        guard let event, event.award.fresh.contains(true) else {
+            revealedStars = [0, 1, 2]
+            poppingStar = nil
+            return
+        }
+        revealedStars = Set((0..<3).filter { !event.award.fresh[$0] })
+        poppingStar = nil
+        if reduced {
+            revealedStars = [0, 1, 2]
+            UIAccessibility.post(notification: .announcement, argument: announcement)
+            return
+        }
+        for index in 0..<3 where event.award.fresh[index] {
+            do { try await Task.sleep(for: Theme.Motion.starStagger) } catch { return }
+            withAnimation(Theme.Motion.fast) {
+                _ = revealedStars.insert(index)
+                poppingStar = index
+            }
+            do { try await Task.sleep(for: .milliseconds(160)) } catch { return }
+            withAnimation(Theme.Motion.emphasis) {
+                poppingStar = nil
+            }
+        }
+        UIAccessibility.post(notification: .announcement, argument: announcement)
     }
 }
 
-/// The result action uses the same rounded outline as the approved result row.
-struct PracticeNextButtonStyle: ButtonStyle {
-    func makeBody(configuration: Configuration) -> some View {
-        configuration.label
-            .font(Theme.navigation)
-            .foregroundStyle(Theme.ink)
-            .padding(.horizontal, Theme.Space.regular)
-            .frame(minHeight: Theme.Size.rowLarge)
-            .background(Theme.background, in: Rectangle())
-            .overlay(Rectangle().strokeBorder(Theme.ink, lineWidth: Theme.Size.border))
-            .opacity(configuration.isPressed ? 0.65 : 1)
-            .fixedSize(horizontal: true, vertical: false)
+struct ResultDetailButton: View {
+    @Environment(SettingsManager.self) private var settings
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            BarChartGlyph()
+                .frame(width: 26, height: 26)
+                .foregroundStyle(Theme.white)
+                .frame(width: 56, height: 56)
+                .overlay {
+                    RoundedRectangle(cornerRadius: 14)
+                        .strokeBorder(Theme.white.opacity(0.35), lineWidth: 1.5)
+                }
+                .contentShape(RoundedRectangle(cornerRadius: 14))
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(settings.localized("Session results"))
+        .accessibilityHint(settings.localized("Shows all runs"))
+    }
+}
+
+private struct BarChartGlyph: View {
+    var body: some View {
+        Canvas { context, size in
+            let s = min(size.width, size.height) / 24
+            var path = Path()
+            let bars: [(CGFloat, CGFloat)] = [(4, 10), (10, 4), (16, 13)]
+            for (x, topY) in bars {
+                path.move(to: CGPoint(x: x * s, y: 20 * s))
+                path.addLine(to: CGPoint(x: x * s, y: topY * s))
+            }
+            path.move(to: CGPoint(x: 22 * s, y: 20 * s))
+            path.addLine(to: CGPoint(x: 2 * s, y: 20 * s))
+            context.stroke(path, with: .foreground, style: StrokeStyle(lineWidth: 2 * s, lineCap: .round, lineJoin: .round))
+        }
+        .accessibilityHidden(true)
     }
 }
 
@@ -598,12 +832,51 @@ struct RunMeterView: View {
     @ScaledMetric(relativeTo: .body) private var stepGap: CGFloat = 3
     @ScaledMetric(relativeTo: .body) private var blockInset: CGFloat = 2
 
-    let progress: (count: Int, required: Int, name: String, starIndex: Int)
+    let badgeTitle: String?
+    let starNumber: Int?
+    let count: Int
+    let required: Int
+    let accessibilityTarget: String
     let fraction: Double
     let verdict: RunVerdict?
     let starMomentActive: Bool
 
     @State private var flashingOutline = false
+
+    init(
+        progress: (count: Int, required: Int, name: String, starIndex: Int),
+        fraction: Double,
+        verdict: RunVerdict?,
+        starMomentActive: Bool
+    ) {
+        self.badgeTitle = nil
+        self.starNumber = progress.starIndex + 1
+        self.count = progress.count
+        self.required = progress.required
+        self.accessibilityTarget = progress.name
+        self.fraction = fraction
+        self.verdict = verdict
+        self.starMomentActive = starMomentActive
+    }
+
+    init(
+        badgeTitle: String,
+        count: Int,
+        required: Int,
+        accessibilityTarget: String,
+        fraction: Double,
+        verdict: RunVerdict?,
+        starMomentActive: Bool
+    ) {
+        self.badgeTitle = badgeTitle
+        self.starNumber = nil
+        self.count = count
+        self.required = required
+        self.accessibilityTarget = accessibilityTarget
+        self.fraction = fraction
+        self.verdict = verdict
+        self.starMomentActive = starMomentActive
+    }
 
     static func litMicroSteps(fraction: Double) -> Int {
         Int(min(1, max(0, fraction)) * 3)
@@ -612,8 +885,12 @@ struct RunMeterView: View {
     var body: some View {
         HStack(spacing: Theme.Space.small) {
             HStack(spacing: Theme.Space.tight) {
-                Image(systemName: "star.fill")
-                Text("\(progress.starIndex + 1)").monospacedDigit()
+                if let starNumber {
+                    Image(systemName: "star.fill")
+                    Text("\(starNumber)").monospacedDigit()
+                } else if let badgeTitle {
+                    Text(badgeTitle)
+                }
             }
             .font(Theme.rowTitle)
             .foregroundStyle(starMomentActive ? Theme.orange : Theme.ink)
@@ -623,15 +900,15 @@ struct RunMeterView: View {
             .overlay { Capsule().strokeBorder(Theme.hairline, lineWidth: 1) }
 
             HStack(spacing: Theme.Space.tight) {
-                ForEach(0..<progress.required, id: \.self) { index in
+                ForEach(0..<required, id: \.self) { index in
                     runBlock(index: index)
                 }
             }
         }
         .fixedSize()
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel(settings.localized("Consecutive passes for %@", settings.localized(progress.name)))
-        .accessibilityValue(settings.localized("%lld of %lld", progress.count, progress.required))
+        .accessibilityLabel(settings.localized("Consecutive passes for %@", settings.localized(accessibilityTarget)))
+        .accessibilityValue(settings.localized("%lld of %lld", count, required))
         .task(id: verdict?.id) {
             flashingOutline = verdict?.brokenStreak == true
             guard flashingOutline else { return }
@@ -641,8 +918,8 @@ struct RunMeterView: View {
     }
 
     private func runBlock(index: Int) -> some View {
-        let banked = index < progress.count
-        let lit = banked ? 3 : (index == progress.count ? Self.litMicroSteps(fraction: fraction) : 0)
+        let banked = index < count
+        let lit = banked ? 3 : (index == count ? Self.litMicroSteps(fraction: fraction) : 0)
         return VStack(spacing: stepGap) {
             ForEach((0..<3).reversed(), id: \.self) { step in
                 Rectangle()

@@ -635,11 +635,9 @@
 
 "Difficulty %lld of 5, %@" = "Difficulty %lld of 5, %@";
 "Tempo %lld BPM, goal %lld" = "Tempo %lld BPM, goal %lld";
-"Again" = "Again";
 "Session results" = "Session results";
 "Shows all runs" = "Shows all runs";
 "Run %lld" = "Run %lld";
-"Last run %lld percent, %lld BPM, %@" = "Last run %lld percent, %lld BPM, %@";
 "Result %lld percent, %lld of 3 stars, %@" = "Result %lld percent, %lld of 3 stars, %@";
 "Review star: pass two reviews on different days · %lld of 2" = "Review star: pass two reviews on different days · %lld of 2";
 
@@ -653,19 +651,21 @@
 "Review · step %lld of 4" = "Review · step %lld of 4";
 "Review · %lld of 2 passed" = "Review · %lld of 2 passed";
 "Review not passed · again tomorrow · practice goes on" = "Review not passed · again tomorrow · practice goes on";
-"Play on" = "Play on";
 "Review passed · next in %lld days" = "Review passed · next in %lld days";
 "Review passed · next in 1 day" = "Review passed · next in 1 day";
 "Lesson settled" = "Lesson settled";
 "Review not passed · again tomorrow" = "Review not passed · again tomorrow";
 "Does not count · play from memory at %lld BPM" = "Does not count · play from memory at %lld BPM";
+"Review passed" = "Review passed";
+"Review not passed" = "Review not passed";
+"next in 1 day" = "next in 1 day";
+"next in %lld days" = "next in %lld days";
+"again tomorrow" = "again tomorrow";
 
 
 
 /* Ticket 99: From memory fading notes */
 "Fade notes in From memory" = "Fade notes in From memory";
-"Pass 1 · notes shown" = "Pass 1 · notes shown";
-"Pass 2 · notes fading" = "Pass 2 · notes fading";
 
 /* Ticket 100: Training Mix. */
 "Mix" = "Mix";
@@ -862,7 +862,15 @@
 "help.tutorial.whereNext.title" = "Where to go next";
 "help.tutorial.whereNext.caption" = "Start with Intro. Tap Rules there for the details.\nBrowse all lessons in Library.\nFind reviews in Training and follow Today when reviews are due.\nOpen the question mark in a lesson, or How it works on Home or in Settings.";
 "help.lesson.title" = "The lesson screen";
-"help.lesson.caption" = "1 Lesson info · 2 Legend for pad names · 3 Help\n4 More tools: bars, sound and loops. Practise a bar loop without earning stars.\n5 From memory · 6 Static or scrolling view. Tap Static again to cycle through bar counts.\n7 Tempo · 8 Star requirements · 9 Start, Stop and Restart";
+"help.lesson.caption" = "1 Mode · 2 From memory · 3 Scrolling / static · 4 Bars · 5 Loop · 6 Info · 7 Legend · 8 Help · 9 Settings · 10 Tempo · 11 Start / Stop / Restart";
+"Mode" = "Mode";
+"Listen · Play · After me" = "Listen · Play · After me";
+"notes hide after 2 good passes in a row" = "notes hide after 2 good passes in a row";
+"Scrolling / static view" = "Scrolling / static view";
+"practice, no stars" = "practice, no stars";
+"Help" = "Help";
+"tap to change" = "tap to change";
+"Start · Stop · Restart" = "Start · Stop · Restart";
 "help.modes.title" = "Modes";
 "help.modes.caption" = "Listen: hear the pattern and join in. Tempo stays fixed and you earn no stars.\nPlay: earn stars by playing the pattern. Use More tools to turn the metronome or pattern sound on or off.\nAfter me: hear a phrase, then repeat it. Your response gets a score, with no lesson stars.";
 "help.signals.title" = "Colours and signals";

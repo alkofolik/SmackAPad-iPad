@@ -68,16 +68,18 @@ struct HelpIllustration: View {
                 illustration(nil)
             }
 
-            let lines = caption.components(separatedBy: "\n")
-            VStack(alignment: .leading, spacing: Theme.Space.small) {
-                ForEach(lines.indices, id: \.self) { index in
-                    Text(lines[index]).fixedSize(horizontal: false, vertical: true)
+            if topic != .lesson {
+                let lines = caption.components(separatedBy: "\n")
+                VStack(alignment: .leading, spacing: Theme.Space.small) {
+                    ForEach(lines.indices, id: \.self) { index in
+                        Text(lines[index]).fixedSize(horizontal: false, vertical: true)
+                    }
                 }
+                .font(Theme.text(captionSize))
             }
-            .font(Theme.text(captionSize))
         }
         .font(Theme.text(labelSize))
-        .padding(.vertical, Theme.Space.regular)
+        .padding(.vertical, topic == .lesson ? Theme.Space.small : Theme.Space.regular)
         .frame(maxWidth: .infinity, alignment: .leading)
     }
 
@@ -161,40 +163,127 @@ struct HelpIllustration: View {
         }
     }
 
+    private enum LegendIconStyle {
+        case light, dark, orange
+    }
+
+    private enum LegendGlyph {
+        case symbol(String)
+        case toolbar(PracticeToolbarIcon)
+        case text(String)
+    }
+
+    private struct LegendItem: Identifiable {
+        var id: Int { number }
+        let number: Int
+        let glyph: LegendGlyph
+        let style: LegendIconStyle
+        let titleKey: String
+        let subtitleKey: String?
+    }
+
+    private var lessonLegendItems: [LegendItem] {
+        [
+            LegendItem(number: 1, glyph: .toolbar(.crossedSticks), style: .light, titleKey: "Mode", subtitleKey: "Listen · Play · After me"),
+            LegendItem(number: 2, glyph: .symbol("brain.head.profile"), style: .light, titleKey: "From memory", subtitleKey: "notes hide after 2 good passes in a row"),
+            LegendItem(number: 3, glyph: .symbol("arrow.right.to.line"), style: .light, titleKey: "Scrolling / static view", subtitleKey: nil),
+            LegendItem(number: 4, glyph: .symbol("rectangle.split.2x1"), style: .light, titleKey: "Bars shown", subtitleKey: nil),
+            LegendItem(number: 5, glyph: .symbol("repeat"), style: .light, titleKey: "Section loop", subtitleKey: "practice, no stars"),
+            LegendItem(number: 6, glyph: .symbol("info.circle"), style: .light, titleKey: "Lesson info", subtitleKey: nil),
+            LegendItem(number: 7, glyph: .toolbar(.padLegend), style: .light, titleKey: "Pad legend", subtitleKey: nil),
+            LegendItem(number: 8, glyph: .symbol("questionmark.circle"), style: .light, titleKey: "Help", subtitleKey: nil),
+            LegendItem(number: 9, glyph: .symbol("switch.2"), style: .dark, titleKey: "Settings", subtitleKey: nil),
+            LegendItem(number: 10, glyph: .text("BPM"), style: .dark, titleKey: "Tempo", subtitleKey: "tap to change"),
+            LegendItem(number: 11, glyph: .symbol("play.fill"), style: .orange, titleKey: "Start · Stop · Restart", subtitleKey: nil),
+        ]
+    }
+
     private var lessonMap: some View {
-        VStack(alignment: .leading, spacing: Theme.Space.small) {
-            VStack(alignment: .leading, spacing: Theme.Space.small) {
-                HStack(spacing: Theme.Space.regular) {
-                    marker(1, "info.circle")
-                    marker(2, "list.bullet.rectangle")
-                    marker(3, "questionmark.circle")
-                    marker(4, "slider.horizontal.3")
+        let items = lessonLegendItems
+        let leftItems = Array(items.prefix(6))
+        let rightItems = Array(items.dropFirst(6))
+
+        return ViewThatFits(in: .horizontal) {
+            HStack(alignment: .top, spacing: Theme.Space.page) {
+                VStack(alignment: .leading, spacing: Theme.Space.regular) {
+                    ForEach(leftItems) { legendRow($0) }
                 }
-                HStack(spacing: Theme.Space.regular) {
-                    marker(5, "eye.slash")
-                    marker(6, "rectangle.split.2x2")
+                .frame(maxWidth: .infinity, alignment: .leading)
+
+                VStack(alignment: .leading, spacing: Theme.Space.regular) {
+                    ForEach(rightItems) { legendRow($0) }
                 }
+                .frame(maxWidth: .infinity, alignment: .leading)
             }
-            .accessibilityHidden(true)
-            HelpPatternBand(position: 4, matchedHit: true, height: 86)
-            HStack(spacing: Theme.Space.regular) {
-                marker(7, "metronome")
-                marker(8, "star")
-                marker(9, "play.fill")
+
+            VStack(alignment: .leading, spacing: Theme.Space.regular) {
+                ForEach(items) { legendRow($0) }
             }
-            .accessibilityHidden(true)
+            .frame(maxWidth: .infinity, alignment: .leading)
         }
     }
 
-    private func marker(_ number: Int, _ symbol: String) -> some View {
-        HStack(spacing: Theme.Space.tight) {
-            Text("\(number)")
-                .font(Theme.canvasDisplay(14))
-                .frame(width: 24, height: 24)
+    private func legendRow(_ item: LegendItem) -> some View {
+        HStack(alignment: .center, spacing: Theme.Space.small) {
+            Text("\(item.number)")
+                .font(Theme.display(14).bold())
+                .monospacedDigit()
+                .frame(width: 26, height: 26)
                 .foregroundStyle(Theme.black)
                 .background(Theme.orange, in: Circle())
-            Image(systemName: symbol).frame(minWidth: 22)
+
+            legendIconBox(glyph: item.glyph, style: item.style)
+
+            VStack(alignment: .leading, spacing: 2) {
+                Text(settings.localized(item.titleKey))
+                    .font(Theme.control)
+                    .fontWeight(.semibold)
+                    .foregroundStyle(Theme.ink)
+                    .fixedSize(horizontal: false, vertical: true)
+                if let subtitleKey = item.subtitleKey {
+                    Text(settings.localized(subtitleKey))
+                        .font(Theme.meta)
+                        .foregroundStyle(Theme.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+            }
         }
+        .accessibilityElement(children: .combine)
+    }
+
+    private func legendIconBox(glyph: LegendGlyph, style: LegendIconStyle) -> some View {
+        let fill: Color = switch style {
+        case .light: Theme.surface
+        case .dark: Theme.black
+        case .orange: Theme.orange
+        }
+        let foreground: Color = switch style {
+        case .light: Theme.ink
+        case .dark: Theme.white
+        case .orange: Theme.black
+        }
+        let border: Color = style == .light ? Theme.hairline : .clear
+
+        return Group {
+            switch glyph {
+            case .symbol(let name):
+                Image(systemName: name)
+                    .font(.system(size: 17, weight: .semibold))
+            case .toolbar(let icon):
+                PracticeToolbarGlyph(icon: icon, size: 19)
+            case .text(let label):
+                Text(label)
+                    .font(Theme.display(11).bold())
+            }
+        }
+        .foregroundStyle(foreground)
+        .frame(width: 36, height: 36)
+        .background(fill, in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+        .overlay {
+            RoundedRectangle(cornerRadius: 10, style: .continuous)
+                .strokeBorder(border, lineWidth: 1)
+        }
+        .accessibilityHidden(true)
     }
 
     private func modesExample(_ progress: Double?) -> some View {

@@ -74,6 +74,24 @@ struct PracticeScreen: View {
     private var focusActive: Bool { session.running && !session.listen }
     private var focusFade: Animation { reduced ? Theme.Motion.fast : Theme.Motion.standard }
 
+    private var activeSummary: RunSummary? {
+        #if DEBUG
+        return session.summary ?? (debugShowResult ? RunSummary(score: 0.94, bpm: session.lesson.targetBpm, passes: 2, passed: true, mastery: true, memory: false) : nil)
+        #else
+        return session.summary
+        #endif
+    }
+
+    private var isShowingResult: Bool {
+        activeSummary != nil && !session.running
+    }
+
+    private func dismissDebugResult() {
+        #if DEBUG
+        debugShowResult = false
+        #endif
+    }
+
     var body: some View {
         GeometryReader { geometry in
             let isPortrait = geometry.size.height > geometry.size.width
@@ -605,8 +623,10 @@ struct PracticeScreen: View {
             let frame = session.patternFrame(at: timeline.date)
             let scored = focusActive && frame.countdown == nil
                 && (!session.afterMe || frame.pass.isMultiple(of: 2))
+            let showingResult = isShowingResult
+            let passLineReserve: CGFloat = session.running ? 24 : 0
 
-            VStack(spacing: 0) {
+            VStack(spacing: Theme.Space.small) {
                 if focusActive || session.listen {
                     practiceHUD(frame: frame, date: timeline.date, scored: scored)
                         .fixedSize(horizontal: false, vertical: true)
@@ -618,55 +638,67 @@ struct PracticeScreen: View {
                         .font(Theme.rowTitle)
                         .lineLimit(1)
                         .frame(maxWidth: .infinity, alignment: .leading)
-                        .padding(.bottom, Theme.Space.small)
                         .allowsHitTesting(false)
                 }
 
                 GeometryReader { geometry in
                     let rows = Set(session.patternHits.map(\.padIndex)).count
-                    let bandHeight = min(geometry.size.height,
-                        PracticeBandStyle.bandHeight(rows: rows, availableHeight: geometry.size.height))
-                    practiceBand(frame: frame, scored: scored)
-                        .frame(height: bandHeight)
-                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    let bandAvailableHeight = max(0, geometry.size.height - passLineReserve)
+                    let bandHeight = min(bandAvailableHeight,
+                        PracticeBandStyle.bandHeight(rows: rows, availableHeight: bandAvailableHeight))
+
+                    VStack(spacing: Theme.Space.controlGap) {
+                        practiceBand(frame: frame, scored: scored)
+                            .frame(height: bandHeight)
+                            .opacity(showingResult ? 0.55 : 1)
+                            .animation(focusFade, value: showingResult)
+
+                        if session.running {
+                            PassProgressBar(
+                                pass: frame.pass,
+                                position: frame.position,
+                                bars: session.practiceLesson.bars,
+                                active: session.running && frame.countdown == nil,
+                                date: timeline.date
+                            )
+                        }
+                    }
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
                 }
             }
         }
     }
 
-    @ScaledMetric(relativeTo: .body) private var hudRowHeight: CGFloat = 64
-    @ScaledMetric(relativeTo: .body) private var hudNoticeHeight: CGFloat = 48
-
     private func practiceHUD(frame: PatternFrame, date: Date, scored: Bool) -> some View {
-        VStack(spacing: 0) {
-            ViewThatFits(in: .horizontal) {
-                HStack(spacing: Theme.Space.regular) {
+        ViewThatFits(in: .horizontal) {
+            HStack(alignment: .top, spacing: Theme.Space.regular) {
+                HStack(alignment: .center, spacing: Theme.Space.regular) {
                     hudTempo(bpm: frame.bpm)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                    TimingCue(offset: scored ? session.timingHistory.cueOffset(at: date) : 0, active: scored)
-                    runMeter(frame: frame, scored: scored)
-                        .frame(maxWidth: .infinity, alignment: .trailing)
-                }
-                VStack(spacing: Theme.Space.small) {
-                    HStack(spacing: Theme.Space.small) {
-                        hudTempo(bpm: frame.bpm)
-                        Spacer(minLength: 0)
-                        runMeter(frame: frame, scored: scored)
-                    }
-                    TimingCue(offset: scored ? session.timingHistory.cueOffset(at: date) : 0, active: scored)
-                }
-            }
-            .frame(minHeight: hudRowHeight)
-
-            // Notices never compete with the tempo, cue or run meter for width.
-            FlowLayout(spacing: Theme.Space.small) {
-                if focusActive {
                     tempoUpBanner
-                    PlayingLastRunChip(lastRun: session.runResults.last)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+
+                VStack(alignment: .trailing, spacing: Theme.Space.tight) {
+                    runMeter(frame: frame, scored: scored)
+                    TimingCue(offset: scored ? session.timingHistory.cueOffset(at: date) : 0, active: scored)
+                }
+                .fixedSize(horizontal: true, vertical: false)
+            }
+
+            VStack(alignment: .leading, spacing: Theme.Space.small) {
+                HStack(alignment: .top, spacing: Theme.Space.small) {
+                    hudTempo(bpm: frame.bpm)
+                    Spacer(minLength: 0)
+                    runMeter(frame: frame, scored: scored)
+                }
+                HStack(spacing: Theme.Space.small) {
+                    tempoUpBanner
+                    Spacer(minLength: 0)
+                    TimingCue(offset: scored ? session.timingHistory.cueOffset(at: date) : 0, active: scored)
                 }
             }
-            .frame(maxWidth: .infinity, minHeight: hudNoticeHeight, alignment: .trailing)
         }
+        .frame(maxWidth: .infinity)
     }
 
     private func hudTempo(bpm: Int) -> some View {
@@ -686,21 +718,16 @@ struct PracticeScreen: View {
     @ViewBuilder
     private func runMeter(frame: PatternFrame, scored: Bool) -> some View {
         if focusActive {
-            if session.showsMemoryFadePhase {
-                let completed = session.completedWarmUps
-                let progressText = settings.localized("%lld / %lld", completed, LearningRules.warmUpPassesNeeded)
-                MemoryPhaseChip(
-                    completed: completed,
-                    label: "\(settings.localized("From memory")), \(progressText)"
-                )
-            } else if let progress = session.starRunProgress {
-                RunMeterView(
-                    progress: progress,
-                    fraction: scored ? session.runMeterFraction(at: frame) : 0,
-                    verdict: session.lastVerdict,
-                    starMomentActive: midLessonStarMomentActive
-                )
-            }
+            PracticeProgressMeter(
+                showWarmUps: session.showsMemoryFadePhase,
+                completedWarmUps: session.completedWarmUps,
+                starProgress: session.starRunProgress,
+                reviewProgress: session.reviewRunProgress,
+                fraction: scored ? session.runMeterFraction(at: frame) : 0,
+                verdict: session.lastVerdict,
+                starMomentActive: midLessonStarMomentActive,
+                currentAccuracy: session.currentRunAccuracy
+            )
         }
     }
 
@@ -768,188 +795,198 @@ struct PracticeScreen: View {
     }
 
     private func bottomZoneRow(s: CGFloat, availableWidth: CGFloat, spaceAbove: CGFloat) -> some View {
-        #if DEBUG
-        let activeSummary = session.summary ?? (debugShowResult ? RunSummary(score: 0.94, bpm: session.lesson.targetBpm, passes: 2, passed: true, mastery: true, memory: false) : nil)
-        #else
-        let activeSummary = session.summary
-        #endif
-        let showsResult = activeSummary != nil && !session.running
-        let gap = max(0, (availableWidth - 3 * s) / 2)
-        let resultCardWidth = 2 * s + gap
+        let showingResult = isShowingResult
+        let transportWidth = min(200, max(s, 176))
+        let resultGap = Theme.Space.regular
+        let stackedResult = availableWidth < 680
+        let cardWidth = stackedResult
+            ? availableWidth
+            : max(0, availableWidth - transportWidth - resultGap)
+        let cardHeight: CGFloat = 168
 
-        return HStack(spacing: 0) {
-            if showsResult, session.isMix {
-                mixResultsCard
-                    .frame(width: resultCardWidth, height: s)
-                Spacer(minLength: 0)
-                transportSquare(s: s)
-            } else if showsResult, session.afterMe {
-                afterMeResultsCard
-                    .frame(width: resultCardWidth, height: s)
-                Spacer(minLength: 0)
-                transportSquare(s: s)
-            } else if showsResult, let summary = activeSummary {
-                ResultCard(
-                    summary: summary,
-                    runs: session.runResults,
-                    saved: session.savedProgress,
-                    event: session.starEvent,
-                    announcement: resultAnnouncement,
-                    reviewMessage: session.finishedByReview ? session.reviewFeedback?.message(language: settings.languagePreference) : nil,
-                    badgeText: session.badgeSummaryMessage(settings: settings),
-                    cardWidth: resultCardWidth,
-                    cardHeight: s,
-                    openRules: {
-                        showingDetails = false
-                        showingTempo = false
-                        showingStarRules = true
-                    },
-                    openSessionResults: {
-                        showingStarRules = false
-                        showingTempo = false
-                        showingDetails = true
-                    },
-                    starRulesAttachment: AnyView(
-                        Color.clear
-                            .adaptivePopoverOrSheet(
-                                isPresented: $showingStarRules,
-                                asSheet: spaceAbove < 415,
-                                arrowEdge: .bottom
-                            ) {
-                                starRules
-                            }
+        return Group {
+            if showingResult, let summary = activeSummary {
+                let resultView: AnyView = if session.isMix {
+                    AnyView(mixResultsCard(summary: summary, minHeight: cardHeight, spaceAbove: spaceAbove))
+                } else {
+                    AnyView(
+                        ResultCard(
+                            summary: summary,
+                            runs: session.runResults,
+                            saved: session.savedProgress,
+                            event: session.starEvent,
+                            announcement: resultAnnouncement,
+                            reviewFeedback: session.isMix || session.afterMe ? nil : session.reviewFeedback,
+                            badgeText: session.badgeSummaryMessage(settings: settings),
+                            isAfterMe: session.afterMe,
+                            isSectionLoop: session.isSectionLoop,
+                            bestResponseScore: session.bestResponseScore,
+                            cardWidth: cardWidth,
+                            openRules: {
+                                showingDetails = false
+                                showingTempo = false
+                                showingStarRules = true
+                            },
+                            openSessionResults: {
+                                showingStarRules = false
+                                showingTempo = false
+                                showingDetails = true
+                            },
+                            starRulesAttachment: AnyView(
+                                Color.clear
+                                    .adaptivePopoverOrSheet(
+                                        isPresented: $showingStarRules,
+                                        asSheet: spaceAbove < 415,
+                                        arrowEdge: .bottom
+                                    ) {
+                                        starRules
+                                    }
+                            )
+                        )
+                        .adaptivePopoverOrSheet(
+                            isPresented: $showingDetails,
+                            asSheet: spaceAbove < 650,
+                            arrowEdge: .bottom
+                        ) {
+                            sessionResultsView(summary)
+                        }
                     )
-                )
-                .adaptivePopoverOrSheet(
-                    isPresented: $showingDetails,
-                    asSheet: spaceAbove < 650,
-                    arrowEdge: .bottom
-                ) {
-                    sessionResultsView(summary)
                 }
 
-                Spacer(minLength: 0)
-
-                transportSquare(s: s)
+                if stackedResult {
+                    VStack(spacing: Theme.Space.controlGap) {
+                        resultView
+                            .frame(maxWidth: .infinity)
+                        transportSquare(
+                            s: s,
+                            resultSize: nil,
+                            horizontalResultButtons: true
+                        )
+                    }
+                } else {
+                    HStack(alignment: .center, spacing: resultGap) {
+                        resultView
+                            .frame(width: cardWidth)
+                        transportSquare(
+                            s: s,
+                            resultSize: CGSize(width: transportWidth, height: cardHeight),
+                            horizontalResultButtons: false
+                        )
+                    }
+                }
             } else {
-                padLayoutSquare(s: s)
-                Spacer(minLength: 0)
-                tempoSquare(s: s, spaceAbove: spaceAbove)
-                    .opacity(focusActive ? 0 : 1)
-                    .allowsHitTesting(!focusActive)
-                    .accessibilityHidden(focusActive)
-                    .animation(focusFade, value: focusActive)
-                Spacer(minLength: 0)
-                transportSquare(s: s)
+                HStack(spacing: 0) {
+                    padLayoutSquare(s: s)
+                    Spacer(minLength: 0)
+                    tempoSquare(s: s, spaceAbove: spaceAbove)
+                        .opacity(focusActive ? 0 : 1)
+                        .allowsHitTesting(!focusActive)
+                        .accessibilityHidden(focusActive)
+                        .animation(focusFade, value: focusActive)
+                    Spacer(minLength: 0)
+                    transportSquare(s: s, resultSize: nil, horizontalResultButtons: false)
+                }
             }
         }
         .frame(maxWidth: .infinity)
     }
 
-    private var afterMeResultsCard: some View {
-        VStack(alignment: .leading, spacing: Theme.Space.small) {
-            Text(settings.localized("Practice only · no stars"))
-                .font(Theme.control)
-            HStack {
-                Text(settings.localized("Last response"))
-                Spacer(minLength: 0)
-                Text(responseScore(session.lastResult?.score))
-            }
-            HStack {
-                Text(settings.localized("Best response"))
-                Spacer(minLength: 0)
-                Text(responseScore(session.bestResponseScore))
-            }
-        }
-        .font(Theme.meta)
-        .monospacedDigit()
-        .padding(Theme.Space.regular)
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
-        .satinPlate()
-        .contentShape(RoundedRectangle(cornerRadius: Theme.Skin.Plate.radius))
-        .accessibilityElement(children: .combine)
-    }
-
-    private func responseScore(_ score: Double?) -> String {
-        score.map { "\(Int(($0 * 100).rounded())) %" } ?? "—"
-    }
-
-    private var mixResultsCard: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: Theme.Space.small) {
-                if session.isMixFullyMet {
-                    HStack(spacing: Theme.Space.small) {
-                        if let starEvent = session.starEvent {
-                            StarBurst(
-                                earned: starEvent.award.earned,
-                                event: starEvent,
-                                announcement: resultAnnouncement,
-                                size: 20
-                            )
-                        } else {
-                            Image(systemName: "checkmark")
-                                .font(Theme.control)
-                                .foregroundStyle(PracticeBandStyle.orange)
-                            Text(settings.localized("Done"))
-                                .font(Theme.control)
-                                .fontWeight(.semibold)
-                        }
-                    }
-                    .padding(.bottom, Theme.Space.tight)
-                }
-
-                ForEach(session.mixResults) { result in
-                    VStack(alignment: .leading, spacing: Theme.Space.tight) {
-                        HStack(alignment: .center, spacing: Theme.Space.small) {
-                            if result.score != nil {
-                                if result.met {
-                                    Image(systemName: "checkmark")
-                                        .font(Theme.meta)
-                                        .foregroundStyle(PracticeBandStyle.orange)
-                                        .accessibilityLabel(settings.localized("Passed"))
-                                } else if !result.counted {
-                                    Image(systemName: "exclamationmark.circle")
-                                        .font(Theme.meta)
-                                        .foregroundStyle(Theme.orange)
-                                        .accessibilityLabel(settings.localized("Did not count"))
-                                } else {
-                                    Image(systemName: "xmark")
-                                        .font(Theme.meta)
-                                        .foregroundStyle(Theme.markWrong)
-                                        .accessibilityLabel(settings.localized("not passed"))
-                                }
-                            }
-                            Text(settings.localized(result.title))
-                                .lineLimit(1)
-                            Spacer(minLength: 0)
-                            if result.score != nil {
+    private func mixResultsCard(summary: RunSummary, minHeight: CGFloat, spaceAbove: CGFloat) -> some View {
+        HStack(alignment: .center, spacing: Theme.Space.regular) {
+            ScrollView {
+                VStack(alignment: .leading, spacing: Theme.Space.small) {
+                    if session.isMixFullyMet {
+                        HStack(spacing: Theme.Space.small) {
+                            if let starEvent = session.starEvent {
                                 StarBurst(
-                                    earned: result.earnedStars,
-                                    event: result.starEvent,
-                                    announcement: result.starEvent.map { starAnnouncement(for: $0) } ?? "",
-                                    size: 11
+                                    earned: starEvent.award.earned,
+                                    event: starEvent,
+                                    announcement: resultAnnouncement,
+                                    size: 20
                                 )
+                            } else {
+                                Image(systemName: "checkmark")
+                                    .font(Theme.control)
+                                    .foregroundStyle(Theme.orange)
+                                Text(settings.localized("Done"))
+                                    .font(Theme.control)
+                                    .fontWeight(.semibold)
                             }
-                            Text(result.score.map { "\(Int(($0 * 100).rounded())) %" } ?? "—")
-                                .monospacedDigit()
                         }
-                        Text(mixBarSummary(result))
-                            .foregroundStyle(Theme.secondary)
-                            .fixedSize(horizontal: false, vertical: true)
-                        if let review = result.reviewFeedback?.message(language: settings.languagePreference)
-                            ?? session.reviewStatusText(for: result.id, settings: settings) {
-                            Text(review)
-                                .foregroundStyle(Theme.secondary)
-                                .fixedSize(horizontal: false, vertical: true)
-                        }
+                        .padding(.bottom, Theme.Space.tight)
                     }
-                    .font(Theme.meta)
+
+                    ForEach(session.mixResults) { result in
+                        VStack(alignment: .leading, spacing: Theme.Space.tight) {
+                            HStack(alignment: .center, spacing: Theme.Space.small) {
+                                if result.score != nil {
+                                    if result.met {
+                                        Image(systemName: "checkmark")
+                                            .font(Theme.meta)
+                                            .foregroundStyle(Theme.orange)
+                                            .accessibilityLabel(settings.localized("Passed"))
+                                    } else if !result.counted {
+                                        Image(systemName: "exclamationmark.circle")
+                                            .font(Theme.meta)
+                                            .foregroundStyle(Theme.orange)
+                                            .accessibilityLabel(settings.localized("Did not count"))
+                                    } else {
+                                        Image(systemName: "xmark")
+                                            .font(Theme.meta)
+                                            .foregroundStyle(Theme.markWrong)
+                                            .accessibilityLabel(settings.localized("not passed"))
+                                    }
+                                }
+                                Text(settings.localized(result.title))
+                                    .lineLimit(1)
+                                Spacer(minLength: 0)
+                                if result.score != nil {
+                                    StarBurst(
+                                        earned: result.earnedStars,
+                                        event: result.starEvent,
+                                        announcement: result.starEvent.map { starAnnouncement(for: $0) } ?? "",
+                                        size: 11
+                                    )
+                                }
+                                Text(result.score.map { "\(Int(($0 * 100).rounded()))\u{00a0}%" } ?? "—")
+                                    .monospacedDigit()
+                            }
+                            Text(mixBarSummary(result))
+                                .foregroundStyle(Theme.white.opacity(0.68))
+                                .fixedSize(horizontal: false, vertical: true)
+                            if let review = result.reviewFeedback?.message(language: settings.languagePreference)
+                                ?? session.reviewStatusText(for: result.id, settings: settings) {
+                                Text(review)
+                                    .foregroundStyle(Theme.white.opacity(0.68))
+                                    .fixedSize(horizontal: false, vertical: true)
+                            }
+                        }
+                        .font(Theme.meta)
+                    }
                 }
             }
-            .padding(Theme.Space.small)
+
+            if !session.runResults.isEmpty {
+                ResultDetailButton {
+                    showingStarRules = false
+                    showingTempo = false
+                    showingDetails = true
+                }
+            }
         }
-        .satinPlate()
-        .contentShape(RoundedRectangle(cornerRadius: Theme.Skin.Plate.radius))
+        .padding(.horizontal, 28)
+        .padding(.vertical, 22)
+        .foregroundStyle(Theme.white)
+        .frame(maxWidth: .infinity, minHeight: minHeight, maxHeight: minHeight, alignment: .leading)
+        .background(Theme.black, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
+        .contentShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+        .adaptivePopoverOrSheet(
+            isPresented: $showingDetails,
+            asSheet: spaceAbove < 650,
+            arrowEdge: .bottom
+        ) {
+            sessionResultsView(summary)
+        }
         .accessibilityLabel(settings.localized("Mix results"))
     }
 
@@ -1044,69 +1081,68 @@ struct PracticeScreen: View {
         .accessibilityLabel(settings.localized("Tempo %lld BPM, goal %lld", session.bpm, session.lesson.targetBpm))
     }
 
-    private func transportSquare(s: CGFloat) -> some View {
-        let showsResult = session.summary != nil && !session.running
-        let second = showsResult && (!session.isMix || onStepResult != nil) && !session.afterMe
-            && (!session.finishedByReview || onStepResult != nil) ? transportSecondAction(s: s) : nil
-        let startTitle = (session.errorMessage != nil || session.isMix) ? "Start" : (session.finishedByReview ? "Play on" : "Again")
+    private func transportSquare(
+        s: CGFloat,
+        resultSize: CGSize?,
+        horizontalResultButtons: Bool
+    ) -> some View {
+        let showingResult = isShowingResult
+        let eligibleForNext = (!session.isMix || onStepResult != nil)
+            && !session.afterMe
+            && (!session.finishedByReview || onStepResult != nil)
+
+        var nextEnabled = false
+        var nextLocked = false
+        var nextHint: String?
+        var nextAction: (() -> Void)?
+
+        if eligibleForNext {
+            if onStepResult != nil {
+                nextEnabled = true
+                nextAction = {
+                    dismissDebugResult()
+                    session.stop()
+                    reportStepResult()
+                    if let dismissLesson { dismissLesson() } else { dismiss() }
+                }
+            } else if session.savedProgress?.passed == true, let next = nextLesson {
+                nextEnabled = true
+                nextLocked = !store.isUnlocked(next)
+                nextHint = settings.localized(next.title)
+                nextAction = {
+                    dismissDebugResult()
+                    openNextLesson(next)
+                }
+            }
+        }
+
+        if !nextEnabled && nextHint == nil {
+            nextHint = settings.localized("No next lesson available")
+        }
+
         return TransportControls(
             running: session.running,
             enabled: session.ready && session.available,
-            showsResult: showsResult,
-            resultStartTitle: startTitle,
+            showsResult: showingResult,
+            nextEnabled: nextEnabled,
+            nextLocked: nextLocked,
+            nextHint: nextHint,
+            nextAction: nextAction,
             squareSize: s,
-            secondAction: second.map { AnyView($0) },
-            start: { showingInfo = false; session.start() },
+            resultSize: resultSize,
+            horizontalResultButtons: horizontalResultButtons,
+            start: {
+                dismissDebugResult()
+                showingInfo = false
+                session.start()
+            },
             stop: session.stop,
-            restart: { showingInfo = false; session.restart() }
+            restart: {
+                dismissDebugResult()
+                showingInfo = false
+                session.restart()
+            }
         )
-        .frame(width: s, height: s)
-    }
-
-    @ViewBuilder
-    private func transportSecondAction(s: CGFloat) -> some View {
-        let buttonHeight = max(0, (s - Theme.Space.controlGap) / 2)
-        if onStepResult != nil {
-            Button {
-                session.stop()
-                reportStepResult()
-                if let dismissLesson { dismissLesson() } else { dismiss() }
-            } label: {
-                Text(settings.localized("Continue"))
-                    .font(Theme.action)
-                    .lineLimit(1)
-                    .fixedSize()
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
-                    .frame(height: buttonHeight)
-            }
-            .buttonStyle(PadPrimaryButtonStyle())
-        } else if session.savedProgress?.passed == true {
-            nextLessonButton(buttonHeight: buttonHeight)
-        }
-    }
-
-    private func nextLessonButton(buttonHeight: CGFloat) -> some View {
-        Button {
-            if let next = nextLesson {
-                openNextLesson(next)
-            }
-        } label: {
-            Group {
-                if let next = nextLesson, !store.isUnlocked(next) {
-                    Label(settings.localized("Next lesson"), systemImage: "lock")
-                } else {
-                    Text(settings.localized("Next lesson"))
-                }
-            }
-            .font(Theme.action)
-            .lineLimit(1)
-            .minimumScaleFactor(0.8)
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
-            .frame(height: buttonHeight)
-        }
-        .buttonStyle(PadPrimaryButtonStyle())
-        .disabled(nextLesson == nil)
-        .accessibilityHint(nextLesson.map { settings.localized($0.title) } ?? settings.localized("No next lesson available"))
     }
 
     private var handLegend: some View {

@@ -187,6 +187,26 @@ extension View {
     }
 }
 
+struct PracticeToolbarGlyph: View {
+    let icon: PracticeToolbarIcon
+    var size: CGFloat = 22
+
+    var body: some View {
+        switch icon {
+        case .symbol(let name):
+            Image(systemName: name)
+                .font(.system(size: size, weight: .medium))
+                .accessibilityHidden(true)
+        case .crossedSticks:
+            CrossedSticksGlyph()
+                .frame(width: size, height: size)
+        case .padLegend:
+            PadLegendGlyph()
+                .frame(width: size, height: size)
+        }
+    }
+}
+
 private struct CrossedSticksGlyph: View {
     var body: some View {
         Canvas { context, size in
@@ -216,7 +236,6 @@ private struct CrossedSticksGlyph: View {
             context.stroke(leftTip, with: .foreground, style: style)
             context.stroke(rightTip, with: .foreground, style: style)
         }
-        .frame(width: 22, height: 22)
         .accessibilityHidden(true)
     }
 }
@@ -243,7 +262,6 @@ private struct PadLegendGlyph: View {
             lines.addLine(to: CGPoint(x: 18 * s, y: 19 * s))
             context.stroke(lines, with: .foreground, style: style)
         }
-        .frame(width: 22, height: 22)
         .accessibilityHidden(true)
     }
 }
@@ -331,27 +349,20 @@ struct PracticeIconButton: View {
     private var buttonContent: some View {
         if let count {
             HStack(spacing: 4) {
-                glyphView(symbolSize: 16)
+                PracticeToolbarGlyph(icon: icon, size: 16)
                 Text("\(count)")
                     .font(Theme.strong(15))
                     .monospacedDigit()
             }
         } else {
-            glyphView(symbolSize: 20)
+            let glyphSize: CGFloat = icon == .symbol(iconName) ? 20 : 22
+            PracticeToolbarGlyph(icon: icon, size: glyphSize)
         }
     }
 
-    @ViewBuilder
-    private func glyphView(symbolSize: CGFloat) -> some View {
-        switch icon {
-        case .symbol(let name):
-            Image(systemName: name)
-                .font(.system(size: symbolSize, weight: .medium))
-        case .crossedSticks:
-            CrossedSticksGlyph()
-        case .padLegend:
-            PadLegendGlyph()
-        }
+    private var iconName: String {
+        if case .symbol(let name) = icon { return name }
+        return ""
     }
 }
 
@@ -383,157 +394,115 @@ struct TransportControls: View {
     let running: Bool
     let enabled: Bool
     var showsResult: Bool = false
-    var resultStartTitle: String = "Again"
-    var preferredWidth: CGFloat = Theme.Size.transportWidth
-    var squareSize: CGFloat? = nil
-    var secondAction: AnyView? = nil
+    var nextEnabled: Bool = false
+    var nextLocked: Bool = false
+    var nextHint: String? = nil
+    var nextAction: (() -> Void)? = nil
+    var squareSize: CGFloat
+    var resultSize: CGSize? = nil
+    var horizontalResultButtons: Bool = false
     let start: () -> Void
     let stop: () -> Void
     let restart: () -> Void
 
     var body: some View {
-        if let s = squareSize {
-            squareBody(s: s)
+        if showsResult {
+            resultBody
         } else {
-            ViewThatFits(in: .horizontal) {
-                HStack(spacing: Theme.Space.controlGap) { buttons }
-                    .frame(minWidth: preferredWidth)
-                    .fixedSize(horizontal: true, vertical: true)
-                VStack(alignment: .trailing, spacing: Theme.Space.controlGap) { buttons }
-            }
-            .fixedSize(horizontal: false, vertical: true)
-            .motion(Theme.Motion.standard, value: running)
-            .transaction { if Theme.Motion.Policy(reduced: reduced).opacityOnly { $0.animation = nil } }
+            runningOrIdleBody
         }
-    }
-
-    private var actionTitle: String {
-        running ? "Stop" : (showsResult ? resultStartTitle : "Start")
     }
 
     @ViewBuilder
-    private func squareBody(s: CGFloat) -> some View {
-        let buttonHeight = max(0, (s - Theme.Space.controlGap) / 2)
-        if showsResult {
-            if let secondAction {
-                VStack(spacing: Theme.Space.controlGap) {
-                    Button(action: start) {
-                        HStack(spacing: Theme.Space.small) {
-                            Text(settings.localized(resultStartTitle))
-                                .font(Theme.action)
-                                .lineLimit(1)
-                                .fixedSize()
-                        }
-                        .frame(maxWidth: .infinity, maxHeight: .infinity)
-                    }
-                    .buttonStyle(PadSecondaryButtonStyle())
-                    .frame(width: s, height: buttonHeight)
-                    .disabled(!enabled)
-                    .opacity(enabled ? 1 : 0.5)
+    private var resultBody: some View {
+        let layout = horizontalResultButtons
+            ? AnyLayout(HStackLayout(spacing: Theme.Space.controlGap))
+            : AnyLayout(VStackLayout(spacing: Theme.Space.controlGap))
+        let buttonHeight: CGFloat? = horizontalResultButtons
+            ? 64
+            : resultSize.map { max(0, ($0.height - Theme.Space.controlGap) / 2) }
 
-                    secondAction
-                        .frame(width: s, height: buttonHeight)
-                }
-                .frame(width: s, height: s)
-            } else {
-                Button(action: start) {
-                    HStack(spacing: Theme.Space.small) {
-                        Text(settings.localized(resultStartTitle))
-                            .font(Theme.action)
-                            .lineLimit(1)
-                            .fixedSize()
-                    }
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
-                }
-                .buttonStyle(PadSecondaryButtonStyle())
-                .frame(width: s, height: s)
-                .disabled(!enabled)
-                .opacity(enabled ? 1 : 0.5)
-            }
-        } else {
-            VStack(spacing: Theme.Space.controlGap) {
-                Button(action: running ? stop : start) {
-                    HStack(spacing: Theme.Space.small) {
-                        if running {
-                            Rectangle().frame(width: 14, height: 14).transition(.opacity)
-                        }
-                        Text(settings.localized(running ? "Stop" : "Start"))
-                            .font(Theme.action)
-                            .lineLimit(1)
-                            .fixedSize()
-                            .id(running ? "Stop" : "Start")
-                            .transition(.opacity)
-                    }
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
-                }
-                .buttonStyle(PadPrimaryButtonStyle())
-                .frame(width: s, height: buttonHeight)
-                .disabled(!running && !enabled)
-                .opacity(running || enabled ? 1 : 0.5)
-
-                Button(action: restart) {
-                    HStack(spacing: Theme.Space.small) {
-                        PracticeGlyph(kind: .restart).frame(width: 18, height: 18)
-                        Text(settings.localized("Restart"))
-                            .font(Theme.action)
-                            .lineLimit(1)
-                            .fixedSize()
-                    }
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
-                }
-                .buttonStyle(PadSecondaryButtonStyle())
-                .frame(width: s, height: buttonHeight)
-                .disabled(!enabled)
-                .opacity(enabled ? 1 : 0.5)
-            }
-            .frame(width: s, height: s)
-            .motion(Theme.Motion.standard, value: running)
-            .transaction { if Theme.Motion.Policy(reduced: reduced).opacityOnly { $0.animation = nil } }
-        }
-    }
-
-    @ViewBuilder private var buttons: some View {
-        if showsResult {
-            Button(action: start) {
+        layout {
+            Button {
+                nextAction?()
+            } label: {
                 HStack(spacing: Theme.Space.small) {
-                    Text(settings.localized(resultStartTitle))
+                    if nextLocked {
+                        Image(systemName: "lock")
+                            .font(.system(size: 16, weight: .semibold))
+                    }
+                    Text(settings.localized("Next"))
                         .font(Theme.action)
-                        .lineLimit(1).fixedSize()
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.8)
+                    if !nextLocked {
+                        Image(systemName: "chevron.right")
+                            .font(.system(size: 18, weight: .semibold))
+                    }
                 }
-                .frame(height: Theme.Size.control)
-                .frame(maxWidth: .infinity)
-            }
-            .buttonStyle(PadSecondaryButtonStyle())
-            .disabled(!enabled)
-            .opacity(enabled ? 1 : 0.5)
-        } else {
-            Button(action: running ? stop : start) {
-                HStack(spacing: Theme.Space.small) {
-                    if running { Rectangle().frame(width: 16, height: 16).transition(.opacity) }
-                    Text(settings.localized(actionTitle))
-                        .font(Theme.action)
-                        .lineLimit(1).fixedSize()
-                        .id(actionTitle).transition(.opacity)
-                }
-                .frame(height: Theme.Size.control)
-                .frame(maxWidth: .infinity)
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
             .buttonStyle(PadPrimaryButtonStyle())
-            .disabled(!running && !enabled)
-            .opacity(running || enabled ? 1 : 0.5)
-        }
-        if running {
+            .frame(height: buttonHeight)
+            .disabled(!nextEnabled || nextAction == nil)
+            .accessibilityHint(nextHint ?? "")
+
             Button(action: restart) {
-                HStack(spacing: Theme.Space.small) {
-                    PracticeGlyph(kind: .restart).frame(width: 20, height: 20)
-                    Text(settings.localized("Restart")).lineLimit(1).fixedSize()
-                }
-                .frame(height: Theme.Size.control)
-                .frame(maxWidth: .infinity)
+                Text(settings.localized("Restart"))
+                    .font(Theme.action)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.8)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
             .buttonStyle(PadSecondaryButtonStyle())
-            .transition(.opacity)
+            .frame(height: buttonHeight)
+            .disabled(!enabled)
+            .opacity(enabled ? 1 : 0.5)
         }
+        .frame(width: horizontalResultButtons ? nil : resultSize?.width,
+               height: horizontalResultButtons ? nil : resultSize?.height)
+    }
+
+    private var runningOrIdleBody: some View {
+        let buttonHeight = max(0, (squareSize - Theme.Space.controlGap) / 2)
+        return VStack(spacing: Theme.Space.controlGap) {
+            Button(action: running ? stop : start) {
+                HStack(spacing: Theme.Space.small) {
+                    if running {
+                        Rectangle().frame(width: 14, height: 14).transition(.opacity)
+                    }
+                    Text(settings.localized(running ? "Stop" : "Start"))
+                        .font(Theme.action)
+                        .lineLimit(1)
+                        .fixedSize()
+                        .id(running ? "Stop" : "Start")
+                        .transition(.opacity)
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+            }
+            .buttonStyle(PadPrimaryButtonStyle())
+            .frame(width: squareSize, height: buttonHeight)
+            .disabled(!running && !enabled)
+            .opacity(running || enabled ? 1 : 0.5)
+
+            Button(action: restart) {
+                HStack(spacing: Theme.Space.small) {
+                    PracticeGlyph(kind: .restart).frame(width: 18, height: 18)
+                    Text(settings.localized("Restart"))
+                        .font(Theme.action)
+                        .lineLimit(1)
+                        .fixedSize()
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+            }
+            .buttonStyle(PadSecondaryButtonStyle())
+            .frame(width: squareSize, height: buttonHeight)
+            .disabled(!enabled)
+            .opacity(enabled ? 1 : 0.5)
+        }
+        .frame(width: squareSize, height: squareSize)
+        .motion(Theme.Motion.standard, value: running)
+        .transaction { if Theme.Motion.Policy(reduced: reduced).opacityOnly { $0.animation = nil } }
     }
 }
 
@@ -601,73 +570,6 @@ struct RunSummary: Identifiable {
     var finishedByStar: Int? = nil
     var runs: [PracticeRunResult] = []
     var firstStar2: Bool = false
-}
-
-struct SummaryStrip: View {
-    @State private var revealed: Set<Int> = []
-    @Environment(SettingsManager.self) private var settings
-    let summary: RunSummary
-    var dismiss: (() -> Void)? = nil
-    let detail: () -> Void
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: Theme.Space.small) {
-            if let star = summary.finishedByStar {
-                HStack(spacing: Theme.Space.small) {
-                    Text(settings.localized(star == 3
-                        ? "Run finished: star 3 earned, review"
-                        : "Run finished: star 2 earned, goal tempo"))
-                        .font(Theme.meta)
-                        .fixedSize(horizontal: false, vertical: true)
-                    if let dismiss {
-                        Button(action: dismiss) {
-                            Text(settings.localized("Close"))
-                                .font(Theme.meta)
-                                .frame(minWidth: Theme.Size.touch)
-                                .textButtonTarget()
-                        }
-                    }
-                }
-            }
-            if summary.firstStar2 {
-                Text(settings.localized("Comes back tomorrow for a review"))
-                    .font(Theme.meta)
-                    .foregroundStyle(Theme.secondary)
-            }
-            HStack(spacing: Theme.Space.regular) {
-                Text("\(Int((summary.score * 100).rounded())) %").font(Theme.mainValue).monospacedDigit()
-                HStack(spacing: Theme.Space.small) {
-                    star(summary.passed && revealed.contains(0), settings.localized("Passed"))
-                    star(summary.mastery && revealed.contains(1), settings.localized("Goal tempo"))
-                    star(summary.memory && revealed.contains(2), settings.localized(StarRequirement.titleKeys[2]))
-                }
-                Button(action: detail) {
-                    Text(settings.localized("Details"))
-                        .font(Theme.control)
-                        .textButtonTarget()
-                }
-            }
-            Text(settings.localized("Last run"))
-                .font(Theme.meta).foregroundStyle(Theme.secondary)
-        }
-        .task(id: summary.id) {
-            revealed = []
-            for index in 0..<3 {
-                do { try await Task.sleep(for: Theme.Motion.starStagger) } catch { return }
-                revealed.insert(index)
-            }
-        }
-    }
-
-    private func star(_ earned: Bool, _ label: String) -> some View {
-        StarShape()
-            .fill(earned ? Theme.ink : Theme.background)
-            .overlay(StarShape().stroke(Theme.ink, lineWidth: Theme.Size.border))
-            .frame(width: 24, height: 24)
-            .accessibilityLabel(label)
-            .accessibilityValue(settings.localized(earned ? "earned" : "not earned"))
-            .motion(value: earned)
-    }
 }
 
 struct StarShape: Shape {
