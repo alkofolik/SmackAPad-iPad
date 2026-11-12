@@ -511,7 +511,7 @@ struct PracticeProgressMeter: View {
     }
 
     var body: some View {
-        HStack(spacing: Theme.Space.small) {
+        HStack(spacing: Theme.Space.regular) {
             if showWarmUps {
                 warmUpEyes
                 if starProgress != nil || reviewProgress != nil {
@@ -559,7 +559,7 @@ struct PracticeProgressMeter: View {
 
     private var warmUpEyes: some View {
         let progressText = settings.localized("%lld / %lld", completedWarmUps, LearningRules.warmUpPassesNeeded)
-        return HStack(spacing: Theme.Space.tight + 2) {
+        return HStack(spacing: Theme.Space.controlGap) {
             ForEach(0..<LearningRules.warmUpPassesNeeded, id: \.self) { index in
                 let done = index < completedWarmUps
                 Image(systemName: done ? "eye.slash.fill" : "eye")
@@ -609,7 +609,9 @@ struct EndOfRunCardModel: Equatable {
         isAfterMe: Bool,
         isSectionLoop: Bool,
         bestResponseScore: Double?,
-        language: AppLanguage
+        language: AppLanguage,
+        isDueReview: Bool = false,
+        reviewPendingReason: PracticeStepOutcome.Reason? = nil
     ) -> EndOfRunCardModel {
         let scorePercent = Int((summary.score * 100).rounded())
         let earnedStars = [saved?.passed == true, saved?.mastery == true, saved?.memory == true]
@@ -648,6 +650,11 @@ struct EndOfRunCardModel: Equatable {
         } else if isSectionLoop {
             status = EndOfRunStatus(icon: "repeat", tintOrange: false, title: language.localized("Section loop"))
             chips.append(EndOfRunChip(text: language.localized("Practice only · no stars"), isOrange: false, icon: nil))
+        } else if isDueReview {
+            // An undecided due review must never report a regular "Passed" card (ticket 189).
+            status = EndOfRunStatus(icon: "exclamationmark.circle", tintOrange: false, title: language.localized("Not counted"))
+            let reason = reviewPendingReason ?? .unfinishedReview
+            chips.append(EndOfRunChip(text: reason.message(language: language), isOrange: false, icon: nil))
         } else if summary.passes == 0 {
             status = EndOfRunStatus(icon: "exclamationmark.circle", tintOrange: false, title: language.localized("Not counted"))
         } else if summary.passed || runs.last?.passed == true || summary.score >= Scoring.passMark {
@@ -721,6 +728,8 @@ struct ResultCard: View {
     let event: StarEvent?
     let announcement: String
     var reviewFeedback: ReviewScheduler.ReviewFeedback? = nil
+    var isDueReview: Bool = false
+    var reviewPendingReason: PracticeStepOutcome.Reason? = nil
     var badgeText: String? = nil
     var isAfterMe: Bool = false
     var isSectionLoop: Bool = false
@@ -743,7 +752,9 @@ struct ResultCard: View {
             isAfterMe: isAfterMe,
             isSectionLoop: isSectionLoop,
             bestResponseScore: bestResponseScore,
-            language: settings.languagePreference
+            language: settings.languagePreference,
+            isDueReview: isDueReview,
+            reviewPendingReason: reviewPendingReason
         )
     }
 
@@ -854,7 +865,7 @@ struct ResultCard: View {
 
     private var statusAndChips: some View {
         VStack(alignment: .leading, spacing: 10) {
-            HStack(spacing: 10) {
+            HStack(alignment: .firstTextBaseline, spacing: 10) {
                 Image(systemName: model.status.icon)
                     .font(.system(size: 18, weight: .bold))
                     .foregroundStyle(model.status.tintOrange ? Theme.orange : Theme.white.opacity(0.75))
@@ -862,7 +873,6 @@ struct ResultCard: View {
                 Text(model.status.title)
                     .font(Theme.strong(20))
                     .foregroundStyle(Theme.white)
-                    .lineLimit(2)
                     .fixedSize(horizontal: false, vertical: true)
             }
 
@@ -1025,7 +1035,7 @@ struct RunMeterView: View {
     }
 
     var body: some View {
-        HStack(spacing: Theme.Space.small) {
+        HStack(spacing: Theme.Space.regular) {
             HStack(spacing: Theme.Space.tight) {
                 if let starNumber {
                     Image(systemName: "star.fill")

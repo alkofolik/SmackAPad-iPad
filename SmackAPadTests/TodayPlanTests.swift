@@ -261,4 +261,40 @@ final class TodayPlanTests: XCTestCase {
         XCTAssertEqual(progress2.trainingLog.reviewsPassed, 1)
         XCTAssertEqual(coordinator2.plan.reconcilingReviews(with: progress2.records).reviewSummary.passed, 1)
     }
+
+    @MainActor
+    func testReconcilingReviewsAndPostponeNeverMovePassedReviewBackToToday() {
+        let today = AppCalendar.today()
+        let nextWeek = AppCalendar.addingDays(7, to: today) ?? today
+        let suiteName = "TodayPlanTests.\(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: suiteName)!
+        defer { defaults.removePersistentDomain(forName: suiteName) }
+        let file = FileManager.default.temporaryDirectory.appendingPathComponent("\(suiteName).json")
+        defer { try? FileManager.default.removeItem(at: file) }
+
+        let progress = ProgressStore(fileURL: file, autoLoad: false)
+        let passed = LessonProgress(passed: true, mastery: true, memory: true,
+                                    currentBpm: 90, reviewStep: 2, reviewDueDay: nextWeek,
+                                    lastReviewedDay: today)
+        progress.setProgress(passed, for: 6)
+
+        let plan = TodayPlan.make(day: today, dueLessonIDs: [6], nextLessonID: 7, mixLessonIDs: [])!
+        let reconciled = plan.reconcilingReviews(with: progress.records)
+        XCTAssertEqual(reconciled.reviewSummary.passed, 1)
+        XCTAssertEqual(reconciled.steps[0].outcome?.reviewFeedback, .passed(nextStep: 2, gapDays: 7))
+
+        // Postponing directly or via TodaySessionCoordinator must leave a passed review on its future date.
+        let postponedSchedule = ReviewScheduler.postpone(passed.reviewSchedule, today: today)
+        XCTAssertEqual(postponedSchedule.reviewDueDay, nextWeek)
+        XCTAssertEqual(postponedSchedule.lastReviewedDay, today)
+
+        progress.postponeReview(for: 6, today: today)
+        XCTAssertEqual(progress.progress(for: 6)?.reviewDueDay, nextWeek)
+        XCTAssertFalse(progress.dueLessonIds(today: today).contains(6))
+
+        let coordinator = TodaySessionCoordinator(plan: plan, defaults: defaults)
+        coordinator.skip(progress: progress)
+        XCTAssertEqual(progress.progress(for: 6)?.reviewDueDay, nextWeek)
+        XCTAssertFalse(progress.dueLessonIds(today: today).contains(6))
+    }
 }

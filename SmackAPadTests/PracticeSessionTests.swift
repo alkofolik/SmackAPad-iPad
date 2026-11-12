@@ -522,4 +522,90 @@ final class PracticeSessionTests: XCTestCase {
             XCTAssertNotNil(session.reviewFeedback, "\(label) should record review feedback")
         }
     }
+
+    @MainActor
+    func testTodayStepDueReviewStopsAfterPassAndLeavesDueQueue() async throws {
+        let suite = "today-step-due-review-\(UUID().uuidString)"
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))
+        defer { defaults.removePersistentDomain(forName: suite) }
+        let settings = SettingsManager(userDefaults: defaults)
+        settings.fadeMemoryNotes = true
+        let file = FileManager.default.temporaryDirectory.appendingPathComponent("\(suite).json")
+        defer { try? FileManager.default.removeItem(at: file) }
+        let progress = ProgressStore(fileURL: file, autoLoad: false)
+        let hits = [
+            LessonHit(step: 0, padIndex: 12, hand: "L", velocity: 100),
+            LessonHit(step: 0, padIndex: 13, hand: "R", velocity: 100),
+            LessonHit(step: 4, padIndex: 13, hand: "R", velocity: 100),
+            LessonHit(step: 8, padIndex: 12, hand: "L", velocity: 100),
+            LessonHit(step: 8, padIndex: 13, hand: "R", velocity: 100),
+            LessonHit(step: 12, padIndex: 13, hand: "R", velocity: 100)
+        ]
+        let lesson = Lesson(id: 10_006, cat: "intro", title: "Kick and hat together", genre: "", tags: [],
+                            text: "", division: 16, bars: 1, startBpm: 60, targetBpm: 80,
+                            level: 1, src: "test", hits: hits)
+        let today = AppCalendar.today()
+        let due = LessonProgress(passed: true, mastery: true, memory: true,
+                                 currentBpm: 80, reviewStep: 2, reviewDueDay: today)
+        progress.setProgress(due, for: lesson.id)
+        XCTAssertTrue(progress.dueLessonIds(today: today).contains(lesson.id))
+
+        let plan = try XCTUnwrap(TodayPlan.make(day: today, dueLessonIDs: [lesson.id], nextLessonID: 10_007, mixLessonIDs: []))
+        let coordinator = TodaySessionCoordinator(plan: plan, defaults: defaults)
+        coordinator.continueSession()
+
+        let launch: LessonLaunch = .review(lesson)
+        let midi = MIDIInput(settings: settings)
+        var time = AVAudioTime.seconds(forHostTime: mach_absolute_time())
+        let session = PracticeSession(lesson: lesson, settings: settings, progress: progress, midi: midi,
+                                      initialFromMemory: launch.reviewTempo != nil, initialBpm: launch.reviewTempo,
+                                      clock: { time }, currentDay: { today })
+        defer { session.close() }
+        session.metronome = false
+        await session.prepare()
+        XCTAssertTrue(session.ready, session.errorMessage ?? "Sound preparation failed")
+
+        time = AVAudioTime.seconds(forHostTime: mach_absolute_time())
+        let firstStart = time + 0.6 + 240.0 / 80.0
+        session.start()
+
+        for pass in 0..<4 {
+            let passStart = firstStart + Double(pass) * 12.0
+            for bar in 0..<4 {
+                let barStart = passStart + Double(bar) * 3.0
+                for hit in hits {
+                    time = barStart + Double(hit.step) * 15.0 / 80.0
+                    session.tick()
+                    midi.onPadEvent?(PadInputEvent(padIndex: hit.padIndex, velocity: 100, isNoteOn: true,
+                        timestamp: AVAudioTime.hostTime(forSeconds: time), deviceID: "test"))
+                }
+            }
+            time = passStart + 11.6
+            session.tick()
+            time = passStart + 12.01
+            session.tick()
+
+            if pass < 3 {
+                XCTAssertTrue(session.running)
+                XCTAssertFalse(session.finishedByReview)
+                XCTAssertTrue(progress.dueLessonIds(today: today).contains(lesson.id))
+            }
+        }
+
+        XCTAssertFalse(session.running, "Today review must stop automatically on the deciding hidden pass")
+        XCTAssertTrue(session.finishedByReview)
+        let expectedDueDay = AppCalendar.addingDays(LearningRules.reviewGapsDays[3], to: today)
+        XCTAssertEqual(session.reviewFeedback, .passed(nextStep: 3, gapDays: LearningRules.reviewGapsDays[3]))
+        XCTAssertEqual(progress.progress(for: lesson.id)?.reviewStep, 3)
+        XCTAssertEqual(progress.progress(for: lesson.id)?.reviewDueDay, expectedDueDay)
+        XCTAssertEqual(progress.progress(for: lesson.id)?.lastReviewedDay, today)
+        XCTAssertFalse(progress.dueLessonIds(today: today).contains(lesson.id),
+                       "Passed review must leave dueLessonIds immediately")
+
+        let outcome = try XCTUnwrap(session.todayStepOutcome)
+        coordinator.record(outcome)
+        coordinator.leavePractice(progress: progress)
+        XCTAssertEqual(coordinator.plan.reviewSummary.passed, 1)
+        XCTAssertFalse(progress.dueLessonIds(today: today).contains(lesson.id))
+    }
 }

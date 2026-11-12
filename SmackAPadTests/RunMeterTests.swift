@@ -97,5 +97,23 @@ final class RunMeterTests: XCTestCase {
         )
         XCTAssertFalse(notCounted.status.tintOrange)
         XCTAssertEqual(notCounted.status.icon, "exclamationmark.circle")
+
+        let earlyDueStop = EndOfRunCardModel.build(
+            summary: RunSummary(score: 1.0, bpm: 80, passes: 1, passed: true, mastery: false, memory: false),
+            runs: [PracticeRunResult(runNumber: 1, score: 1.0, bpm: 80, passed: true)],
+            saved: LessonProgress(passed: true, mastery: true, memory: true, currentBpm: 80, reviewStep: 2, reviewDueDay: "2026-11-12"),
+            reviewFeedback: nil,
+            badgeMessage: nil,
+            isAfterMe: false,
+            isSectionLoop: false,
+            bestResponseScore: nil,
+            language: .english,
+            isDueReview: true,
+            reviewPendingReason: .notesVisible
+        )
+        XCTAssertFalse(earlyDueStop.status.tintOrange)
+        XCTAssertEqual(earlyDueStop.status.icon, "exclamationmark.circle")
+        XCTAssertEqual(earlyDueStop.status.title, AppLanguage.english.localized("Not counted"))
+        XCTAssertEqual(earlyDueStop.chips.first?.text, PracticeStepOutcome.Reason.notesVisible.message(language: .english))
     }
 }

@@ -900,6 +900,8 @@ struct PracticeScreen: View {
                             event: session.starEvent,
                             announcement: resultAnnouncement,
                             reviewFeedback: session.isMix || session.afterMe ? nil : session.reviewFeedback,
+                            isDueReview: session.isDueReview && !session.isSectionLoop,
+                            reviewPendingReason: session.reviewPendingReason,
                             badgeText: session.badgeSummaryMessage(settings: settings),
                             isAfterMe: session.afterMe,
                             isSectionLoop: session.isSectionLoop,

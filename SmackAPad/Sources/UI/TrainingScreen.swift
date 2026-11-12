@@ -30,6 +30,7 @@ public struct TrainingScreen: View {
     @State private var data: TrainingData?
     @State private var refreshID = UUID()
     @State private var isVisible = false
+    @State private var isQueueVisible = false
     @State private var loadedDailyMixes = ""
     @State private var calendarDay = AppCalendar.today()
     @Environment(\.scenePhase) private var scenePhase
@@ -112,6 +113,7 @@ public struct TrainingScreen: View {
         let settledLessons: [Lesson]
     }
 
+    private var isTrainingActive: Bool { isVisible || isQueueVisible }
     private var today: String { calendarDay }
     private var dueLessons: [Lesson] { data?.dueLessons ?? [] }
     private var nextLesson: Lesson? { data?.nextLesson }
@@ -196,14 +198,20 @@ public struct TrainingScreen: View {
                 }
             }
             .task(id: refreshID) {
-                // Let the lightweight shell and pad zoom reach the screen before loading data.
-                do { try await Task.sleep(for: .milliseconds(50)) }
-                catch { return }
+                if data == nil {
+                    // Let the lightweight shell and pad zoom reach the screen before loading data.
+                    do { try await Task.sleep(for: .milliseconds(50)) }
+                    catch { return }
+                }
                 refreshTrainingData()
             }
             .onAppear {
                 isVisible = true
-                refreshID = UUID()
+                if data != nil {
+                    refreshTrainingData()
+                } else {
+                    refreshID = UUID()
+                }
                 TrainingOpenMeasurement.appeared()
             }
             .onDisappear { isVisible = false }
@@ -232,7 +240,9 @@ public struct TrainingScreen: View {
                     )
                 }
             }
-            .fullScreenCover(isPresented: $showingToday) {
+            .fullScreenCover(isPresented: $showingToday, onDismiss: {
+                refreshTrainingData()
+            }) {
                 if let plan = activeTodayPlan {
                     TodaySessionScreen(plan: plan) { showingToday = false }
                 }
@@ -240,6 +250,11 @@ public struct TrainingScreen: View {
         }
         .environment(\.lessonNamespace, lessonNamespace)
         .practiceLessonPresentation(launch: $selectedLesson, namespace: lessonNamespace)
+        .onChange(of: selectedLesson?.id) { _, id in
+            if id == nil {
+                refreshTrainingData()
+            }
+        }
     }
 
     private var header: some View {
@@ -1449,6 +1464,11 @@ public struct TrainingScreen: View {
         .calmChassisBackground()
         .navigationBarBackButtonHidden(true)
         .toolbar(.hidden, for: .navigationBar)
+        .onAppear {
+            isQueueVisible = true
+            refreshTrainingData()
+        }
+        .onDisappear { isQueueVisible = false }
     }
 
     // MARK: - 6. Settled
@@ -1536,7 +1556,7 @@ public struct TrainingScreen: View {
     }
 
     private func refreshTrainingData() {
-        guard isVisible else { return }
+        guard isTrainingActive else { return }
         let generation = refreshID
         let started = Date.timeIntervalSinceReferenceDate
         // Observation invalidates this snapshot once when an actual input changes.
@@ -1545,7 +1565,7 @@ public struct TrainingScreen: View {
             makeTrainingData()
         } onChange: {
             Task { @MainActor in
-                guard isVisible, refreshID == generation else { return }
+                guard isTrainingActive, refreshID == generation else { return }
                 refreshID = UUID()
             }
         }
