@@ -11,19 +11,55 @@ final class FirstRunAndLegibilityTests: XCTestCase {
         XCTAssertTrue(hasAnyLessonProgress([1: LessonProgress(memory: true)]))
     }
 
-    func testTutorialEligibilityRequiresAnUnseenEmptyProfileOnHome() {
-        func eligible(_ records: [Int: LessonProgress] = [:], seen: Bool = false, homeIsIdle: Bool = true) -> Bool {
-            TutorialLaunch.shouldPresent(loadSucceeded: true, records: records, seen: seen, homeIsIdle: homeIsIdle)
-        }
-
+    @MainActor
+    func testEmptyProfileDoesNotPresentTutorialAndStartsIntroPulse() throws {
         XCTAssertEqual(TutorialCard.allCases.count, 5)
-        XCTAssertTrue(eligible())
-        XCTAssertFalse(eligible(seen: true))
-        XCTAssertFalse(eligible([1: LessonProgress(hasPlayed: true)]))
-        XCTAssertFalse(eligible([1: LessonProgress(passed: true)]))
-        XCTAssertTrue(eligible([1: LessonProgress(currentBpm: 80)]))
-        XCTAssertFalse(eligible(homeIsIdle: false))
-        XCTAssertTrue(eligible(homeIsIdle: true))
+
+        XCTAssertTrue(shouldPulseIntroPad(loadSucceeded: true, records: [:], animationFinished: true))
+        XCTAssertTrue(shouldPulseIntroPad(loadSucceeded: true, records: [1: LessonProgress(currentBpm: 80)], animationFinished: true))
+        XCTAssertFalse(shouldPulseIntroPad(loadSucceeded: true, records: [1: LessonProgress(hasPlayed: true)], animationFinished: true))
+        XCTAssertFalse(shouldPulseIntroPad(loadSucceeded: true, records: [1: LessonProgress(passed: true)], animationFinished: true))
+        XCTAssertFalse(shouldPulseIntroPad(loadSucceeded: false, records: [:], animationFinished: true))
+        XCTAssertFalse(shouldPulseIntroPad(loadSucceeded: true, records: [:], animationFinished: false))
+
+        let suite = "FirstRunAndLegibilityTests.\(UUID().uuidString)"
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))
+        defer { defaults.removePersistentDomain(forName: suite) }
+
+        let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent("FirstRunTest-\(UUID().uuidString)")
+        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: tempDir) }
+
+        let settings = SettingsManager(userDefaults: defaults)
+        let progress = ProgressStore(fileURL: tempDir.appendingPathComponent("progress.json"))
+        let lessons = LessonStore.shared
+        let progression = ProgressionManager(
+            lessonStore: lessons,
+            progressStore: progress,
+            settingsManager: settings,
+            userDefaults: defaults
+        )
+        let store = StoreManager()
+        let badges = BadgeStore(userDefaults: defaults)
+        let midi = MIDIInput(settings: settings)
+
+        let root = HomeScreen(isColdStart: false)
+            .defaultAppStorage(defaults)
+            .environment(store)
+            .environment(settings)
+            .environment(progress)
+            .environment(progression)
+            .environment(badges)
+            .environment(midi)
+
+        let host = UIHostingController(rootView: root)
+        let window = UIWindow(frame: CGRect(x: 0, y: 0, width: 1024, height: 768))
+        window.rootViewController = host
+        window.makeKeyAndVisible()
+        defer { window.isHidden = true }
+
+        RunLoop.main.run(until: Date().addingTimeInterval(0.05))
+        XCTAssertNil(host.presentedViewController)
     }
 
     func testHelpStringsArePresentInEachLanguageBundle() throws {
@@ -58,6 +94,20 @@ final class FirstRunAndLegibilityTests: XCTestCase {
                 XCTAssertFalse(value == missing || value.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
                                "\(language): \(key)")
             }
+
+            let trainingTitle = bundle.localizedString(forKey: "help.training.title", value: missing, table: nil)
+            XCTAssertEqual(trainingTitle, language == "en" ? "Training" : "Trénink")
+
+            for key in ["help.training.caption", "help.tutorial.whereNext.caption"] {
+                let value = bundle.localizedString(forKey: key, value: missing, table: nil)
+                XCTAssertLessThanOrEqual(value.components(separatedBy: "\n").count, 4, "\(language): \(key)")
+            }
+
+            let fadeOption = bundle.localizedString(forKey: "Fade notes in From memory", value: missing, table: nil)
+            let memoryFormat = bundle.localizedString(forKey: "help.memory.caption", value: missing, table: nil)
+            let memoryCaption = String(format: memoryFormat, locale: Locale(identifier: language), fadeOption)
+            XCTAssertLessThanOrEqual(memoryCaption.components(separatedBy: "\n").count, 4, "\(language): help.memory.caption")
+            XCTAssertTrue(memoryCaption.contains("80 %"), "\(language): help.memory.caption")
         }
     }
 

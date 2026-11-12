@@ -691,7 +691,6 @@ public final class SettingsManager: @unchecked Sendable {
         let scrolling = userDefaults.string(forKey: "smackapad.practice.scrolling") ?? "continuous"
         let practiceAppearance = userDefaults.string(forKey: "smackapad.practice.appearance") ?? "system"
 
-        let tutorialSeen = userDefaults.bool(forKey: "smackapad.tutorial.seen")
         let legendShownOnce = userDefaults.bool(forKey: "smackapad.legend.shownOnce")
         let memoryHints = userDefaults.array(forKey: "smackapad.memoryHintShownLessonIds") as? [Int] ?? []
 
@@ -729,7 +728,6 @@ public final class SettingsManager: @unchecked Sendable {
             touchPadsInPortrait: touchPadsInPortrait,
             scrolling: scrolling,
             practiceAppearance: practiceAppearance,
-            tutorialSeen: tutorialSeen,
             legendShownOnce: legendShownOnce,
             memoryHintShownLessonIds: Set(memoryHints)
         )
@@ -783,7 +781,6 @@ public final class SettingsManager: @unchecked Sendable {
         userDefaults.set(settings.scrolling, forKey: "smackapad.practice.scrolling")
         userDefaults.set(settings.practiceAppearance, forKey: "smackapad.practice.appearance")
 
-        userDefaults.set(settings.tutorialSeen, forKey: "smackapad.tutorial.seen")
         userDefaults.set(settings.legendShownOnce, forKey: "smackapad.legend.shownOnce")
         if !settings.memoryHintShownLessonIds.isEmpty {
             userDefaults.set(Array(settings.memoryHintShownLessonIds), forKey: "smackapad.memoryHintShownLessonIds")

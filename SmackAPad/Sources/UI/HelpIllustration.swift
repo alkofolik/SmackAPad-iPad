@@ -429,7 +429,6 @@ struct HelpIllustration: View {
                 destination("Intro", "play.circle", highlighted: true)
                 destination("Library", "square.grid.2x2")
                 destination("Training", "arrow.clockwise")
-                destination("Today", "sun.max")
             }
             label("help.title", "questionmark.circle")
         }

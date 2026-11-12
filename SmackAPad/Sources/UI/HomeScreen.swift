@@ -4,6 +4,14 @@ func hasAnyLessonProgress(_ records: [Int: LessonProgress]) -> Bool {
     records.values.contains { $0.hasPlayed || $0.passed || $0.mastery || $0.memory }
 }
 
+func shouldPulseIntroPad(
+    loadSucceeded: Bool,
+    records: [Int: LessonProgress],
+    animationFinished: Bool
+) -> Bool {
+    loadSucceeded && animationFinished && !hasAnyLessonProgress(records)
+}
+
 /// One proportional coordinate system for the grid, title and decorative hardware.
 private struct HomeControllerLayout: Equatable {
     static let helpRowSpace = Theme.Size.touch + Theme.Space.small
@@ -703,10 +711,8 @@ public struct HomeScreen: View {
     @Environment(\.scenePhase) private var scenePhase
     @AppStorage(TodayPlan.storageKey) private var savedTodayPlan = ""
     @AppStorage("smackapad.training.dailyMixes") private var dailyMixes = "{}"
-    @AppStorage(TutorialLaunch.seenKey) private var tutorialSeen = false
-    @State private var showingTutorial = false
-    @State private var tutorialVisible = false
     @State private var helpPresentation: HelpPresentation?
+    @State private var didFocusIntro = false
     @AccessibilityFocusState private var introFocused: Bool
     @AccessibilityFocusState private var helpFocused: Bool
     @State private var calendarDay = AppCalendar.today()
@@ -808,8 +814,6 @@ public struct HomeScreen: View {
                     .frame(width: gridSize, height: gridSize)
                     .position(x: containerW / 2, y: settledGridCenterY)
                     .opacity(gridOpacity)
-                    .disabled(tutorialBlocksInput)
-                    .accessibilityHidden(tutorialBlocksInput)
 
                 if animationFinished {
                     Button {
@@ -826,8 +830,6 @@ public struct HomeScreen: View {
                     .helpDeck(presentation: $helpPresentation, arrowEdge: .bottom) {
                         helpFocused = true
                     }
-                    .disabled(tutorialBlocksInput)
-                    .accessibilityHidden(tutorialBlocksInput)
                     .padding(.top, layout.plate.maxY + Theme.Space.tight)
                     .frame(maxHeight: .infinity, alignment: .top)
                 }
@@ -872,27 +874,11 @@ public struct HomeScreen: View {
                 startAnimation()
             }
         }
-        .onChange(of: tutorialEligible, initial: true) { _, eligible in
-            if eligible { showingTutorial = true }
-        }
-        .onChange(of: homeIsIdle) { _, idle in
-            if !idle { showingTutorial = false }
-        }
-        .sheet(isPresented: $showingTutorial, onDismiss: {
-            if homeIsIdle && tutorialVisible && !hasProgress { introFocused = true }
-            tutorialVisible = false
-        }) {
-            HelpDeck(firstLaunch: true) { showingTutorial = false }
-                .presentationDragIndicator(.visible)
-                .onAppear {
-                    if tutorialVisible { return }
-                    guard tutorialMayStart && showingTutorial else {
-                        showingTutorial = false
-                        return
-                    }
-                    tutorialVisible = true
-                    tutorialSeen = true
-                }
+        .onChange(of: introFocusEligible, initial: true) { _, eligible in
+            if eligible {
+                didFocusIntro = true
+                introFocused = true
+            }
         }
         #if DEBUG
         .debugTestMarker()
@@ -922,14 +908,17 @@ public struct HomeScreen: View {
         AppNavigation.shared.route == .home && activeDestination == nil && helpPresentation == nil
     }
 
-    private var tutorialMayStart: Bool {
-        TutorialLaunch.shouldPresent(loadSucceeded: progress.loadedSuccessfully, records: progress.records,
-            seen: tutorialSeen, homeIsIdle: homeIsIdle && animationFinished)
+    private var introPadShouldPulse: Bool {
+        shouldPulseIntroPad(
+            loadSucceeded: progress.loadedSuccessfully,
+            records: progress.records,
+            animationFinished: animationFinished
+        )
     }
 
-    private var tutorialEligible: Bool { tutorialMayStart && scenePhase == .active }
-
-    private var tutorialBlocksInput: Bool { tutorialEligible || showingTutorial || tutorialVisible }
+    private var introFocusEligible: Bool {
+        introPadShouldPulse && homeIsIdle && scenePhase == .active && !didFocusIntro
+    }
 
     // MARK: - Destination Views
 
@@ -1171,8 +1160,6 @@ public struct HomeScreen: View {
         }
     }
 
-    private var hasProgress: Bool { hasAnyLessonProgress(progress.records) }
-
     private func pad3(cellSize: CGFloat) -> some View {
         let label = settings.localized("Continue").uppercased(with: Locale(identifier: settings.languagePreference.rawValue))
         let lastLesson = settings.lastLessonID == 0 ? nil : lessonStore.lesson(for: settings.lastLessonID)
@@ -1210,7 +1197,7 @@ public struct HomeScreen: View {
         return HomePadView(
             title: label,
             subtitle: HomePadSubtitles.intro(),
-            isLit: animationFinished && progress.loadedSuccessfully && !hasProgress && !tutorialBlocksInput,
+            isLit: introPadShouldPulse,
             padNumber: 4,
             cellSize: cellSize,
             isHero: false

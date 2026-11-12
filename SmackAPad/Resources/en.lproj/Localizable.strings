@@ -859,7 +859,7 @@
 "help.tutorial.starsAndTempo.title" = "Stars and tempo";
 "help.tutorial.starsAndTempo.caption" = "★ Pass the lesson.\n★★ Play cleanly at goal tempo. Clean passes in Play raise the tempo towards the goal.\n★★★ Pass two scheduled reviews from memory on different days.\nTap the stars for the lesson requirements. Tap the tempo field while stopped to change it.";
 "help.tutorial.whereNext.title" = "Where to go next";
-"help.tutorial.whereNext.caption" = "Start with Intro. Tap Rules there for the details.\nBrowse all lessons in Library.\nFind reviews in Training and follow Today when reviews are due.\nOpen the question mark in a lesson, or How it works on Home or in Settings.";
+"help.tutorial.whereNext.caption" = "Start with Intro. Tap Rules there for the details.\nBrowse all lessons in Library.\nOpen Training for today's plan and your reviews.\nOpen the question mark in a lesson, or How it works on Home or in Settings.";
 "help.lesson.title" = "The lesson screen";
 "help.lesson.caption" = "1 Mode · 2 From memory · 3 Scrolling / static · 4 Bars · 5 Loop · 6 Info · 7 Legend · 8 Help · 9 Settings · 10 Tempo · 11 Start / Stop / Restart";
 "Mode" = "Mode";
@@ -880,7 +880,7 @@
 "help.stars.caption" = "★ Pass at %lld %% or higher. In Learning, accurate hits with few errors can also qualify at a lower score.\n★★ Play cleanly at goal tempo. ★★★ Pass two scheduled reviews on different days.\nTap the stars for the required passes. For the first two stars the app aims for at least 16 hits, with at most four passes. Intro needs at least three passes for ★★.\nChoose Learning to add up good passes or Challenge to require them in a row. Play stops when you earn ★★ or ★★★.";
 "help.tempo.tap" = "Tap the tempo field while stopped";
 "help.tempo.caption" = "Adjust by −5, −1, +1 or +5 BPM, or return to Starting tempo. The lesson remembers your tempo.\nIn Play, clean passes raise the tempo up to the goal. Set the automatic step to 1, 2, 5 or 10 BPM in Settings.\nPlay with no errors in Intro. Elsewhere, a clean pass allows no errors through 15 hits, one through 32, and two above that.";
-"help.memory.caption" = "While stopped, tap the crossed-out eye, then Start.\nUse “%@” in Settings to show the first pass, fade the second and hide the pattern from the third. Turn it off to hide the pattern right after the count-in.\nPractise from memory to prepare for reviews. Stars for this option come only from a successful scheduled review.";
+"help.memory.caption" = "While stopped, tap the crossed-out eye, then Start.\nWith “%@” on in Settings, the first pass shows the pattern and the second fades it only after a good first pass. Turn it off to hide the pattern right after the count-in.\nThe pattern hides after two good passes in a row (80 %%+). A weaker pass starts the count again.\nPractise from memory to prepare for reviews. Stars for this option come only from a successful scheduled review.";
 "help.memory.shown" = "Pass 1 · pattern visible";
 "help.memory.fading" = "Pass 2 · pattern fades";
 "help.memory.hiddenFromThird" = "Pass 3 onward · pattern hidden";
@@ -889,8 +889,8 @@
 "help.reviews.warmups" = "Notes hide after 2 good passes in a row (80 %+).";
 "help.reviews.twoPasses" = "Two qualifying passes in one review";
 "help.reviews.caption" = "Open a due lesson from Home, Training or Library. It starts ready for From memory at goal tempo.\nPass two full hidden passes at goal tempo or faster, each at least %lld %%. Play then stops. The second successful review on a different day earns ★★★.\nAfter two failed eligible passes, the schedule goes back one step and the review returns tomorrow. The exclamation mark means you played but the review did not count.\nFollow the gaps above from ★★ to the fourth successful review. Turn on Review reminder in Settings if you want a reminder.";
-"help.training.title" = "Today and Training";
-"help.training.caption" = "Follow Today when reviews are due. It starts with up to two reviews, then adds a new lesson and a Mix when available. You can skip steps.\nOpen Training for the review queue, your memory overview and the next seven days. You can put off reviews until tomorrow.\nStart a Mix once at least two lessons have ★★. Play them back to back at their goal tempos or choose New mix.\nChoose Play after me to copy what the app plays, with the pattern hidden and no lesson stars.";
+"help.training.title" = "Training";
+"help.training.caption" = "Training is your plan for today. Continue starts the next step: up to two reviews, then a new lesson and a Mix when available. You can skip steps.\nBelow you find the review queue, your memory overview and the next seven days. You can put off reviews until tomorrow.\nStart an Extra mix once at least two lessons have ★★. Play them back to back at their goal tempos or choose Another mix.\nChoose Play after me to copy what the app plays, with the pattern hidden and no lesson stars.";
 "help.library.stage" = "Locked stage";
 "help.library.progress" = "Two-star lessons unlock stages";
 "help.library.caption" = "Browse Path, Genres or Techniques. Search or filter by stars and progress. Use Show completed to include finished lessons.\nUnlock the next stage with ★★ in half the previous stage’s lessons, rounded up and capped at 10. On an 8-pad controller only compatible lessons count.\nTap a locked lesson to see the stage requirement. You can confirm a manual unlock and lock the stage again while it has no stars. Intro and extension lessons are always open.\nChoose the source for Next lesson in Settings.";

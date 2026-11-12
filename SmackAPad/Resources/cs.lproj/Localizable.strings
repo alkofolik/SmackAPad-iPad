@@ -862,7 +862,7 @@
 "help.tutorial.starsAndTempo.title" = "Hvězdy a tempo";
 "help.tutorial.starsAndTempo.caption" = "★ Splň lekci.\n★★ Zahraj ji čistě v cílovém tempu. Čisté průchody ve Hře tě k němu postupně přiblíží.\n★★★ Splň dvě opakování zpaměti v různých dnech.\nKlepni na hvězdy pro požadavky lekce. Tempo změníš klepnutím na jeho pole, když lekce stojí.";
 "help.tutorial.whereNext.title" = "Kam dál";
-"help.tutorial.whereNext.caption" = "Začni v Intru. Podrobnosti najdeš pod tlačítkem Pravidla.\nVšechny lekce najdeš v Knihovně.\nOpakování najdeš v Tréninku. Když jsou na řadě, pomůže ti plán Dnes.\nV lekci klepni na otazník. Na Domově a v Nastavení najdeš Jak to funguje.";
+"help.tutorial.whereNext.caption" = "Začni v Intru. Podrobnosti najdeš pod tlačítkem Pravidla.\nVšechny lekce najdeš v Knihovně.\nPlán na dnes a opakování najdeš v Tréninku.\nV lekci klepni na otazník. Na Domově a v Nastavení najdeš Jak to funguje.";
 "help.lesson.title" = "Obrazovka lekce";
 "help.lesson.caption" = "1 Režim · 2 Z paměti · 3 Posuvný / statický · 4 Takty · 5 Smyčka · 6 Info · 7 Legenda · 8 Nápověda · 9 Nastavení · 10 Tempo · 11 Začít / Stop / Znovu";
 "Mode" = "Režim";
@@ -883,7 +883,7 @@
 "help.stars.caption" = "★ Získej aspoň %lld %%. V Učení mohou přesné údery s málem chyb stačit i při nižším skóre.\n★★ Zahraj čistě v cílovém tempu. ★★★ Splň dvě naplánovaná opakování v různých dnech.\nKlepni na hvězdy a zjisti počet průchodů. U prvních dvou hvězd aplikace míří na aspoň 16 úderů, nejvýš ve čtyřech průchodech. V Intru potřebuješ na ★★ aspoň tři průchody.\nV Učení se dobré průchody sčítají. Ve Výzvě musí jít po sobě. Po získání ★★ nebo ★★★ se hra zastaví.";
 "help.tempo.tap" = "Klepni na pole tempa, když lekce stojí";
 "help.tempo.caption" = "Uprav tempo o −5, −1, +1 nebo +5 BPM, nebo se vrať na Počáteční tempo. Lekce si tvoje tempo pamatuje.\nVe Hře se tempo po čistých průchodech zvyšuje až k cíli. V Nastavení vyber krok 1, 2, 5 nebo 10 BPM.\nV Intru hraj bez chyb. Jinde je čistý průchod do 15 úderů bez chyby, do 32 s jednou chybou a nad 32 se dvěma.";
-"help.memory.caption" = "Když lekce stojí, klepni na přeškrtnuté oko a pak na Začít.\nZapni „%@“ v Nastavení. První průchod vidíš, druhý mizí a od třetího je pattern skrytý. Po vypnutí se pattern skryje hned po odpočtu.\nHrou zpaměti se připravíš na opakování. V tomto režimu získáš hvězdu jen za splněné naplánované opakování.";
+"help.memory.caption" = "Když lekce stojí, klepni na přeškrtnuté oko a pak na Začít.\nKdyž je v Nastavení zapnuto „%@“, první průchod pattern vidíš a druhý mizí jen po úspěšném prvním průchodu. Po vypnutí se pattern skryje hned po odpočtu.\nPattern se skryje po dvou úspěšných průchodech za sebou (80 %% a víc). Slabší průchod počítá znovu od začátku.\nHrou zpaměti se připravíš na opakování. V tomto režimu získáš hvězdu jen za splněné naplánované opakování.";
 "help.memory.shown" = "1. průchod · pattern vidíš";
 "help.memory.fading" = "2. průchod · pattern mizí";
 "help.memory.hiddenFromThird" = "Od 3. průchodu · pattern je skrytý";
@@ -892,8 +892,8 @@
 "help.reviews.warmups" = "Noty zmizí po 2 úspěšných průchodech za sebou (80 % a víc).";
 "help.reviews.twoPasses" = "Dva úspěšné průchody v jednom opakování";
 "help.reviews.caption" = "Otevři lekci, která je na řadě, z Domova, Tréninku nebo Knihovny. Je připravená na hru Z paměti v cílovém tempu.\nZahraj dva celé skryté průchody v cílovém nebo vyšším tempu, každý aspoň na %lld %%. Hra se pak zastaví. Za druhé splněné opakování v jiný den získáš ★★★.\nPo dvou neúspěšných průchodech, které splnily podmínky opakování, se rozvrh vrátí o krok a lekce přijde na řadu zítra. Vykřičník znamená, že opakování bylo odehrané, ale nezapočítalo se.\nOsa ukazuje odstupy od ★★ až po čtvrté úspěšné opakování. Připomínku opakování zapneš v Nastavení.";
-"help.training.title" = "Dnes a Trénink";
-"help.training.caption" = "Otevři Dnes, když jsou na řadě opakování. Začne nejvýš dvěma opakováními a podle dostupnosti přidá novou lekci a Mix. Kroky můžeš přeskočit.\nV Tréninku najdeš frontu opakování, přehled paměti a výhled na sedm dní. Opakování můžeš odložit na zítra.\nSpusť Mix, až budeš mít aspoň dvě lekce s ★★. Hraj je za sebou v cílovém tempu nebo vyber Nový mix.\nZvol Zahraj po mně a zopakuj, co aplikace zahraje. Pattern je skrytý a hvězdy nezískáš.";
+"help.training.title" = "Trénink";
+"help.training.caption" = "Trénink je tvůj plán na dnes. Pokračovat spustí další krok: nejvýš dvě opakování, potom novou lekci a podle dostupnosti Mix. Kroky můžeš přeskočit.\nNíže najdeš frontu opakování, přehled paměti a výhled na sedm dní. Opakování můžeš odložit na zítra.\nSpusť Mix navíc, až budeš mít aspoň dvě lekce s ★★. Hraj je za sebou v cílovém tempu nebo vyber Jiný mix.\nZvol Zahraj po mně a zopakuj, co aplikace zahraje. Pattern je skrytý a hvězdy nezískáš.";
 "help.library.stage" = "Zamčená etapa";
 "help.library.progress" = "Etapy otevírají lekce se dvěma hvězdami";
 "help.library.caption" = "Procházej Cestu, Žánry nebo Techniky. Hledej nebo filtruj podle hvězd a postupu. Přepínačem Zobrazit hotové přidáš hotové lekce.\nDalší etapu otevřeš s ★★ v polovině lekcí předchozí etapy, zaokrouhleno nahoru, nejvýš v 10 lekcích. S 8 pady se počítají jen kompatibilní lekce.\nKlepnutím na zamčenou lekci zobrazíš podmínku etapy. Etapu můžeš ručně odemknout a zase zamknout, dokud v ní nemáš hvězdy. Intro a rozšíření jsou vždy otevřené.\nVolbu Další lekce z najdeš v Nastavení.";

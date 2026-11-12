@@ -51,7 +51,6 @@ public struct BackupSettings: Codable, Equatable, Sendable {
     public var touchPadsInPortrait: Bool
     public var scrolling: String
     public var practiceAppearance: String
-    public var tutorialSeen: Bool
     public var legendShownOnce: Bool
     public var memoryHintShownLessonIds: Set<Int>
 
@@ -87,7 +86,6 @@ public struct BackupSettings: Codable, Equatable, Sendable {
         touchPadsInPortrait: Bool = true,
         scrolling: String = "continuous",
         practiceAppearance: String = "system",
-        tutorialSeen: Bool = false,
         legendShownOnce: Bool = false,
         memoryHintShownLessonIds: Set<Int> = []
     ) {
@@ -122,7 +120,6 @@ public struct BackupSettings: Codable, Equatable, Sendable {
         self.touchPadsInPortrait = touchPadsInPortrait
         self.scrolling = scrolling
         self.practiceAppearance = practiceAppearance
-        self.tutorialSeen = tutorialSeen
         self.legendShownOnce = legendShownOnce
         self.memoryHintShownLessonIds = memoryHintShownLessonIds
     }
@@ -133,7 +130,7 @@ public struct BackupSettings: Codable, Equatable, Sendable {
         case playPadsWithKeyboard, fadeMemoryNotes, reviewReminderEnabled, reviewReminderTime, hideCompletedLessons
         case hiddenCategoryIDsByMode, libraryView, libraryStarFilters, trainingDueStepFilter, nextLessonSource, lastLessonID
         case showPads, showPadKeys, visibleBars, touchPadsInPortrait, scrolling, practiceAppearance
-        case tutorialSeen, legendShownOnce, memoryHintShownLessonIds
+        case legendShownOnce, memoryHintShownLessonIds
     }
 
     public init(from decoder: Decoder) throws {
@@ -170,7 +167,6 @@ public struct BackupSettings: Codable, Equatable, Sendable {
         self.touchPadsInPortrait = try c.decodeIfPresent(Bool.self, forKey: .touchPadsInPortrait) ?? true
         self.scrolling = try c.decodeIfPresent(String.self, forKey: .scrolling) ?? "continuous"
         self.practiceAppearance = try c.decodeIfPresent(String.self, forKey: .practiceAppearance) ?? "system"
-        self.tutorialSeen = try c.decodeIfPresent(Bool.self, forKey: .tutorialSeen) ?? false
         self.legendShownOnce = try c.decodeIfPresent(Bool.self, forKey: .legendShownOnce) ?? false
         self.memoryHintShownLessonIds = try c.decodeIfPresent(Set<Int>.self, forKey: .memoryHintShownLessonIds) ?? []
     }

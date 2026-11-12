@@ -93,14 +93,12 @@ struct HelpDeck: View {
     @State private var topic: HelpTopic?
     @State private var tutorialIndex: Int?
     @State private var cameFromContents: Bool
-    private let firstLaunch: Bool
     private let onClose: () -> Void
 
-    init(initialTopic: HelpTopic? = nil, firstLaunch: Bool = false, onClose: @escaping () -> Void) {
+    init(initialTopic: HelpTopic? = nil, onClose: @escaping () -> Void) {
         _topic = State(initialValue: initialTopic)
-        _tutorialIndex = State(initialValue: firstLaunch ? 0 : nil)
+        _tutorialIndex = State(initialValue: nil)
         _cameFromContents = State(initialValue: initialTopic == nil)
-        self.firstLaunch = firstLaunch
         self.onClose = onClose
     }
 
@@ -149,7 +147,7 @@ struct HelpDeck: View {
         .foregroundStyle(Theme.ink)
         .background(Theme.background)
         .presentationBackground(Theme.background)
-        .interactiveDismissDisabled(!firstLaunch && tutorialIndex != nil)
+        .interactiveDismissDisabled(tutorialIndex != nil)
         .task(id: currentPage) {
             await Task.yield()
             guard !Task.isCancelled else { return }
@@ -263,7 +261,7 @@ struct HelpDeck: View {
     }
 
     private func close() {
-        if firstLaunch || tutorialIndex == nil {
+        if tutorialIndex == nil {
             onClose()
         } else {
             tutorialIndex = nil
