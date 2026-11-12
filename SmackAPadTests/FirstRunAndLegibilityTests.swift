@@ -116,6 +116,9 @@ final class FirstRunAndLegibilityTests: XCTestCase {
         let resources = URL(fileURLWithPath: #filePath)
             .deletingLastPathComponent().deletingLastPathComponent()
             .appendingPathComponent("SmackAPad/Resources")
+        // The source files only exist on the Mac; on a physical iPad there is nothing to read.
+        try XCTSkipUnless(FileManager.default.fileExists(atPath: resources.path),
+                          "Localizable.strings sources are not available on this device")
         let assignmentOrComment = try NSRegularExpression(
             pattern: #"(?s)/\*.*?\*/|//[^\r\n]*|"(?:\\.|[^"\\])*"\s*=\s*"(?:\\.|[^"\\])*"\s*;"#
         )
