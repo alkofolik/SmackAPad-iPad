@@ -1,6 +1,6 @@
 # 187 — One style of toolbar hints; Library filter row and "Play next" aligned
 
-Status: ready-for-agent. Approved by Jakub on 2026-11-12 (iPad check steps 10 and 32).
+Status: done (tested on iPad by Jakub and pushed 2026-11-12). Approved by Jakub on 2026-11-12 (iPad check steps 10 and 32).
 
 ## A. Toolbar hints (practice screen)
 

@@ -1,6 +1,6 @@
 # 185 — The TEST tag must not cover any buttons
 
-Status: ready-for-agent. Approved by Jakub on 2026-11-12 (iPad check, scenario reviewDueToday).
+Status: done (tested on iPad by Jakub and pushed 2026-11-12). Approved by Jakub on 2026-11-12 (iPad check, scenario reviewDueToday).
 
 ## Problem
 

@@ -1,6 +1,6 @@
 # 184 — Remove the first-launch pop-up and bring the help texts up to date
 
-Status: ready-for-agent. Approved by Jakub on 2026-11-12 (findings from his "fresh" scenario check of the help/tutorial).
+Status: done (tested on iPad by Jakub and pushed 2026-11-12). Approved by Jakub on 2026-11-12 (findings from his "fresh" scenario check of the help/tutorial).
 
 ## Goal
 

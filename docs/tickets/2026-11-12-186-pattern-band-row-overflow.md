@@ -1,6 +1,6 @@
 # 186 — The top pattern row must stay inside the orange band
 
-Status: ready-for-agent. Approved by Jakub on 2026-11-12 (iPad check step 11, scenario reviewDueToday).
+Status: done (tested on iPad by Jakub and pushed 2026-11-12). Approved by Jakub on 2026-11-12 (iPad check step 11, scenario reviewDueToday).
 
 ## Problem
 
