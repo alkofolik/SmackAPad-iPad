@@ -1,6 +1,6 @@
 # 171 — Practice HUD follow-ups: BPM disappears, indicators too small, lesson title, calmer idle layout
 
-Status: implemented; awaiting Jakub's manual iPad checks. Variant B approved in chat on 2026-11-11. Jakub decided on 2026-11-11: the band MAY move or grow between idle and running, with one smooth animation (this replaces the "band must not move" rule of ticket 165). Follows ticket 165 (tested by Jakub on the iPad on 2026-11-11; mostly passed).
+Status: done (checked and passed by Jakub 2026-11-12). Variant B approved in chat on 2026-11-11. Jakub decided on 2026-11-11: the band MAY move or grow between idle and running, with one smooth animation (this replaces the "band must not move" rule of ticket 165). Follows ticket 165 (tested by Jakub on the iPad on 2026-11-11; mostly passed).
 
 ## Goal
 

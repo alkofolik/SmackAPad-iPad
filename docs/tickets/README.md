@@ -173,15 +173,15 @@ Source: Jakub, retention and memory discussion; legacy "Trénink" concept 2026-1
 | 145 | Proposal: badge images (HTML preview, no code) | Gemini 3.8 Flash, medium (fallback Codex Sol, medium) | done (Jakub chose B: pad tiles) |
 | 146 | Badges as pad tiles with icons | Gemini 3.8 Flash, medium (fallback Codex Sol, medium) | any time |
 | 147 | Fix 5 outdated tests after the star 3 rule change | Gemini 3.8 Flash, medium (fallback Codex Sol, medium) | any time |
-| 163 | Independent review of help and first-launch tutorial (report only) | Claude subagent (fallback Codex Sol, high) | running |
+| 163 | Independent review of help and first-launch tutorial (report only) | Claude subagent (fallback Codex Sol, high) | done (checked and passed, Jakub 2026-11-12) |
 | 164 | Proposal: practice timing cue, run progress, focus mode (design only) | Codex GPT-6.1 Sol, high | done (Jakub chose B1 and C2) |
 | 165 | Practice HUD: timing cue B1, run progress C2 and focus mode | Codex GPT-6.1 Sol, high (fallback Gemini 3.8 Flash, high) | ready-for-agent |
-| 166 | Even out sample loudness and per-instrument volume | Codex GPT-6.1 Sol, high | any time |
-| 167 | Button spacing across the app | Codex GPT-6.1 Sol, medium | after 164/165 (Practice files) |
-| 168 | Mix finishes by itself and shows the result | Codex GPT-6.1 Sol, high | any time (before 165 if both touch PracticeScreen) |
-| 169 | Rewrite help and first-launch tutorial (5 cards, topic list, review star rename, Czech "Start" fix) | Codex GPT-6.1 Sol, high | after 170 |
-| 170 | One pass mark: 80 % for all lessons | Codex GPT-6.1 Sol, medium (fallback Gemini 3.8 Flash, medium) | any time, before 169 |
-| 171 | Practice HUD follow-ups: BPM vanishes after tempo-up, larger indicators, lesson title, calmer idle layout | Codex GPT-6.1 Sol, high (fallback Gemini 3.8 Flash, high) | after 165 |
+| 166 | Even out sample loudness and per-instrument volume | Codex GPT-6.1 Sol, high | done (checked and passed, Jakub 2026-11-12) |
+| 167 | Button spacing across the app | Codex GPT-6.1 Sol, medium | done (checked and passed, Jakub 2026-11-12) |
+| 168 | Mix finishes by itself and shows the result | Codex GPT-6.1 Sol, high | done (checked and passed, Jakub 2026-11-12) |
+| 169 | Rewrite help and first-launch tutorial (5 cards, topic list, review star rename, Czech "Start" fix) | Codex GPT-6.1 Sol, high | done (checked and passed, Jakub 2026-11-12) |
+| 170 | One pass mark: 80 % for all lessons | Codex GPT-6.1 Sol, medium (fallback Gemini 3.8 Flash, medium) | done (checked and passed, Jakub 2026-11-12) |
+| 171 | Practice HUD follow-ups: BPM vanishes after tempo-up, larger indicators, lesson title, calmer idle layout | Codex GPT-6.1 Sol, high (fallback Gemini 3.8 Flash, high) | done (checked and passed, Jakub 2026-11-12) |
 | 172 | Learning rules in one place (LearningRules.swift, no behaviour change) | Codex GPT-6.1 Sol, high (fallback Gemini 3.8 Pro, high) | any time (after 171 is tested, to avoid clashing in PracticeSession) |
 | 173 | One localisation path and a test that every key exists in both languages | Codex GPT-6.1 Sol, high (fallback Gemini 3.8 Pro, high) | ready-for-agent (any time; after 172 is tested to be safe) |
 | 174 | Split Persistence.swift into smaller files (no behaviour change) | Codex GPT-6.1 Sol, high (fallback Gemini 3.8 Pro, high) | ready-for-agent (after 173; before 162) |

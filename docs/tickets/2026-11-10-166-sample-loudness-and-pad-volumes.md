@@ -1,6 +1,6 @@
 # 166 — Even out sample loudness and add per-instrument volume
 
-Status: implemented, tests pass (238), waiting for Jakub's iPad check. Approved by Jakub on 2026-11-10.
+Status: done (checked and passed by Jakub 2026-11-12). Approved by Jakub on 2026-11-10.
 
 ## Problem
 

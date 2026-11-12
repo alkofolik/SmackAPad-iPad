@@ -1,6 +1,6 @@
 # 167 — Button spacing across the app
 
-Status: implemented, awaiting Jakub's iPad check. Approved by Jakub on 2026-11-10.
+Status: done (checked and passed by Jakub 2026-11-12). Approved by Jakub on 2026-11-10.
 
 ## Problem
 

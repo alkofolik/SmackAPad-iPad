@@ -1,6 +1,6 @@
 # 170 — One pass mark: 80 % for all lessons
 
-Status: done. Verified by unit tests.
+Status: done (checked and passed by Jakub 2026-11-12). Verified by unit tests.
 
 ## Change
 

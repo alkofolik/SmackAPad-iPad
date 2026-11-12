@@ -1,6 +1,6 @@
 # 163 — Independent review of help and first-launch tutorial
 
-Status: in-progress (review agent running, report only). Approved by Jakub on 2026-11-10.
+Status: done (checked and passed by Jakub 2026-11-12). Approved by Jakub on 2026-11-10.
 
 ## Goal
 

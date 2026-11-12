@@ -1,6 +1,6 @@
 # 169 — Rewrite help and first-launch tutorial
 
-Status: ready-for-human. Implemented in `e467be9`; build and the full test plan verified on 2026-11-11. Awaiting Jakub's manual iPad checks below. Approved by Jakub on 2026-11-10 (all five questions in the T163 report answered yes; the pass-mark question is handled in T170).
+Status: done (checked and passed by Jakub 2026-11-12). Implemented in `e467be9`; build and the full test plan verified on 2026-11-11. Awaiting Jakub's manual iPad checks below. Approved by Jakub on 2026-11-10 (all five questions in the T163 report answered yes; the pass-mark question is handled in T170).
 
 ## Goal
 
