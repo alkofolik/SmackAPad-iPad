@@ -297,4 +297,91 @@ final class TodayPlanTests: XCTestCase {
         XCTAssertEqual(progress.progress(for: 6)?.reviewDueDay, nextWeek)
         XCTAssertFalse(progress.dueLessonIds(today: today).contains(6))
     }
+
+    @MainActor
+    func testContinueTargetResolvesSessionSummaryOrNilAcrossPlanStates() {
+        let day = "2026-11-12"
+        let activePlan = TodayPlan(
+            day: day,
+            steps: [
+                .init(kind: .review, lessonIDs: [1]),
+                .init(kind: .newLesson, lessonIDs: [2])
+            ]
+        )
+
+        if case .session(let resolved) = TodayContinueTarget.resolve(
+            currentPlan: activePlan,
+            today: day,
+            nextLessonID: 99,
+            mixLessonIDs: [10, 11]
+        ) {
+            XCTAssertEqual(resolved.day, day)
+            XCTAssertEqual(resolved.steps.count, 2)
+            XCTAssertFalse(resolved.finished)
+        } else {
+            XCTFail("Expected active plan to open the Today session")
+        }
+
+        var finishedPlan = activePlan
+        finishedPlan.index = finishedPlan.steps.count
+        finishedPlan.finished = true
+        finishedPlan.phase = .summary
+        if case .summary(let resolved) = TodayContinueTarget.resolve(
+            currentPlan: finishedPlan,
+            today: day,
+            nextLessonID: nil,
+            mixLessonIDs: []
+        ) {
+            XCTAssertTrue(resolved.finished)
+            XCTAssertEqual(resolved.phase, .summary)
+        } else {
+            XCTFail("Expected finished plan to open the day summary")
+        }
+
+        var exhaustedPlan = activePlan
+        exhaustedPlan.index = exhaustedPlan.steps.count
+        exhaustedPlan.finished = false
+        if case .summary(let resolved) = TodayContinueTarget.resolve(
+            currentPlan: exhaustedPlan,
+            today: day,
+            nextLessonID: nil,
+            mixLessonIDs: []
+        ) {
+            XCTAssertTrue(resolved.finished)
+            XCTAssertEqual(resolved.phase, .summary)
+        } else {
+            XCTFail("Expected exhausted plan to normalize to the day summary")
+        }
+
+        if case .summary(let resolved) = TodayContinueTarget.resolve(
+            currentPlan: TodayPlan(day: day, steps: []),
+            today: day,
+            nextLessonID: nil,
+            mixLessonIDs: []
+        ) {
+            XCTAssertTrue(resolved.finished)
+            XCTAssertEqual(resolved.phase, .summary)
+        } else {
+            XCTFail("Expected empty plan to open the day summary")
+        }
+
+        if case .session(let fallback) = TodayContinueTarget.resolve(
+            currentPlan: nil,
+            today: day,
+            nextLessonID: 5,
+            mixLessonIDs: [10, 11]
+        ) {
+            XCTAssertEqual(fallback.steps.map(\.kind), [.newLesson, .mix])
+            XCTAssertEqual(fallback.steps.map(\.lessonIDs), [[5], [10, 11]])
+        } else {
+            XCTFail("Expected no-plan fallback with next lesson and mix to open a session")
+        }
+
+        XCTAssertNil(TodayContinueTarget.resolve(
+            currentPlan: nil,
+            today: day,
+            nextLessonID: nil,
+            mixLessonIDs: [10]
+        ))
+    }
 }

@@ -896,6 +896,11 @@ public struct HomeScreen: View {
         .onAppear {
             syncWithNavigationRoute(AppNavigation.shared.route)
         }
+        .onChange(of: activeDestination) { _, destination in
+            if destination == nil, AppNavigation.shared.route != .home {
+                AppNavigation.shared.openHome()
+            }
+        }
         .onChange(of: scenePhase) { _, phase in
             if phase == .active { calendarDay = AppCalendar.today() }
         }
@@ -1029,10 +1034,12 @@ public struct HomeScreen: View {
                 activeDestination = nil
             }
         case .training:
+            helpPresentation = nil
             if activeDestination != .training {
                 activeDestination = .training
             }
         case .library(let target):
+            helpPresentation = nil
             // Keep the originating pad's cover identity when its route is echoed back.
             // Replacing Continue/Intro here dismisses and re-presents a zoom mid-transition.
             if activeDestination?.libraryTarget != target {
@@ -1137,6 +1144,7 @@ public struct HomeScreen: View {
             cellSize: cellSize,
             isHero: true
         ) {
+            guard activeDestination == nil, helpPresentation == nil else { return }
             TrainingOpenMeasurement.begin()
             activeDestination = .training
             onNavigateToTraining()

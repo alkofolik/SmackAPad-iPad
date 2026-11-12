@@ -34,14 +34,12 @@ public struct TrainingScreen: View {
     @State private var loadedDailyMixes = ""
     @State private var calendarDay = AppCalendar.today()
     @Environment(\.scenePhase) private var scenePhase
-    @State private var playingMix: [Lesson] = []
-    @State private var showingMix = false
+    @State private var mixPresentation: MixCoverItem?
     @State private var mixFromMemory = false
     @State private var showingQueue = false
     @State private var isMemoryExpanded = false
     @State private var showingBadges = false
-    @State private var showingToday = false
-    @State private var activeTodayPlan: TodayPlan?
+    @State private var todayPresentation: TodayPresentation?
     @State private var isDueExpanded = false
     @State private var expandedWaitingGroup: WaitingGroup?
     @State private var isSettledExpanded = false
@@ -111,6 +109,24 @@ public struct TrainingScreen: View {
         let waitingIn4to7Days: [Lesson]
         let waitingLater: [Lesson]
         let settledLessons: [Lesson]
+    }
+
+    private struct TodayPresentation: Identifiable {
+        let id = UUID()
+        let target: TodayContinueTarget
+    }
+
+    private var hasActiveCover: Bool {
+        selectedLesson != nil || selectedAfterMeLesson != nil || mixPresentation != nil || todayPresentation != nil
+    }
+
+    private var continueTarget: TodayContinueTarget? {
+        TodayContinueTarget.resolve(
+            currentPlan: currentPlan,
+            today: today,
+            nextLessonID: nextLesson?.id,
+            mixLessonIDs: mixLessons.map(\.id)
+        )
     }
 
     private var isTrainingActive: Bool { isVisible || isQueueVisible }
@@ -228,23 +244,37 @@ public struct TrainingScreen: View {
             .fullScreenCover(item: $selectedAfterMeLesson) { lesson in
                 PracticeLessonDestination(launch: .afterMe(lesson))
             }
-            .fullScreenCover(isPresented: $showingMix) {
-                if !playingMix.isEmpty {
+            .fullScreenCover(item: $mixPresentation) { mix in
+                if mix.lessons.isEmpty {
+                    EmptyCoverFallbackView(context: "TrainingScreen.mixPresentation") {
+                        mixPresentation = nil
+                    }
+                } else {
                     MixFlowScreen(
-                        lessons: $playingMix,
+                        lessons: Binding(
+                            get: { mixPresentation?.lessons ?? mix.lessons },
+                            set: { mixPresentation?.lessons = $0 }
+                        ),
                         fromMemory: $mixFromMemory,
                         onAnotherMix: {
                             refreshMix(newDraw: true)
-                            playingMix = mixLessons
+                            if !mixLessons.isEmpty {
+                                mixPresentation?.lessons = mixLessons
+                            }
                         }
                     )
                 }
             }
-            .fullScreenCover(isPresented: $showingToday, onDismiss: {
+            .fullScreenCover(item: $todayPresentation, onDismiss: {
                 refreshTrainingData()
-            }) {
-                if let plan = activeTodayPlan {
-                    TodaySessionScreen(plan: plan) { showingToday = false }
+            }) { presentation in
+                let plan = presentation.target.plan
+                if plan.steps.isEmpty {
+                    EmptyCoverFallbackView(context: "TrainingScreen.todayPresentation") {
+                        todayPresentation = nil
+                    }
+                } else {
+                    TodaySessionScreen(plan: plan) { todayPresentation = nil }
                 }
             }
         }
@@ -363,7 +393,7 @@ public struct TrainingScreen: View {
 
     private var emptyFirstRunBlock: some View {
         Button {
-            if let nextLesson { selectedLesson = .lesson(nextLesson) }
+            if let nextLesson, !hasActiveCover { selectedLesson = .lesson(nextLesson) }
         } label: {
             HStack(spacing: Theme.Space.regular) {
                 VStack(alignment: .leading, spacing: Theme.Space.tight) {
@@ -549,7 +579,7 @@ public struct TrainingScreen: View {
 
     private var continueButton: some View {
         let isFinished = isPlanFinished
-        let canLaunch = isFinished || currentPlan != nil || nextLesson != nil || mixLessons.count >= LearningRules.minimumMixLessons
+        let canLaunch = continueTarget != nil
 
         return Button {
             startTodayTraining()
@@ -651,26 +681,11 @@ public struct TrainingScreen: View {
     }
 
     private func startTodayTraining() {
-        if let plan = currentPlan {
-            activeTodayPlan = plan
-            showingToday = true
-            return
+        guard !hasActiveCover, let target = continueTarget else { return }
+        if currentPlan == nil, let json = target.plan.encoded {
+            savedTodayPlan = json
         }
-        var steps: [TodayPlan.Step] = []
-        if let next = nextLesson {
-            steps.append(.init(kind: .newLesson, lessonIDs: [next.id]))
-        }
-        if mixLessons.count >= LearningRules.minimumMixLessons {
-            steps.append(.init(kind: .mix, lessonIDs: mixLessons.map(\.id)))
-        }
-        if !steps.isEmpty {
-            let plan = TodayPlan(day: today, steps: steps)
-            if let json = plan.encoded {
-                savedTodayPlan = json
-            }
-            activeTodayPlan = plan
-            showingToday = true
-        }
+        todayPresentation = TodayPresentation(target: target)
     }
 
     // MARK: - 2. Memory Meter & Next 7 Days
@@ -980,6 +995,7 @@ public struct TrainingScreen: View {
         let step = (record?.reviewStep ?? 0) + 1
 
         return Button {
+            guard !hasActiveCover else { return }
             preserveTodayPlan(for: lesson.id)
             selectedLesson = .review(lesson)
         } label: {
@@ -1124,6 +1140,7 @@ public struct TrainingScreen: View {
         let subtext = waitingSubtext(for: record?.reviewDueDay)
 
         return Button {
+            guard !hasActiveCover else { return }
             selectedLesson = .lesson(lesson)
         } label: {
             HStack(alignment: .center, spacing: Theme.Space.regular) {
@@ -1233,8 +1250,8 @@ public struct TrainingScreen: View {
                 .disabled(mixLessons.count < LearningRules.minimumMixLessons)
 
                 Button {
-                    playingMix = mixLessons
-                    showingMix = true
+                    guard !hasActiveCover, mixLessons.count >= LearningRules.minimumMixLessons else { return }
+                    mixPresentation = MixCoverItem(lessons: mixLessons)
                 } label: {
                     Text(settings.localized("Start mix"))
                         .font(Theme.strong(16))
@@ -1335,7 +1352,7 @@ public struct TrainingScreen: View {
                 .disabled(afterMeCandidates.count < 2)
 
                 Button {
-                    if let candidate {
+                    if let candidate, !hasActiveCover {
                         selectedAfterMeLesson = candidate
                     }
                 } label: {
@@ -1529,6 +1546,7 @@ public struct TrainingScreen: View {
         let record = progress.progress(for: lesson.id)
 
         return Button {
+            guard !hasActiveCover else { return }
             selectedLesson = .lesson(lesson)
         } label: {
             HStack(alignment: .center, spacing: Theme.Space.regular) {

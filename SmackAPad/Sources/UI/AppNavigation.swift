@@ -59,6 +59,79 @@ enum LessonLaunch: Identifiable {
     }
 }
 
+/// Decision for what Training's Continue button opens: an active step-by-step session,
+/// the day summary when finished/empty, or nil when no training steps exist yet.
+enum TodayContinueTarget: Equatable {
+    case session(TodayPlan)
+    case summary(TodayPlan)
+
+    var plan: TodayPlan {
+        switch self {
+        case .session(let plan), .summary(let plan):
+            return plan
+        }
+    }
+
+    static func resolve(
+        currentPlan: TodayPlan?,
+        today: String,
+        nextLessonID: Int?,
+        mixLessonIDs: [Int]
+    ) -> TodayContinueTarget? {
+        if var plan = currentPlan {
+            if plan.finished || plan.steps.isEmpty || plan.index >= plan.steps.count {
+                plan.index = plan.steps.count
+                plan.finished = true
+                plan.phase = .summary
+                return .summary(plan)
+            }
+            return .session(plan)
+        }
+        var steps: [TodayPlan.Step] = []
+        if let nextLessonID {
+            steps.append(.init(kind: .newLesson, lessonIDs: [nextLessonID]))
+        }
+        if mixLessonIDs.count >= LearningRules.minimumMixLessons {
+            steps.append(.init(kind: .mix, lessonIDs: mixLessonIDs))
+        }
+        guard !steps.isEmpty else { return nil }
+        return .session(TodayPlan(day: today, steps: steps))
+    }
+}
+
+struct MixCoverItem: Identifiable {
+    let id = UUID()
+    var lessons: [Lesson]
+}
+
+/// Safe fallback shown if a full-screen cover ever resolves without playable content.
+@MainActor
+struct EmptyCoverFallbackView: View {
+    let context: String
+    let onDismiss: () -> Void
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: Theme.Space.page) {
+            HStack {
+                BackButton(action: onDismiss)
+                Spacer()
+            }
+            .frame(height: 56)
+
+            Spacer()
+        }
+        .padding(Theme.Space.page)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+        .calmChassisBackground()
+        .onAppear {
+            #if DEBUG
+            print("[EmptyCoverGuard] Presented fullScreenCover with empty content: \(context)")
+            assertionFailure("Presented fullScreenCover with empty content: \(context)")
+            #endif
+        }
+    }
+}
+
 @MainActor
 struct PracticeLessonDestination: View {
     let launch: LessonLaunch

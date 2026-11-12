@@ -9,7 +9,13 @@ final class TodaySessionCoordinator {
     private let defaults: UserDefaults
 
     init(plan: TodayPlan, defaults: UserDefaults = .standard) {
-        self.plan = plan
+        var normalized = plan
+        if normalized.finished || normalized.steps.isEmpty || normalized.index >= normalized.steps.count {
+            normalized.index = normalized.steps.count
+            normalized.finished = true
+            normalized.phase = .summary
+        }
+        self.plan = normalized
         self.defaults = defaults
     }
 
@@ -107,6 +113,18 @@ final class TodaySessionCoordinator {
     }
 }
 
+private enum TodayPracticePresentation: Identifiable {
+    case mix(id: UUID, lessons: [Lesson])
+    case lesson(id: UUID, lesson: Lesson, isReview: Bool)
+
+    var id: UUID {
+        switch self {
+        case .mix(let id, _), .lesson(let id, _, _):
+            return id
+        }
+    }
+}
+
 @MainActor
 struct TodaySessionScreen: View {
     @Environment(SettingsManager.self) private var settings
@@ -117,15 +135,17 @@ struct TodaySessionScreen: View {
     @Environment(\.scenePhase) private var scenePhase
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var coordinator: TodaySessionCoordinator
-    @State private var showingPractice = false
-    @State private var todayMixLessons: [Lesson] = []
+    @State private var practicePresentation: TodayPracticePresentation?
     @State private var todayMixFromMemory = false
     @State private var mixFlowEnteredPractice = false
-    @State private var showingExtraMix = false
-    @State private var extraMixLessons: [Lesson] = []
+    @State private var extraMixPresentation: MixCoverItem?
     @State private var extraMixFromMemory = false
     @AppStorage("smackapad.training.dailyMixes") private var dailyMixes = "{}"
     let onHome: () -> Void
+
+    private var hasActiveCover: Bool {
+        practicePresentation != nil || extraMixPresentation != nil
+    }
 
     init(plan: TodayPlan, onHome: @escaping () -> Void) {
         #if DEBUG
@@ -143,7 +163,7 @@ struct TodaySessionScreen: View {
             GeometryReader { geometry in
                 let isLandscape = geometry.size.width >= 768 && geometry.size.width > geometry.size.height
 
-                if coordinator.plan.finished {
+                if coordinator.plan.finished || coordinator.currentStep == nil {
                     DaySummaryView(
                         plan: coordinator.plan,
                         isLandscape: isLandscape,
@@ -207,28 +227,35 @@ struct TodaySessionScreen: View {
         }
         .onChange(of: scenePhase) { _, phase in
             if phase == .active, coordinator.plan.day != AppCalendar.today() {
-                showingPractice = false
+                practicePresentation = nil
+                extraMixPresentation = nil
                 onHome()
             }
         }
         .onReceive(NotificationCenter.default.publisher(for: .NSCalendarDayChanged)) { _ in
             if coordinator.plan.day != AppCalendar.today() {
-                showingPractice = false
+                practicePresentation = nil
+                extraMixPresentation = nil
                 onHome()
             }
         }
-        .fullScreenCover(isPresented: $showingPractice, onDismiss: {
+        .fullScreenCover(item: $practicePresentation, onDismiss: {
             if coordinator.currentStep?.kind == .mix && !mixFlowEnteredPractice {
                 return
             }
             withAnimation(Theme.Motion.Policy(reduced: reduceMotion).animation(Theme.Motion.cardStep)) {
                 coordinator.leavePractice(progress: progress)
             }
-        }) {
-            if let step = coordinator.currentStep {
-                if step.kind == .mix, !todayMixLessons.isEmpty {
+        }) { item in
+            switch item {
+            case .mix(_, let lessons):
+                if lessons.isEmpty {
+                    EmptyCoverFallbackView(context: "TodaySessionScreen.todayMix") {
+                        practicePresentation = nil
+                    }
+                } else {
                     MixFlowScreen(
-                        lessons: $todayMixLessons,
+                        lessons: todayMixLessonsBinding(fallback: lessons),
                         fromMemory: $todayMixFromMemory,
                         onAnotherMix: { rerollTodayMix() },
                         onMixStarted: {
@@ -237,19 +264,23 @@ struct TodaySessionScreen: View {
                         },
                         onStepResult: { coordinator.record($0) }
                     )
-                } else if let lesson = step.lessonIDs.first.flatMap({ LessonStore.shared.lesson(for: $0) }) {
-                    let launch: LessonLaunch = step.kind == .review ? .review(lesson) : .lesson(lesson)
-                    PracticeScreen(lesson: lesson, settings: settings, progress: progress, midi: midi,
-                                   initialFromMemory: launch.reviewTempo != nil,
-                                   initialBpm: launch.reviewTempo,
-                                   onStepResult: { coordinator.record($0) })
                 }
+            case .lesson(_, let lesson, let isReview):
+                let launch: LessonLaunch = isReview ? .review(lesson) : .lesson(lesson)
+                PracticeScreen(lesson: lesson, settings: settings, progress: progress, midi: midi,
+                               initialFromMemory: launch.reviewTempo != nil,
+                               initialBpm: launch.reviewTempo,
+                               onStepResult: { coordinator.record($0) })
             }
         }
-        .fullScreenCover(isPresented: $showingExtraMix) {
-            if !extraMixLessons.isEmpty {
+        .fullScreenCover(item: $extraMixPresentation) { item in
+            if item.lessons.isEmpty {
+                EmptyCoverFallbackView(context: "TodaySessionScreen.extraMix") {
+                    extraMixPresentation = nil
+                }
+            } else {
                 MixFlowScreen(
-                    lessons: $extraMixLessons,
+                    lessons: extraMixLessonsBinding(fallback: item.lessons),
                     fromMemory: $extraMixFromMemory,
                     onAnotherMix: { rerollExtraMix() },
                     onMixStarted: {},
@@ -320,6 +351,7 @@ struct TodaySessionScreen: View {
     }
 
     private func openPractice() {
+        guard !hasActiveCover else { return }
         guard let step = coordinator.currentStep else { return }
         let lessons = step.lessonIDs.compactMap { LessonStore.shared.lesson(for: $0) }
         guard lessons.count == step.lessonIDs.count,
@@ -329,13 +361,17 @@ struct TodaySessionScreen: View {
             return
         }
         if step.kind == .mix {
-            todayMixLessons = lessons
+            guard !lessons.isEmpty else { return }
             mixFlowEnteredPractice = false
-            showingPractice = true
+            practicePresentation = .mix(id: UUID(), lessons: lessons)
+            return
+        }
+        guard let lesson = lessons.first else {
+            coordinator.skip(progress: progress)
             return
         }
         coordinator.continueSession()
-        showingPractice = true
+        practicePresentation = .lesson(id: UUID(), lesson: lesson, isReview: step.kind == .review)
     }
 
     private var openMixLessonIDs: Set<Int> {
@@ -354,17 +390,19 @@ struct TodaySessionScreen: View {
     }
 
     private func startExtraMix() {
+        guard !hasActiveCover else { return }
         let excludedIDs = coordinator.plan.steps.first(where: { $0.kind == .mix })?.lessonIDs ?? []
         let chosen = pickExtraMix(excluding: excludedIDs)
         guard chosen.count >= LearningRules.minimumMixLessons else { return }
-        extraMixLessons = chosen
-        showingExtraMix = true
+        extraMixPresentation = MixCoverItem(lessons: chosen)
     }
 
     private func rerollExtraMix() {
-        let chosen = pickExtraMix(excluding: extraMixLessons.map(\.id))
+        guard var current = extraMixPresentation else { return }
+        let chosen = pickExtraMix(excluding: current.lessons.map(\.id))
         if chosen.count >= LearningRules.minimumMixLessons {
-            extraMixLessons = chosen
+            current.lessons = chosen
+            extraMixPresentation = current
         }
     }
 
@@ -390,8 +428,9 @@ struct TodaySessionScreen: View {
     }
 
     private func rerollTodayMix() {
+        guard case .mix(let id, let currentLessons) = practicePresentation else { return }
         let chosen = TrainingMix.reroll(
-            excluding: todayMixLessons.map(\.id),
+            excluding: currentLessons.map(\.id),
             lessons: progression.catalog.lessons,
             progress: progress.records,
             padCount: midi.activeProfile.padCount,
@@ -399,7 +438,7 @@ struct TodaySessionScreen: View {
             day: coordinator.plan.day
         )
         guard chosen.count >= LearningRules.minimumMixLessons else { return }
-        todayMixLessons = chosen
+        practicePresentation = .mix(id: id, lessons: chosen)
         coordinator.replaceCurrentMixLessons(chosen)
         var saved = (try? JSONDecoder().decode([String: [Int]].self, from: Data(dailyMixes.utf8))) ?? [:]
         saved["\(coordinator.plan.day):\(midi.activeProfile.padCount)"] = chosen.map(\.id)
@@ -407,6 +446,31 @@ struct TodaySessionScreen: View {
            let json = String(data: data, encoding: .utf8) {
             dailyMixes = json
         }
+    }
+
+    private func todayMixLessonsBinding(fallback: [Lesson]) -> Binding<[Lesson]> {
+        Binding(
+            get: {
+                if case .mix(_, let lessons) = practicePresentation { return lessons }
+                return fallback
+            },
+            set: { updated in
+                if case .mix(let id, _) = practicePresentation {
+                    practicePresentation = .mix(id: id, lessons: updated)
+                }
+            }
+        )
+    }
+
+    private func extraMixLessonsBinding(fallback: [Lesson]) -> Binding<[Lesson]> {
+        Binding(
+            get: { extraMixPresentation?.lessons ?? fallback },
+            set: { updated in
+                guard var current = extraMixPresentation else { return }
+                current.lessons = updated
+                extraMixPresentation = current
+            }
+        )
     }
 
     private func skipStep() {
