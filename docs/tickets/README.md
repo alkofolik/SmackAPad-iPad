@@ -198,3 +198,6 @@ Source: Jakub, retention and memory discussion; legacy "Trénink" concept 2026-1
 | 185 | TEST debug tag must not cover any buttons (all screens) | Gemini 3.8 Flash, medium (fallback Codex GPT-6.1 Sol, medium) | done (tested on iPad, pushed 2026-11-12) |
 | 186 | Top pattern row stays inside the orange band with 4+ pads | Gemini 3.8 Flash, high (fallback Codex GPT-6.1 Sol, high) | done (tested on iPad, pushed 2026-11-12) |
 | 187 | One style of toolbar hints (loop button too); Library "Play next" on the filter row | Gemini 3.8 Flash, medium (fallback Codex GPT-6.1 Sol, medium) | done (tested on iPad, pushed 2026-11-12) |
+| 188 | Result card: no empty black "Next" box after a finished review | Gemini 3.8 Flash, medium (fallback Codex GPT-6.1 Sol, medium) | implemented, awaiting iPad check |
+| 189 | Bug: review opened from Continue does not stop and stays in the review queue | Gemini 3.8 Flash, high (fallback Codex GPT-6.1 Sol, high) | implemented, awaiting iPad check |
+| 190 | Bug: Home → Today → Continue turns the screen black | Gemini 3.8 Flash, high (fallback Codex GPT-6.1 Sol, high) | implemented, awaiting iPad check |
