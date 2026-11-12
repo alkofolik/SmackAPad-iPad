@@ -194,3 +194,4 @@ Source: Jakub, retention and memory discussion; legacy "Trénink" concept 2026-1
 | 181 | One back arrow across the app; Home pads same size with short text | Codex GPT-6.1 Sol, medium (fallback Gemini 3.8 Flash, medium) | any time |
 | 182 | One Training screen (Today + Training merged) and new day summary | Codex GPT-6.1 Sol, high (fallback Gemini 3.8 Pro, high) | after 181, not in parallel with 180 |
 | 183 | Redesign Badges, About, Full version; collapsed instrument volumes; Library "Play next" | Codex GPT-6.1 Sol, medium (fallback Gemini 3.8 Flash, medium) | after 181 |
+| 184 | Remove the first-launch tutorial pop-up; update help texts (one Training screen, From-memory rule) | Gemini 3.8 Flash, medium (fallback Codex GPT-6.1 Sol, medium) | ready-for-agent |
