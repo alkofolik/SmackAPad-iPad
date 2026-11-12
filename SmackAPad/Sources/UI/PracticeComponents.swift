@@ -165,19 +165,73 @@ private struct PracticeToolbarButtonStyle: ButtonStyle {
 private struct PracticeToolbarHintModifier: ViewModifier {
     let title: String
     @State private var showingHint = false
+    @State private var dismissTask: Task<Void, Never>?
+    @Environment(\.accessibilityReduceMotion) private var reduced
+
+    private var hintGesture: some Gesture {
+        LongPressGesture(minimumDuration: 0.45, maximumDistance: 15)
+            .sequenced(before: DragGesture(minimumDistance: 0))
+            .onChanged { value in
+                if case .second(true, _) = value {
+                    showHint()
+                }
+            }
+            .onEnded { _ in
+                hideHint()
+            }
+    }
+
+    private func showHint() {
+        guard !showingHint else { return }
+        showingHint = true
+        dismissTask?.cancel()
+        dismissTask = Task { @MainActor in
+            try? await Task.sleep(for: .seconds(2))
+            guard !Task.isCancelled else { return }
+            showingHint = false
+        }
+    }
+
+    private func hideHint() {
+        dismissTask?.cancel()
+        dismissTask = nil
+        showingHint = false
+    }
+
+    private var hintPill: some View {
+        Text(title)
+            .font(Theme.strong(15))
+            .lineLimit(1)
+            .fixedSize()
+            .foregroundStyle(Theme.white)
+            .padding(.horizontal, Theme.Space.controlGap)
+            .padding(.vertical, Theme.Space.small)
+            .background(
+                RoundedRectangle(cornerRadius: Theme.Radius.pad)
+                    .fill(Theme.black)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: Theme.Radius.pad)
+                            .strokeBorder(Theme.orange, lineWidth: 1.5)
+                    )
+            )
+            .allowsHitTesting(false)
+    }
 
     func body(content: Content) -> some View {
         content
+            .contentShape(Rectangle())
             .help(title)
-            .highPriorityGesture(LongPressGesture(minimumDuration: 0.5).onEnded { _ in showingHint = true })
-            .popover(isPresented: $showingHint, arrowEdge: .top) {
-                Text(title)
-                    .font(Theme.control)
-                    .padding(Theme.Space.regular)
-                    .foregroundStyle(Theme.ink)
-                    .background(Theme.background)
-                    .presentationCompactAdaptation(.popover)
+            .highPriorityGesture(hintGesture)
+            .overlay(alignment: .bottom) {
+                if showingHint {
+                    hintPill
+                        .alignmentGuide(.bottom) { d in d[.top] - 6 }
+                        .transition(.opacity)
+                }
             }
+            .zIndex(showingHint ? 100 : 0)
+            .animation(reduced ? nil : Theme.Motion.fast, value: showingHint)
+            .onDisappear { hideHint() }
     }
 }
 
@@ -275,6 +329,7 @@ struct PracticeIconButton: View {
     var width: CGFloat? = nil
     var count: Int? = nil
     var selected = false
+    var disabled = false
     var accessibilityValue: String? = nil
     var accessibilityHint: String? = nil
     let action: () -> Void
@@ -286,6 +341,7 @@ struct PracticeIconButton: View {
         width: CGFloat? = nil,
         count: Int? = nil,
         selected: Bool = false,
+        disabled: Bool = false,
         accessibilityValue: String? = nil,
         accessibilityHint: String? = nil,
         action: @escaping () -> Void
@@ -296,6 +352,7 @@ struct PracticeIconButton: View {
         self.width = width
         self.count = count
         self.selected = selected
+        self.disabled = disabled
         self.accessibilityValue = accessibilityValue
         self.accessibilityHint = accessibilityHint
         self.action = action
@@ -308,6 +365,7 @@ struct PracticeIconButton: View {
         width: CGFloat? = nil,
         count: Int? = nil,
         selected: Bool = false,
+        disabled: Bool = false,
         accessibilityValue: String? = nil,
         accessibilityHint: String? = nil,
         action: @escaping () -> Void
@@ -318,6 +376,7 @@ struct PracticeIconButton: View {
         self.width = width
         self.count = count
         self.selected = selected
+        self.disabled = disabled
         self.accessibilityValue = accessibilityValue
         self.accessibilityHint = accessibilityHint
         self.action = action
@@ -329,6 +388,7 @@ struct PracticeIconButton: View {
     }
 
     var body: some View {
+        let effectiveEnabled = isEnabled && !disabled
         Button(action: action) {
             buttonContent
         }
@@ -337,11 +397,12 @@ struct PracticeIconButton: View {
             selected: selected,
             size: buttonSize
         ))
-        .motion(value: isEnabled)
+        .motion(value: effectiveEnabled)
         .motion(value: selected)
         .accessibilityLabel(title)
         .modifier(OptionalAccessibilityModifier(value: accessibilityValue, hint: accessibilityHint))
         .accessibilityAddTraits(selected ? .isSelected : [])
+        .disabled(disabled)
         .practiceToolbarHint(title)
     }
 

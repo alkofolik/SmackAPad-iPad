@@ -668,10 +668,6 @@ struct LibraryScreen: View {
                     try? lessonStore.reload()
                 })
             }
-            filters(matching: matching)
-            let stageTitle = group.stage.map {
-                settings.localized("Level %lld · %@", $0.level, settings.localized(group.title))
-            } ?? settings.localized(group.title)
             let playNextButton = Button { if let next { open(next) } } label: {
                 Text(settings.localized("Play next"))
                     .font(Theme.control)
@@ -683,6 +679,16 @@ struct LibraryScreen: View {
             .fixedSize(horizontal: true, vertical: false)
             .disabled(next == nil)
 
+            HStack(alignment: .center, spacing: Theme.Space.regular) {
+                filters(matching: matching)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                playNextButton
+            }
+
+            let stageTitle = group.stage.map {
+                settings.localized("Level %lld · %@", $0.level, settings.localized(group.title))
+            } ?? settings.localized(group.title)
+
             ViewThatFits(in: .horizontal) {
                 HStack(alignment: .center, spacing: Theme.Space.regular) {
                     Text(stageTitle)
@@ -692,17 +698,12 @@ struct LibraryScreen: View {
                     Spacer(minLength: 0)
                     courseProgressIndicator(group: group, shown: filtered.count, total: group.lessons.count)
                         .fixedSize(horizontal: true, vertical: false)
-                    playNextButton
                 }
                 VStack(alignment: .leading, spacing: Theme.Space.small) {
-                    HStack(alignment: .center, spacing: Theme.Space.regular) {
-                        Text(stageTitle)
-                            .font(Theme.screenTitle)
-                            .foregroundStyle(Theme.ink)
-                            .fixedSize(horizontal: false, vertical: true)
-                        Spacer(minLength: 0)
-                        playNextButton
-                    }
+                    Text(stageTitle)
+                        .font(Theme.screenTitle)
+                        .foregroundStyle(Theme.ink)
+                        .fixedSize(horizontal: false, vertical: true)
                     courseProgressIndicator(group: group, shown: filtered.count, total: group.lessons.count)
                 }
             }

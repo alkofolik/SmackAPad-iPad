@@ -106,6 +106,7 @@ struct PracticeScreen: View {
                 if !focusActive {
                     topZone(isPortrait: isPortrait, width: geometry.size.width)
                         .fixedSize(horizontal: false, vertical: true)
+                        .zIndex(20)
                         .transition(.opacity)
                 }
 
@@ -250,6 +251,7 @@ struct PracticeScreen: View {
                         titleAndSubtitle
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
+                    .zIndex(1)
 
                     FlowLayout(spacing: 20) {
                         modeGroup
@@ -356,32 +358,32 @@ struct PracticeScreen: View {
                 symbol: "ear",
                 title: settings.localized("Listen"),
                 appearance: .segmented,
-                selected: session.playbackMode == .listen
+                selected: session.playbackMode == .listen,
+                disabled: session.running || session.isMix
             ) {
                 session.selectPlaybackMode(.listen)
             }
-            .disabled(session.running || session.isMix)
 
             PracticeIconButton(
                 icon: .crossedSticks,
                 title: settings.localized("Play"),
                 appearance: .segmented,
-                selected: session.playbackMode == .play
+                selected: session.playbackMode == .play,
+                disabled: session.running || (session.isMix && session.playbackMode != .play)
             ) {
                 session.selectPlaybackMode(.play)
             }
-            .disabled(session.running || (session.isMix && session.playbackMode != .play))
 
             if !session.isMix {
                 PracticeIconButton(
                     symbol: "bubble.left.and.bubble.right",
                     title: settings.localized("After me"),
                     appearance: .segmented,
-                    selected: session.playbackMode == .afterMe
+                    selected: session.playbackMode == .afterMe,
+                    disabled: session.running
                 ) {
                     session.selectPlaybackMode(.afterMe)
                 }
-                .disabled(session.running)
             }
 
             Rectangle()
@@ -395,11 +397,11 @@ struct PracticeScreen: View {
                 title: settings.localized("From memory"),
                 appearance: .segmented,
                 selected: session.fromMemory && !session.afterMe,
+                disabled: session.running || session.isMix || session.afterMe,
                 accessibilityValue: settings.localized(session.fromMemory ? "On" : "Off")
             ) {
                 session.fromMemory.toggle()
             }
-            .disabled(session.running || session.isMix || session.afterMe)
         }
         .padding(4)
         .background(Theme.surface, in: RoundedRectangle(cornerRadius: 16))
@@ -415,7 +417,7 @@ struct PracticeScreen: View {
         return HStack(spacing: 4) {
             PracticeIconButton(
                 symbol: "arrow.right.to.line",
-                title: settings.localized("Scrolling view"),
+                title: settings.localized(scrolling ? "Scrolling view" : "Static view"),
                 appearance: .segmented,
                 selected: scrolling,
                 accessibilityValue: settings.localized(scrolling ? "Scrolling view" : "Static view")
@@ -442,6 +444,7 @@ struct PracticeScreen: View {
                     title: settings.localized("Section loop"),
                     appearance: .segmented,
                     selected: session.isSectionLoop || showingLoop,
+                    disabled: session.running || session.lesson.bars <= 1,
                     accessibilityValue: session.isSectionLoop
                         ? "\(session.loopStartBar + 1)–\(session.loopEndBar + 1)"
                         : settings.localized("All bars")
@@ -449,7 +452,6 @@ struct PracticeScreen: View {
                     closeToolbarPopovers(except: .loop)
                     showingLoop.toggle()
                 }
-                .disabled(session.running || session.lesson.bars <= 1)
                 .popover(isPresented: $showingLoop, arrowEdge: .top) { barLoopPopover }
             }
         }
@@ -469,25 +471,25 @@ struct PracticeScreen: View {
                 symbol: "info.circle",
                 title: settings.localized("Lesson info"),
                 appearance: .outline,
-                selected: showingInfo
+                selected: showingInfo,
+                disabled: session.running
             ) {
                 didOpenHelpOrInfo = true
                 closeToolbarPopovers(except: .info)
                 showingInfo.toggle()
             }
-            .disabled(session.running)
             .popover(isPresented: $showingInfo, arrowEdge: .top) { lessonInfo }
 
             PracticeIconButton(
                 icon: .padLegend,
                 title: settings.localized("Pad legend"),
                 appearance: .outline,
-                selected: showingLegend
+                selected: showingLegend,
+                disabled: session.running || session.countdown != nil
             ) {
                 closeToolbarPopovers(except: .legend)
                 showingLegend.toggle()
             }
-            .disabled(session.running || session.countdown != nil)
             .popover(isPresented: $showingLegend, arrowEdge: .top) {
                 legend.onAppear {
                     if showingLegend && helpPresentation == nil && !showingInfo
