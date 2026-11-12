@@ -236,40 +236,51 @@ private struct DebugTestMarker: ViewModifier {
 
     func body(content: Content) -> some View {
         if let label {
-            content
-                .safeAreaInset(edge: .top, alignment: .trailing, spacing: 0) {
-                    Button {
-                        showingMenu = true
-                    } label: {
+            VStack(spacing: 0) {
+                Button {
+                    showingMenu = true
+                } label: {
+                    HStack(spacing: Theme.Space.tight) {
+                        Circle()
+                            .fill(Theme.orange)
+                            .frame(width: 6, height: 6)
                         Text(verbatim: label)
                             .font(Theme.meta)
                             .lineLimit(1)
+                            .truncationMode(.tail)
                             .foregroundStyle(Theme.ink)
-                            .padding(.horizontal, Theme.Space.small)
-                            .padding(.vertical, 4)
-                            .background(Theme.surface, in: Capsule())
-                            .overlay { Capsule().strokeBorder(Theme.orange) }
-                            .frame(minHeight: Theme.Size.touch)
-                            .contentShape(Rectangle())
+                        Spacer(minLength: 0)
                     }
-                    .buttonStyle(.plain)
-                    .padding(.trailing, Theme.Space.regular)
+                    .padding(.horizontal, Theme.Space.regular)
+                    .padding(.vertical, 6)
+                    .frame(maxWidth: .infinity)
+                    .background(Theme.surface.ignoresSafeArea(edges: .top))
+                    .overlay(alignment: .bottom) {
+                        Rectangle()
+                            .fill(Theme.hairline)
+                            .frame(height: 1)
+                    }
+                    .contentShape(Rectangle())
                 }
-                .sheet(isPresented: $showingMenu) {
-                    NavigationStack {
-                        DebugTestMenu()
-                            .toolbar {
-                                ToolbarItem(placement: .cancellationAction) {
-                                    Button {
-                                        showingMenu = false
-                                    } label: {
-                                        Text(verbatim: "Done")
-                                    }
+                .buttonStyle(.plain)
+
+                content
+            }
+            .sheet(isPresented: $showingMenu) {
+                NavigationStack {
+                    DebugTestMenu()
+                        .toolbar {
+                            ToolbarItem(placement: .cancellationAction) {
+                                Button {
+                                    showingMenu = false
+                                } label: {
+                                    Text(verbatim: "Done")
                                 }
                             }
-                    }
-                    .tint(Theme.ink)
+                        }
                 }
+                .tint(Theme.ink)
+            }
         } else {
             content
         }
