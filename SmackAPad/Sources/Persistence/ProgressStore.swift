@@ -609,7 +609,7 @@ public final class ProgressStore: @unchecked Sendable {
         if !hadStar && hasStarNow {
             let env = exportEnvelope()
             let backupsDir = fileURL.deletingLastPathComponent().appendingPathComponent("Backups", isDirectory: true)
-            try? BackupStorage.recordDailyAutoBackupIfNeeded(envelope: env, today: today, directory: backupsDir)
+            _ = try? BackupStorage.recordDailyAutoBackupIfNeeded(envelope: env, today: today, directory: backupsDir)
         }
     }
 

@@ -351,7 +351,7 @@ final class ProgressionTests: XCTestCase {
     // MARK: - Task 7: Electronic Path Folded into Electronic Category
 
     func testElectronicPathLessonsFoldedIntoElectronicCategory() {
-        let (progression, progressStore, lessonStore) = makeIsolatedEnvironment(lessonsToUnlock: 5)
+        let (progression, progressStore, _) = makeIsolatedEnvironment(lessonsToUnlock: 5)
 
         // Canonical mapping tests
         XCTAssertEqual(ProgressionManager.canonicalCategory(forCategory: "uk-club"), "electronic")

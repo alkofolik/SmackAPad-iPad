@@ -153,7 +153,7 @@ public final class ReviewReminderScheduler: @unchecked Sendable {
 
 /// Notification center delegate directing review notification taps to the Training screen.
 @MainActor
-public final class ReviewReminderDelegate: NSObject, UNUserNotificationCenterDelegate {
+public final class ReviewReminderDelegate: NSObject, @preconcurrency UNUserNotificationCenterDelegate {
     public static let shared = ReviewReminderDelegate()
 
     public func userNotificationCenter(

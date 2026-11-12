@@ -653,9 +653,6 @@ struct HomeWordmarkView: View {
     }
 }
 
-/// Home screen with a 3×3 pad grid and the Smack-a-Pad logo in the centre cell.
-/// On cold start, it plays the brand launch animation settling into the finished grid.
-@MainActor
 /// Destinations opened from Home pads with pad-to-screen zoom navigation transition (ticket 113).
 enum HomePadDestination: Identifiable, Equatable {
     case continueToLesson(Lesson)
@@ -694,6 +691,9 @@ enum HomePadDestination: Identifiable, Equatable {
     }
 }
 
+/// Home screen with a 3×3 pad grid and the Smack-a-Pad logo in the centre cell.
+/// On cold start, it plays the brand launch animation settling into the finished grid.
+@MainActor
 public struct HomeScreen: View {
     let isColdStart: Bool
     let onColdStartFinished: () -> Void
