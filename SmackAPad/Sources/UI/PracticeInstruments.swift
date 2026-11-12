@@ -26,10 +26,8 @@ enum PracticeBandStyle {
 
     /// Computes the proportional row height for a given lane count and available vertical space.
     static func rowHeight(rows: Int, availableHeight: CGFloat, minMargin: CGFloat = 40) -> CGFloat {
-        let maxBandHeight = max(160, availableHeight - 2 * minMargin)
-        let unscaled = unscaledHeight(rows: rows)
-        let fitHeight = maxBandHeight * (baseRowHeight / unscaled)
-        return min(maxRowHeight, max(minRowHeight, fitHeight))
+        let height = bandHeight(rows: rows, availableHeight: availableHeight, minMargin: minMargin)
+        return BandGeometry(size: CGSize(width: 1000, height: height), rows: rows).rowHeight
     }
 
     /// Computes the vertical scale factor (rowHeight / baseRowHeight).
@@ -38,10 +36,22 @@ enum PracticeBandStyle {
     }
 
     /// Band height computed from the lane count and the available vertical space.
+    /// Keeps 1–3 row bands unchanged at roomy iPad heights while expanding into margin
+    /// before squeezing dense (4+ row) lessons, never exceeding `availableHeight`.
     static func bandHeight(rows: Int, availableHeight: CGFloat, minMargin: CGFloat = 40) -> CGFloat {
-        let s = scale(rows: rows, availableHeight: availableHeight, minMargin: minMargin)
-        let height = unscaledHeight(rows: rows) * s
-        return min(height, availableHeight)
+        let clampedAvailable = max(0, availableHeight)
+        let unscaled = unscaledHeight(rows: rows)
+        let maxDesired = unscaled * (maxRowHeight / baseRowHeight)
+        let comfortableTarget = max(160, clampedAvailable - 2 * minMargin)
+        let target: CGFloat
+        if maxDesired <= comfortableTarget {
+            target = maxDesired
+        } else if unscaled <= comfortableTarget {
+            target = comfortableTarget
+        } else {
+            target = unscaled
+        }
+        return min(target, clampedAvailable)
     }
 
     /// Minimum height of the band at a given scale.
@@ -94,36 +104,40 @@ enum PracticeBandStyle {
         case 5: min(maxFontSize, 20)
         default: min(maxFontSize, minFontSize)
         }
-        let heightCappedFont = max(minFontSize, floor(rowHeight * 0.62))
-        let startFont = max(minFontSize, min(rowCappedFont, heightCappedFont))
+        let verticalCap = floor(rowHeight * 0.62)
+        let floorFont = min(minFontSize, max(10, verticalCap))
+        let heightCappedFont = max(floorFont, verticalCap)
+        let startFont = max(floorFont, min(rowCappedFont, heightCappedFont))
 
         // Keep at least ~74–78% of width for pattern bars so labels never squeeze cells.
         let maxFraction: CGFloat = barCount >= 3 ? 0.22 : 0.26
         let maxGutter = max(48, min(220, availableWidth * maxFraction))
 
-        var chosenFont = minFontSize
+        var chosenFont = floorFont
         var widestAtChosen: CGFloat = 0
         var size = startFont
-        while size >= minFontSize {
+        var fitted = false
+        while size >= floorFont {
             let font = UIFont(name: "IBMPlexSans-Bold", size: size) ?? .boldSystemFont(ofSize: size)
             let widest = rawLabels.values.map { textWidth($0, font: font) }.max() ?? 0
             widestAtChosen = widest
+            chosenFont = size
             if widest + trailingPadding <= maxGutter {
-                chosenFont = size
+                fitted = true
                 break
             }
-            if size == minFontSize { break }
-            size = max(minFontSize, size - 0.5)
+            if size == floorFont { break }
+            size = max(floorFont, size - 0.5)
         }
 
         let font = UIFont(name: "IBMPlexSans-Bold", size: chosenFont) ?? .boldSystemFont(ofSize: chosenFont)
-        let fittedGutter = ceil(widestAtChosen + trailingPadding)
-        if fittedGutter <= maxGutter {
+        if fitted {
+            let fittedGutter = ceil(widestAtChosen + trailingPadding)
             return BandLabelLayout(gutter: fittedGutter, fontSize: chosenFont, labels: rawLabels)
         }
 
         let maxTextWidth = max(12, floor(maxGutter - trailingPadding))
-        let truncatedLabels = rawLabels.mapValues { truncate($0, maxWidth: maxTextWidth, font: font) }
+        let truncatedLabels = rawLabels.mapValues { truncateMiddle($0, maxWidth: maxTextWidth, font: font) }
         return BandLabelLayout(gutter: floor(maxGutter), fontSize: chosenFont, labels: truncatedLabels)
     }
 
@@ -131,12 +145,22 @@ enum PracticeBandStyle {
         (string as NSString).size(withAttributes: [.font: font]).width
     }
 
-    private static func truncate(_ string: String, maxWidth: CGFloat, font: UIFont) -> String {
+    private static func truncateMiddle(_ string: String, maxWidth: CGFloat, font: UIFont) -> String {
         guard textWidth(string, font: font) > maxWidth else { return string }
-        var end = string.endIndex
-        while end > string.startIndex {
-            end = string.index(before: end)
-            let candidate = String(string[..<end]).trimmingCharacters(in: .whitespaces) + "…"
+        let chars = Array(string)
+        guard chars.count > 2 else { return "…" }
+
+        var leftCount = (chars.count + 1) / 2
+        var rightCount = chars.count / 2
+        while leftCount + rightCount > 1 {
+            if leftCount > rightCount {
+                leftCount -= 1
+            } else {
+                rightCount -= 1
+            }
+            let left = String(chars.prefix(leftCount)).trimmingCharacters(in: .whitespaces)
+            let right = String(chars.suffix(rightCount)).trimmingCharacters(in: .whitespaces)
+            let candidate = left + "…" + right
             if textWidth(candidate, font: font) <= maxWidth {
                 return candidate
             }
@@ -149,6 +173,124 @@ struct BandLabelLayout: Equatable {
     let gutter: CGFloat
     let fontSize: CGFloat
     let labels: [Int: String]
+}
+
+/// Single source of truth for the vertical geometry of the practice pattern band,
+/// keeping the top progress strip, beat ruler, and all pattern rows separated inside the band.
+struct BandGeometry: Equatable {
+    static let spineRulerHeight: CGFloat = 8
+    private static let minBeatFontSize: CGFloat = 15
+    private static let maxHeaderTintHeight: CGFloat = 76
+    private static let spineToBeatGap: CGFloat = 3
+
+    let size: CGSize
+    let rowCount: Int
+    let scale: CGFloat
+    let rowScale: CGFloat
+    let top: CGFloat
+    let bottom: CGFloat
+    let rowHeight: CGFloat
+    let rowGap: CGFloat
+    let bottomPadding: CGFloat
+    let countY: CGFloat
+    let beatFontSize: CGFloat
+    let tickY: CGFloat
+    let tickWidth: CGFloat
+    let tickHeight: CGFloat
+    let beatLineTop: CGFloat
+    let headerTintHeight: CGFloat
+    let noteFontSize: CGFloat
+
+    init(size: CGSize, rows: Int) {
+        let count = max(1, rows)
+        self.size = size
+        self.rowCount = count
+
+        let unscaled = PracticeBandStyle.unscaledHeight(rows: count)
+        let maxScale = PracticeBandStyle.maxRowHeight / PracticeBandStyle.baseRowHeight
+        let rawScale = size.height > 0 ? (size.height / unscaled) : 1
+        let clampedScale = min(maxScale, max(0.35, rawScale))
+        self.scale = clampedScale
+
+        let isCompact = rawScale < 1
+        let beatFont = isCompact
+            ? max(Self.minBeatFontSize, 28 * rawScale)
+            : 28 * clampedScale
+        self.beatFontSize = beatFont
+
+        // Keep beat digits cleanly below the 8 pt progress strip (BandTopSpineRuler).
+        let beatHalfBox = beatFont * 0.65
+        let minCountY = Self.spineRulerHeight + Self.spineToBeatGap + beatHalfBox
+        let computedCountY = isCompact
+            ? max(minCountY, 26 * rawScale)
+            : max(minCountY, 26 * clampedScale)
+        self.countY = computedCountY
+
+        let tickH = max(2.5, 4 * clampedScale)
+        let tickW = max(4, 6 * clampedScale)
+        let computedTickY = computedCountY + max(beatFont * 0.42, 12 * clampedScale)
+        self.tickY = computedTickY
+        self.tickWidth = tickW
+        self.tickHeight = tickH
+        self.beatLineTop = computedCountY + max(beatFont * 0.48, 14 * clampedScale)
+
+        let markerExtension = 4 * clampedScale + 3
+        let minTopAfterRuler = computedTickY + tickH + markerExtension + 2
+        let computedTop = max(minTopAfterRuler, 56 * (isCompact ? rawScale : clampedScale))
+        self.top = computedTop
+
+        let computedBottomPadding = isCompact
+            ? max(6, 24 * rawScale)
+            : 24 * clampedScale
+        self.bottomPadding = computedBottomPadding
+
+        let computedRowGap = isCompact
+            ? max(2.5, 8 * rawScale)
+            : 8 * clampedScale
+        self.rowGap = computedRowGap
+
+        let totalGaps = computedRowGap * CGFloat(max(0, count - 1))
+        let spaceForRows = max(CGFloat(count), size.height - computedTop - computedBottomPadding - totalGaps)
+        let computedRowHeight = min(PracticeBandStyle.maxRowHeight, spaceForRows / CGFloat(count))
+        self.rowHeight = computedRowHeight
+        self.bottom = computedTop + CGFloat(count) * computedRowHeight + totalGaps
+
+        let computedRowScale = computedRowHeight / PracticeBandStyle.baseRowHeight
+        self.rowScale = computedRowScale
+        self.noteFontSize = 32 * computedRowScale
+
+        self.headerTintHeight = min(Self.maxHeaderTintHeight, max(0, computedTop - 4 * clampedScale))
+    }
+
+    var contentRect: CGRect {
+        CGRect(origin: .zero, size: size)
+    }
+
+    var spineRulerRect: CGRect {
+        CGRect(x: 0, y: 0, width: size.width, height: Self.spineRulerHeight)
+    }
+
+    /// Full top ruler zone spanning the progress strip, beat numbers, bar ticks, and marker cap clearance.
+    var rulerRect: CGRect {
+        CGRect(x: 0, y: 0, width: size.width, height: headerTintHeight)
+    }
+
+    func rowCenterY(_ row: Int) -> CGFloat {
+        top + CGFloat(row) * (rowHeight + rowGap) + rowHeight / 2
+    }
+
+    func rowRect(_ row: Int) -> CGRect {
+        CGRect(x: 0, y: top + CGFloat(row) * (rowHeight + rowGap), width: size.width, height: rowHeight)
+    }
+
+    var rowRects: [CGRect] {
+        (0..<rowCount).map { rowRect($0) }
+    }
+
+    func tileRect(x: CGFloat, width: CGFloat, row: Int) -> CGRect {
+        let h = min(rowHeight - 4 * rowScale, 64 * rowScale)
+        return CGRect(x: x - width * 0.42, y: rowCenterY(row) - h / 2, width: width * 0.84, height: max(1, h))
+    }
 }
 
 /// The orange band's tone carries ambient information that never needs reading:

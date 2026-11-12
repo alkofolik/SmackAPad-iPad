@@ -114,59 +114,46 @@ struct PatternField: View {
 
     var body: some View {
         GeometryReader { geometry in
-            let availableWidth = geometry.size.width
-            let availableHeight = geometry.size.height
-            let count = min(visibleBars, min(lesson.bars, 4))
-            let unscaledHeight = PracticeBandStyle.unscaledHeight(rows: rows.count)
-            let bandScale = max(PracticeBandStyle.minRowHeight / PracticeBandStyle.baseRowHeight,
-                                availableHeight / unscaledHeight)
-
-            let contentHeight = max(availableHeight, unscaledHeight * bandScale)
-            let topPadding = 56 * bandScale
-            let bottomPadding = 24 * bandScale
-            let rowHeight = max(
-                1,
-                (contentHeight - topPadding - bottomPadding - PracticeBandStyle.rowGap * bandScale * CGFloat(max(0, rows.count - 1)))
-                    / CGFloat(max(1, rows.count))
+            let contentSize = CGSize(
+                width: max(1, geometry.size.width - 2 * Theme.Space.page),
+                height: geometry.size.height
             )
+            let count = min(visibleBars, min(lesson.bars, 4))
+            let layout = BandGeometry(size: contentSize, rows: rows.count)
             let labelLayout = PracticeBandStyle.bandLabelLayout(
                 rows: rows,
-                availableWidth: availableWidth,
-                rowHeight: rowHeight,
+                availableWidth: contentSize.width,
+                rowHeight: layout.rowHeight,
                 barCount: scrolling ? 1 : count
             )
 
             ZStack {
-                ScrollView(.vertical) {
-                    Group {
-                        if scrolling {
-                            ScrollingPattern(lesson: lesson, hits: hits, rows: rows, position: tapePosition,
-                                             running: running, visibility: visibility, fromMemory: fromMemory, afterMe: afterMe,
-                                             verdicts: verdicts, judgments: judgments, pass: pass,
-                                             playedHits: playedHits, scoring: scoring,
-                                             missGraceSteps: missGraceSteps, band: band, scale: bandScale,
-                                             labelLayout: labelLayout)
-                        } else {
-                            let currentBar = min(lesson.bars - 1, max(0, Int(position) / 16))
-                            let first = (currentBar / max(1, count)) * max(1, count)
-                            let bars = Array(first..<min(first + count, lesson.bars))
-                            let startStep = first * 16
-                            let endStep = min(first + count, lesson.bars) * 16
-                            let staticPlayed = visiblePlayedHits(steps: startStep..<endStep)
-                            StaticPattern(lesson: lesson, hits: hits, rows: rows, bars: bars, firstBar: first,
-                                          position: position, running: running, visibility: visibility,
-                                          verdicts: verdicts, feedback: feedback,
-                                          playedHits: staticPlayed,
-                                          scoring: scoring, missGraceSteps: missGraceSteps,
-                                          band: band, scale: bandScale, labelLayout: labelLayout,
-                                          bpm: bpm, reduceMotion: reduceMotion,
-                                          afterMe: afterMe)
-                                .frame(height: contentHeight)
-                        }
+                Group {
+                    if scrolling {
+                        ScrollingPattern(lesson: lesson, hits: hits, rows: rows, position: tapePosition,
+                                         running: running, visibility: visibility, fromMemory: fromMemory, afterMe: afterMe,
+                                         verdicts: verdicts, judgments: judgments, pass: pass,
+                                         playedHits: playedHits, scoring: scoring,
+                                         missGraceSteps: missGraceSteps, band: band, layout: layout,
+                                         labelLayout: labelLayout)
+                    } else {
+                        let currentBar = min(lesson.bars - 1, max(0, Int(position) / 16))
+                        let first = (currentBar / max(1, count)) * max(1, count)
+                        let bars = Array(first..<min(first + count, lesson.bars))
+                        let startStep = first * 16
+                        let endStep = min(first + count, lesson.bars) * 16
+                        let staticPlayed = visiblePlayedHits(steps: startStep..<endStep)
+                        StaticPattern(lesson: lesson, hits: hits, rows: rows, bars: bars, firstBar: first,
+                                      position: position, running: running, visibility: visibility,
+                                      verdicts: verdicts, feedback: feedback,
+                                      playedHits: staticPlayed,
+                                      scoring: scoring, missGraceSteps: missGraceSteps,
+                                      band: band, layout: layout, labelLayout: labelLayout,
+                                      bpm: bpm, reduceMotion: reduceMotion,
+                                      afterMe: afterMe)
                     }
-                    .frame(height: contentHeight)
                 }
-                .scrollBounceBehavior(.basedOnSize)
+                .frame(width: contentSize.width, height: contentSize.height)
 
                 if scoring && countdown == nil {
                     BandTopSpineRuler(
@@ -177,25 +164,24 @@ struct PatternField: View {
                     .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
                 }
             }
-        }
-        .opacity(countdown == nil ? 1 : 0.22)
-        .padding(.horizontal, Theme.Space.page)
-        .overlay {
-            if let countdown {
-                GeometryReader { geometry in
+            .padding(.horizontal, Theme.Space.page)
+            .opacity(countdown == nil ? 1 : 0.22)
+            .frame(width: geometry.size.width, height: geometry.size.height)
+            .overlay {
+                if let countdown {
                     CountInNumeral(number: countdown, size: min(geometry.size.height * 0.65, geometry.size.width * 0.7))
                         .id(countdown)
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
+                        .allowsHitTesting(false)
                 }
-                .allowsHitTesting(false)
             }
-        }
-        .background {
-            ZStack(alignment: .top) {
-                band
-                Theme.black.opacity(0.10).frame(height: 76)
+            .background {
+                ZStack(alignment: .top) {
+                    band
+                    Theme.black.opacity(0.10).frame(height: layout.headerTintHeight)
+                }
+                .animation(reduceMotion ? nil : .easeInOut(duration: 1.2), value: band)
             }
-            .animation(reduceMotion ? nil : .easeInOut(duration: 1.2), value: band)
         }
         .clipShape(Rectangle())
         .accessibilityElement(children: .ignore)
@@ -222,23 +208,66 @@ private struct PatternLanes {
     let size: CGSize
     let rows: [Int]
     let scale: CGFloat
-    var top: CGFloat { 56 * scale }
-    var bottom: CGFloat { size.height - 24 * scale }
-    var height: CGFloat {
-        max(1, (bottom - top - PracticeBandStyle.rowGap * scale * CGFloat(max(0, rows.count - 1))) / CGFloat(max(1, rows.count)))
+    let rowScale: CGFloat
+    let top: CGFloat
+    let bottom: CGFloat
+    let height: CGFloat
+    let rowGap: CGFloat
+    let countY: CGFloat
+    let beatFontSize: CGFloat
+    let tickY: CGFloat
+    let tickWidth: CGFloat
+    let tickHeight: CGFloat
+    let beatLineTop: CGFloat
+    let fontSize: CGFloat
+
+    init(geometry: BandGeometry, rows: [Int]) {
+        self.size = geometry.size
+        self.rows = rows
+        self.scale = geometry.scale
+        self.rowScale = geometry.rowScale
+        self.top = geometry.top
+        self.bottom = geometry.bottom
+        self.height = geometry.rowHeight
+        self.rowGap = geometry.rowGap
+        self.countY = geometry.countY
+        self.beatFontSize = geometry.beatFontSize
+        self.tickY = geometry.tickY
+        self.tickWidth = geometry.tickWidth
+        self.tickHeight = geometry.tickHeight
+        self.beatLineTop = geometry.beatLineTop
+        self.fontSize = geometry.noteFontSize
     }
-    var countY: CGFloat { 26 * scale }
-    func y(_ row: Int) -> CGFloat { top + CGFloat(row) * (height + PracticeBandStyle.rowGap * scale) + height / 2 }
+
+    init(size: CGSize, rows: [Int], scale: CGFloat) {
+        self.size = size
+        self.rows = rows
+        self.scale = scale
+        self.rowScale = scale
+        self.top = 56 * scale
+        self.bottom = size.height - 24 * scale
+        self.rowGap = PracticeBandStyle.rowGap * scale
+        self.height = max(1, (self.bottom - self.top - self.rowGap * CGFloat(max(0, rows.count - 1))) / CGFloat(max(1, rows.count)))
+        self.countY = 26 * scale
+        self.beatFontSize = 28 * scale
+        self.tickY = self.countY + 12 * scale
+        self.tickWidth = max(4, 6 * scale)
+        self.tickHeight = max(2.5, 4 * scale)
+        self.beatLineTop = self.countY + 14 * scale
+        self.fontSize = 32 * scale
+    }
+
+    func y(_ row: Int) -> CGFloat { top + CGFloat(row) * (height + rowGap) + height / 2 }
     func tile(x: CGFloat, width: CGFloat, row: Int) -> CGRect {
-        let h = min(height - 4 * scale, 64 * scale)
-        return CGRect(x: x - width * 0.42, y: y(row) - h / 2, width: width * 0.84, height: h)
+        let h = min(height - 4 * rowScale, 64 * rowScale)
+        return CGRect(x: x - width * 0.42, y: y(row) - h / 2, width: width * 0.84, height: max(1, h))
     }
-    var fontSize: CGFloat { 32 * scale }
 
     func drawRows(context: inout GraphicsContext) {
+        let radius = min(12, height * 0.4)
         for row in rows.indices {
             let rect = CGRect(x: -10, y: y(row) - height / 2, width: size.width + 20, height: height)
-            context.fill(Path(roundedRect: rect, cornerRadius: 12), with: .color(Theme.white.opacity(0.16)))
+            context.fill(Path(roundedRect: rect, cornerRadius: radius), with: .color(Theme.white.opacity(0.16)))
         }
     }
 
@@ -246,13 +275,14 @@ private struct PatternLanes {
     func drawLabels(band: Color, labelLayout: BandLabelLayout, context: inout GraphicsContext) {
         guard PracticeBandStyle.showPadLabels, labelLayout.gutter > 0 else { return }
         let backdropWidth = max(0, labelLayout.gutter + 6)
+        let labelFontSize = min(labelLayout.fontSize, max(3, height * 0.68))
         for (row, pad) in rows.enumerated() {
             let rect = CGRect(x: -12, y: y(row) - height / 2, width: backdropWidth, height: height)
             context.fill(Path(roundedRect: rect, cornerRadius: 6), with: .color(band))
             let label = labelLayout.labels[pad] ?? PadVoice.displayName(pad)
             context.draw(
                 Text(label)
-                    .font(Theme.canvasDisplay(labelLayout.fontSize))
+                    .font(Theme.canvasDisplay(labelFontSize))
                     .foregroundColor(Theme.black),
                 at: CGPoint(x: 0, y: y(row)),
                 anchor: .leading
@@ -263,19 +293,15 @@ private struct PatternLanes {
 
 private func drawBeat(step: Int, x: CGFloat, lanes: PatternLanes, context: inout GraphicsContext) {
     if step.isMultiple(of: 4) {
-        context.draw(Text(String(step % 16 / 4 + 1)).font(Theme.canvasDisplay(28 * lanes.scale)).monospacedDigit().foregroundColor(Theme.black),
+        context.draw(Text(String(step % 16 / 4 + 1)).font(Theme.canvasDisplay(lanes.beatFontSize)).monospacedDigit().foregroundColor(Theme.black),
                      at: CGPoint(x: x, y: lanes.countY))
         let bar = step.isMultiple(of: 16)
-        let lineTop = lanes.countY + 14 * lanes.scale
         var path = Path()
-        path.move(to: CGPoint(x: x, y: lineTop))
+        path.move(to: CGPoint(x: x, y: lanes.beatLineTop))
         path.addLine(to: CGPoint(x: x, y: lanes.bottom))
         context.stroke(path, with: .color(Theme.black.opacity(bar ? 0.38 : 0.18)), lineWidth: bar ? 1.2 : 0.65)
         if bar {
-            let tickWidth = max(4, 6 * lanes.scale)
-            let tickHeight = max(2.5, 4 * lanes.scale)
-            let tickY = lanes.countY + 12 * lanes.scale
-            context.fill(Path(roundedRect: CGRect(x: x - tickWidth / 2, y: tickY, width: tickWidth, height: tickHeight), cornerRadius: 1),
+            context.fill(Path(roundedRect: CGRect(x: x - lanes.tickWidth / 2, y: lanes.tickY, width: lanes.tickWidth, height: lanes.tickHeight), cornerRadius: 1),
                          with: .color(Theme.black.opacity(0.7)))
         }
     } else {
@@ -299,7 +325,7 @@ private struct StaticPattern: View {
     let scoring: Bool
     let missGraceSteps: Double
     let band: Color
-    let scale: CGFloat
+    let layout: BandGeometry
     let labelLayout: BandLabelLayout
     var bpm: Int = 60
     var reduceMotion: Bool = false
@@ -315,7 +341,7 @@ private struct StaticPattern: View {
         ZStack {
             Canvas { context, size in
                 let cellWidth = max(1, (size.width - gutter) / CGFloat(totalSteps))
-                let lanes = PatternLanes(size: size, rows: rows, scale: scale)
+                let lanes = PatternLanes(geometry: layout, rows: rows)
                 lanes.drawRows(context: &context)
 
                 // Beat division marks and numbers for each bar
@@ -331,7 +357,7 @@ private struct StaticPattern: View {
 
             Canvas { context, size in
                 let cellWidth = max(1, (size.width - gutter) / CGFloat(totalSteps))
-                let lanes = PatternLanes(size: size, rows: rows, scale: scale)
+                let lanes = PatternLanes(geometry: layout, rows: rows)
                 let elapsedSeconds = position * 15.0 / Double(max(1, bpm))
                 let fadeProgress = reduceMotion ? 1.0 : min(1.0, max(0.0, elapsedSeconds / 0.25))
 
@@ -366,7 +392,7 @@ private struct StaticPattern: View {
 
             Canvas { context, size in
                 let cellWidth = max(1, (size.width - gutter) / CGFloat(totalSteps))
-                let lanes = PatternLanes(size: size, rows: rows, scale: scale)
+                let lanes = PatternLanes(geometry: layout, rows: rows)
 
                 if visibility == .hidden && running {
                     for (row, pad) in rows.enumerated() {
@@ -396,7 +422,7 @@ private struct StaticPattern: View {
                 let visiblePosition = position - Double(startStep)
                 if running && visiblePosition >= 0 && visiblePosition <= Double(totalSteps) {
                     let markerX = gutter + CGFloat(visiblePosition) * cellWidth
-                    drawMarker(x: markerX, top: lanes.top - 4 * scale, bottom: lanes.bottom + 4, context: &context)
+                    drawMarker(x: markerX, top: lanes.top - 4 * lanes.scale, bottom: lanes.bottom + 4, context: &context)
                 }
 
                 // Pad labels appear once, on the left of the whole row of bars
@@ -424,7 +450,7 @@ private struct ScrollingPattern: View {
     let scoring: Bool
     let missGraceSteps: Double
     let band: Color
-    let scale: CGFloat
+    let layout: BandGeometry
     let labelLayout: BandLabelLayout
 
     var body: some View {
@@ -432,9 +458,9 @@ private struct ScrollingPattern: View {
 
         ZStack {
             Canvas { context, size in
-                let cellWidth = max(PracticeBandStyle.cellWidth(rows: rows, scale: scale), size.width / 24)
+                let cellWidth = max(PracticeBandStyle.cellWidth(rows: rows, scale: layout.rowScale), size.width / 24)
                 let markerX = size.width / 3
-                let lanes = PatternLanes(size: size, rows: rows, scale: scale)
+                let lanes = PatternLanes(geometry: layout, rows: rows)
                 let firstStep = Int(floor(position - Double(markerX / cellWidth))) - 1
                 let lastStep = Int(ceil(position + Double((size.width - markerX) / cellWidth))) + 1
                 lanes.drawRows(context: &context)
@@ -447,9 +473,9 @@ private struct ScrollingPattern: View {
             }
 
             Canvas { context, size in
-                let cellWidth = max(PracticeBandStyle.cellWidth(rows: rows, scale: scale), size.width / 24)
+                let cellWidth = max(PracticeBandStyle.cellWidth(rows: rows, scale: layout.rowScale), size.width / 24)
                 let markerX = size.width / 3
-                let lanes = PatternLanes(size: size, rows: rows, scale: scale)
+                let lanes = PatternLanes(geometry: layout, rows: rows)
                 let firstStep = Int(floor(position - Double(markerX / cellWidth))) - 1
                 let lastStep = Int(ceil(position + Double((size.width - markerX) / cellWidth))) + 1
 
@@ -476,9 +502,9 @@ private struct ScrollingPattern: View {
             .animation(reduceMotion ? nil : Theme.Motion.fast, value: afterMe)
 
             Canvas { context, size in
-                let cellWidth = max(PracticeBandStyle.cellWidth(rows: rows, scale: scale), size.width / 24)
+                let cellWidth = max(PracticeBandStyle.cellWidth(rows: rows, scale: layout.rowScale), size.width / 24)
                 let markerX = size.width / 3
-                let lanes = PatternLanes(size: size, rows: rows, scale: scale)
+                let lanes = PatternLanes(geometry: layout, rows: rows)
                 let rowTop = lanes.top
                 let rowBottom = lanes.bottom
 
@@ -497,7 +523,7 @@ private struct ScrollingPattern: View {
                         drawPlayedHit(hit, in: rect, fontSize: lanes.fontSize, context: &hitContext)
                     }
                 }
-                drawMarker(x: markerX, top: lanes.top - 4 * scale, bottom: rowBottom + 4, context: &context)
+                drawMarker(x: markerX, top: lanes.top - 4 * lanes.scale, bottom: rowBottom + 4, context: &context)
                 lanes.drawLabels(band: band, labelLayout: labelLayout, context: &context)
             }
         }
@@ -529,8 +555,9 @@ private func drawHit(_ hit: LessonHit, in rect: CGRect, mark: HitMark?, strength
         }
         return
     }
-    let cornerRadius = min(7, rect.width * 0.25)
+    let cornerRadius = min(7, min(rect.width, rect.height) * 0.25)
     let innerRadius = max(1, cornerRadius - 1)
+    let hitFontSize = min(fontSize, max(7, min(rect.width * 0.65, rect.height * 0.68)))
 
     switch visibility {
     case .shown:
@@ -552,7 +579,6 @@ private func drawHit(_ hit: LessonHit, in rect: CGRect, mark: HitMark?, strength
             }
             fillContext.stroke(accent, with: .color(Theme.black), lineWidth: 1.4)
         }
-        let hitFontSize = min(fontSize, max(7, rect.width * 0.65))
         fillContext.draw(Text(PadVoice.abbreviation(hit.padIndex)).font(Theme.canvasDisplay(hitFontSize))
             .foregroundColor(Theme.black), at: CGPoint(x: rect.midX, y: rect.midY))
 
@@ -580,7 +606,6 @@ private func drawHit(_ hit: LessonHit, in rect: CGRect, mark: HitMark?, strength
             var crossContext = context
             crossContext.opacity *= strength * (1.0 - fadeProgress)
             crossContext.fill(Path(roundedRect: rect, cornerRadius: cornerRadius), with: .color(Theme.white))
-            let hitFontSize = min(fontSize, max(7, rect.width * 0.65))
             crossContext.draw(Text(PadVoice.abbreviation(hit.padIndex)).font(Theme.canvasDisplay(hitFontSize))
                 .foregroundColor(Theme.black), at: CGPoint(x: rect.midX, y: rect.midY))
         }
