@@ -118,7 +118,7 @@ struct PracticeScreen: View {
                 middleZone
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
 
-                bottomZone(s: s, portraitPads: portraitPads, screenHeight: geometry.size.height, availableWidth: availableWidth)
+                bottomZone(s: s, isPortrait: isPortrait, portraitPads: portraitPads, screenHeight: geometry.size.height, availableWidth: availableWidth)
                     .fixedSize(horizontal: false, vertical: true)
             }
             .padding(Theme.Space.page)
@@ -680,14 +680,14 @@ struct PracticeScreen: View {
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
 
-                VStack(alignment: .trailing, spacing: Theme.Space.tight) {
+                VStack(alignment: .trailing, spacing: Theme.Space.controlGap) {
                     runMeter(frame: frame, scored: scored)
                     TimingCue(offset: scored ? session.timingHistory.cueOffset(at: date) : 0, active: scored)
                 }
                 .fixedSize(horizontal: true, vertical: false)
             }
 
-            VStack(alignment: .leading, spacing: Theme.Space.small) {
+            VStack(alignment: .leading, spacing: Theme.Space.controlGap) {
                 HStack(alignment: .top, spacing: Theme.Space.small) {
                     hudTempo(bpm: frame.bpm)
                     Spacer(minLength: 0)
@@ -701,6 +701,7 @@ struct PracticeScreen: View {
             }
         }
         .frame(maxWidth: .infinity)
+        .padding(.bottom, Theme.Space.small)
     }
 
     private func hudTempo(bpm: Int) -> some View {
@@ -847,7 +848,7 @@ struct PracticeScreen: View {
             .frame(maxWidth: .infinity)
     }
 
-    private func bottomZone(s: CGFloat, portraitPads: Bool, screenHeight: CGFloat, availableWidth: CGFloat) -> some View {
+    private func bottomZone(s: CGFloat, isPortrait: Bool, portraitPads: Bool, screenHeight: CGFloat, availableWidth: CGFloat) -> some View {
         let padsHeight: CGFloat = (portraitPads && midi.padIndices != nil) ? {
             let availableForPads = max(260, screenHeight - 48 - 110 - s - 280)
             return min(520, max(280, min((screenHeight - 48) * 0.44, availableForPads)))
@@ -858,7 +859,7 @@ struct PracticeScreen: View {
             : (screenHeight - Theme.Space.page - s)
 
         return VStack(spacing: Theme.Space.regular) {
-            bottomZoneRow(s: s, availableWidth: availableWidth, spaceAbove: spaceAbove)
+            bottomZoneRow(s: s, isPortrait: isPortrait, availableWidth: availableWidth, spaceAbove: spaceAbove)
 
             if portraitPads, let pads = midi.padIndices {
                 PracticeTouchPadGrid(pads: pads,
@@ -876,11 +877,11 @@ struct PracticeScreen: View {
         .frame(maxWidth: .infinity)
     }
 
-    private func bottomZoneRow(s: CGFloat, availableWidth: CGFloat, spaceAbove: CGFloat) -> some View {
+    private func bottomZoneRow(s: CGFloat, isPortrait: Bool, availableWidth: CGFloat, spaceAbove: CGFloat) -> some View {
         let showingResult = isShowingResult
         let transportWidth = min(200, max(s, 176))
         let resultGap = Theme.Space.regular
-        let stackedResult = availableWidth < 680
+        let stackedResult = isPortrait || availableWidth < 840
         let cardWidth = stackedResult
             ? availableWidth
             : max(0, availableWidth - transportWidth - resultGap)
@@ -1169,36 +1170,41 @@ struct PracticeScreen: View {
         horizontalResultButtons: Bool
     ) -> some View {
         let showingResult = isShowingResult
-        let eligibleForNext = (!session.isMix || onStepResult != nil)
-            && !session.afterMe
-            && (!session.finishedByReview || onStepResult != nil)
+        let target = ResultNextTarget.resolve(
+            isStepResult: onStepResult != nil,
+            isMix: session.isMix,
+            afterMe: session.afterMe,
+            finishedByReview: session.finishedByReview,
+            isDueReview: session.isDueReview,
+            reviewFeedback: session.reviewFeedback,
+            lessonPassed: session.savedProgress?.passed == true,
+            nextDueReview: nextDueReviewLesson,
+            nextPathLesson: nextLesson
+        )
 
         var nextEnabled = false
         var nextLocked = false
         var nextHint: String?
         var nextAction: (() -> Void)?
 
-        if eligibleForNext {
-            if onStepResult != nil {
-                nextEnabled = true
-                nextAction = {
-                    dismissDebugResult()
-                    session.stop()
-                    reportStepResult()
-                    if let dismissLesson { dismissLesson() } else { dismiss() }
-                }
-            } else if session.savedProgress?.passed == true, let next = nextLesson {
-                nextEnabled = true
-                nextLocked = !store.isUnlocked(next)
-                nextHint = settings.localized(next.title)
-                nextAction = {
-                    dismissDebugResult()
-                    openNextLesson(next)
-                }
+        switch target {
+        case .stepResult:
+            nextEnabled = true
+            nextAction = {
+                dismissDebugResult()
+                session.stop()
+                reportStepResult()
+                if let dismissLesson { dismissLesson() } else { dismiss() }
             }
-        }
-
-        if !nextEnabled && nextHint == nil {
+        case .lesson(let next):
+            nextEnabled = true
+            nextLocked = !store.isUnlocked(next)
+            nextHint = settings.localized(next.title)
+            nextAction = {
+                dismissDebugResult()
+                openNextLesson(next)
+            }
+        case .hidden:
             nextHint = settings.localized("No next lesson available")
         }
 
@@ -1311,6 +1317,20 @@ struct PracticeScreen: View {
         return parts.joined(separator: ". ")
     }
 
+    private var nextDueReviewLesson: Lesson? {
+        guard onStepResult == nil else { return nil }
+        let today = AppCalendar.today()
+        let padCount = midi.activeProfile.padCount
+        let candidates = progress.dueLessonIds(today: today)
+            .filter { $0 != session.lesson.id }
+            .compactMap { id in progression.catalog.lessons.first { $0.id == id } }
+            .filter { lesson in
+                progression.isLessonOpen(lesson)
+                    && (padCount == 16 || EightPadLayout.slots(for: lesson) != nil)
+            }
+        return ReviewQueue.order(candidates, records: progress.records, today: today).first
+    }
+
     private var nextLesson: Lesson? {
         guard onStepResult == nil else { return nil }
         return progression.nextLesson(after: session.lesson,
@@ -1333,7 +1353,15 @@ struct PracticeScreen: View {
         helpPresentation = nil
         didOpenHelpOrInfo = false
         session.close()
-        session = PracticeSession(lesson: lesson, settings: settings, progress: progress, midi: midi)
+        let launch = LessonLaunch.library(lesson, progress: progress.progress(for: lesson.id), today: AppCalendar.today())
+        session = PracticeSession(
+            lesson: lesson,
+            settings: settings,
+            progress: progress,
+            midi: midi,
+            initialFromMemory: launch.reviewTempo != nil,
+            initialBpm: launch.reviewTempo
+        )
     }
 
     private func sessionResultsView(_ summary: RunSummary) -> some View {
@@ -1780,5 +1808,42 @@ private extension View {
             ) {
                 content()
             }
+    }
+}
+
+enum ResultNextTarget: Equatable {
+    case stepResult
+    case lesson(Lesson)
+    case hidden
+
+    static func resolve(
+        isStepResult: Bool,
+        isMix: Bool,
+        afterMe: Bool,
+        finishedByReview: Bool,
+        isDueReview: Bool,
+        reviewFeedback: ReviewScheduler.ReviewFeedback?,
+        lessonPassed: Bool,
+        nextDueReview: Lesson?,
+        nextPathLesson: Lesson?
+    ) -> Self {
+        if afterMe { return .hidden }
+        if isStepResult { return .stepResult }
+        if isMix { return .hidden }
+
+        if finishedByReview {
+            if let nextDueReview { return .lesson(nextDueReview) }
+            if let nextPathLesson { return .lesson(nextPathLesson) }
+            return .hidden
+        }
+
+        if isDueReview || reviewFeedback != nil {
+            return .hidden
+        }
+
+        if lessonPassed, let nextPathLesson {
+            return .lesson(nextPathLesson)
+        }
+        return .hidden
     }
 }

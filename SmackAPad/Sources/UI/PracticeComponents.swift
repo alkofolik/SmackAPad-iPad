@@ -170,19 +170,12 @@ private struct PracticeToolbarHintModifier: ViewModifier {
 
     private var hintGesture: some Gesture {
         LongPressGesture(minimumDuration: 0.45, maximumDistance: 15)
-            .sequenced(before: DragGesture(minimumDistance: 0))
-            .onChanged { value in
-                if case .second(true, _) = value {
-                    showHint()
-                }
-            }
             .onEnded { _ in
-                hideHint()
+                showHint()
             }
     }
 
     private func showHint() {
-        guard !showingHint else { return }
         showingHint = true
         dismissTask?.cancel()
         dismissTask = Task { @MainActor in
@@ -477,37 +470,41 @@ struct TransportControls: View {
 
     @ViewBuilder
     private var resultBody: some View {
+        let showNext = nextEnabled && nextAction != nil
         let layout = horizontalResultButtons
             ? AnyLayout(HStackLayout(spacing: Theme.Space.controlGap))
             : AnyLayout(VStackLayout(spacing: Theme.Space.controlGap))
         let buttonHeight: CGFloat? = horizontalResultButtons
             ? 64
-            : resultSize.map { max(0, ($0.height - Theme.Space.controlGap) / 2) }
+            : showNext
+                ? resultSize.map { max(0, ($0.height - Theme.Space.controlGap) / 2) }
+                : resultSize?.height
 
         layout {
-            Button {
-                nextAction?()
-            } label: {
-                HStack(spacing: Theme.Space.small) {
-                    if nextLocked {
-                        Image(systemName: "lock")
-                            .font(.system(size: 16, weight: .semibold))
+            if showNext {
+                Button {
+                    nextAction?()
+                } label: {
+                    HStack(spacing: Theme.Space.small) {
+                        if nextLocked {
+                            Image(systemName: "lock")
+                                .font(.system(size: 16, weight: .semibold))
+                        }
+                        Text(settings.localized("Next"))
+                            .font(Theme.action)
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.8)
+                        if !nextLocked {
+                            Image(systemName: "chevron.right")
+                                .font(.system(size: 18, weight: .semibold))
+                        }
                     }
-                    Text(settings.localized("Next"))
-                        .font(Theme.action)
-                        .lineLimit(1)
-                        .minimumScaleFactor(0.8)
-                    if !nextLocked {
-                        Image(systemName: "chevron.right")
-                            .font(.system(size: 18, weight: .semibold))
-                    }
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
                 }
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .buttonStyle(PadPrimaryButtonStyle())
+                .frame(height: buttonHeight)
+                .accessibilityHint(nextHint ?? "")
             }
-            .buttonStyle(PadPrimaryButtonStyle())
-            .frame(height: buttonHeight)
-            .disabled(!nextEnabled || nextAction == nil)
-            .accessibilityHint(nextHint ?? "")
 
             Button(action: restart) {
                 Text(settings.localized("Restart"))
