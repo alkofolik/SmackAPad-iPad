@@ -3617,3 +3617,8 @@
 "Arrangement" = "Arrangement";
 "Note %lld is not mapped" = "Note %lld is not mapped";
 "Controller, %lld rows by %lld columns" = "Controller, %lld rows by %lld columns";
+
+/* Home hardware controls and display. */
+"home.appearance.auto" = "Auto";
+"home.controller.connected" = "connected";
+"home.controller.none" = "No controller";

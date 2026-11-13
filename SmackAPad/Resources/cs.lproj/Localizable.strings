@@ -3622,3 +3622,8 @@
 "Arrangement" = "Rozložení";
 "Note %lld is not mapped" = "Nota %lld není přiřazená";
 "Controller, %lld rows by %lld columns" = "Kontrolér, %lld řad a %lld sloupců";
+
+/* Home hardware controls and display. */
+"home.appearance.auto" = "Auto";
+"home.controller.connected" = "připojeno";
+"home.controller.none" = "Žádný kontrolér";

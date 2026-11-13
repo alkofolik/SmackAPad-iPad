@@ -1,6 +1,6 @@
 # 206 — Home as a real controller: display, language knob, appearance switch
 
-Status: ready-for-agent. Decided by Jakub on 2026-11-13 (iPad review, photos 11 and 12). Defaults below follow the recommendation Jakub approved ("Ano, napiš tickety"); he may still change details after the iPad check.
+Status: implemented; build and full test suite passed. Awaiting Jakub’s manual iPad check. Decided by Jakub on 2026-11-13 (iPad review, photos 11 and 12). Defaults below follow the recommendation Jakub approved ("Ano, napiš tickety"); he may still change details after the iPad check.
 
 ## Goal
 
@@ -50,7 +50,7 @@ Unit test for the knob mapping: angle ↔ detent ↔ `AppLanguage` (snap to near
 - [ ] Knob and switch change language and appearance at once and match Settings both ways.
 - [ ] "How it works" bar is gone; the "?" button opens help.
 - [ ] Launch animation ends with the display lighting up.
-- [ ] Build and full test suite pass.
+- [x] Build and full test suite pass.
 
 ### Manual iPad checks for Jakub
 
@@ -65,3 +65,18 @@ Codex GPT-6.1 Sol, thinking **high** (custom drawing, two new controls, layout i
 ## Done rule
 
 Build, run the full test suite per `AGENTS.md`, commit, stop for Jakub's iPad check.
+
+## Implementation notes
+
+- Added a code-drawn LED display with a reusable status input and the selected MIDI source connection.
+- Added language detents derived from `AppLanguage.allCases` and a Light / Auto / Dark switch, both writing directly to `SettingsManager` and supporting VoiceOver adjustment.
+- Moved Home help to the round button and kept its existing focus return. The help title strings and `HelpEntryLabel` remain in use by Settings and the help deck.
+- Raised the portrait plate, lengthened its three faders, and aligned landscape faders with the plate. Short windows hide faders when usable travel is insufficient.
+- Replaced the old title animation with a 0.75-second display power-on and plate reveal; Reduce Motion fades the complete Home.
+- Added only the requested language and appearance mapping tests. Manual acceptance checks remain for Jakub on iPad.
+
+## Verification
+
+- iPad (A16), iOS 27.0 simulator: `xcodebuild build` succeeded.
+- Full `xcodebuild test` suite: 293 tests passed, zero failures, including all four Home control mapping tests.
+- No additional UI tests were added; the manual iPad checks above remain open.

@@ -12,9 +12,8 @@ func shouldPulseIntroPad(
     loadSucceeded && animationFinished && !hasAnyLessonProgress(records)
 }
 
-/// One proportional coordinate system for the grid, title and decorative hardware.
+/// One proportional coordinate system for the display, plate and interactive hardware.
 private struct HomeControllerLayout: Equatable {
-    static let helpRowSpace = Theme.Size.touch + Theme.Space.small
     let size: CGSize
     let cellSize: CGFloat
 
@@ -24,25 +23,35 @@ private struct HomeControllerLayout: Equatable {
         // Preserve the existing grid ceiling; reserve 35% of the short axis for the body.
         let maxCellSize = (680 - 2 * Theme.Space.regular) / 3
         let plateInCells: CGFloat = 3 + 2 * (15.0 / 146) + 2 * (36.0 / 146)
-        cellSize = max(0, floor(min(maxCellSize, shorterSide * 0.65 / plateInCells)))
+        let footer = size.width >= size.height ? 44.0 : 144 + Theme.Space.page + shorterSide * 0.05
+        let verticalBudget = max(0, size.height - 44 - 96 - Theme.Space.regular - footer)
+        cellSize = max(0, floor(min(maxCellSize, min(shorterSide * 0.65, verticalBudget) / plateInCells)))
     }
 
     var unit: CGFloat { cellSize / 146 }
     var gap: CGFloat { 15 * unit }
     var gridSize: CGFloat { 3 * cellSize + 2 * gap }
     var plateSize: CGFloat { gridSize + 72 * unit }
-    var plate: CGRect {
-        CGRect(x: (size.width - plateSize) / 2, y: (size.height - plateSize) / 2,
-               width: plateSize, height: plateSize)
-    }
     var landscape: Bool { size.width >= size.height }
     var margin: CGFloat { min(size.width, size.height) * 0.025 }
-    var wordmarkWidth: CGFloat {
-        let desired = plateSize * (landscape ? 292.0 / 540 : 332.0 / 540)
-        // Keep equal clear space above and below the real wordmark, including small windows.
-        return min(desired, max(0, plate.minY - 2 * margin) * (490.455 / 73.8))
+    var displayHeight: CGFloat { max(64, min(96, plateSize * 0.16)) }
+    var display: CGRect {
+        CGRect(x: (size.width - plateSize) / 2,
+               y: landscape ? max(44, (size.height - plateSize - displayHeight - Theme.Space.regular) / 2) : 44,
+               width: plateSize, height: displayHeight)
     }
-    var wordmarkY: CGFloat { plate.minY / 2 }
+    var plate: CGRect {
+        CGRect(x: display.minX, y: display.maxY + Theme.Space.regular,
+               width: plateSize, height: plateSize)
+    }
+    var portraitBayTop: CGFloat { plate.maxY + Theme.Space.page }
+    var portraitControlWidth: CGFloat { min(180, max(96, size.width * 0.23)) }
+    var portraitFaderHeight: CGFloat {
+        min(340 * unit, max(0, size.height - portraitBayTop - 2 * margin))
+    }
+    var portraitFadersFit: Bool {
+        unit > 0 && portraitFaderHeight - 17 * unit >= max(64 * unit, Theme.Size.touch)
+    }
 }
 
 /// Static moulded plastic. Equatable isolates the rasterised surface from Home's launch/pad states.
@@ -248,7 +257,7 @@ private struct HomeControllerFaders: View {
         let u = min(layout.unit, max(0, bayWidth - 2 * layout.margin) / 134)
         if u > 0 {
             let height = 217 * u
-            let centerY = (layout.size.height - height) / 2
+            let topY = layout.plate.minY
             let leftCenterX = bayWidth / 2
             let x0 = leftCenterX - 67 * u
             let x1 = leftCenterX + 11 * u
@@ -266,7 +275,7 @@ private struct HomeControllerFaders: View {
                 portrait: false,
                 darkAppearance: darkAppearance
             )
-            .position(x: x0 + 28 * u, y: centerY + height / 2)
+            .position(x: x0 + 28 * u, y: topY + height / 2)
 
             // Pattern (left bay, right channel)
             HomeControllerFaderView(
@@ -278,7 +287,7 @@ private struct HomeControllerFaders: View {
                 portrait: false,
                 darkAppearance: darkAppearance
             )
-            .position(x: x1 + 28 * u, y: centerY + height / 2)
+            .position(x: x1 + 28 * u, y: topY + height / 2)
 
             // Pads (right bay, centered)
             HomeControllerFaderView(
@@ -290,37 +299,30 @@ private struct HomeControllerFaders: View {
                 portrait: false,
                 darkAppearance: darkAppearance
             )
-            .position(x: x2 + 28 * u, y: centerY + height / 2)
+            .position(x: x2 + 28 * u, y: topY + height / 2)
         }
     }
 
     @ViewBuilder
     private var portraitFaders: some View {
-        let u = min(layout.unit, max(0, layout.size.width - 2 * layout.margin) / 228)
-        let bayTop = layout.plate.maxY + HomeControllerLayout.helpRowSpace
-        let bayHeight = max(0, layout.size.height - bayTop)
-        let height = min(142 * u, max(0, bayHeight - 2 * layout.margin))
-        let travel = height - 17 * u
-        let count = travel >= 64 * u ? 3 : (travel >= 48 * u ? 2 : 0)
-        if u > 0 && count > 0 {
-            let width = CGFloat(count) * 52 * u + CGFloat(count - 1) * 36 * u
-            let startX = (layout.size.width - width) / 2
-            let centerY = bayTop + (bayHeight - height) / 2 + height / 2
+        let availableWidth = max(0, layout.size.width - 2 * layout.portraitControlWidth - 2 * layout.margin)
+        let u = min(layout.unit, availableWidth / 264)
+        let height = layout.portraitFaderHeight
+        if layout.portraitFadersFit && u > 0 {
+            let startX = (layout.size.width - 264 * u) / 2
             let channels: [HomeFaderChannel] = [.metronome, .pattern, .pads]
-            let margin = 18 * u
-
-            ForEach(0..<count, id: \.self) { idx in
-                let x = startX + CGFloat(idx) * 88 * u + 26 * u
+            ForEach(0..<3, id: \.self) { idx in
                 HomeControllerFaderView(
                     channel: channels[idx],
                     unit: u,
                     faderSize: CGSize(width: 52 * u, height: height),
-                    horizontalMargin: margin,
+                    horizontalMargin: 18 * u,
                     mirrored: false,
                     portrait: true,
                     darkAppearance: darkAppearance
                 )
-                .position(x: x, y: centerY)
+                .position(x: startX + CGFloat(idx) * 88 * u + 44 * u,
+                          y: layout.portraitBayTop + height / 2)
             }
         }
     }
@@ -900,14 +902,6 @@ private struct AccessibilityValueModifier: ViewModifier {
 struct HomeLogoMarkView: View {
     let size: CGFloat
     let darkAppearance: Bool
-    var reduceMotion: Bool = false
-    var pad1Popped: Bool = true
-    var pad2Popped: Bool = true
-    var pad3Popped: Bool = true
-    var orangeVisible: Bool = true
-    var orangeLanded: Bool = true
-    var blackBounce: CGFloat = 0
-
     private static let blackPad = Color(red: 17 / 255.0, green: 17 / 255.0, blue: 17 / 255.0)
     private static let creamPad = Color(red: 242 / 255.0, green: 240 / 255.0, blue: 234 / 255.0)
     private static let orangePad = Color(red: 255 / 255.0, green: 91 / 255.0, blue: 31 / 255.0)
@@ -925,68 +919,33 @@ struct HomeLogoMarkView: View {
                 RoundedRectangle(cornerRadius: cornerRadius)
                     .fill(neutralPadColor)
                     .frame(width: padDimension, height: padDimension)
-                    .scaleEffect(reduceMotion ? 1.0 : (pad1Popped ? 1.0 : 0.4))
-                    .opacity(reduceMotion ? 1.0 : (pad1Popped ? 1.0 : 0.0))
                     .position(x: 28.4086 * unit, y: 32.5914 * unit)
 
                 // Bottom-left
                 RoundedRectangle(cornerRadius: cornerRadius)
                     .fill(neutralPadColor)
                     .frame(width: padDimension, height: padDimension)
-                    .scaleEffect(reduceMotion ? 1.0 : (pad2Popped ? 1.0 : 0.4))
-                    .opacity(reduceMotion ? 1.0 : (pad2Popped ? 1.0 : 0.0))
                     .position(x: 28.4086 * unit, y: 72.5914 * unit)
 
                 // Bottom-right
                 RoundedRectangle(cornerRadius: cornerRadius)
                     .fill(neutralPadColor)
                     .frame(width: padDimension, height: padDimension)
-                    .scaleEffect(reduceMotion ? 1.0 : (pad3Popped ? 1.0 : 0.4))
-                    .opacity(reduceMotion ? 1.0 : (pad3Popped ? 1.0 : 0.0))
                     .position(x: 68.4086 * unit, y: 72.5914 * unit)
             }
             .frame(width: size, height: size)
-            .offset(y: reduceMotion ? 0 : blackBounce)
 
             // Top-right orange smack pad
             RoundedRectangle(cornerRadius: cornerRadius)
                 .fill(Self.orangePad)
                 .frame(width: padDimension, height: padDimension)
-                .scaleEffect(reduceMotion ? 1.0 : (orangeLanded ? 1.0 : 1.35))
-                .rotationEffect(.degrees(reduceMotion ? 8.0 : (orangeLanded ? 8.0 : 0.0)))
-                .offset(y: reduceMotion ? 0 : (orangeLanded ? 0 : -36 * unit))
-                .opacity(reduceMotion ? 1.0 : (orangeVisible ? 1.0 : 0.0))
+                .rotationEffect(.degrees(8))
                 .position(x: 69.9086 * unit, y: 29.0914 * unit)
         }
         .frame(width: size, height: size)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel("Smack-a-Pad")
         .accessibilityAddTraits(.isImage)
-    }
-}
-
-/// The vector wordmark "Smack-a-Pad".
-struct HomeWordmarkView: View {
-    let width: CGFloat
-    let darkAppearance: Bool
-    var reduceMotion: Bool = false
-    var isVisible: Bool = true
-
-    private static let aspectRatio: CGFloat = 490.455 / 73.8
-    private static let blackPad = Color(red: 17 / 255.0, green: 17 / 255.0, blue: 17 / 255.0)
-    private static let creamPad = Color(red: 242 / 255.0, green: 240 / 255.0, blue: 234 / 255.0)
-
-    var body: some View {
-        Image("LaunchWordmark")
-            .renderingMode(.template)
-            .resizable()
-            .scaledToFit()
-            .foregroundStyle(darkAppearance ? Self.creamPad : Self.blackPad)
-            .frame(width: width, height: width / Self.aspectRatio)
-            .offset(y: reduceMotion ? 0 : (isVisible ? 0 : 8))
-            .opacity(reduceMotion ? 1.0 : (isVisible ? 1.0 : 0.0))
-            .accessibilityElement(children: .ignore)
-            .accessibilityLabel("Smack-a-Pad")
     }
 }
 
@@ -1057,24 +1016,15 @@ public struct HomeScreen: View {
     @Namespace private var homeNamespace
 
     @State private var lessonStore = LessonStore.shared
-    @State private var gridOpacity: Double = 1.0
+    @State private var homeOpacity: Double = 1.0
 
-    // Launch animation sequence states
-    @State private var pad1Popped: Bool
-    @State private var pad2Popped: Bool
-    @State private var pad3Popped: Bool
-    @State private var orangeVisible: Bool
-    @State private var orangeLanded: Bool
-    @State private var blackBounce: CGFloat = 0
-    @State private var wordmarkVisible: Bool
-    @State private var isSettled: Bool
-    @State private var logoInPad: Bool
+    // The bezel is already visible when the display powers on.
+    @State private var pixelsVisible: Bool
+    @State private var displayPowered: Bool
     @State private var plateVisible: Bool
     @State private var padVisible: [Bool]
     @State private var animationFinished: Bool
     @State private var animationTask: Task<Void, Never>?
-
-    private static let cream = Color(red: 242 / 255.0, green: 240 / 255.0, blue: 234 / 255.0)
 
     public init(
         isColdStart: Bool = false,
@@ -1088,14 +1038,8 @@ public struct HomeScreen: View {
         self.onNavigateToTraining = onNavigateToTraining
 
         let settled = !isColdStart
-        _pad1Popped = State(initialValue: settled)
-        _pad2Popped = State(initialValue: settled)
-        _pad3Popped = State(initialValue: settled)
-        _orangeVisible = State(initialValue: settled)
-        _orangeLanded = State(initialValue: settled)
-        _wordmarkVisible = State(initialValue: settled)
-        _isSettled = State(initialValue: settled)
-        _logoInPad = State(initialValue: settled)
+        _pixelsVisible = State(initialValue: settled)
+        _displayPowered = State(initialValue: settled)
         _plateVisible = State(initialValue: settled)
         _padVisible = State(initialValue: Array(repeating: settled, count: 8))
         _animationFinished = State(initialValue: settled)
@@ -1105,41 +1049,23 @@ public struct HomeScreen: View {
         GeometryReader { proxy in
             let containerW = proxy.size.width
             let containerH = proxy.size.height
-            let shorterSide = min(containerW, containerH)
             let layout = HomeControllerLayout(size: proxy.size)
             let gap = layout.gap
-            let aspectRatio: CGFloat = 490.455 / 73.8
-            let settledWordmarkW = layout.wordmarkWidth
             let cellSize = layout.cellSize
             let gridSize = layout.gridSize
-            let settledWordmarkY = layout.wordmarkY
-            let settledGridCenterY = containerH / 2
-
-            // Initial animation geometry (centered on screen)
-            let initialLogoSize = shorterSide * 0.28
-            let initialWordmarkW = initialLogoSize * 1.12
-            let initialWordmarkH = initialWordmarkW / aspectRatio
-            let initialSpacing = initialLogoSize * 0.12
-            let totalInitialH = initialLogoSize + initialSpacing + initialWordmarkH
-
-            let initialLogoY = containerH / 2 - totalInitialH / 2 + initialLogoSize / 2
-            let initialWordmarkY = initialLogoY + initialLogoSize / 2 + initialSpacing + initialWordmarkH / 2
-
-            let darkLogo = isSettled && (colorScheme == .dark)
 
             ZStack {
-                // Home-only body: the launch cream clears before the static hardware appears.
+                // The chassis and unpowered display are visible from the first launch frame.
                 Theme.background
                     .ignoresSafeArea()
 
                 HomeControllerBody(darkAppearance: colorScheme == .dark)
                     .equatable()
-                    .opacity(isSettled ? 1 : 0)
-                    .animation(reduceMotion ? nil : .easeOut(duration: 0.2), value: isSettled)
 
-                Self.cream
-                    .ignoresSafeArea()
-                    .opacity(isSettled ? 0.0 : 1.0)
+                HomeHardwareDisplay(status: controllerDisplayStatus,
+                                    pixelsVisible: pixelsVisible, powered: displayPowered)
+                    .frame(width: layout.display.width, height: layout.display.height)
+                    .position(x: layout.display.midX, y: layout.display.midY)
 
                 HomeControllerHardware(layout: layout, darkAppearance: colorScheme == .dark)
                     .equatable()
@@ -1154,55 +1080,39 @@ public struct HomeScreen: View {
                 // 3x3 Pad Grid (outer pads + centre logo pad)
                 gridContent(cellSize: cellSize, gap: gap)
                     .frame(width: gridSize, height: gridSize)
-                    .position(x: containerW / 2, y: settledGridCenterY)
-                    .opacity(gridOpacity)
+                    .position(x: layout.plate.midX, y: layout.plate.midY)
 
-                if animationFinished {
-                    Button {
-                        helpPresentation = HelpPresentation(windowWidth: containerW)
-                    } label: {
-                        HelpEntryLabel()
-                            .padding(.horizontal, Theme.Space.regular)
-                            .foregroundStyle(Theme.ink)
-                            .background(Theme.surface, in: RoundedRectangle(cornerRadius: Theme.Radius.button))
-                    }
-                    .buttonStyle(.plain)
-                    .frame(width: min(containerW - 2 * Theme.Space.regular, max(200, layout.plateSize)))
-                    .accessibilityFocused($helpFocused)
-                    .helpDeck(presentation: $helpPresentation, arrowEdge: .bottom) {
-                        helpFocused = true
-                    }
-                    .padding(.top, layout.plate.maxY + Theme.Space.tight)
-                    .frame(maxHeight: .infinity, alignment: .top)
+                hardwareSettings(layout: layout)
+                    .opacity(plateVisible ? 1 : 0)
+                    .allowsHitTesting(animationFinished)
+
+                Button {
+                    helpPresentation = HelpPresentation(windowWidth: containerW)
+                } label: {
+                    Text("?")
+                        .font(Theme.strong(22))
+                        .foregroundStyle(Theme.white)
+                        .frame(width: 36, height: 36)
+                        .background(Theme.black, in: Circle())
+                        .overlay { Circle().strokeBorder(Theme.white.opacity(0.12), lineWidth: 1) }
+                        .shadow(color: Theme.black.opacity(0.25), radius: 2, y: 2)
+                        .frame(width: Theme.Size.minimumTouch, height: Theme.Size.minimumTouch)
+                        .contentShape(Circle())
                 }
-
-                // Floating Centre Logo Mark (only during launch animation until landed)
-                if !logoInPad {
-                    HomeLogoMarkView(
-                        size: isSettled ? cellSize : initialLogoSize,
-                        darkAppearance: darkLogo,
-                        reduceMotion: reduceMotion,
-                        pad1Popped: pad1Popped,
-                        pad2Popped: pad2Popped,
-                        pad3Popped: pad3Popped,
-                        orangeVisible: orangeVisible,
-                        orangeLanded: orangeLanded,
-                        blackBounce: blackBounce
-                    )
-                    .position(x: containerW / 2, y: isSettled ? settledGridCenterY : initialLogoY)
-                    .allowsHitTesting(false)
+                .buttonStyle(.plain)
+                .accessibilityLabel(settings.localized("help.title"))
+                .accessibilityFocused($helpFocused)
+                .helpDeck(presentation: $helpPresentation, arrowEdge: .top) {
+                    helpFocused = true
                 }
+                .position(x: layout.display.maxX + (containerW - layout.display.maxX) / 2,
+                          y: layout.display.midY)
+                .opacity(plateVisible ? 1 : 0)
+                .allowsHitTesting(animationFinished)
 
-                // Wordmark "Smack-a-Pad"
-                HomeWordmarkView(
-                    width: isSettled ? settledWordmarkW : initialWordmarkW,
-                    darkAppearance: darkLogo,
-                    reduceMotion: reduceMotion,
-                    isVisible: wordmarkVisible
-                )
-                .position(x: containerW / 2, y: isSettled ? settledWordmarkY : initialWordmarkY)
             }
             .frame(width: containerW, height: containerH)
+            .opacity(homeOpacity)
             .contentShape(Rectangle())
             .onTapGesture {
                 if !animationFinished {
@@ -1249,6 +1159,33 @@ public struct HomeScreen: View {
         .onReceive(NotificationCenter.default.publisher(for: .NSCalendarDayChanged)) { _ in
             calendarDay = AppCalendar.today()
         }
+    }
+
+    private var controllerDisplayStatus: String {
+        let source = midi.selectedSourceID.flatMap { selected in
+            midi.sources.first { $0.id == selected }
+        } ?? (midi.selectedSourceID == nil ? midi.sources.first : nil)
+        guard let source else { return settings.localized("home.controller.none") }
+        return "\(HomePadSubtitles.singleLine(source.name)) · \(settings.localized("home.controller.connected"))"
+    }
+
+    @ViewBuilder
+    private func hardwareSettings(layout: HomeControllerLayout) -> some View {
+        let bayWidth = layout.plate.minX
+        let width = layout.landscape ? min(180, max(0, bayWidth - 2 * layout.margin)) : layout.portraitControlWidth
+        let leftX = layout.landscape ? bayWidth / 2 : layout.margin + width / 2
+        let rightX = layout.size.width - leftX
+        let faderUnit = min(layout.unit, max(0, bayWidth - 2 * layout.margin) / 134)
+        let centerY = layout.landscape
+            ? layout.plate.minY + 217 * faderUnit + Theme.Space.page + 72
+            : min(layout.size.height - layout.margin - 72,
+                  layout.portraitBayTop + max(72, layout.portraitFaderHeight / 2))
+        HomeLanguageKnob()
+            .frame(width: width)
+            .position(x: leftX, y: centerY)
+        HomeAppearanceSwitch()
+            .frame(width: width)
+            .position(x: rightX, y: centerY)
     }
 
     private var homeIsIdle: Bool {
@@ -1627,7 +1564,7 @@ public struct HomeScreen: View {
     }
 
     private func centreLogoPad(cellSize: CGFloat) -> some View {
-        let darkLogo = isSettled && (colorScheme == .dark)
+        let darkLogo = colorScheme == .dark
         let label = settings.localized("About")
 
         return Button {
@@ -1635,14 +1572,9 @@ public struct HomeScreen: View {
             activeDestination = .about
         } label: {
             ZStack {
-                if logoInPad {
-                    HomeLogoMarkView(
-                        size: cellSize,
-                        darkAppearance: darkLogo,
-                        reduceMotion: reduceMotion
-                    )
+                HomeLogoMarkView(size: cellSize, darkAppearance: darkLogo)
+                    .opacity(plateVisible ? 1 : 0)
                     .accessibilityHidden(true)
-                }
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .background(
@@ -1682,126 +1614,32 @@ public struct HomeScreen: View {
     private func startAnimation() {
         animationTask?.cancel()
         animationTask = Task { @MainActor in
-            let policy = Theme.Motion.Policy(reduced: reduceMotion)
-            if policy.reduced {
-                skipAnimation()
-                gridOpacity = 0
-                withAnimation(.easeOut(duration: 0.2)) {
-                    gridOpacity = 1
-                }
+            if reduceMotion {
+                pixelsVisible = true
+                displayPowered = true
+                plateVisible = true
+                padVisible = Array(repeating: true, count: 8)
+                homeOpacity = 0
+                withAnimation(.easeOut(duration: 0.2)) { homeOpacity = 1 }
+                finishOnce()
                 return
             }
 
-            gridOpacity = 1.0
-
-            // 0.00–0.45 s: three black pads appear 0.12 s apart
-            withAnimation(.spring(response: 0.22, dampingFraction: 0.65)) {
-                pad1Popped = true
-            }
-            try? await Task.sleep(for: .milliseconds(120))
-            guard !Task.isCancelled else { return }
-
-            withAnimation(.spring(response: 0.22, dampingFraction: 0.65)) {
-                pad2Popped = true
-            }
-            try? await Task.sleep(for: .milliseconds(120))
-            guard !Task.isCancelled else { return }
-
-            withAnimation(.spring(response: 0.22, dampingFraction: 0.65)) {
-                pad3Popped = true
-            }
-            // Wait until 0.55 s (elapsed: 240 ms -> sleep 310 ms)
-            try? await Task.sleep(for: .milliseconds(310))
-            guard !Task.isCancelled else { return }
-
-            // 0.55 s: orange pad smacks in
-            orangeVisible = true
-            withAnimation(.spring(response: 0.28, dampingFraction: 0.54)) {
-                orangeLanded = true
-            }
-
-            // Impact at ~0.64 s: 2 pt bounce on black pads
-            try? await Task.sleep(for: .milliseconds(90))
-            guard !Task.isCancelled else { return }
-
-            withAnimation(.easeInOut(duration: 0.06)) {
-                blackBounce = 2
-            }
-            try? await Task.sleep(for: .milliseconds(60))
-            guard !Task.isCancelled else { return }
-
-            withAnimation(.easeOut(duration: 0.10)) {
-                blackBounce = 0
-            }
-
-            // Wait until 0.95 s (elapsed: 550 + 90 + 60 + 100 = 800 ms -> sleep 150 ms)
+            // 0.00–0.15 s: the unlit matrix appears inside the already visible bezel.
+            withAnimation(.easeOut(duration: 0.15)) { pixelsVisible = true }
             try? await Task.sleep(for: .milliseconds(150))
             guard !Task.isCancelled else { return }
-
-            // 0.95–1.25 s: wordmark fades and rises
-            withAnimation(.easeOut(duration: 0.30)) {
-                wordmarkVisible = true
-            }
-
-            // Hold until 1.50 s (elapsed: 950 + 300 = 1250 ms -> sleep 250 ms)
-            try? await Task.sleep(for: .milliseconds(250))
-            guard !Task.isCancelled else { return }
-
-            // 1.50–2.10 s: Logo scales to centre cell, wordmark moves up, background cross-fades
-            withAnimation(.easeInOut(duration: 0.60)) {
-                isSettled = true
-            }
-
-            try? await Task.sleep(for: .milliseconds(600))
-            guard !Task.isCancelled else { return }
-
-            // Logo has landed in centre cell; switch to pad logo and fade plate in (Ticket 115)
-            logoInPad = true
-            withAnimation(.easeOut(duration: 0.20)) {
-                plateVisible = true
-            }
-
-            // 2.10–2.80 s: 8 pads appear in a diagonal wave from top-left to bottom-right (ticket 112)
-            // Wave 0: Pad 1 (top-left)
-            withAnimation(.spring(response: 0.28, dampingFraction: 0.68)) {
-                padVisible[0] = true
-            }
-            try? await Task.sleep(for: Theme.Motion.bootStagger)
-            guard !Task.isCancelled else { return }
-
-            // Wave 1: Pad 2 and Pad 4
-            withAnimation(.spring(response: 0.28, dampingFraction: 0.68)) {
-                padVisible[1] = true
-                padVisible[3] = true
-            }
-            try? await Task.sleep(for: Theme.Motion.bootStagger)
-            guard !Task.isCancelled else { return }
-
-            // Wave 2: Pad 3 and Pad 6
-            withAnimation(.spring(response: 0.28, dampingFraction: 0.68)) {
-                padVisible[2] = true
-                padVisible[5] = true
-            }
-            try? await Task.sleep(for: Theme.Motion.bootStagger)
-            guard !Task.isCancelled else { return }
-
-            // Wave 3: Pad 5 and Pad 7
-            withAnimation(.spring(response: 0.28, dampingFraction: 0.68)) {
-                padVisible[4] = true
-                padVisible[6] = true
-            }
-            try? await Task.sleep(for: Theme.Motion.bootStagger)
-            guard !Task.isCancelled else { return }
-
-            // Wave 4: Pad 8 (bottom-right)
-            withAnimation(.spring(response: 0.28, dampingFraction: 0.68)) {
-                padVisible[7] = true
-            }
-
-            // Settle time
+            // 0.15–0.45 s: the logo and status line light up.
+            withAnimation(.easeOut(duration: 0.3)) { displayPowered = true }
             try? await Task.sleep(for: .milliseconds(300))
             guard !Task.isCancelled else { return }
-
+            // 0.45–0.75 s: the plate and pads finish in their real Home positions.
+            withAnimation(.easeOut(duration: 0.3)) {
+                plateVisible = true
+                padVisible = Array(repeating: true, count: 8)
+            }
+            try? await Task.sleep(for: .milliseconds(300))
+            guard !Task.isCancelled else { return }
             finishOnce()
         }
     }
@@ -1809,21 +1647,11 @@ public struct HomeScreen: View {
     private func skipAnimation() {
         guard !animationFinished else { return }
         animationTask?.cancel()
-        withAnimation(reduceMotion ? nil : .easeOut(duration: 0.15)) {
-            pad1Popped = true
-            pad2Popped = true
-            pad3Popped = true
-            orangeVisible = true
-            orangeLanded = true
-            blackBounce = 0
-            wordmarkVisible = true
-            isSettled = true
-            logoInPad = true
-            plateVisible = true
-            for i in 0..<8 {
-                padVisible[i] = true
-            }
-        }
+        pixelsVisible = true
+        displayPowered = true
+        plateVisible = true
+        padVisible = Array(repeating: true, count: 8)
+        homeOpacity = 1
         finishOnce()
     }
 

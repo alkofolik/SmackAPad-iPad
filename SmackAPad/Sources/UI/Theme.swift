@@ -348,7 +348,6 @@ extension Theme {
         static let padPress = Animation.spring(response: 0.18, dampingFraction: 0.7)
         static let padFlash = Animation.easeOut(duration: 0.12)
         static let ledBreath = Animation.easeInOut(duration: 1.6).repeatForever(autoreverses: true)
-        static let bootStagger = Duration.milliseconds(40)
 
         /// App transitions motion tokens (ticket 113).
         static let padZoom = Animation.spring(response: 0.28, dampingFraction: 0.82)

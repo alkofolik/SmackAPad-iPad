@@ -19,6 +19,11 @@ public enum AppLanguage: String, CaseIterable, Identifiable, Codable, Sendable {
         }
     }
 
+    /// Short physical detent labels; adding a language automatically adds a Home knob detent.
+    var homeDetentLabel: String {
+        self == .czech ? "CZ" : rawValue.uppercased()
+    }
+
     /// Bundle containing localized strings for this language.
     public var bundle: Bundle {
         if let path = Bundle.main.path(forResource: rawValue, ofType: "lproj"),
