@@ -3,6 +3,15 @@
 Status: all 4 batches done. Analysis only, no code changed.
 Method: rules of `taste-skill:design-taste-frontend` (house rules + `references/app-screens.md`), read only; its scripts were not run (AGENTS.md). Screens captured in the iPad (A16) simulator, landscape, dark mode, debug scenario `reviewDueToday`.
 
+## Corrections (2026-11-13, after Jakub's review)
+
+The audit judged from still screenshots and did not test gestures or ask about intent. Three findings were wrong and are withdrawn or replaced:
+- **34 (icon soup) — withdrawn.** Every play-screen icon shows its name on long-press (`PracticeComponents.swift`, `LongPressGesture`). Text labels were tried earlier and made the screen cluttered and harder to read. The differently styled groups are deliberate: they group related functions; one uniform style was tried earlier and felt sterile and generic.
+- **35 (two identical eyes) — withdrawn.** The eyes are the From-memory fade states: one eye half-closed while the pads fade out, both closed when the player plays with no hints. They are not a duplicate.
+- **6 (decorative faders) — replaced.** Home without faders was tried and felt empty. Keep the faders and make them real: they set the actual sound volumes (ticket 191). Live pads go to the Controller screen, drawn in the controller's own rows and columns (ticket 192).
+
+Lesson for future reviews: read the element's code (gestures, states) and ask what it is for before calling it a tell, and never propose removing something without a replacement that keeps the screen full.
+
 ## Batches
 
 | # | Screens | Status |
@@ -22,7 +31,7 @@ Method: rules of `taste-skill:design-taste-frontend` (house rules + `references/
 
 ### Home
 5. **Index numbers 01–08 on pads.** Skill bans index numbering as costume. Here it imitates MPC pad numbers, which is the closest thing to a real reason — but it carries no information (pad 05 = Controller means nothing). → Either remove, or make them real: the MIDI note / pad the player can hit on their controller to open that tile. That would turn decoration into the app's one "live thing".
-6. **Decorative faders with dB scales (CH 01–04), screws, brushed texture.** Fake hardware that does nothing = the brief's "fake 3D" and the skill's "fake dashboard". Tiny uppercase "CH 01" labels too. → Remove, or bind to something real (e.g. the four mixer channels = actual sound volumes in Settings, or live MIDI velocity of the last hits).
+6. **Decorative faders with dB scales (CH 01–04).** *(Replaced, see Corrections: keep the faders and bind them to the real volumes, ticket 191.)* Fake hardware that does nothing reads as decoration. The tiny "CH 01" labels should become the real channel names.
 7. **Centred title + centred 3×3 grid** with empty side bands in landscape. The frame is symmetric but the sides hold only ornaments. → Use the width: grid left, a real "today" summary (what's due, streak, last session) right.
 8. **Uniform grid of identical cards** — accepted here because it *is* the controller metaphor; the centre logo tile breaks the pattern sensibly. Keep.
 9. **"How it works" row:** default SF Symbols (question mark, chevron) in a generic list row. → Make it a ninth function on the plate or plain text link.
@@ -83,8 +92,8 @@ Captured: ready state with the Pad legend popover, count-in, running, early-stop
 - The large "0 %" figure on the result is type, not a tile. That fits the app-screen rule "KPIs are type".
 
 ### Toolbar and HUD
-34. **Icon soup.** The ready screen has 11 icon buttons in four differently styled groups: a pill group (ear, drumsticks, speech bubbles, a head with a brain), an outlined capsule (arrow, sidebar "1", repeat), three outlined squares (info, grid, question) and a separate square (toggles). None has a label. Most are SF Symbols, which the brief rejects, and the brain head and speech bubbles are stock metaphors. The app-screen rule says: labels by default, icons only with names. → Group by job: mode (Listen / Play / From memory) as one labelled segmented control in the product's style, and everything else behind one "Options" button.
-35. **Two identical eye icons side by side** in the running HUD. Their difference cannot be seen. → Label them or merge them.
+34. *(Withdrawn, see Corrections.)* The toolbar icons have names on long-press, and the four group styles are deliberate groups of related functions.
+35. *(Withdrawn, see Corrections.)* The two eyes are the From-memory fade states, not a duplicate.
 36. **The BPM is small and in the corner** ("80 BPM", top left, at about 28pt) while playing. The brief says big type for BPM, read from arm's length. → Make the BPM the second-largest thing on the screen, after the band.
 37. **"— %" placeholder and a pill around the percentage.** → Show the figure plainly, without a pill; before the first hit, show nothing.
 38. **Two progress bars:** one segmented bar inside the top of the band, with a hatched (diagonal stripes) unfinished segment, and a second thin bar under the band. → One progress bar. Drop the hatching, which is a decorative texture.
@@ -159,13 +168,13 @@ Captured in light mode (`-light` launch argument): launch, Home, Settings, Contr
 **The five sweeps that remove most of the AI look, in order of effect versus risk:**
 1. **Eyebrow sweep.** Delete every small uppercase, tracked or monospaced label above a heading (`kicker`, `stepTag`, "1 · REVIEWS", "EXTRA MIX", "New badge"), plus index numbers and the "now" pill. Findings 3, 10, 11, 29, 30, 48–50.
 2. **Palette sweep.** One orange; a neutral light ground instead of cream; tone steps instead of hairlines and outlines; every colour from Theme. Findings 1, 2, 51, 52.
-3. **Icon sweep.** Replace untouched SF Symbols with labels or one drawn icon set; group the play toolbar by job. Findings 9, 15, 34, 35, 59.
+3. **Icon sweep (narrowed).** Leave the play toolbar as it is. Only the template paywall icons in tinted squares and the generic list-row icons outside the play screen. Findings 9, 15, 59.
 4. **Card-row sweep.** Break up rows of identical outlined cards (Training, Daily mix, Today stepper, lesson rows, Badges). Findings 14, 22, 25, 30, 61.
-5. **Ornament sweep.** Remove or make real the fake faders, screws, hatching, glows and decorative pad numbers. Findings 5, 6, 38, 50.
+5. **Ornament sweep (narrowed).** Make the Home faders real (ticket 191); remove the hatching and the glows. Findings 38, 50; finding 6 via ticket 191.
 
-**The one big idea:** make the controller visible and live. Pads that light up from real MIDI input on Home, in Controller setup and on the play screen would replace the decorative hardware with real hardware, and no competitor would have the same screen.
+**The one big idea:** make the controller visible and live. Decided: live pads on the Controller screen, drawn in the controller's own rows and columns (ticket 192). Home keeps its faders, now bound to the real volumes (ticket 191).
 
 ## Top 3 changes from batch 1
 1. Remove eyebrows, index numbers and the "now" pill across the app (one sweep, biggest visible gain).
 2. Replace the cream/terracotta palette with the brief's strict orange/black/white; tone steps instead of hairlines.
-3. Remove or make real the Home ornaments (faders, screws, pad numbers).
+3. Make the Home faders real (ticket 191) instead of removing them.

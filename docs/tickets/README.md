@@ -201,3 +201,6 @@ Source: Jakub, retention and memory discussion; legacy "Trénink" concept 2026-1
 | 188 | Result card: no empty black "Next" box after a finished review | Gemini 3.8 Flash, medium (fallback Codex GPT-6.1 Sol, medium) | implemented, awaiting iPad check |
 | 189 | Bug: review opened from Continue does not stop and stays in the review queue | Gemini 3.8 Flash, high (fallback Codex GPT-6.1 Sol, high) | implemented, awaiting iPad check |
 | 190 | Bug: Home → Today → Continue turns the screen black | Gemini 3.8 Flash, high (fallback Codex GPT-6.1 Sol, high) | implemented, awaiting iPad check |
+| 191 | Home faders set the real sound volumes (Metronome, Pattern, Pads) | Gemini 3.8 Flash, high (fallback Codex GPT-6.1 Sol, high) | any time |
+| 192 | Controller screen: live pad grid in the controller's own rows and columns | Codex GPT-6.1 Sol, high (fallback Gemini 3.8 Flash, high) | any time, not in parallel with 191 |
+| 193 | No monospaced text; delete eyebrow step tags; keyboard keys as keycaps | Gemini 3.8 Flash, medium (fallback Codex GPT-6.1 Sol, medium) | any time |
