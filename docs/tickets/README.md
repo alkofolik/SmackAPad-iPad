@@ -215,3 +215,4 @@ Source: Jakub, retention and memory discussion; legacy "Trénink" concept 2026-1
 | 205 | Drum rows in the band ordered bottom-up like the pad layout | Gemini 3.8 Flash, low (fallback Codex GPT-6.1 Sol, low) | any time |
 | 206 | Home as a real controller: display, language knob, appearance switch, no "How it works" | Codex GPT-6.1 Sol, high (fallback Gemini 3.8 Flash, high) | any time, not in parallel with 207 |
 | 207 | Home reacts to the MIDI controller (sound, display, LED; no navigation) | Gemini 3.8 Flash, high (fallback Codex GPT-6.1 Sol, high) | after 206 |
+| 208 | Playhead: sample each frame at its display time, no catch-up jumps; DEBUG timing readout for a slow-motion sync check | Codex GPT-6.1 Sol, high (fallback Gemini 3.8 Pro, high) | any time, not in parallel with 203 (both touch PracticeScreen) |
