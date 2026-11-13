@@ -671,6 +671,8 @@
 "next in 1 day" = "next in 1 day";
 "next in %lld days" = "next in %lld days";
 "again tomorrow" = "again tomorrow";
+"From memory: 2× below 80 % · again tomorrow" = "From memory: 2× below 80 % · again tomorrow";
+"Skipped · again tomorrow" = "Skipped · again tomorrow";
 
 
 

@@ -542,13 +542,12 @@ private struct TodayStepperView: View {
                 .foregroundStyle(Theme.ink)
                 .lineLimit(1)
 
-            if isCompleted, let reason = step.status?.reason {
-                Text(reason.message(language: settings.languagePreference))
+            if isCompleted, let reason = step.reviewFailureReason(language: settings.languagePreference) {
+                Text(reason)
                     .font(Theme.text(12))
                     .foregroundStyle(Theme.secondary)
                     .fixedSize(horizontal: false, vertical: true)
-            }
-            if isCompleted, let score = step.outcome?.bestScore {
+            } else if isCompleted, let score = step.outcome?.bestScore {
                 Text("\(Int((score * 100).rounded())) %")
                     .font(Theme.text(12))
                     .foregroundStyle(Theme.secondary)
@@ -759,6 +758,9 @@ private struct PreviousRunEvaluationView: View {
     }
 
     private var scoreText: String {
+        if step.kind == .review, step.reviewFailureReason(language: settings.languagePreference) != nil {
+            return "—"
+        }
         guard let outcome = step.outcome, outcome.played, let score = outcome.bestScore else {
             return "—"
         }
@@ -802,8 +804,8 @@ private struct PreviousRunEvaluationView: View {
             return settings.localized("Not played")
         }
         if step.kind == .review {
-            if let reason = step.status?.reason {
-                return settings.localized("Did not count") + " · " + reason.message(language: settings.languagePreference)
+            if let reason = step.reviewFailureReason(language: settings.languagePreference) {
+                return reason
             }
             if let feedback = outcome.reviewFeedback {
                 return feedback.message(language: settings.languagePreference)
@@ -1169,7 +1171,9 @@ private struct DaySummaryView: View {
         let status = step.status
         let isPassed = status == .passed
         let isPlayedOnly = status == .played
+        let failureReason = step.reviewFailureReason(language: settings.languagePreference)
         let isDidNotCount: Bool = {
+            if step.kind == .review { return failureReason != nil }
             if case .didNotCount = status { return true }
             return false
         }()
@@ -1198,8 +1202,8 @@ private struct DaySummaryView: View {
                         .foregroundStyle(Theme.ink)
                         .fixedSize(horizontal: false, vertical: true)
 
-                    if isDidNotCount {
-                        Text(settings.localized("again tomorrow"))
+                    if let failureReason {
+                        Text(failureReason)
                             .font(Theme.strong(12))
                             .foregroundStyle(Theme.ink)
                             .padding(.horizontal, 12)
@@ -1213,10 +1217,13 @@ private struct DaySummaryView: View {
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
 
-                Text(stepScoreText(for: step))
-                    .font(Theme.boldDisplay(24).monospacedDigit())
-                    .foregroundStyle(isPassed ? Theme.ink : Theme.secondary)
-                    .lineLimit(1)
+                let scoreText = stepScoreText(for: step)
+                if !scoreText.isEmpty {
+                    Text(scoreText)
+                        .font(Theme.boldDisplay(24).monospacedDigit())
+                        .foregroundStyle(isPassed ? Theme.ink : Theme.secondary)
+                        .lineLimit(1)
+                }
             }
             .padding(.top, 2)
             .padding(.bottom, isLast ? 0 : 24)
@@ -1318,6 +1325,9 @@ private struct DaySummaryView: View {
     }
 
     private func stepScoreText(for step: TodayPlan.Step) -> String {
+        if step.kind == .review, step.reviewFailureReason(language: settings.languagePreference) != nil {
+            return ""
+        }
         guard let outcome = step.outcome, outcome.played else { return "—" }
         if let score = outcome.bestScore {
             return "\(Int((score * 100).rounded())) %"

@@ -104,6 +104,45 @@ final class TodayPlanTests: XCTestCase {
         XCTAssertEqual(warmup.status, .didNotCount(.notesVisible))
     }
 
+    func testReviewFailureReason() {
+        let countedPass = TodayPlan.Step(kind: .review, lessonIDs: [1],
+                                         outcome: PracticeStepOutcome(bestScore: 0.95, reviewFeedback: .passed(nextStep: 2, gapDays: 3)))
+        let countedSettled = TodayPlan.Step(kind: .review, lessonIDs: [2],
+                                            outcome: PracticeStepOutcome(bestScore: 0.9, reviewFeedback: .settled))
+        let failedTwoPasses = TodayPlan.Step(kind: .review, lessonIDs: [3],
+                                             outcome: PracticeStepOutcome(bestScore: 1.0, reviewFeedback: .failed(newStep: 0)))
+        let skippedUnplayed = TodayPlan.Step(kind: .review, lessonIDs: [4], outcome: nil)
+        let skippedLeftEarly = TodayPlan.Step(kind: .review, lessonIDs: [5],
+                                              outcome: PracticeStepOutcome(bestScore: 1.0, reviewFeedback: nil, reviewPendingReason: .unfinishedReview))
+        let nonReview = TodayPlan.Step(kind: .newLesson, lessonIDs: [6], outcome: nil)
+
+        // Counted review → no reason
+        XCTAssertNil(countedPass.reviewFailureReason(language: .english))
+        XCTAssertNil(countedPass.reviewFailureReason(language: .czech))
+        XCTAssertNil(countedSettled.reviewFailureReason(language: .english))
+        XCTAssertNil(countedSettled.reviewFailureReason(language: .czech))
+        XCTAssertNil(PracticeStepOutcome.reviewFailureReason(outcome: countedPass.outcome, language: .english))
+        XCTAssertNil(PracticeStepOutcome.reviewFailureReason(outcome: countedPass.outcome, language: .czech))
+
+        // Two hidden passes below 80 % → the "from memory" reason
+        XCTAssertEqual(failedTwoPasses.reviewFailureReason(language: .english), "From memory: 2× below 80 % · again tomorrow")
+        XCTAssertEqual(failedTwoPasses.reviewFailureReason(language: .czech), "Z paměti: 2× pod 80 % · zítra znovu")
+        XCTAssertEqual(PracticeStepOutcome.reviewFailureReason(outcome: failedTwoPasses.outcome, language: .english), "From memory: 2× below 80 % · again tomorrow")
+        XCTAssertEqual(PracticeStepOutcome.reviewFailureReason(outcome: failedTwoPasses.outcome, language: .czech), "Z paměti: 2× pod 80 % · zítra znovu")
+
+        // Skipped → the skipped reason
+        XCTAssertEqual(skippedUnplayed.reviewFailureReason(language: .english), "Skipped · again tomorrow")
+        XCTAssertEqual(skippedUnplayed.reviewFailureReason(language: .czech), "Přeskočeno · zítra znovu")
+        XCTAssertEqual(skippedLeftEarly.reviewFailureReason(language: .english), "Skipped · again tomorrow")
+        XCTAssertEqual(skippedLeftEarly.reviewFailureReason(language: .czech), "Přeskočeno · zítra znovu")
+        XCTAssertEqual(PracticeStepOutcome.reviewFailureReason(outcome: nil, language: .english), "Skipped · again tomorrow")
+        XCTAssertEqual(PracticeStepOutcome.reviewFailureReason(outcome: nil, language: .czech), "Přeskočeno · zítra znovu")
+
+        // Non-review step → no reason
+        XCTAssertNil(nonReview.reviewFailureReason(language: .english))
+        XCTAssertNil(nonReview.reviewFailureReason(language: .czech))
+    }
+
     func testLaterPracticeCannotReplaceADecidedReviewOutcome() {
         for feedback: ReviewScheduler.ReviewFeedback in [.passed(nextStep: 1, gapDays: 3), .settled, .failed(newStep: 0)] {
             var outcome = PracticeStepOutcome(bestScore: 0.8, reviewFeedback: feedback)

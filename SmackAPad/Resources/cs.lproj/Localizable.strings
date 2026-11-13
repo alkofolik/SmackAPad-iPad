@@ -673,6 +673,8 @@
 "next in 1 day" = "další za 1 den";
 "next in %lld days" = "další za %lld dní";
 "again tomorrow" = "znovu zítra";
+"From memory: 2× below 80 % · again tomorrow" = "Z paměti: 2× pod 80 % · zítra znovu";
+"Skipped · again tomorrow" = "Přeskočeno · zítra znovu";
 
 
 

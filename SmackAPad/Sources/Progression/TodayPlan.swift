@@ -163,9 +163,8 @@ struct PracticeStepOutcome: Codable, Equatable {
                     ? "Opakování není dokončené · jsou potřeba dva úspěšné průchody bez not."
                     : "Review unfinished · two successful hidden passes are needed."
             case .reviewNotPassed:
-                return language == .czech
-                    ? "Dva průchody bez not pod 80 % · zkus to znovu zítra."
-                    : "Two hidden passes below 80% · try again tomorrow."
+                return PracticeStepOutcome.reviewFailureReason(feedback: .failed(newStep: 0), language: language)
+                    ?? (language == .czech ? "Z paměti: 2× pod 80 % · zítra znovu" : "From memory: 2× below 80 % · again tomorrow")
             case .requirements(let bpm):
                 return language == .czech
                     ? "Hraj zpaměti alespoň při \(bpm) BPM."
@@ -190,5 +189,42 @@ struct PracticeStepOutcome: Codable, Equatable {
             reviewFeedback = other.reviewFeedback
             reviewPendingReason = other.reviewPendingReason
         }
+    }
+}
+
+extension PracticeStepOutcome {
+    /// Pure function returning the failure reason for a review step, or nil if the review counted (passed/settled).
+    public static func reviewFailureReason(
+        feedback: ReviewScheduler.ReviewFeedback?,
+        language: AppLanguage
+    ) -> String? {
+        guard let feedback else {
+            return language == .czech ? "Přeskočeno · zítra znovu" : "Skipped · again tomorrow"
+        }
+        switch feedback {
+        case .passed, .settled:
+            return nil
+        case .failed:
+            return language == .czech
+                ? "Z paměti: 2× pod 80 % · zítra znovu"
+                : "From memory: 2× below 80 % · again tomorrow"
+        case .doesNotCount:
+            return language == .czech ? "Přeskočeno · zítra znovu" : "Skipped · again tomorrow"
+        }
+    }
+
+    public static func reviewFailureReason(
+        outcome: PracticeStepOutcome?,
+        language: AppLanguage
+    ) -> String? {
+        reviewFailureReason(feedback: outcome?.reviewFeedback, language: language)
+    }
+}
+
+extension TodayPlan.Step {
+    /// Pure function returning the reason why a review did not count, or nil if it counted or is not a review.
+    public func reviewFailureReason(language: AppLanguage) -> String? {
+        guard kind == .review else { return nil }
+        return PracticeStepOutcome.reviewFailureReason(outcome: outcome, language: language)
     }
 }
