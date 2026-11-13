@@ -46,7 +46,6 @@ public struct BackupSettings: Codable, Equatable, Sendable {
     public var nextLessonSource: String
     public var lastLessonID: Int
     public var showPads: Bool
-    public var showPadKeys: Bool
     public var visibleBars: Int
     public var touchPadsInPortrait: Bool
     public var scrolling: String
@@ -81,7 +80,6 @@ public struct BackupSettings: Codable, Equatable, Sendable {
         nextLessonSource: String = "library",
         lastLessonID: Int = 10001,
         showPads: Bool = true,
-        showPadKeys: Bool = true,
         visibleBars: Int = 1,
         touchPadsInPortrait: Bool = true,
         scrolling: String = "continuous",
@@ -115,7 +113,6 @@ public struct BackupSettings: Codable, Equatable, Sendable {
         self.nextLessonSource = nextLessonSource
         self.lastLessonID = lastLessonID
         self.showPads = showPads
-        self.showPadKeys = showPadKeys
         self.visibleBars = visibleBars
         self.touchPadsInPortrait = touchPadsInPortrait
         self.scrolling = scrolling
@@ -129,7 +126,7 @@ public struct BackupSettings: Codable, Equatable, Sendable {
         case activeProfileName, customProfiles, languagePreference, appearance, metronomeVolume, padsVolume, patternVolume, instrumentTrims
         case playPadsWithKeyboard, fadeMemoryNotes, reviewReminderEnabled, reviewReminderTime, hideCompletedLessons
         case hiddenCategoryIDsByMode, libraryView, libraryStarFilters, trainingDueStepFilter, nextLessonSource, lastLessonID
-        case showPads, showPadKeys, visibleBars, touchPadsInPortrait, scrolling, practiceAppearance
+        case showPads, visibleBars, touchPadsInPortrait, scrolling, practiceAppearance
         case legendShownOnce, memoryHintShownLessonIds
     }
 
@@ -162,7 +159,6 @@ public struct BackupSettings: Codable, Equatable, Sendable {
         self.nextLessonSource = try c.decodeIfPresent(String.self, forKey: .nextLessonSource) ?? "library"
         self.lastLessonID = try c.decodeIfPresent(Int.self, forKey: .lastLessonID) ?? 10001
         self.showPads = try c.decodeIfPresent(Bool.self, forKey: .showPads) ?? true
-        self.showPadKeys = try c.decodeIfPresent(Bool.self, forKey: .showPadKeys) ?? true
         self.visibleBars = try c.decodeIfPresent(Int.self, forKey: .visibleBars) ?? 1
         self.touchPadsInPortrait = try c.decodeIfPresent(Bool.self, forKey: .touchPadsInPortrait) ?? true
         self.scrolling = try c.decodeIfPresent(String.self, forKey: .scrolling) ?? "continuous"

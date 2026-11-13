@@ -1,6 +1,6 @@
 # 195 — Pad layout shows keyboard keys only after a tap, never by itself
 
-Status: ready-for-agent. Reported by Jakub on 2026-11-13 with an iPad screenshot ("TH · 1", "KD · Z" on the pad layout without tapping it).
+Status: implemented and verified, pending Jakub's iPad check. Reported by Jakub on 2026-11-13 with an iPad screenshot ("TH · 1", "KD · Z" on the pad layout without tapping it).
 
 ## Cause (from the code)
 
@@ -26,10 +26,10 @@ Status: ready-for-agent. Reported by Jakub on 2026-11-13 with an iPad screenshot
 
 ## Acceptance criteria
 
-- [ ] Opening any lesson shows the pad layout without key labels.
-- [ ] Tap shows the keys, tap again hides them.
-- [ ] After leaving the lesson, the next lesson starts without keys again; same after an app restart and after restoring a backup.
-- [ ] Build and full test suite pass.
+- [x] Opening any lesson shows the pad layout without key labels.
+- [x] Tap shows the keys, tap again hides them.
+- [x] After leaving the lesson, the next lesson starts without keys again; same after an app restart and after restoring a backup.
+- [x] Build and full test suite pass.
 
 ### Manual iPad checks for Jakub
 

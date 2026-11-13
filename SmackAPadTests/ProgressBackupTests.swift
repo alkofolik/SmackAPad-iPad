@@ -479,4 +479,27 @@ final class ProgressBackupTests: XCTestCase {
         let remainingNames = files.map(\.lastPathComponent).sorted()
         XCTAssertEqual(remainingNames, ["auto-2026-11-03.json", "auto-2026-11-04.json", "auto-2026-11-05.json"])
     }
+
+    // MARK: - Ticket 195: showPadKeys removed from backup
+
+    func testBackupContainingShowPadKeysDecodesWithoutError() throws {
+        let envelope = ProgressBackupEnvelope()
+        let data = try ProgressBackup.encode(envelope: envelope)
+        var json = try JSONSerialization.jsonObject(with: data) as! [String: Any]
+        var settings = json["settings"] as? [String: Any] ?? [:]
+        settings["showPadKeys"] = true
+        json["settings"] = settings
+        let modifiedData = try JSONSerialization.data(withJSONObject: json)
+
+        let decoded = try ProgressBackup.decode(from: modifiedData)
+        XCTAssertEqual(decoded.app, "smack-a-pad")
+        XCTAssertEqual(decoded.formatVersion, 1)
+    }
+
+    func testNewlyEncodedBackupContainsNoShowPadKeysKey() throws {
+        let envelope = ProgressBackupEnvelope()
+        let data = try ProgressBackup.encode(envelope: envelope)
+        let jsonString = String(decoding: data, as: UTF8.self)
+        XCTAssertFalse(jsonString.contains("showPadKeys"), "Newly encoded backup must not contain showPadKeys")
+    }
 }

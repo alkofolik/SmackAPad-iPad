@@ -915,7 +915,7 @@ struct PadLayoutGrid: View {
 struct PracticePadLayoutSquare: View {
     @Environment(\.accessibilityReduceMotion) private var reduced
     @Environment(SettingsManager.self) private var settings
-    @AppStorage("smackapad.practice.showPadKeys") private var showPadKeys = false
+    @State private var showPadKeys = false
     let side: CGFloat
     let model: PadLayoutModel
     let flashes: [Int: PadFlash]

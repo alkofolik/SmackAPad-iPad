@@ -306,6 +306,7 @@ public final class SettingsManager: @unchecked Sendable {
 
     public init(userDefaults: UserDefaults = .standard) {
         self.userDefaults = userDefaults
+        userDefaults.removeObject(forKey: "smackapad.practice.showPadKeys")
         if let data = userDefaults.data(forKey: SettingsKey.midiControls.rawValue),
            let controls = try? JSONDecoder().decode(MIDIControlConfiguration.self, from: data) {
             midiControls = controls.validated()
@@ -685,7 +686,6 @@ public final class SettingsManager: @unchecked Sendable {
         defer { lock.unlock() }
 
         let showPads = userDefaults.object(forKey: "smackapad.practice.showPads") as? Bool ?? true
-        let showPadKeys = userDefaults.object(forKey: "smackapad.practice.showPadKeys") as? Bool ?? true
         let visibleBars = userDefaults.integer(forKey: "smackapad.practice.visibleBars")
         let touchPadsInPortrait = userDefaults.object(forKey: "smackapad.practice.touchPadsInPortrait") as? Bool ?? true
         let scrolling = userDefaults.string(forKey: "smackapad.practice.scrolling") ?? "continuous"
@@ -723,7 +723,6 @@ public final class SettingsManager: @unchecked Sendable {
             nextLessonSource: nextLessonSource,
             lastLessonID: lastLessonID,
             showPads: showPads,
-            showPadKeys: showPadKeys,
             visibleBars: visibleBars > 0 ? visibleBars : 1,
             touchPadsInPortrait: touchPadsInPortrait,
             scrolling: scrolling,
@@ -773,7 +772,6 @@ public final class SettingsManager: @unchecked Sendable {
         self.lastLessonID = settings.lastLessonID
 
         userDefaults.set(settings.showPads, forKey: "smackapad.practice.showPads")
-        userDefaults.set(settings.showPadKeys, forKey: "smackapad.practice.showPadKeys")
         if settings.visibleBars > 0 {
             userDefaults.set(settings.visibleBars, forKey: "smackapad.practice.visibleBars")
         }

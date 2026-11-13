@@ -19,6 +19,7 @@ struct SmackAPadApp: App {
     @Environment(\.scenePhase) private var scenePhase
 
     init() {
+        UserDefaults.standard.removeObject(forKey: "smackapad.practice.showPadKeys")
         SettingsManager.shared.appearance.applyToWindows()
         UNUserNotificationCenter.current().delegate = ReviewReminderDelegate.shared
     }

@@ -1107,6 +1107,7 @@ struct PracticeScreen: View {
             flashes: session.padFlashes,
             showPads: showPads
         )
+        .id(session.lesson.id)
     }
 
     private func tempoSquare(s: CGFloat, spaceAbove: CGFloat) -> some View {
