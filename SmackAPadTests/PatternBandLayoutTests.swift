@@ -88,4 +88,15 @@ final class PatternBandLayoutTests: XCTestCase {
         )
         XCTAssertLessThanOrEqual(eightLabels.fontSize, eightGeometry.rowHeight * 0.72)
     }
+
+    func testRowOrderForKickSnareHiHatAndOpenHiHat() {
+        let kick = 12
+        let snare = 13
+        let hiHat = 8
+        let openHiHat = 7
+        let used = Set([kick, snare, hiHat, openHiHat])
+        let orderedRows = PadVoice.rowOrder.filter { used.contains($0) }
+        XCTAssertEqual(orderedRows, [openHiHat, hiHat, snare, kick])
+        XCTAssertEqual(orderedRows.map(PadVoice.displayName), ["Open hi-hat", "Hi-hat", "Snare", "Kick"])
+    }
 }

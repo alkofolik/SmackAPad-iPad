@@ -717,7 +717,7 @@ struct PracticeGlyph: View {
 struct PadVoice {
     static let abbreviations = ["TH", "TL", "CR", "RD", "SH", "WD", "CB", "OH", "HH", "CP", "RM", "HH", "KD", "SN", "SN", "KD"]
     static let names = ["High tom", "Low tom", "Crash", "Ride", "Shaker", "Wood", "Cowbell", "Open hi-hat", "Hi-hat", "Clap", "Rim", "Hi-hat", "Kick", "Snare", "Snare", "Kick"]
-    static let rowOrder = [8, 11, 7, 2, 3, 4, 5, 6, 9, 10, 13, 14, 0, 1, 12, 15]
+    static let rowOrder = [2, 3, 0, 1, 6, 5, 4, 7, 8, 11, 9, 10, 13, 14, 12, 15]
     static func abbreviation(_ pad: Int) -> String { abbreviations.indices.contains(pad) ? abbreviations[pad] : "?" }
 
     /// Canonical English drum name shown in the band, legend, settings, and help across all locales.

@@ -30,14 +30,15 @@ struct LessonPatternStrip: View {
             stepMap[hit.padIndex, default: []].insert(hit.step)
         }
 
-        // Distinct padIndex values in the first bar, ordered by frequency (most first), at most 3 rows.
-        let sortedPads = counts.keys.sorted {
+        // Distinct padIndex values in the first bar, taking the 3 most used pads, ordered by PadVoice.rowOrder.
+        let mostUsedPads = counts.keys.sorted {
             let c0 = counts[$0]!
             let c1 = counts[$1]!
             if c0 != c1 { return c0 > c1 }
             return $0 < $1
-        }
-        let activePads = Array(sortedPads.prefix(3))
+        }.prefix(3)
+        let mostUsedSet = Set(mostUsedPads)
+        let activePads = PadVoice.rowOrder.filter { mostUsedSet.contains($0) }
         self.rows = activePads.map { RowData(padIndex: $0, hitSteps: stepMap[$0] ?? []) }
 
         if activePads.isEmpty {
