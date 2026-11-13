@@ -207,3 +207,11 @@ Source: Jakub, retention and memory discussion; legacy "Trénink" concept 2026-1
 | 194 | Home pad lines: one line, short text, no "…" (lesson short names, "Network MIDI") | Gemini 3.8 Flash, high (fallback Codex GPT-6.1 Sol, high) | any time, not in parallel with 191 |
 | 195 | Pad layout shows keyboard keys only after a tap; drop the stored setting | Gemini 3.8 Flash, medium (fallback Codex GPT-6.1 Sol, medium) | any time |
 | 196 | Practice: new look for Lesson info and Pad legend popovers | Gemini 3.8 Flash, high (fallback Codex GPT-6.1 Sol, high) | any time, not in parallel with 195 |
+| 200 | Invisible cream-on-cream chips, even mix cards, aligned day summary | Gemini 3.8 Flash, medium (fallback Codex GPT-6.1 Sol, medium) | any time |
+| 201 | Bug: finished mix still offered on Training until you leave and return | Gemini 3.8 Flash, high (fallback Codex GPT-6.1 Sol, high) | before 204 |
+| 202 | Review that did not count shows the reason, not "100 %" | Gemini 3.8 Flash, medium (fallback Codex GPT-6.1 Sol, medium) | any time |
+| 203 | Mix summary as one clean pop-up card | Gemini 3.8 Flash, high (fallback Codex GPT-6.1 Sol, high) | after 202 |
+| 204 | Today session screen goes into Training; result as pop-up card | Codex GPT-6.1 Sol, high (fallback Gemini 3.8 Flash, high) | after 201 and 202 |
+| 205 | Drum rows in the band ordered bottom-up like the pad layout | Gemini 3.8 Flash, low (fallback Codex GPT-6.1 Sol, low) | any time |
+| 206 | Home as a real controller: display, language knob, appearance switch, no "How it works" | Codex GPT-6.1 Sol, high (fallback Gemini 3.8 Flash, high) | any time, not in parallel with 207 |
+| 207 | Home reacts to the MIDI controller (sound, display, LED; no navigation) | Gemini 3.8 Flash, high (fallback Codex GPT-6.1 Sol, high) | after 206 |
