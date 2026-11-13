@@ -75,8 +75,6 @@ struct MixLessonResult: Identifiable {
     let id: Int
     let title: String
     var score: Double?
-    var barCounts: [String: Int] = [:]
-    var unmeasuredBars: Int
     var met: Bool = false
     var counted: Bool = true
     var earnedStars: [Bool] = [false, false, false]
@@ -717,7 +715,6 @@ final class PracticeSession {
                 id: $0.id,
                 title: $0.title,
                 score: nil,
-                unmeasuredBars: $0.bars * max(1, Int((LearningRules.practiceRunBars / Double($0.bars)).rounded())),
                 met: false,
                 counted: true,
                 earnedStars: [record?.passed ?? false, record?.mastery ?? false, record?.memory ?? false],
@@ -1356,8 +1353,6 @@ final class PracticeSession {
 
                 if let index = mixResults.firstIndex(where: { $0.id == lesson.id }) {
                     mixResults[index].score = result.score
-                    mixResults[index].barCounts = Dictionary(grouping: mixBarVerdicts.values, by: \.rawValue).mapValues(\.count)
-                    mixResults[index].unmeasuredBars = max(0, scoredLesson.bars - mixBarVerdicts.count)
                     mixResults[index].met = lessonMet
                     mixResults[index].counted = lessonCounted
                     mixResults[index].earnedStars = currentAward.earned

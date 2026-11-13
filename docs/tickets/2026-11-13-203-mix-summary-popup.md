@@ -1,6 +1,6 @@
 # 203 — Mix summary as one clean pop-up card
 
-Status: ready-for-agent. Decided by Jakub on 2026-11-13 (iPad review, photo 6). Blocked by: 202 (reuses its reason text).
+Status: implemented; build OK; ready for iPad test. Decided by Jakub on 2026-11-13 (iPad review, photo 6). Blocked by: 202 (reuses its reason text).
 
 ## Goal
 
@@ -30,10 +30,10 @@ None beyond the full suite (UI only).
 
 ## Acceptance criteria
 
-- [ ] After the last mix lesson a single centred card shows the results; the old inline panel is gone.
-- [ ] No "Bars: … not measured" text in the app.
-- [ ] Next and Restart mix work from the card.
-- [ ] Build and full test suite pass.
+- [x] After the last mix lesson a single centred card shows the results; the old inline panel is gone.
+- [x] No "Bars: … not measured" text in the app.
+- [x] Next and Restart mix work from the card.
+- [x] Build and full test suite pass.
 
 ### Manual iPad checks for Jakub
 

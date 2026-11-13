@@ -1188,45 +1188,7 @@ struct ResultCard: View {
     }
 }
 
-struct ResultDetailButton: View {
-    @Environment(SettingsManager.self) private var settings
-    let action: () -> Void
 
-    var body: some View {
-        Button(action: action) {
-            BarChartGlyph()
-                .frame(width: 26, height: 26)
-                .foregroundStyle(Theme.white)
-                .frame(width: 56, height: 56)
-                .overlay {
-                    RoundedRectangle(cornerRadius: 14)
-                        .strokeBorder(Theme.white.opacity(0.35), lineWidth: 1.5)
-                }
-                .contentShape(RoundedRectangle(cornerRadius: 14))
-        }
-        .buttonStyle(.plain)
-        .accessibilityLabel(settings.localized("Session results"))
-        .accessibilityHint(settings.localized("Shows all runs"))
-    }
-}
-
-private struct BarChartGlyph: View {
-    var body: some View {
-        Canvas { context, size in
-            let s = min(size.width, size.height) / 24
-            var path = Path()
-            let bars: [(CGFloat, CGFloat)] = [(4, 10), (10, 4), (16, 13)]
-            for (x, topY) in bars {
-                path.move(to: CGPoint(x: x * s, y: 20 * s))
-                path.addLine(to: CGPoint(x: x * s, y: topY * s))
-            }
-            path.move(to: CGPoint(x: 22 * s, y: 20 * s))
-            path.addLine(to: CGPoint(x: 2 * s, y: 20 * s))
-            context.stroke(path, with: .foreground, style: StrokeStyle(lineWidth: 2 * s, lineCap: .round, lineJoin: .round))
-        }
-        .accessibilityHidden(true)
-    }
-}
 
 private struct RunMeterBadge: View {
     @ScaledMetric(relativeTo: .body) private var height: CGFloat = 40

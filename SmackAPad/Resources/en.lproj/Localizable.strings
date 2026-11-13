@@ -684,8 +684,8 @@
 "New mix" = "New mix";
 "Mix needs two lessons with two stars." = "Mix needs two lessons with two stars.";
 "Mix results" = "Mix results";
-"Bars: %@" = "Bars: %@";
-"%lld not measured" = "%lld not measured";
+"Mix done" = "Mix done";
+"Restart mix" = "Restart mix";
 
 /* Ticket 101: Play after me. */
 "After me" = "After me";
