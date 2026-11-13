@@ -503,7 +503,8 @@
 "Badges %lld / %lld" = "Badges %lld / %lld";
 "New badge" = "New badge";
 "New badge: %@" = "New badge: %@";
-"Earned %lld new badges" = "Earned %lld new badges";
+"1 new badge" = "1 new badge";
+"%lld new badges" = "%lld new badges";
 "Earned: %@" = "Earned: %@";
 "Progress: %lld / %lld" = "Progress: %lld / %lld";
 "Not earned yet" = "Not earned yet";
@@ -725,7 +726,7 @@
 "Mix: %@" = "Mix: %@";
 
 /* Ticket 104: training reminders. */
-"Comes back tomorrow for a review" = "Comes back tomorrow for a review";
+"Review tomorrow" = "Review tomorrow";
 "Due for review" = "Due for review";
 
 /* Ticket 105: review reminder notification. */

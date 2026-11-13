@@ -578,11 +578,18 @@ struct PracticeProgressMeter: View {
     }
 }
 
-struct EndOfRunChip: Equatable, Identifiable {
-    var id: String { "\(isOrange):\(icon ?? ""):\(text)" }
+struct EndOfRunLine: Equatable, Identifiable {
+    enum Kind: Equatable {
+        case review
+        case runs
+        case badge
+    }
+
+    var id: String { "\(kind):\(text)" }
+    let kind: Kind
+    let icon: String
     let text: String
     let isOrange: Bool
-    let icon: String?
 }
 
 struct EndOfRunStatus: Equatable {
@@ -598,14 +605,20 @@ struct EndOfRunCardModel: Equatable {
     let showsStars: Bool
     let earnedStars: [Bool]
     let status: EndOfRunStatus
-    let chips: [EndOfRunChip]
+    let reviewLine: EndOfRunLine?
+    let runsLine: EndOfRunLine?
+    let badgeLine: EndOfRunLine?
+
+    var lines: [EndOfRunLine] {
+        [reviewLine, runsLine, badgeLine].compactMap { $0 }
+    }
 
     static func build(
         summary: RunSummary,
         runs: [PracticeRunResult],
         saved: LessonProgress?,
         reviewFeedback: ReviewScheduler.ReviewFeedback?,
-        badgeMessage: String?,
+        badgeCount: Int = 0,
         isAfterMe: Bool,
         isSectionLoop: Bool,
         bestResponseScore: Double?,
@@ -617,21 +630,16 @@ struct EndOfRunCardModel: Equatable {
         let earnedStars = [saved?.passed == true, saved?.mastery == true, saved?.memory == true]
 
         let status: EndOfRunStatus
-        var chips: [EndOfRunChip] = []
-
         if let reviewFeedback {
             switch reviewFeedback {
-            case .passed(_, let gapDays):
+            case .passed:
                 status = EndOfRunStatus(icon: "checkmark", tintOrange: true, title: language.localized("Review passed"))
-                chips.append(EndOfRunChip(text: nextReviewGapText(days: gapDays, language: language), isOrange: false, icon: nil))
             case .settled:
                 status = EndOfRunStatus(icon: "checkmark", tintOrange: true, title: language.localized("Lesson settled"))
             case .failed:
                 status = EndOfRunStatus(icon: "xmark", tintOrange: false, title: language.localized("Review not passed"))
-                chips.append(EndOfRunChip(text: language.localized("again tomorrow"), isOrange: false, icon: nil))
-            case .doesNotCount(let goalBpm):
+            case .doesNotCount:
                 status = EndOfRunStatus(icon: "exclamationmark.circle", tintOrange: false, title: language.localized("Not counted"))
-                chips.append(EndOfRunChip(text: "\(language.localized("From memory")) · \(goalBpm) BPM", isOrange: false, icon: nil))
             }
         } else if isAfterMe {
             status = EndOfRunStatus(
@@ -639,22 +647,11 @@ struct EndOfRunCardModel: Equatable {
                 tintOrange: summary.score >= Scoring.passMark,
                 title: language.localized("Practice only · no stars")
             )
-            if let bestResponseScore {
-                let bestPct = Int((bestResponseScore * 100).rounded())
-                chips.append(EndOfRunChip(
-                    text: "\(language.localized("Best response")): \(bestPct)\u{00a0}%",
-                    isOrange: false,
-                    icon: nil
-                ))
-            }
         } else if isSectionLoop {
             status = EndOfRunStatus(icon: "repeat", tintOrange: false, title: language.localized("Section loop"))
-            chips.append(EndOfRunChip(text: language.localized("Practice only · no stars"), isOrange: false, icon: nil))
         } else if isDueReview {
             // An undecided due review must never report a regular "Passed" card (ticket 189).
             status = EndOfRunStatus(icon: "exclamationmark.circle", tintOrange: false, title: language.localized("Not counted"))
-            let reason = reviewPendingReason ?? .unfinishedReview
-            chips.append(EndOfRunChip(text: reason.message(language: language), isOrange: false, icon: nil))
         } else if summary.passes == 0 {
             status = EndOfRunStatus(icon: "exclamationmark.circle", tintOrange: false, title: language.localized("Not counted"))
         } else if summary.passed || runs.last?.passed == true || summary.score >= Scoring.passMark {
@@ -665,18 +662,95 @@ struct EndOfRunCardModel: Equatable {
             status = EndOfRunStatus(icon: "xmark", tintOrange: false, title: title)
         }
 
-        if reviewFeedback == nil, summary.firstStar2 {
-            chips.append(EndOfRunChip(text: language.localized("Comes back tomorrow for a review"), isOrange: false, icon: nil))
+        let reviewLine: EndOfRunLine?
+        if let reviewFeedback {
+            switch reviewFeedback {
+            case .passed(_, let gapDays):
+                reviewLine = EndOfRunLine(
+                    kind: .review,
+                    icon: "calendar",
+                    text: nextReviewGapText(days: gapDays, language: language),
+                    isOrange: false
+                )
+            case .settled:
+                reviewLine = nil
+            case .failed:
+                reviewLine = EndOfRunLine(
+                    kind: .review,
+                    icon: "calendar",
+                    text: language.localized("Review tomorrow"),
+                    isOrange: false
+                )
+            case .doesNotCount(let goalBpm):
+                reviewLine = EndOfRunLine(
+                    kind: .review,
+                    icon: "calendar",
+                    text: "\(language.localized("From memory")) · \(goalBpm) BPM",
+                    isOrange: false
+                )
+            }
+        } else if isDueReview {
+            let reason = reviewPendingReason ?? .unfinishedReview
+            reviewLine = EndOfRunLine(
+                kind: .review,
+                icon: "calendar",
+                text: reason.message(language: language),
+                isOrange: false
+            )
+        } else if isAfterMe {
+            if let bestResponseScore {
+                let bestPct = Int((bestResponseScore * 100).rounded())
+                reviewLine = EndOfRunLine(
+                    kind: .review,
+                    icon: "chart.line.uptrend.xyaxis",
+                    text: "\(language.localized("Best response")): \(bestPct)\u{00a0}%",
+                    isOrange: false
+                )
+            } else {
+                reviewLine = nil
+            }
+        } else if isSectionLoop {
+            reviewLine = EndOfRunLine(
+                kind: .review,
+                icon: "repeat",
+                text: language.localized("Practice only · no stars"),
+                isOrange: false
+            )
+        } else if summary.firstStar2 {
+            reviewLine = EndOfRunLine(
+                kind: .review,
+                icon: "calendar",
+                text: language.localized("Review tomorrow"),
+                isOrange: false
+            )
+        } else {
+            reviewLine = nil
         }
 
-        if reviewFeedback == nil, !isAfterMe, !isSectionLoop, !runs.isEmpty {
+        let runsLine: EndOfRunLine?
+        if !isAfterMe, !isSectionLoop, !runs.isEmpty {
             let bestScore = runs.map(\.score).max() ?? summary.score
             let bestPercent = Int((bestScore * 100).rounded())
-            chips.append(EndOfRunChip(text: runSummaryText(count: runs.count, bestPercent: bestPercent, language: language), isOrange: false, icon: nil))
+            runsLine = EndOfRunLine(
+                kind: .runs,
+                icon: "chart.bar.fill",
+                text: runSummaryText(count: runs.count, bestPercent: bestPercent, language: language),
+                isOrange: false
+            )
+        } else {
+            runsLine = nil
         }
 
-        if let badgeMessage {
-            chips.append(EndOfRunChip(text: badgeMessage, isOrange: true, icon: "rosette"))
+        let badgeLine: EndOfRunLine?
+        if badgeCount > 0 {
+            badgeLine = EndOfRunLine(
+                kind: .badge,
+                icon: "rosette",
+                text: badgeSummaryText(count: badgeCount, language: language),
+                isOrange: true
+            )
+        } else {
+            badgeLine = nil
         }
 
         return EndOfRunCardModel(
@@ -685,7 +759,9 @@ struct EndOfRunCardModel: Equatable {
             showsStars: !isAfterMe,
             earnedStars: earnedStars,
             status: status,
-            chips: chips
+            reviewLine: reviewLine,
+            runsLine: runsLine,
+            badgeLine: badgeLine
         )
     }
 
@@ -715,6 +791,21 @@ struct EndOfRunCardModel: Equatable {
         let runsWord = count == 1 ? "1 run" : "\(count) runs"
         return "\(runsWord) · best \(bestPercent)%"
     }
+
+    static func badgeSummaryText(count: Int, language: AppLanguage) -> String {
+        if language == .czech {
+            if count == 1 {
+                return language.localized("1 new badge")
+            } else if count >= 2 && count <= 4 {
+                return "\(count) nové odznaky"
+            } else {
+                return "\(count) nových odznaků"
+            }
+        }
+        return count == 1
+            ? language.localized("1 new badge")
+            : language.localized("%lld new badges", count)
+    }
 }
 
 /// Modern black end-of-run card replacing the old summary strip.
@@ -730,7 +821,7 @@ struct ResultCard: View {
     var reviewFeedback: ReviewScheduler.ReviewFeedback? = nil
     var isDueReview: Bool = false
     var reviewPendingReason: PracticeStepOutcome.Reason? = nil
-    var badgeText: String? = nil
+    var badgeCount: Int = 0
     var isAfterMe: Bool = false
     var isSectionLoop: Bool = false
     var bestResponseScore: Double? = nil
@@ -748,7 +839,7 @@ struct ResultCard: View {
             runs: runs,
             saved: saved,
             reviewFeedback: reviewFeedback,
-            badgeMessage: badgeText,
+            badgeCount: badgeCount,
             isAfterMe: isAfterMe,
             isSectionLoop: isSectionLoop,
             bestResponseScore: bestResponseScore,
@@ -765,7 +856,7 @@ struct ResultCard: View {
     }
 
     private var isCompactWidth: Bool {
-        if let cardWidth { return cardWidth < 580 }
+        if let cardWidth { return cardWidth < 620 }
         return false
     }
 
@@ -779,19 +870,18 @@ struct ResultCard: View {
                         if model.showsStars {
                             starsRow
                         }
-                        detailButton
                     }
-                    statusAndChips
+                    factsColumn
+                        .frame(maxWidth: .infinity, alignment: .leading)
                 }
             } else {
-                HStack(alignment: .center, spacing: Theme.Space.wide) {
+                HStack(alignment: .center, spacing: Theme.Space.regular) {
                     scoreColumn
                     if model.showsStars {
                         starsRow
                     }
-                    statusAndChips
+                    factsColumn
                         .frame(maxWidth: .infinity, alignment: .leading)
-                    detailButton
                 }
             }
         }
@@ -823,7 +913,7 @@ struct ResultCard: View {
                 .foregroundStyle(Theme.white.opacity(0.68))
                 .lineLimit(1)
         }
-        .frame(minWidth: isCompactWidth ? 110 : 164, alignment: .leading)
+        .frame(minWidth: isCompactWidth ? 110 : 138, alignment: .leading)
     }
 
     private var starsRow: some View {
@@ -863,47 +953,103 @@ struct ResultCard: View {
         }
     }
 
-    private var statusAndChips: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            HStack(alignment: .firstTextBaseline, spacing: 10) {
-                Image(systemName: model.status.icon)
-                    .font(.system(size: 18, weight: .bold))
-                    .foregroundStyle(model.status.tintOrange ? Theme.orange : Theme.white.opacity(0.75))
-                    .accessibilityHidden(true)
-                Text(model.status.title)
-                    .font(Theme.strong(20))
-                    .foregroundStyle(Theme.white)
-                    .fixedSize(horizontal: false, vertical: true)
+    private var factsColumn: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            statusRow
+
+            if let reviewLine = model.reviewLine {
+                reviewRow(reviewLine)
             }
 
-            if !model.chips.isEmpty {
-                FlowLayout(spacing: 8) {
-                    ForEach(model.chips) { chip in
-                        HStack(spacing: 6) {
-                            if let icon = chip.icon {
-                                Image(systemName: icon)
-                                    .font(.system(size: 14, weight: .semibold))
-                                    .accessibilityHidden(true)
-                            }
-                            Text(chip.text)
-                                .font(Theme.text(14).weight(chip.isOrange ? .semibold : .medium))
-                                .lineLimit(1)
-                        }
-                        .foregroundStyle(chip.isOrange ? Theme.black : Theme.white)
-                        .padding(.horizontal, 12)
-                        .frame(height: 32)
-                        .background(
-                            chip.isOrange ? Theme.orange : Theme.white.opacity(0.12),
-                            in: Capsule()
-                        )
-                    }
-                }
+            if let runsLine = model.runsLine {
+                runsButton(runsLine)
+            }
+
+            if let badgeLine = model.badgeLine {
+                badgeRow(badgeLine)
             }
         }
     }
 
-    private var detailButton: some View {
-        ResultDetailButton(action: openSessionResults)
+    private var statusRow: some View {
+        HStack(alignment: .center, spacing: 8) {
+            Image(systemName: model.status.icon)
+                .font(.system(size: 18, weight: .bold))
+                .foregroundStyle(model.status.tintOrange ? Theme.orange : Theme.white.opacity(0.75))
+                .frame(width: 20, alignment: .center)
+                .accessibilityHidden(true)
+            Text(model.status.title)
+                .font(Theme.strong(20))
+                .foregroundStyle(Theme.white)
+                .lineLimit(1)
+                .minimumScaleFactor(0.8)
+        }
+        .frame(minHeight: 28, alignment: .leading)
+    }
+
+    private func reviewRow(_ line: EndOfRunLine) -> some View {
+        HStack(spacing: 8) {
+            Image(systemName: line.icon)
+                .font(.system(size: 15, weight: .semibold))
+                .foregroundStyle(Theme.white.opacity(0.75))
+                .frame(width: 20, alignment: .center)
+                .accessibilityHidden(true)
+            Text(line.text)
+                .font(Theme.text(14).weight(.medium))
+                .foregroundStyle(Theme.white)
+                .lineLimit(1)
+                .minimumScaleFactor(0.8)
+        }
+        .frame(minHeight: 24, alignment: .leading)
+    }
+
+    private func runsButton(_ line: EndOfRunLine) -> some View {
+        Button(action: openSessionResults) {
+            HStack(spacing: 8) {
+                Image(systemName: line.icon)
+                    .font(.system(size: 14, weight: .semibold))
+                    .foregroundStyle(Theme.white.opacity(0.85))
+                    .frame(width: 20, alignment: .center)
+                    .accessibilityHidden(true)
+                Text(line.text)
+                    .font(Theme.text(14).weight(.medium))
+                    .foregroundStyle(Theme.white)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.8)
+                Spacer(minLength: 4)
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundStyle(Theme.white.opacity(0.55))
+                    .accessibilityHidden(true)
+            }
+            .padding(.horizontal, 12)
+            .padding(.vertical, 8)
+            .frame(minHeight: 44)
+            .overlay {
+                RoundedRectangle(cornerRadius: 10)
+                    .strokeBorder(Theme.white.opacity(0.25), lineWidth: 1)
+            }
+            .contentShape(RoundedRectangle(cornerRadius: 10))
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(line.text)
+        .accessibilityHint(settings.localized("Shows all runs"))
+    }
+
+    private func badgeRow(_ line: EndOfRunLine) -> some View {
+        HStack(spacing: 8) {
+            Image(systemName: line.icon)
+                .font(.system(size: 15, weight: .semibold))
+                .foregroundStyle(Theme.orange)
+                .frame(width: 20, alignment: .center)
+                .accessibilityHidden(true)
+            Text(line.text)
+                .font(Theme.text(14).weight(.semibold))
+                .foregroundStyle(Theme.orange)
+                .lineLimit(1)
+                .minimumScaleFactor(0.8)
+        }
+        .frame(minHeight: 24, alignment: .leading)
     }
 
     @MainActor

@@ -27,7 +27,7 @@ final class RunMeterTests: XCTestCase {
             runs: [],
             saved: savedThree,
             reviewFeedback: .passed(nextStep: 2, gapDays: 3),
-            badgeMessage: "New badge: Streak",
+            badgeCount: 1,
             isAfterMe: false,
             isSectionLoop: false,
             bestResponseScore: nil,
@@ -38,21 +38,30 @@ final class RunMeterTests: XCTestCase {
         XCTAssertTrue(reviewEn.showsStars)
         XCTAssertEqual(reviewEn.earnedStars, [true, true, true])
         XCTAssertTrue(reviewEn.status.tintOrange)
-        XCTAssertEqual(reviewEn.chips.map(\.isOrange), [false, true])
-        XCTAssertEqual(reviewEn.chips.last?.text, "New badge: Streak")
+        XCTAssertEqual(reviewEn.status.title, AppLanguage.english.localized("Review passed"))
+        XCTAssertEqual(reviewEn.reviewLine?.text, "next in 3 days")
+        XCTAssertEqual(reviewEn.reviewLine?.icon, "calendar")
+        XCTAssertNil(reviewEn.runsLine)
+        XCTAssertEqual(reviewEn.badgeLine?.text, "1 new badge")
+        XCTAssertEqual(reviewEn.badgeLine?.icon, "rosette")
+        XCTAssertTrue(reviewEn.badgeLine?.isOrange == true)
+        XCTAssertEqual(reviewEn.lines.map(\.text), ["next in 3 days", "1 new badge"])
 
         let reviewCs = EndOfRunCardModel.build(
             summary: summary,
             runs: [],
             saved: savedThree,
             reviewFeedback: .passed(nextStep: 2, gapDays: 3),
-            badgeMessage: nil,
+            badgeCount: 0,
             isAfterMe: false,
             isSectionLoop: false,
             bestResponseScore: nil,
             language: .czech
         )
-        XCTAssertEqual(reviewCs.chips.first?.text, "další za 3 dny")
+        XCTAssertEqual(reviewCs.reviewLine?.text, "další za 3 dny")
+        XCTAssertNil(reviewCs.runsLine)
+        XCTAssertNil(reviewCs.badgeLine)
+        XCTAssertEqual(reviewCs.lines.map(\.text), ["další za 3 dny"])
 
         let normal = EndOfRunCardModel.build(
             summary: RunSummary(score: 0.88, bpm: 80, passes: 2, passed: true, mastery: false, memory: false),
@@ -62,34 +71,39 @@ final class RunMeterTests: XCTestCase {
             ],
             saved: LessonProgress(passed: true, mastery: false, memory: false),
             reviewFeedback: nil,
-            badgeMessage: nil,
+            badgeCount: 0,
             isAfterMe: false,
             isSectionLoop: false,
             bestResponseScore: nil,
             language: .english
         )
-        XCTAssertEqual(normal.chips.map(\.text), ["2 runs · best 94%"])
+        XCTAssertNil(normal.reviewLine)
+        XCTAssertEqual(normal.runsLine?.text, "2 runs · best 94%")
+        XCTAssertEqual(normal.runsLine?.icon, "chart.bar.fill")
+        XCTAssertNil(normal.badgeLine)
+        XCTAssertEqual(normal.lines.map(\.text), ["2 runs · best 94%"])
 
         let afterMe = EndOfRunCardModel.build(
             summary: RunSummary(score: 0.9, bpm: 80, passes: 1, passed: false, mastery: false, memory: false),
             runs: [],
             saved: nil,
             reviewFeedback: nil,
-            badgeMessage: nil,
+            badgeCount: 0,
             isAfterMe: true,
             isSectionLoop: false,
             bestResponseScore: 0.92,
             language: .english
         )
         XCTAssertFalse(afterMe.showsStars)
-        XCTAssertEqual(afterMe.chips.count, 1)
+        XCTAssertEqual(afterMe.lines.count, 1)
+        XCTAssertEqual(afterMe.reviewLine?.text, "Best response: 92\u{00a0}%")
 
         let notCounted = EndOfRunCardModel.build(
             summary: RunSummary(score: 0.5, bpm: 70, passes: 0, passed: false, mastery: false, memory: false),
             runs: [],
             saved: nil,
             reviewFeedback: nil,
-            badgeMessage: nil,
+            badgeCount: 0,
             isAfterMe: false,
             isSectionLoop: false,
             bestResponseScore: nil,
@@ -97,13 +111,14 @@ final class RunMeterTests: XCTestCase {
         )
         XCTAssertFalse(notCounted.status.tintOrange)
         XCTAssertEqual(notCounted.status.icon, "exclamationmark.circle")
+        XCTAssertTrue(notCounted.lines.isEmpty)
 
         let earlyDueStop = EndOfRunCardModel.build(
             summary: RunSummary(score: 1.0, bpm: 80, passes: 1, passed: true, mastery: false, memory: false),
             runs: [PracticeRunResult(runNumber: 1, score: 1.0, bpm: 80, passed: true)],
             saved: LessonProgress(passed: true, mastery: true, memory: true, currentBpm: 80, reviewStep: 2, reviewDueDay: "2026-11-12"),
             reviewFeedback: nil,
-            badgeMessage: nil,
+            badgeCount: 0,
             isAfterMe: false,
             isSectionLoop: false,
             bestResponseScore: nil,
@@ -114,6 +129,47 @@ final class RunMeterTests: XCTestCase {
         XCTAssertFalse(earlyDueStop.status.tintOrange)
         XCTAssertEqual(earlyDueStop.status.icon, "exclamationmark.circle")
         XCTAssertEqual(earlyDueStop.status.title, AppLanguage.english.localized("Not counted"))
-        XCTAssertEqual(earlyDueStop.chips.first?.text, PracticeStepOutcome.Reason.notesVisible.message(language: .english))
+        XCTAssertEqual(earlyDueStop.reviewLine?.text, PracticeStepOutcome.Reason.notesVisible.message(language: .english))
+        XCTAssertEqual(earlyDueStop.runsLine?.text, "1 run · best 100%")
+        XCTAssertEqual(earlyDueStop.lines.map(\.text), [PracticeStepOutcome.Reason.notesVisible.message(language: .english), "1 run · best 100%"])
+    }
+
+    func testCzechBadgePlural() {
+        XCTAssertEqual(EndOfRunCardModel.badgeSummaryText(count: 1, language: .czech), "1 nový odznak")
+        XCTAssertEqual(EndOfRunCardModel.badgeSummaryText(count: 2, language: .czech), "2 nové odznaky")
+        XCTAssertEqual(EndOfRunCardModel.badgeSummaryText(count: 5, language: .czech), "5 nových odznaků")
+    }
+
+    func testStar2EarnedShowsReviewTomorrowLine() {
+        let star2En = EndOfRunCardModel.build(
+            summary: RunSummary(score: 0.95, bpm: 80, passes: 2, passed: true, mastery: true, memory: false, firstStar2: true),
+            runs: [PracticeRunResult(runNumber: 1, score: 0.95, bpm: 80, passed: true)],
+            saved: LessonProgress(passed: true, mastery: true, memory: false),
+            reviewFeedback: nil,
+            badgeCount: 2,
+            isAfterMe: false,
+            isSectionLoop: false,
+            bestResponseScore: nil,
+            language: .english
+        )
+        XCTAssertEqual(star2En.reviewLine?.text, "Review tomorrow")
+        XCTAssertEqual(star2En.reviewLine?.icon, "calendar")
+        XCTAssertEqual(star2En.runsLine?.text, "1 run · best 95%")
+        XCTAssertEqual(star2En.badgeLine?.text, "2 new badges")
+        XCTAssertEqual(star2En.lines.map(\.text), ["Review tomorrow", "1 run · best 95%", "2 new badges"])
+
+        let star2Cs = EndOfRunCardModel.build(
+            summary: RunSummary(score: 0.95, bpm: 80, passes: 2, passed: true, mastery: true, memory: false, firstStar2: true),
+            runs: [PracticeRunResult(runNumber: 1, score: 0.95, bpm: 80, passed: true)],
+            saved: LessonProgress(passed: true, mastery: true, memory: false),
+            reviewFeedback: nil,
+            badgeCount: 2,
+            isAfterMe: false,
+            isSectionLoop: false,
+            bestResponseScore: nil,
+            language: .czech
+        )
+        XCTAssertEqual(star2Cs.reviewLine?.text, "Opakování zítra")
+        XCTAssertEqual(star2Cs.badgeLine?.text, "2 nové odznaky")
     }
 }

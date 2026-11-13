@@ -902,7 +902,7 @@ struct PracticeScreen: View {
                             reviewFeedback: session.isMix || session.afterMe ? nil : session.reviewFeedback,
                             isDueReview: session.isDueReview && !session.isSectionLoop,
                             reviewPendingReason: session.reviewPendingReason,
-                            badgeText: session.badgeSummaryMessage(settings: settings),
+                            badgeCount: session.earnedBadgesInRun.count,
                             isAfterMe: session.afterMe,
                             isSectionLoop: session.isSectionLoop,
                             bestResponseScore: session.bestResponseScore,

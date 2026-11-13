@@ -505,7 +505,8 @@
 "Badges %lld / %lld" = "Odznaky %lld / %lld";
 "New badge" = "Nový odznak";
 "New badge: %@" = "Nový odznak: %@";
-"Earned %lld new badges" = "Získány %lld nové odznaky";
+"1 new badge" = "1 nový odznak";
+"%lld new badges" = "%lld nové odznaky";
 "Earned: %@" = "Získáno: %@";
 "Progress: %lld / %lld" = "Postup: %lld / %lld";
 "Not earned yet" = "Zatím nezískáno";
@@ -727,7 +728,7 @@
 "Mix: %@" = "Mix: %@";
 
 /* Ticket 104: training reminders. */
-"Comes back tomorrow for a review" = "Zítra se vrátí k opakování";
+"Review tomorrow" = "Opakování zítra";
 "Due for review" = "Na řadě k opakování";
 
 /* Ticket 105: review reminder notification. */

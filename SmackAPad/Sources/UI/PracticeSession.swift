@@ -1528,11 +1528,6 @@ final class PracticeSession {
 
     func badgeSummaryMessage(settings: SettingsManager) -> String? {
         guard !earnedBadgesInRun.isEmpty else { return nil }
-        if earnedBadgesInRun.count == 1 {
-            let name = settings.localized(earnedBadgesInRun[0].name)
-            return settings.localized("New badge: %@", name)
-        } else {
-            return settings.localized("Earned %lld new badges", earnedBadgesInRun.count)
-        }
+        return EndOfRunCardModel.badgeSummaryText(count: earnedBadgesInRun.count, language: settings.languagePreference)
     }
 }

@@ -1,6 +1,6 @@
 # 197 — Result card: calm layout without overlapping chips
 
-Status: ready-for-agent. Design approved by Jakub on 2026-11-13 (mockup "C" in that conversation).
+Status: ready-for-review. Completed on 2026-11-13.
 
 ## Goal
 
@@ -28,11 +28,11 @@ Update the existing `EndOfRunCardModel` tests to the new line model (status + re
 
 ## Acceptance criteria
 
-- [ ] The card shows score, stars and a facts column with at most three icon lines under the status; no capsules.
-- [ ] The runs line opens session results; there is no separate chart button.
-- [ ] Nothing overlaps or is cut off, in English and Czech, light and dark, wide and compact width.
-- [ ] Unused strings and the old chip/button code are deleted.
-- [ ] Build and full test suite pass.
+- [x] The card shows score, stars and a facts column with at most three icon lines under the status; no capsules.
+- [x] The runs line opens session results; there is no separate chart button.
+- [x] Nothing overlaps or is cut off, in English and Czech, light and dark, wide and compact width.
+- [x] Unused strings and the old chip/button code are deleted.
+- [x] Build and full test suite pass.
 
 ### Manual iPad checks for Jakub
 

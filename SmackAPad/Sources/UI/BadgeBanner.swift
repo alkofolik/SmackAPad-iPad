@@ -17,7 +17,7 @@ struct BadgeBanner: View {
         if event.badges.count == 1, let badge = event.badges.first {
             return settings.localized("New badge: %@", settings.localized(badge.name))
         } else {
-            return settings.localized("Earned %lld new badges", event.badges.count)
+            return EndOfRunCardModel.badgeSummaryText(count: event.badges.count, language: settings.languagePreference)
         }
     }
 
@@ -49,7 +49,7 @@ struct BadgeBanner: View {
                     .foregroundStyle(Theme.orange)
                     .shadow(color: Theme.orange.opacity(0.6), radius: 3)
 
-                Text(settings.localized("Earned %lld new badges", event.badges.count))
+                Text(EndOfRunCardModel.badgeSummaryText(count: event.badges.count, language: settings.languagePreference))
                     .font(Theme.strong(18))
                     .foregroundStyle(Theme.ink)
                     .lineLimit(1)
