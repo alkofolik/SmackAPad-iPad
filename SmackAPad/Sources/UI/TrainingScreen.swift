@@ -39,7 +39,14 @@ public struct TrainingScreen: View {
     @State private var showingQueue = false
     @State private var isMemoryExpanded = false
     @State private var showingBadges = false
-    @State private var todayPresentation: TodayPresentation?
+    @State private var todaySession: TodaySessionCoordinator?
+    @State private var todayPractice: TodayPracticePresentation?
+    @State private var todayMixFromMemory = false
+    @State private var todayPracticeStarted = false
+    @State private var showingStepResult = false
+    @State private var daySummary: DaySummaryPresentation?
+    @State private var startMixAfterSummary = false
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var isDueExpanded = false
     @State private var expandedWaitingGroup: WaitingGroup?
     @State private var isSettledExpanded = false
@@ -111,13 +118,26 @@ public struct TrainingScreen: View {
         let settledLessons: [Lesson]
     }
 
-    private struct TodayPresentation: Identifiable {
+    private struct DaySummaryPresentation: Identifiable {
         let id = UUID()
-        let target: TodayContinueTarget
+        let plan: TodayPlan
+    }
+
+    private enum TodayPracticePresentation: Identifiable {
+        case lesson(LessonLaunch)
+        case mix(MixCoverItem)
+
+        var id: String {
+            switch self {
+            case .lesson(let launch): return "lesson-\(launch.id)"
+            case .mix(let mix): return mix.id.uuidString
+            }
+        }
     }
 
     private var hasActiveCover: Bool {
-        selectedLesson != nil || selectedAfterMeLesson != nil || mixPresentation != nil || todayPresentation != nil
+        selectedLesson != nil || selectedAfterMeLesson != nil || mixPresentation != nil
+            || todayPractice != nil || daySummary != nil || showingStepResult
     }
 
     private var continueTarget: TodayContinueTarget? {
@@ -274,20 +294,68 @@ public struct TrainingScreen: View {
                     )
                 }
             }
-            .fullScreenCover(item: $todayPresentation, onDismiss: {
+            .fullScreenCover(item: $todayPractice, onDismiss: dailyPracticeDismissed) { presentation in
+                switch presentation {
+                case .lesson(let launch):
+                    PracticeScreen(
+                        lesson: launch.lesson, settings: settings, progress: progress, midi: midi,
+                        initialFromMemory: launch.reviewTempo != nil, initialBpm: launch.reviewTempo,
+                        onStepResult: { todaySession?.record($0) }
+                    )
+                case .mix(let mix):
+                    MixFlowScreen(
+                        lessons: dailyMixBinding(fallback: mix.lessons),
+                        fromMemory: $todayMixFromMemory,
+                        onAnotherMix: rerollDailyMix,
+                        onMixStarted: {
+                            todayPracticeStarted = true
+                            todaySession?.continueSession()
+                        },
+                        onStepResult: { todaySession?.record($0) }
+                    )
+                }
+            }
+            .fullScreenCover(item: $daySummary, onDismiss: {
                 isVisible = true
                 refreshTrainingData()
-            }) { presentation in
-                let plan = presentation.target.plan
-                if plan.steps.isEmpty {
-                    EmptyCoverFallbackView(context: "TrainingScreen.todayPresentation") {
-                        todayPresentation = nil
-                    }
-                } else {
-                    TodaySessionScreen(plan: plan) { todayPresentation = nil }
+                if startMixAfterSummary {
+                    startMixAfterSummary = false
+                    refreshMix(newDraw: true)
+                    if !mixLessons.isEmpty { mixPresentation = MixCoverItem(lessons: mixLessons) }
+                }
+            }) { summary in
+                GeometryReader { geometry in
+                    DaySummaryView(
+                        plan: summary.plan,
+                        isLandscape: geometry.size.width >= 768 && geometry.size.width > geometry.size.height,
+                        canStartExtraMix: mixCandidates.count >= LearningRules.minimumMixLessons,
+                        onBack: { daySummary = nil },
+                        onExtraMix: {
+                            startMixAfterSummary = true
+                            daySummary = nil
+                        },
+                        onEndTraining: { daySummary = nil }
+                    )
+                    .calmChassisBackground()
                 }
             }
         }
+        .accessibilityHidden(showingStepResult)
+        .overlay {
+            if showingStepResult, let session = todaySession,
+               let index = session.plan.lastPlayedIndex, session.plan.steps.indices.contains(index) {
+                TrainingStepResultCard(
+                    step: session.plan.steps[index],
+                    nextStep: nextDailyStep,
+                    onContinue: continueAfterResult,
+                    onSkip: skipDailyStep,
+                    onDone: finishDailySession,
+                    onClose: { showingStepResult = false }
+                )
+                .transition(reduceMotion ? .opacity : .opacity.combined(with: .scale(scale: 0.94)))
+            }
+        }
+        .animation(.easeOut(duration: 0.22), value: showingStepResult)
         .environment(\.lessonNamespace, lessonNamespace)
         .practiceLessonPresentation(launch: $selectedLesson, namespace: lessonNamespace)
         .onChange(of: selectedLesson?.id) { _, id in
@@ -319,82 +387,51 @@ public struct TrainingScreen: View {
 
     // MARK: - 1. Today Panel
 
-    private enum StepCardVisualState {
-        case current
-        case done(exclamation: Bool)
-        case upcoming
-        case optional
+    private var nextDailyStep: TodayPlan.Step? {
+        guard case .step(let plan) = todaySession?.nextAction,
+              plan.steps.indices.contains(plan.index) else { return nil }
+        return plan.steps[plan.index]
     }
 
-    private var effectiveNextStep: TodayPlan.Step? {
-        guard let plan = currentPlan, !plan.isFinished else { return nil }
-        let candidates = plan.steps.dropFirst(plan.index)
-        return candidates.first { step in
-            if step.kind == .review, step.outcome?.hasDecidedReview == true { return false }
-            if step.outcome?.played == true { return false }
-            return true
+    private var todaySteps: [TodayPlan.Step] {
+        continueTarget?.plan.steps ?? []
+    }
+
+    private func stepTitle(_ step: TodayPlan.Step) -> String {
+        if step.kind == .mix { return settings.localized("Daily mix") }
+        return step.lessonIDs.first.flatMap { lessonStore.lesson(for: $0) }
+            .map { settings.localized($0.title) } ?? "—"
+    }
+
+    private func stepTag(_ step: TodayPlan.Step) -> String {
+        switch step.kind {
+        case .review: return settings.localized("Review")
+        case .newLesson: return settings.localized("New lesson")
+        case .mix: return settings.localized("Mix · optional")
         }
     }
 
-    private var effectiveCurrentKind: TodayPlan.Step.Kind? {
-        if isPlanFinished { return nil }
-        if let step = effectiveNextStep { return step.kind }
-        if currentPlan == nil {
-            if !reviewLoad.todayIDs.isEmpty { return .review }
-            if nextLesson != nil { return .newLesson }
-            if mixLessons.count >= LearningRules.minimumMixLessons { return .mix }
-        }
-        return nil
-    }
-
-    @ViewBuilder
     private func todayPanel(isLandscape: Bool) -> some View {
-        let isEmptyFirstRun = data?.hasMasteredLesson != true
-            && dueLessons.isEmpty
-            && currentPlan?.steps.contains(where: { $0.outcome?.played == true }) != true
-            && currentPlan?.isFinished != true
-
         VStack(alignment: .leading, spacing: 18) {
             Text(settings.localized("Today").uppercased(with: Locale(identifier: settings.languagePreference.rawValue)))
                 .font(Theme.padTitle(size: 40))
                 .foregroundStyle(Theme.black)
                 .accessibilityAddTraits(.isHeader)
 
-            if isEmptyFirstRun {
-                emptyFirstRunBlock
-            } else if isLandscape {
-                Grid(alignment: .topLeading, horizontalSpacing: 12, verticalSpacing: 12) {
-                    GridRow {
-                        reviewStepCard
-                            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-                        newLessonStepCard
-                            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-                        mixStepCard
-                            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-                        continueButton
-                            .frame(width: 200)
-                            .frame(maxHeight: .infinity)
+            if isLandscape {
+                HStack(spacing: 12) {
+                    ForEach(Array(todaySteps.enumerated()), id: \.offset) { index, step in
+                        dailyStepTile(step, index: index)
                     }
+                    continueButton.frame(width: 200)
                 }
             } else {
-                VStack(spacing: 12) {
-                    Grid(alignment: .topLeading, horizontalSpacing: 12, verticalSpacing: 12) {
-                        GridRow {
-                            reviewStepCard
-                                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-                            newLessonStepCard
-                                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-                        }
-                        GridRow {
-                            mixStepCard
-                                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-                                .gridCellColumns(2)
-                        }
+                LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 12) {
+                    ForEach(Array(todaySteps.enumerated()), id: \.offset) { index, step in
+                        dailyStepTile(step, index: index)
                     }
-
-                    continueButton
-                        .frame(maxWidth: .infinity, minHeight: 68)
                 }
+                continueButton
             }
         }
         .padding(24)
@@ -402,284 +439,88 @@ public struct TrainingScreen: View {
         .background(Theme.orange, in: RoundedRectangle(cornerRadius: 24))
     }
 
-    private var emptyFirstRunBlock: some View {
-        Button {
-            if let nextLesson, !hasActiveCover { selectedLesson = .lesson(nextLesson) }
-        } label: {
-            HStack(spacing: Theme.Space.regular) {
-                VStack(alignment: .leading, spacing: Theme.Space.tight) {
-                    Text(settings.localized("Learn your first lesson"))
-                        .font(Theme.strong(22))
-                        .foregroundStyle(Theme.black)
-                    if let next = nextLesson {
-                        Text(settings.localized(next.title))
-                            .font(Theme.text(15))
-                            .foregroundStyle(Theme.black.opacity(0.75))
-                    }
-                }
-                Spacer()
-                Image(systemName: "chevron.right")
-                    .font(Theme.strong(18))
-                    .foregroundStyle(Theme.black)
+    private func dailyStepTile(_ step: TodayPlan.Step, index: Int) -> some View {
+        let plan = continueTarget?.plan
+        let isDone = plan?.finished == true || index < (plan?.index ?? 0) || step.outcome?.played == true
+        let isCurrent = !isDone && index == (plan?.index ?? 0)
+        let status = isDone ? settings.localized(step.status?.titleKey ?? "Not played")
+            : settings.localized(isCurrent ? "training.now" : "Waiting")
+        let detail: String = {
+            if isDone {
+                if step.kind == .review,
+                   let reason = step.reviewFailureReason(language: settings.languagePreference) { return reason }
+                if let score = step.outcome?.bestScore { return "\(Int((score * 100).rounded())) %" }
+                return settings.localized("Not played")
             }
-            .padding(16)
-            .frame(maxWidth: .infinity, minHeight: 88, alignment: .leading)
-            .background(Theme.white, in: RoundedRectangle(cornerRadius: 14))
-            .contentShape(RoundedRectangle(cornerRadius: 14))
-        }
-        .buttonStyle(.plain)
-        .lessonSource(nextLesson?.id ?? 0)
-    }
-
-    private var reviewStepCard: some View {
-        let count = reviewLoad.todayIDs.count
-        let summary = currentPlan?.reviewSummary ?? TodayPlan.ReviewSummary(notPlayed: count)
-        let isCurrent = effectiveCurrentKind == .review
-        let isDone = count > 0 && summary.played == count && !isCurrent
-
-        let visualState: StepCardVisualState = {
-            if isCurrent { return .current }
-            if isDone { return .done(exclamation: summary.didNotCount > 0) }
-            return .upcoming
+            if step.kind == .mix { return settings.languagePreference.localizedLessonCount(step.lessonIDs.count) }
+            return status
         }()
-
-        let title = count > 0
-            ? settings.languagePreference.localizedLessonCount(count)
-            : settings.localized("training.noReviews")
-
-        let subtitle = reviewStatusDetail(count: count, summary: summary)
-
-        return stepCardView(
-            tag: settings.localized("Reviews"),
-            title: title,
-            subtitle: subtitle,
-            visualState: visualState
-        )
-    }
-
-    private var newLessonStepCard: some View {
-        let planLessonID = currentPlan?.steps.first(where: { $0.kind == .newLesson })?.lessonIDs.first
-        let lesson = planLessonID.flatMap { lessonStore.lesson(for: $0) } ?? nextLesson
-        let savedStep = currentPlan?.steps.first(where: { $0.kind == .newLesson })
-        let isCurrent = effectiveCurrentKind == .newLesson
-        let isDone = savedStep?.status == .passed || savedStep?.status == .played
-
-        let visualState: StepCardVisualState = {
-            if isCurrent { return .current }
-            if isDone { return .done(exclamation: false) }
-            return .upcoming
-        }()
-
-        let title = lesson.map { settings.localized($0.title) } ?? settings.localized("All lessons completed")
-        let subtitle: String = {
-            guard let lesson else { return "" }
-            return lesson.bars > 1
-                ? settings.localized("%lld bars · %lld BPM", lesson.bars, lesson.targetBpm)
-                : settings.localized("1 bar · %lld BPM", lesson.targetBpm)
-        }()
-
-        return stepCardView(
-            tag: settings.localized("New lesson"),
-            title: title,
-            subtitle: subtitle,
-            visualState: visualState
-        )
-    }
-
-    private var mixStepCard: some View {
-        let savedStep = currentPlan?.steps.first(where: { $0.kind == .mix })
-        let count = savedStep?.lessonIDs.count ?? mixLessons.count
-        let hasMix = count >= LearningRules.minimumMixLessons
-        let isCurrent = effectiveCurrentKind == .mix
-        let isDone = savedStep?.status == .passed || savedStep?.status == .played
-
-        let visualState: StepCardVisualState = {
-            if isCurrent { return .current }
-            if isDone { return .done(exclamation: false) }
-            return .optional
-        }()
-
-        let title = hasMix
-            ? settings.languagePreference.localizedLessonCount(count)
-            : settings.localized("Mix")
-        let subtitle = hasMix
-            ? settings.localized("each once")
-            : settings.localized("Mix needs two lessons with two stars.")
-
-        return stepCardView(
-            tag: settings.localized("Mix · optional"),
-            title: title,
-            subtitle: subtitle,
-            visualState: visualState
-        )
-    }
-
-    private func stepCardView(
-        tag: String,
-        title: String,
-        subtitle: String,
-        visualState: StepCardVisualState
-    ) -> some View {
         let shape = RoundedRectangle(cornerRadius: 14)
 
-        return VStack(alignment: .leading, spacing: 6) {
-            HStack(spacing: 6) {
-                Text(tag)
+        return VStack(alignment: .leading, spacing: 8) {
+            HStack(spacing: 4) {
+                Text("\(index + 1) · \(stepTag(step))")
                     .font(Theme.strong(12))
-                    .foregroundStyle(Theme.black.opacity(0.65))
                     .lineLimit(1)
-
-                Spacer(minLength: 4)
-
-                switch visualState {
-                case .current:
+                Spacer(minLength: 0)
+                if isDone {
+                    Image(systemName: step.markerSymbol ?? (step.outcome?.played == true ? "checkmark" : "minus"))
+                        .font(.system(size: 14, weight: .bold))
+                } else if isCurrent {
                     Text(settings.localized("training.now"))
                         .font(Theme.strong(12))
-                        .foregroundStyle(Theme.black)
-                        .padding(.horizontal, 8)
-                        .padding(.vertical, 2)
-                        .background(Theme.orange.opacity(0.24), in: Capsule())
-                case .done(let exclamation):
-                    Image(systemName: exclamation ? "exclamationmark.circle" : "checkmark")
-                        .font(.system(size: 14, weight: .bold))
-                        .foregroundStyle(Theme.black)
-                case .upcoming, .optional:
-                    EmptyView()
+                        .lineLimit(1)
                 }
             }
+            .foregroundStyle(Theme.black.opacity(0.7))
 
-            Text(title)
+            Text(stepTitle(step))
                 .font(Theme.boldDisplay(22))
-                .foregroundStyle(Theme.black)
-                .lineLimit(2)
-                .fixedSize(horizontal: false, vertical: true)
-
-            if !subtitle.isEmpty {
-                Text(subtitle)
-                    .font(Theme.text(13))
-                    .foregroundStyle(Theme.black.opacity(0.68))
-                    .lineLimit(2)
-                    .fixedSize(horizontal: false, vertical: true)
-            }
-
+                .lineLimit(1)
+                .truncationMode(.tail)
+            Text(detail)
+                .font(Theme.text(13))
+                .foregroundStyle(Theme.black.opacity(0.7))
+                .lineLimit(1)
+                .truncationMode(.tail)
             Spacer(minLength: 0)
         }
+        .foregroundStyle(Theme.black)
         .padding(16)
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-        .background {
-            if case .optional = visualState {
-                shape.fill(Theme.white.opacity(0.35))
-            } else {
-                shape.fill(Theme.white)
-            }
-        }
-        .overlay {
-            switch visualState {
-            case .current:
-                shape.strokeBorder(Theme.black, lineWidth: 3)
-            case .optional:
-                shape.strokeBorder(Theme.black.opacity(0.4), style: StrokeStyle(lineWidth: 1.5, dash: [6, 4]))
-            case .done, .upcoming:
-                EmptyView()
-            }
-        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .frame(height: 124)
+        .background(isDone || isCurrent ? Theme.white : Theme.white.opacity(0.5), in: shape)
+        .overlay { if isCurrent { shape.strokeBorder(Theme.black, lineWidth: 3) } }
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel("\(tag), \(title), \(subtitle)")
+        .accessibilityLabel("\(stepTag(step)), \(stepTitle(step)), \(status), \(detail)")
     }
 
     private var continueButton: some View {
-        let isFinished = isPlanFinished
-        let canLaunch = continueTarget != nil
-
-        return Button {
-            startTodayTraining()
-        } label: {
+        Button(action: startTodayTraining) {
             VStack(alignment: .leading, spacing: 4) {
-                Text(settings.localized(isFinished ? "Summary" : "Continue"))
+                Text(settings.localized(isPlanFinished ? "Summary" : "Continue"))
                     .font(Theme.boldDisplay(22))
-                    .foregroundStyle(Theme.white)
                     .lineLimit(1)
-
                 Text(continueSubtitle)
                     .font(Theme.text(13))
-                    .foregroundStyle(Theme.white.opacity(0.68))
+                    .foregroundStyle(Theme.white.opacity(0.7))
                     .lineLimit(2)
                     .multilineTextAlignment(.leading)
-                    .fixedSize(horizontal: false, vertical: true)
             }
+            .foregroundStyle(Theme.white)
             .padding(16)
-            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .frame(height: 124)
         }
         .buttonStyle(TrainingActionButtonStyle(variant: .dark))
-        .disabled(!canLaunch)
+        .disabled(continueTarget == nil)
     }
 
     private var continueSubtitle: String {
-        if isPlanFinished {
+        guard case .step(let plan) = continueTarget, plan.steps.indices.contains(plan.index) else {
             return settings.localized("training.doneForToday")
         }
-        if let step = effectiveNextStep {
-            if step.kind == .mix {
-                return "\(settings.localized("Mix")) · \(settings.languagePreference.localizedLessonCount(step.lessonIDs.count))"
-            }
-            if let id = step.lessonIDs.first, let lesson = lessonStore.lesson(for: id) {
-                return settings.localized(lesson.title)
-            }
-        }
-        if let next = nextLesson {
-            return settings.localized(next.title)
-        }
-        if mixLessons.count >= LearningRules.minimumMixLessons {
-            return "\(settings.localized("Mix")) · \(settings.languagePreference.localizedLessonCount(mixLessons.count))"
-        }
-        return ""
-    }
-
-    private func reviewStatusDetail(count: Int, summary: TodayPlan.ReviewSummary) -> String {
-        guard count > 0 else {
-            return settings.localized("training.nothingDue")
-        }
-        if summary.played == 0 {
-            return isPlanFinished
-                ? settings.localized("Not played")
-                : settings.localized("training.fromMemoryGoalTempo")
-        }
-        var parts: [String] = []
-        if summary.passed > 0 {
-            parts.append(localizedPlural(
-                summary.passed,
-                one: "training.reviewPassed.one",
-                few: "training.reviewPassed.few",
-                many: "training.reviewPassed.many"
-            ))
-        }
-        if summary.didNotCount > 0 {
-            parts.append(localizedPlural(
-                summary.didNotCount,
-                one: "training.reviewTomorrow.one",
-                few: "training.reviewTomorrow.many",
-                many: "training.reviewTomorrow.many"
-            ))
-        }
-        if summary.notPlayed > 0 && !isPlanFinished {
-            parts.append(localizedPlural(
-                summary.notPlayed,
-                one: "training.reviewLeft.one",
-                few: "training.reviewLeft.few",
-                many: "training.reviewLeft.many"
-            ))
-        }
-        return parts.joined(separator: " · ")
-    }
-
-    private func localizedPlural(_ count: Int, one: String, few: String, many: String) -> String {
-        if count == 1 {
-            return settings.localized(one)
-        }
-        if settings.languagePreference == .czech && (2...4).contains(count) {
-            return settings.localized(few, count)
-        }
-        return settings.localized(many, count)
+        return stepTitle(plan.steps[plan.index])
     }
 
     private func preserveTodayPlan(for lessonID: Int) {
@@ -692,10 +533,107 @@ public struct TrainingScreen: View {
 
     private func startTodayTraining() {
         guard !hasActiveCover, let target = continueTarget else { return }
-        if currentPlan == nil, let json = target.plan.encoded {
-            savedTodayPlan = json
+        let session = makeTodaySession(target.plan)
+        todaySession = session
+        session.reconcileReviews(progress: progress)
+        openDailyStep()
+    }
+
+    private func makeTodaySession(_ plan: TodayPlan) -> TodaySessionCoordinator {
+        #if DEBUG
+        TodaySessionCoordinator(plan: plan, defaults: DebugProfileStorage.defaults)
+        #else
+        TodaySessionCoordinator(plan: plan)
+        #endif
+    }
+
+    private func openDailyStep() {
+        guard let session = todaySession, session.plan.day == AppCalendar.today() else { return }
+        guard case .step(let plan) = session.nextAction else {
+            showDaySummary()
+            return
         }
-        todayPresentation = TodayPresentation(target: target)
+        let step = plan.steps[plan.index]
+        let lessons = step.lessonIDs.compactMap { lessonStore.lesson(for: $0) }
+        guard lessons.count == step.lessonIDs.count,
+              lessons.allSatisfy({ store.isUnlocked($0) && progression.isLessonOpen($0)
+                  && (midi.activeProfile.padCount == 16 || EightPadLayout.slots(for: $0) != nil) }) else {
+            session.skip(progress: progress)
+            return
+        }
+        if step.kind == .mix {
+            todayPracticeStarted = false
+            todayPractice = .mix(MixCoverItem(lessons: lessons))
+        } else if let lesson = lessons.first {
+            session.continueSession()
+            todayPracticeStarted = true
+            todayPractice = .lesson(step.kind == .review ? .review(lesson) : .lesson(lesson))
+        }
+    }
+
+    private func dailyPracticeDismissed() {
+        isVisible = true
+        guard let session = todaySession, session.plan.day == AppCalendar.today() else {
+            refreshCalendarDay()
+            return
+        }
+        if todayPracticeStarted {
+            session.leavePractice(progress: progress)
+            showingStepResult = session.plan.lastPlayedIndex != nil
+        }
+        refreshTrainingData()
+    }
+
+    private func continueAfterResult() {
+        showingStepResult = false
+        openDailyStep()
+    }
+
+    private func skipDailyStep() {
+        todaySession?.skip(progress: progress)
+        refreshTrainingData()
+    }
+
+    private func finishDailySession() {
+        todaySession?.finish(progress: progress)
+        showingStepResult = false
+        showDaySummary()
+    }
+
+    private func showDaySummary() {
+        guard let session = todaySession else { return }
+        daySummary = DaySummaryPresentation(plan: session.plan)
+    }
+
+    private func dailyMixBinding(fallback: [Lesson]) -> Binding<[Lesson]> {
+        Binding(
+            get: {
+                if case .mix(let mix) = todayPractice { return mix.lessons }
+                return fallback
+            },
+            set: { lessons in
+                if case .mix(var mix) = todayPractice {
+                    mix.lessons = lessons
+                    todayPractice = .mix(mix)
+                    todaySession?.replaceCurrentMixLessons(lessons)
+                }
+            }
+        )
+    }
+
+    private func rerollDailyMix() {
+        guard case .mix(var mix) = todayPractice else { return }
+        let chosen = TrainingMix.reroll(
+            excluding: mix.lessons.map(\.id), lessons: progression.catalog.lessons,
+            progress: progress.records, padCount: midi.activeProfile.padCount,
+            openLessonIDs: data?.openLessonIDs ?? [], day: today
+        )
+        guard chosen.count >= LearningRules.minimumMixLessons else { return }
+        mix.lessons = chosen
+        todayPractice = .mix(mix)
+        todaySession?.replaceCurrentMixLessons(chosen)
+        saveMix(chosen.map(\.id))
+        updateMix(chosen.map(\.id))
     }
 
     // MARK: - 2. Memory Meter & Next 7 Days
@@ -1576,6 +1514,12 @@ public struct TrainingScreen: View {
 
     private func refreshCalendarDay() {
         calendarDay = AppCalendar.today()
+        if todaySession?.plan.day != calendarDay {
+            showingStepResult = false
+            todayPractice = nil
+            daySummary = nil
+            todaySession = nil
+        }
         refreshID = UUID()
     }
 

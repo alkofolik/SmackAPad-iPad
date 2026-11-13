@@ -1,6 +1,6 @@
 # 204 — One training place: the Today session screen goes into Training
 
-Status: ready-for-agent. Decided by Jakub on 2026-11-13 (iPad review, photos 3 and 4). Blocked by: 201, 202.
+Status: implemented; build and full suite passed (289 tests); ready for iPad test. Decided by Jakub on 2026-11-13 (iPad review, photos 3 and 4). Dependencies: 201, 202.
 
 ## Goal
 
@@ -26,10 +26,10 @@ Adapt existing session-logic tests to the moved model. Add one: after a step is 
 
 ## Acceptance criteria
 
-- [ ] After every day step you land on Training with a result card; the old Today session screen never appears.
-- [ ] TODAY band tiles are equal height and show done / current / upcoming.
-- [ ] Continue to next step, Skip, Done for today and Summary all work.
-- [ ] Build and full test suite pass.
+- [x] After every day step you land on Training with a result card; the old Today session screen never appears.
+- [x] TODAY band tiles are equal height and show done / current / upcoming.
+- [x] Continue to next step, Skip, Done for today and Summary all work.
+- [x] Build and full test suite pass.
 
 ### Manual iPad checks for Jakub
 

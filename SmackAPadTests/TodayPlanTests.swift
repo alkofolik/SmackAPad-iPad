@@ -2,6 +2,45 @@ import XCTest
 @testable import SmackAPad
 
 final class TodayPlanTests: XCTestCase {
+    @MainActor
+    func testRecordedStepOffersNextUnplayedStepOrSummary() throws {
+        let suite = "today-next-action-\(UUID().uuidString)"
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))
+        defer { defaults.removePersistentDomain(forName: suite) }
+        let file = FileManager.default.temporaryDirectory.appendingPathComponent("\(suite).json")
+        defer { try? FileManager.default.removeItem(at: file) }
+        let progress = ProgressStore(fileURL: file, autoLoad: false)
+        let today = AppCalendar.today()
+        let plan = TodayPlan(day: today, steps: [
+            .init(kind: .review, lessonIDs: [1]),
+            .init(kind: .review, lessonIDs: [2], outcome: .init(reviewFeedback: .settled)),
+            .init(kind: .newLesson, lessonIDs: [3], outcome: .init(bestScore: 0.9)),
+            .init(kind: .mix, lessonIDs: [1, 3])
+        ])
+        let coordinator = TodaySessionCoordinator(plan: plan, defaults: defaults)
+        coordinator.record(.init(bestScore: 0.85, reviewFeedback: .settled))
+
+        guard case .step(let next) = coordinator.nextAction else {
+            return XCTFail("Expected the next unplayed step immediately after recording")
+        }
+        XCTAssertEqual(next.index, 3)
+        XCTAssertEqual(next.steps[next.index].kind, .mix)
+        coordinator.leavePractice(progress: progress)
+        XCTAssertEqual(coordinator.currentStep?.kind, .mix)
+        XCTAssertEqual(coordinator.plan.lastPlayedIndex, 0)
+
+        coordinator.continueSession()
+        coordinator.record(.init(bestScore: 0.9))
+        guard case .summary(let summary) = coordinator.nextAction else {
+            return XCTFail("Expected Summary when every step has been played")
+        }
+        XCTAssertTrue(summary.finished)
+        XCTAssertEqual(summary.lastPlayedIndex, 3)
+        let saved = try XCTUnwrap(defaults.string(forKey: TodayPlan.storageKey))
+        let restored = TodaySessionCoordinator(plan: try XCTUnwrap(TodayPlan.decode(saved, today: today)), defaults: defaults)
+        XCTAssertEqual(restored.nextAction, coordinator.nextAction)
+    }
+
     func testOnlyPlayedUnpassedReviewsShowTheExclamationMarker() {
         var step = TodayPlan.Step(kind: .review, lessonIDs: [1])
         XCTAssertNil(step.markerSymbol)
@@ -348,7 +387,7 @@ final class TodayPlanTests: XCTestCase {
             ]
         )
 
-        if case .session(let resolved) = TodayContinueTarget.resolve(
+        if case .step(let resolved) = TodayContinueTarget.resolve(
             currentPlan: activePlan,
             today: day,
             nextLessonID: 99,
@@ -358,7 +397,7 @@ final class TodayPlanTests: XCTestCase {
             XCTAssertEqual(resolved.steps.count, 2)
             XCTAssertFalse(resolved.finished)
         } else {
-            XCTFail("Expected active plan to open the Today session")
+            XCTFail("Expected active plan to offer the next daily step")
         }
 
         var finishedPlan = activePlan
@@ -404,7 +443,7 @@ final class TodayPlanTests: XCTestCase {
             XCTFail("Expected empty plan to open the day summary")
         }
 
-        if case .session(let fallback) = TodayContinueTarget.resolve(
+        if case .step(let fallback) = TodayContinueTarget.resolve(
             currentPlan: nil,
             today: day,
             nextLessonID: 5,
@@ -413,7 +452,7 @@ final class TodayPlanTests: XCTestCase {
             XCTAssertEqual(fallback.steps.map(\.kind), [.newLesson, .mix])
             XCTAssertEqual(fallback.steps.map(\.lessonIDs), [[5], [10, 11]])
         } else {
-            XCTFail("Expected no-plan fallback with next lesson and mix to open a session")
+            XCTFail("Expected no-plan fallback with next lesson and mix to offer a daily step")
         }
 
         XCTAssertNil(TodayContinueTarget.resolve(

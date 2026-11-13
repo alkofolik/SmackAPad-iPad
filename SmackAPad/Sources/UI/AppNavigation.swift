@@ -59,46 +59,6 @@ enum LessonLaunch: Identifiable {
     }
 }
 
-/// Decision for what Training's Continue button opens: an active step-by-step session,
-/// the day summary when finished/empty, or nil when no training steps exist yet.
-enum TodayContinueTarget: Equatable {
-    case session(TodayPlan)
-    case summary(TodayPlan)
-
-    var plan: TodayPlan {
-        switch self {
-        case .session(let plan), .summary(let plan):
-            return plan
-        }
-    }
-
-    static func resolve(
-        currentPlan: TodayPlan?,
-        today: String,
-        nextLessonID: Int?,
-        mixLessonIDs: [Int]
-    ) -> TodayContinueTarget? {
-        if var plan = currentPlan {
-            if plan.isFinished {
-                plan.index = plan.steps.count
-                plan.finished = true
-                plan.phase = .summary
-                return .summary(plan)
-            }
-            return .session(plan)
-        }
-        var steps: [TodayPlan.Step] = []
-        if let nextLessonID {
-            steps.append(.init(kind: .newLesson, lessonIDs: [nextLessonID]))
-        }
-        if mixLessonIDs.count >= LearningRules.minimumMixLessons {
-            steps.append(.init(kind: .mix, lessonIDs: mixLessonIDs))
-        }
-        guard !steps.isEmpty else { return nil }
-        return .session(TodayPlan(day: today, steps: steps))
-    }
-}
-
 struct MixCoverItem: Identifiable {
     let id = UUID()
     var lessons: [Lesson]

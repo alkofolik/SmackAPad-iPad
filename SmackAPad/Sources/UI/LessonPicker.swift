@@ -46,40 +46,8 @@ struct ContentView: View {
             } else {
                 target
             }
-        } else if ProcessInfo.processInfo.arguments.contains("-training") {
+        } else if ProcessInfo.processInfo.arguments.contains("-training") || ProcessInfo.processInfo.arguments.contains("-today") {
             let target = TrainingScreen()
-            if ProcessInfo.processInfo.arguments.contains("-landscape") {
-                target
-                    .frame(width: 1194, height: 834)
-                    .rotationEffect(.degrees(90))
-                    .frame(width: 834, height: 1194)
-            } else {
-                target
-            }
-        } else if ProcessInfo.processInfo.arguments.contains("-today") {
-            let plan = TodayPlan.make(
-                day: AppCalendar.today(),
-                dueLessonIDs: progress.dueLessonIds(today: AppCalendar.today()),
-                nextLessonID: progression.catalog.path.first?.id,
-                mixLessonIDs: []
-            ) ?? TodayPlan(day: AppCalendar.today(), steps: [
-                TodayPlan.Step(kind: .newLesson, lessonIDs: [progression.catalog.path.first?.id ?? 1])
-            ], index: 0, finished: false, phase: .handoff, lastPlayedIndex: nil)
-            let target = TodaySessionScreen(plan: plan) {}
-            if ProcessInfo.processInfo.arguments.contains("-landscape") {
-                target
-                    .frame(width: 1194, height: 834)
-                    .rotationEffect(.degrees(90))
-                    .frame(width: 834, height: 1194)
-            } else {
-                target
-            }
-        } else if ProcessInfo.processInfo.arguments.contains("-today-end") {
-            let plan = TodayPlan(day: AppCalendar.today(), steps: [
-                TodayPlan.Step(kind: .review, lessonIDs: [1], outcome: PracticeStepOutcome(bestScore: 0.95, reviewFeedback: .passed(nextStep: 2, gapDays: 3))),
-                TodayPlan.Step(kind: .newLesson, lessonIDs: [2], outcome: PracticeStepOutcome(bestScore: 0.88))
-            ], index: 2, finished: true, phase: .summary, lastPlayedIndex: 1)
-            let target = TodaySessionScreen(plan: plan) {}
             if ProcessInfo.processInfo.arguments.contains("-landscape") {
                 target
                     .frame(width: 1194, height: 834)
