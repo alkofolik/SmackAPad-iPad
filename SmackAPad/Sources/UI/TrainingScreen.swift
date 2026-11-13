@@ -439,7 +439,7 @@ public struct TrainingScreen: View {
         let subtitle = reviewStatusDetail(count: count, summary: summary)
 
         return stepCardView(
-            tag: settings.localized("1 · REVIEWS"),
+            tag: settings.localized("Reviews"),
             title: title,
             subtitle: subtitle,
             visualState: visualState
@@ -468,7 +468,7 @@ public struct TrainingScreen: View {
         }()
 
         return stepCardView(
-            tag: settings.localized("2 · NEW LESSON"),
+            tag: settings.localized("New lesson"),
             title: title,
             subtitle: subtitle,
             visualState: visualState
@@ -496,7 +496,7 @@ public struct TrainingScreen: View {
             : settings.localized("Mix needs two lessons with two stars.")
 
         return stepCardView(
-            tag: settings.localized("3 · MIX · OPTIONAL"),
+            tag: settings.localized("Mix · optional"),
             title: title,
             subtitle: subtitle,
             visualState: visualState
@@ -515,7 +515,6 @@ public struct TrainingScreen: View {
             HStack(spacing: 6) {
                 Text(tag)
                     .font(Theme.strong(12))
-                    .tracking(0.4)
                     .foregroundStyle(Theme.black.opacity(0.65))
                     .lineLimit(1)
 
@@ -1008,8 +1007,8 @@ public struct TrainingScreen: View {
 
                 StarsView(record: record, lesson: lesson)
 
-                Text(settings.localized("STEP %lld OF 4", step).uppercased(with: Locale(identifier: settings.languagePreference.rawValue)))
-                    .font(Theme.strong(12).monospaced())
+                Text(settings.localized("Step %lld of 4", step))
+                    .font(Theme.meta.monospacedDigit())
                     .foregroundStyle(Theme.ink)
                     .padding(.horizontal, 8)
                     .padding(.vertical, 3)
@@ -1153,7 +1152,7 @@ public struct TrainingScreen: View {
                 StarsView(record: record, lesson: lesson)
 
                 Text(settings.localized("Step %lld of 4", step))
-                    .font(Theme.strong(12).monospaced())
+                    .font(Theme.meta.monospacedDigit())
                     .foregroundStyle(Theme.ink)
                     .padding(.horizontal, 8)
                     .padding(.vertical, 3)
@@ -1202,9 +1201,7 @@ public struct TrainingScreen: View {
         VStack(alignment: .leading, spacing: 14) {
             HStack(alignment: .center, spacing: 12) {
                 Text(settings.localized("Extra mix"))
-                    .textCase(.uppercase)
                     .font(Theme.strong(13))
-                    .tracking(0.6)
                     .foregroundStyle(Theme.secondary)
                     .lineLimit(1)
 
@@ -1310,9 +1307,7 @@ public struct TrainingScreen: View {
 
         return VStack(alignment: .leading, spacing: 14) {
             Text(settings.localized("Play after me"))
-                .textCase(.uppercase)
                 .font(Theme.strong(13))
-                .tracking(0.6)
                 .foregroundStyle(Theme.secondary)
                 .lineLimit(1)
 

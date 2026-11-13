@@ -734,7 +734,6 @@
 "Learn your first lesson" = "Learn your first lesson";
 "STEP 1" = "STEP 1";
 "STEP 2" = "STEP 2";
-"STEP 3 · OPTIONAL" = "STEP 3 · OPTIONAL";
 "Review" = "Review";
 "New lesson" = "New lesson";
 "No reviews due" = "No reviews due";
@@ -751,7 +750,6 @@
 "Next 7 days" = "Next 7 days";
 "Lessons coming back for a review that day." = "Lessons coming back for a review that day.";
 "Due now" = "Due now";
-"STEP %lld OF 4" = "STEP %lld OF 4";
 "today" = "today";
 "1 day late" = "1 day late";
 "%lld days late" = "%lld days late";
@@ -772,14 +770,6 @@
 "Next" = "Next";
 "Waiting" = "Waiting";
 "Skipped" = "Skipped";
-"FIRST STEP OF THE DAY" = "FIRST STEP OF THE DAY";
-"PREPARE FOR THE NEXT STEP" = "PREPARE FOR THE NEXT STEP";
-"REVIEW %lld OF %lld COMPLETED" = "REVIEW %lld OF %lld COMPLETED";
-"REVIEW %lld OF %lld PASSED" = "REVIEW %lld OF %lld PASSED";
-"NEW LESSON COMPLETED" = "NEW LESSON COMPLETED";
-"NEW LESSON PASSED" = "NEW LESSON PASSED";
-"DAILY MIX COMPLETED" = "DAILY MIX COMPLETED";
-"DAILY MIX PASSED" = "DAILY MIX PASSED";
 "Rhythm pattern preview" = "Rhythm pattern preview";
 "Start training" = "Start training";
 "Continue to %@" = "Continue to %@";
@@ -3348,9 +3338,7 @@
 "Summary" = "Summary";
 "App plays, you repeat." = "App plays, you repeat.";
 "each once" = "each once";
-"1 · REVIEWS" = "1 · REVIEWS";
-"2 · NEW LESSON" = "2 · NEW LESSON";
-"3 · MIX · OPTIONAL" = "3 · MIX · OPTIONAL";
+"Mix · optional" = "Mix · optional";
 "daySummary.title" = "DONE FOR\nTODAY";
 "training.doneForToday" = "Done for today";
 "training.now" = "now";
@@ -3365,9 +3353,6 @@
 "training.reviewLeft.one" = "1 left";
 "training.reviewLeft.few" = "%lld left";
 "training.reviewLeft.many" = "%lld left";
-"daySummary.reviewTag" = "%lld · REVIEW";
-"daySummary.newLessonTag" = "%lld · NEW LESSON";
-"daySummary.mixTag" = "%lld · MIX";
 
 /* Home short lesson names */
 "home.short.Open hat on the and" = "Open hat on &";

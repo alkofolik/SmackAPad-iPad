@@ -25,11 +25,11 @@ None (font change only). If a localization test lists the removed keys, update i
 
 ## Acceptance criteria
 
-- [ ] `grep` for `.monospaced()` and `design: .monospaced` in `SmackAPad/Sources` finds nothing.
-- [ ] Training and Today screens show no small uppercase letter-spaced labels; "Step 2 of 4" is in sentence case.
-- [ ] Settings shows the keyboard keys as keycaps.
-- [ ] Czech and English both correct.
-- [ ] Build and full test suite pass.
+- [x] `grep` for `.monospaced()` and `design: .monospaced` in `SmackAPad/Sources` finds nothing.
+- [x] Training and Today screens show no small uppercase letter-spaced labels; "Step 2 of 4" is in sentence case.
+- [x] Settings shows the keyboard keys as keycaps.
+- [x] Czech and English both correct.
+- [x] Build and full test suite pass.
 
 ### Manual iPad checks for Jakub
 

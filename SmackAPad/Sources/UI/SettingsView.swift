@@ -305,11 +305,21 @@ public struct SettingsView: View {
                                         .font(Theme.meta)
                                         .foregroundStyle(Theme.secondary)
                                     Spacer()
-                                    Text(row.keys.joined(separator: "   "))
-                                        .font(Theme.control)
-                                        .monospaced()
+                                    HStack(spacing: 6) {
+                                        ForEach(row.keys, id: \.self) { key in
+                                            Text(key)
+                                                .font(Theme.control)
+                                                .foregroundStyle(Theme.ink)
+                                                .frame(width: 28, height: 28)
+                                                .background(Theme.surface, in: RoundedRectangle(cornerRadius: 6))
+                                                .overlay {
+                                                    RoundedRectangle(cornerRadius: 6)
+                                                        .strokeBorder(Theme.hairline, lineWidth: 1)
+                                                }
+                                        }
+                                    }
                                 }
-                                .frame(minHeight: 28)
+                                .frame(minHeight: 32)
                             }
                         }
                         .padding(.vertical, Theme.Space.tight)

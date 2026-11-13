@@ -297,7 +297,7 @@ struct TodaySessionScreen: View {
             if let nextStep = coordinator.currentStep {
                 if isLandscape {
                     HStack(alignment: .top, spacing: 0) {
-                        PreviousRunEvaluationView(step: previousStep, index: lastIndex, plan: coordinator.plan)
+                        PreviousRunEvaluationView(step: previousStep)
                             .padding(34)
                             .frame(maxWidth: .infinity, alignment: .topLeading)
 
@@ -317,7 +317,7 @@ struct TodaySessionScreen: View {
                     .satinPlate()
                 } else {
                     VStack(alignment: .leading, spacing: 0) {
-                        PreviousRunEvaluationView(step: previousStep, index: lastIndex, plan: coordinator.plan)
+                        PreviousRunEvaluationView(step: previousStep)
                             .padding(26)
                             .frame(maxWidth: .infinity, alignment: .topLeading)
 
@@ -512,9 +512,8 @@ private struct TodayStepperView: View {
 
         return VStack(alignment: .leading, spacing: 4) {
             HStack {
-                Text(stepTag(step: step, index: index))
+                Text(stepTag(step: step))
                     .font(Theme.strong(11))
-                    .tracking(0.55)
                     .lineLimit(1)
                 Spacer(minLength: 4)
                 if isCompleted, let symbol = step.markerSymbol {
@@ -561,15 +560,12 @@ private struct TodayStepperView: View {
         .opacity(isUpcoming ? 0.65 : 1.0)
     }
 
-    private func stepTag(step: TodayPlan.Step, index: Int) -> String {
-        let kindTitle: String = {
-            switch step.kind {
-            case .review: return settings.localized("Review")
-            case .newLesson: return settings.localized("New lesson")
-            case .mix: return settings.localized("Daily mix")
-            }
-        }()
-        return "\(index + 1). \(kindTitle)"
+    private func stepTag(step: TodayPlan.Step) -> String {
+        switch step.kind {
+        case .review: return settings.localized("Review")
+        case .newLesson: return settings.localized("New lesson")
+        case .mix: return settings.localized("Daily mix")
+        }
     }
 
     private func stepStatus(step: TodayPlan.Step, isCompleted: Bool, isCurrent: Bool, isUpcoming: Bool) -> String {
@@ -743,8 +739,6 @@ private struct PreviousRunEvaluationView: View {
     @Environment(SettingsManager.self) private var settings
     @Environment(ProgressStore.self) private var progress
     let step: TodayPlan.Step
-    let index: Int
-    let plan: TodayPlan
 
     private var isSuccess: Bool {
         step.status == .passed
@@ -753,19 +747,6 @@ private struct PreviousRunEvaluationView: View {
     private var earnedStars: Int {
         guard let id = step.lessonIDs.first, let record = progress.progress(for: id) else { return 0 }
         return [record.passed, record.mastery, record.memory].filter { $0 }.count
-    }
-
-    private var kicker: String {
-        let state = settings.localized(step.status?.titleKey ?? "Not played")
-        switch step.kind {
-        case .review:
-            let position = plan.steps.prefix(index + 1).filter { $0.kind == .review }.count
-            return settings.localized("Review %lld of %lld", position, plan.reviewCount) + " · " + state
-        case .newLesson:
-            return settings.localized("New lesson") + " · " + state
-        case .mix:
-            return settings.localized("Daily mix") + " · " + state
-        }
     }
 
     private var scoreText: String {
@@ -832,11 +813,6 @@ private struct PreviousRunEvaluationView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
-            Text(kicker)
-                .font(Theme.stepTag)
-                .tracking(0.66)
-                .foregroundStyle(Theme.secondary)
-
             HStack(alignment: .firstTextBaseline, spacing: 16) {
                 Text(scoreText)
                     .font(Theme.boldDisplay(64))
@@ -873,12 +849,6 @@ private struct NextStepPreparationView: View {
     let onContinue: () -> Void
     let onSkip: () -> Void
     let onDone: () -> Void
-
-    private var kicker: String {
-        isDayStart
-            ? settings.localized("FIRST STEP OF THE DAY")
-            : settings.localized("PREPARE FOR THE NEXT STEP")
-    }
 
     private var lesson: Lesson? {
         step.lessonIDs.first.flatMap { LessonStore.shared.lesson(for: $0) }
@@ -924,11 +894,6 @@ private struct NextStepPreparationView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
-            Text(kicker)
-                .font(Theme.stepTag)
-                .tracking(0.66)
-                .foregroundStyle(Theme.secondary)
-
             VStack(alignment: .leading, spacing: 4) {
                 Text(title)
                     .font(Theme.boldDisplay(34))
@@ -1212,9 +1177,8 @@ private struct DaySummaryView: View {
 
             HStack(alignment: .center, spacing: 12) {
                 VStack(alignment: .leading, spacing: 5) {
-                    Text(stepTag(for: step, number: index + 1))
+                    Text(stepTag(for: step))
                         .font(Theme.strong(12))
-                        .tracking(0.6)
                         .foregroundStyle(Theme.secondary)
                         .lineLimit(1)
 
@@ -1326,11 +1290,11 @@ private struct DaySummaryView: View {
         return allowDoneFallback ? settings.localized("Done") : "—"
     }
 
-    private func stepTag(for step: TodayPlan.Step, number: Int) -> String {
+    private func stepTag(for step: TodayPlan.Step) -> String {
         switch step.kind {
-        case .review: return settings.localized("daySummary.reviewTag", number)
-        case .newLesson: return settings.localized("daySummary.newLessonTag", number)
-        case .mix: return settings.localized("daySummary.mixTag", number)
+        case .review: return settings.localized("Review")
+        case .newLesson: return settings.localized("New lesson")
+        case .mix: return settings.localized("Daily mix")
         }
     }
 

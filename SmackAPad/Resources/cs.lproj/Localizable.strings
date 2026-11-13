@@ -737,7 +737,6 @@
 "Learn your first lesson" = "Nauč se první lekci";
 "STEP 1" = "KROK 1";
 "STEP 2" = "KROK 2";
-"STEP 3 · OPTIONAL" = "KROK 3 · NEPOVINNÝ";
 "Review" = "Opakování";
 "New lesson" = "Nová lekce";
 "No reviews due" = "Žádné opakování";
@@ -754,7 +753,6 @@
 "Next 7 days" = "Příštích 7 dní";
 "Lessons coming back for a review that day." = "Počet lekcí, které se ten den vrátí k opakování.";
 "Due now" = "Na řadě teď";
-"STEP %lld OF 4" = "KROK %lld ZE 4";
 "today" = "dnes";
 "1 day late" = "o 1 den později";
 "%lld days late" = "o %lld dny později";
@@ -776,14 +774,6 @@
 "Next" = "Další";
 "Waiting" = "Čeká";
 "Skipped" = "Přeskočeno";
-"FIRST STEP OF THE DAY" = "PRVNÍ KROK DNE";
-"PREPARE FOR THE NEXT STEP" = "PŘIPRAV SE NA DALŠÍ KROK";
-"REVIEW %lld OF %lld COMPLETED" = "OPAKOVÁNÍ %lld ZE %lld DOKONČENO";
-"REVIEW %lld OF %lld PASSED" = "OPAKOVÁNÍ %lld ZE %lld SPLNĚNO";
-"NEW LESSON COMPLETED" = "NOVÁ LEKCE DOKONČENA";
-"NEW LESSON PASSED" = "NOVÁ LEKCE SPLNĚNA";
-"DAILY MIX COMPLETED" = "DENNÍ MIX DOKONČEN";
-"DAILY MIX PASSED" = "DENNÍ MIX SPLNĚN";
 "Rhythm pattern preview" = "Náhled rytmického vzoru";
 "Start training" = "Začít trénink";
 "Continue to %@" = "Pokračovat na %@";
@@ -3353,9 +3343,7 @@
 "Summary" = "Shrnutí";
 "App plays, you repeat." = "Aplikace zahraje, ty zopakuješ.";
 "each once" = "každá jednou";
-"1 · REVIEWS" = "1 · OPAKOVÁNÍ";
-"2 · NEW LESSON" = "2 · NOVÁ LEKCE";
-"3 · MIX · OPTIONAL" = "3 · MIX · NEPOVINNÝ";
+"Mix · optional" = "Mix · nepovinný";
 "daySummary.title" = "HOTOVO\nNA DNEŠEK";
 "training.doneForToday" = "Hotovo na dnešek";
 "training.now" = "teď";
@@ -3370,9 +3358,6 @@
 "training.reviewLeft.one" = "1 zbývá";
 "training.reviewLeft.few" = "%lld zbývají";
 "training.reviewLeft.many" = "%lld zbývá";
-"daySummary.reviewTag" = "%lld · OPAKOVÁNÍ";
-"daySummary.newLessonTag" = "%lld · NOVÁ LEKCE";
-"daySummary.mixTag" = "%lld · MIX";
 
 /* Home short lesson names */
 "home.short.Open hat on the and" = "Open hat na &";

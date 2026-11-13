@@ -71,7 +71,6 @@ enum Theme {
     static let screenTitle = display(28)
     static let handoffTitle = boldDisplay(28)
     static let handoffNext = strong(20)
-    static let stepTag = strong(12).monospaced()
     static let sectionTitle = display(22)
     static let rowTitle = display(22)
     static let meta = text(16)
