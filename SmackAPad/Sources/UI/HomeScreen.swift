@@ -92,7 +92,6 @@ private struct HomeControllerHardware: View, Equatable {
         Canvas { context, _ in
             guard layout.unit > 0 else { return }
             drawPlate(in: &context)
-            drawFaders(in: &context)
         }
         .drawingGroup()
         .allowsHitTesting(false)
@@ -170,48 +169,326 @@ private struct HomeControllerHardware: View, Equatable {
                   with: .color(Theme.white.opacity(darkAppearance ? 0.2 : 0.6)))
         head.fill(Path(roundedRect: slot, cornerRadius: 0.6 * u), with: .color(Theme.HomeController.slot))
     }
+}
 
-    private func drawFaders(in context: inout GraphicsContext) {
-        if layout.landscape {
-            let bayWidth = layout.plate.minX
-            let u = min(layout.unit, max(0, bayWidth - 2 * layout.margin) / 134)
-            guard u > 0 else { return }
-            let height = 217 * u
-            for channel in 0..<4 {
-                let right = channel >= 2
-                let centerX = right ? layout.size.width - bayWidth / 2 : bayWidth / 2
-                let x = centerX - 67 * u + CGFloat(channel % 2) * 78 * u
-                drawFader(in: context, channel: channel, unit: u,
-                          rect: CGRect(x: x, y: (layout.size.height - height) / 2, width: 56 * u, height: height),
-                          mirrored: right, portrait: false)
+// MARK: - Home Hardware Faders
+
+/// Channels represented by the real Home faders (ticket 191).
+private enum HomeFaderChannel: Int, CaseIterable, Identifiable {
+    case metronome = 0
+    case pattern = 1
+    case pads = 2
+
+    var id: Int { rawValue }
+
+    func title(settings: SettingsManager) -> String {
+        switch self {
+        case .metronome:
+            return settings.localized("Metronome")
+        case .pattern:
+            return settings.localized("settings.sound.pattern")
+        case .pads:
+            return settings.localized("Pads")
+        }
+    }
+
+    func volume(settings: SettingsManager) -> Int {
+        switch self {
+        case .metronome:
+            return settings.metronomeVolume
+        case .pattern:
+            return settings.patternVolume
+        case .pads:
+            return settings.padsVolume
+        }
+    }
+
+    func setVolume(_ value: Int, settings: SettingsManager) {
+        switch self {
+        case .metronome:
+            settings.metronomeVolume = value
+        case .pattern:
+            settings.patternVolume = value
+        case .pads:
+            settings.padsVolume = value
+        }
+    }
+
+    var defaultVolume: Int {
+        switch self {
+        case .metronome:
+            return SettingsManager.defaultMetronomeVolume
+        case .pattern:
+            return SettingsManager.defaultPatternVolume
+        case .pads:
+            return SettingsManager.defaultPadsVolume
+        }
+    }
+}
+
+/// Interactive fader bank replacing the static decorative faders on Home (ticket 191).
+private struct HomeControllerFaders: View {
+    let layout: HomeControllerLayout
+    let darkAppearance: Bool
+
+    var body: some View {
+        ZStack {
+            if layout.landscape {
+                landscapeFaders
+            } else {
+                portraitFaders
             }
-        } else {
-            let u = min(layout.unit, max(0, layout.size.width - 2 * layout.margin) / 316)
-            let bayTop = layout.plate.maxY + HomeControllerLayout.helpRowSpace
-            let bayHeight = max(0, layout.size.height - bayTop)
-            let height = min(142 * u, max(0, bayHeight - 2 * layout.margin))
-            // Compress the travel first, then omit channels in unusually short portrait windows.
-            let travel = height - 17 * u
-            let count = travel >= 64 * u ? 4 : (travel >= 48 * u ? 2 : 0)
-            guard u > 0, count > 0 else { return }
+        }
+        .frame(width: layout.size.width, height: layout.size.height)
+    }
+
+    @ViewBuilder
+    private var landscapeFaders: some View {
+        let bayWidth = layout.plate.minX
+        let u = min(layout.unit, max(0, bayWidth - 2 * layout.margin) / 134)
+        if u > 0 {
+            let height = 217 * u
+            let centerY = (layout.size.height - height) / 2
+            let leftCenterX = bayWidth / 2
+            let x0 = leftCenterX - 67 * u
+            let x1 = leftCenterX + 11 * u
+            let rightCenterX = layout.size.width - bayWidth / 2
+            let x2 = rightCenterX - 28 * u
+            let margin = 12 * u
+
+            // Metronome (left bay, left channel)
+            HomeControllerFaderView(
+                channel: .metronome,
+                unit: u,
+                faderSize: CGSize(width: 56 * u, height: height),
+                horizontalMargin: margin,
+                mirrored: false,
+                portrait: false,
+                darkAppearance: darkAppearance
+            )
+            .position(x: x0 + 28 * u, y: centerY + height / 2)
+
+            // Pattern (left bay, right channel)
+            HomeControllerFaderView(
+                channel: .pattern,
+                unit: u,
+                faderSize: CGSize(width: 56 * u, height: height),
+                horizontalMargin: margin,
+                mirrored: false,
+                portrait: false,
+                darkAppearance: darkAppearance
+            )
+            .position(x: x1 + 28 * u, y: centerY + height / 2)
+
+            // Pads (right bay, centered)
+            HomeControllerFaderView(
+                channel: .pads,
+                unit: u,
+                faderSize: CGSize(width: 56 * u, height: height),
+                horizontalMargin: margin,
+                mirrored: true,
+                portrait: false,
+                darkAppearance: darkAppearance
+            )
+            .position(x: x2 + 28 * u, y: centerY + height / 2)
+        }
+    }
+
+    @ViewBuilder
+    private var portraitFaders: some View {
+        let u = min(layout.unit, max(0, layout.size.width - 2 * layout.margin) / 228)
+        let bayTop = layout.plate.maxY + HomeControllerLayout.helpRowSpace
+        let bayHeight = max(0, layout.size.height - bayTop)
+        let height = min(142 * u, max(0, bayHeight - 2 * layout.margin))
+        let travel = height - 17 * u
+        let count = travel >= 64 * u ? 3 : (travel >= 48 * u ? 2 : 0)
+        if u > 0 && count > 0 {
             let width = CGFloat(count) * 52 * u + CGFloat(count - 1) * 36 * u
-            for channel in 0..<count {
-                let rect = CGRect(x: (layout.size.width - width) / 2 + CGFloat(channel) * 88 * u,
-                                  y: bayTop + (bayHeight - height) / 2,
-                                  width: 52 * u, height: height)
-                drawFader(in: context, channel: channel, unit: u, rect: rect, mirrored: false, portrait: true)
+            let startX = (layout.size.width - width) / 2
+            let centerY = bayTop + (bayHeight - height) / 2 + height / 2
+            let channels: [HomeFaderChannel] = [.metronome, .pattern, .pads]
+            let margin = 18 * u
+
+            ForEach(0..<count, id: \.self) { idx in
+                let x = startX + CGFloat(idx) * 88 * u + 26 * u
+                HomeControllerFaderView(
+                    channel: channels[idx],
+                    unit: u,
+                    faderSize: CGSize(width: 52 * u, height: height),
+                    horizontalMargin: margin,
+                    mirrored: false,
+                    portrait: true,
+                    darkAppearance: darkAppearance
+                )
+                .position(x: x, y: centerY)
+            }
+        }
+    }
+}
+
+/// One interactive fader control: real values, haptic tick at 0 dB (100 %) and bottom (0 %), double tap reset.
+private struct HomeControllerFaderView: View {
+    let channel: HomeFaderChannel
+    let unit: CGFloat
+    let faderSize: CGSize
+    let horizontalMargin: CGFloat
+    let mirrored: Bool
+    let portrait: Bool
+    let darkAppearance: Bool
+
+    @Environment(SettingsManager.self) private var settings
+    @State private var dragInitialCapY: CGFloat? = nil
+    @State private var dragTouchStartY: CGFloat? = nil
+    @State private var lastHapticVolume: Int? = nil
+    @State private var lastTapTime: Date = .distantPast
+
+    var body: some View {
+        let u = unit
+        let totalWidth = faderSize.width + 2 * horizontalMargin
+        let totalHeight = faderSize.height
+        let faderMinX = horizontalMargin
+        let trackTop = 17 * u
+        let travel = totalHeight - trackTop
+        let capHeight: CGFloat = (portrait ? 28 : 34) * u
+        let capWidth: CGFloat = (portrait ? 24 : 26) * u
+        let trackWidth: CGFloat = (portrait ? 26 : 28) * u
+        let trackX = mirrored ? faderMinX + trackWidth / 2 : faderMinX + faderSize.width - trackWidth / 2
+        let minY = trackTop + capHeight / 2
+        let maxY = totalHeight - capHeight / 2
+        let effectiveTravel = maxY - minY
+        let currentVolume = channel.volume(settings: settings)
+        let currentCapY = FaderValueMapping.yPosition(fromVolumePercent: currentVolume, minY: minY, maxY: maxY)
+
+        Canvas { context, _ in
+            drawBackground(
+                in: context,
+                unit: u,
+                faderMinX: faderMinX,
+                trackTop: trackTop,
+                travel: travel,
+                trackWidth: trackWidth,
+                trackX: trackX,
+                minY: minY,
+                maxY: maxY,
+                effectiveTravel: effectiveTravel
+            )
+            drawCap(
+                in: context,
+                unit: u,
+                capWidth: capWidth,
+                capHeight: capHeight,
+                trackX: trackX,
+                capY: currentCapY
+            )
+        }
+        .frame(width: totalWidth, height: totalHeight)
+        .contentShape(Rectangle())
+        .gesture(
+            DragGesture(minimumDistance: 0)
+                .onChanged { value in
+                    let touchY = value.location.y
+                    if dragTouchStartY == nil {
+                        dragTouchStartY = value.startLocation.y
+                        dragInitialCapY = currentCapY
+                    }
+                    let initialCapY = dragInitialCapY ?? currentCapY
+                    let startTouchY = dragTouchStartY ?? value.startLocation.y
+
+                    let targetY: CGFloat
+                    if abs(startTouchY - initialCapY) <= capHeight / 2 + 10 * u {
+                        targetY = initialCapY + (touchY - startTouchY)
+                    } else {
+                        targetY = touchY
+                    }
+
+                    let newVolume = FaderValueMapping.volumePercent(fromY: targetY, minY: minY, maxY: maxY)
+                    let oldVolume = channel.volume(settings: settings)
+                    if newVolume != oldVolume {
+                        if (newVolume == 100 && lastHapticVolume != 100) || (newVolume == 0 && lastHapticVolume != 0) {
+                            triggerHaptic()
+                            lastHapticVolume = newVolume
+                        } else if newVolume != 100 && newVolume != 0 {
+                            lastHapticVolume = nil
+                        }
+                        channel.setVolume(newVolume, settings: settings)
+                    }
+                }
+                .onEnded { value in
+                    dragTouchStartY = nil
+                    dragInitialCapY = nil
+                    lastHapticVolume = nil
+                    let distSq = value.translation.width * value.translation.width + value.translation.height * value.translation.height
+                    if distSq < 36 {
+                        let now = Date()
+                        if now.timeIntervalSince(lastTapTime) < 0.35 {
+                            resetToDefault()
+                            lastTapTime = .distantPast
+                        } else {
+                            lastTapTime = now
+                        }
+                    } else {
+                        lastTapTime = .distantPast
+                    }
+                }
+        )
+        .onTapGesture(count: 2) {
+            resetToDefault()
+        }
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(channel.title(settings: settings))
+        .accessibilityValue(SoundSliderRow.formatDB(fromPercent: currentVolume))
+        .accessibilityAdjustableAction { direction in
+            let current = channel.volume(settings: settings)
+            switch direction {
+            case .increment:
+                let newVolume = min(100, current + 5)
+                channel.setVolume(newVolume, settings: settings)
+            case .decrement:
+                let newVolume = max(0, current - 5)
+                channel.setVolume(newVolume, settings: settings)
+            @unknown default:
+                break
             }
         }
     }
 
-    private func drawFader(in context: GraphicsContext, channel: Int, unit u: CGFloat,
-                           rect: CGRect, mirrored: Bool, portrait: Bool) {
-        engraved(String(format: "CH %02d", channel + 1), in: context,
-                 at: CGPoint(x: rect.midX, y: rect.minY + 4.5 * u), size: 9 * u)
-        let trackTop = rect.minY + 17 * u
-        let travel = rect.maxY - trackTop
-        let trackWidth: CGFloat = (portrait ? 26 : 28) * u
-        let trackX = mirrored ? rect.minX + trackWidth / 2 : rect.maxX - trackWidth / 2
+    private func resetToDefault() {
+        let def = channel.defaultVolume
+        channel.setVolume(def, settings: settings)
+        triggerHaptic()
+    }
+
+    private func triggerHaptic() {
+        let generator = UIImpactFeedbackGenerator(style: .light)
+        generator.impactOccurred()
+    }
+
+    private func drawBackground(
+        in context: GraphicsContext,
+        unit u: CGFloat,
+        faderMinX: CGFloat,
+        trackTop: CGFloat,
+        travel: CGFloat,
+        trackWidth: CGFloat,
+        trackX: CGFloat,
+        minY: CGFloat,
+        maxY: CGFloat,
+        effectiveTravel: CGFloat
+    ) {
+        // Channel name in sentence case, not tiny uppercase, not monospaced
+        let title = channel.title(settings: settings)
+        engraved(
+            title,
+            in: context,
+            unit: u,
+            at: CGPoint(x: faderMinX + faderSize.width / 2, y: 4.5 * u),
+            size: (portrait ? 9.5 : 10.5) * u,
+            anchor: .center,
+            prominent: true,
+            monospaced: false
+        )
+
+        // Slot
         let slot = CGRect(x: trackX - 3 * u, y: trackTop, width: 6 * u, height: travel)
         context.fill(Path(roundedRect: slot.offsetBy(dx: 0, dy: u), cornerRadius: 3 * u),
                      with: .color(Theme.white.opacity(darkAppearance ? 0.08 : 0.65)))
@@ -219,24 +496,37 @@ private struct HomeControllerHardware: View, Equatable {
         context.fill(Path(CGRect(x: trackX, y: trackTop + u, width: 0.6 * u, height: travel - 2 * u)),
                      with: .color(Theme.white.opacity(0.15)))
 
-        let labels = ["+6", "0", "-6", "-12", "-24", "-∞"]
-        let levels: [CGFloat] = [0.95, 0.75, 0.55, 0.38, 0.22, 0.05]
-        for index in labels.indices {
-            let y = rect.maxY - travel * levels[index]
-            let major = index == 1
+        // dB Scale marks and labels
+        let scalePercents: [Int] = effectiveTravel >= 70 * u ? [100, 70, 50, 25, 10, 0] : [100, 50, 25, 0]
+        for percent in scalePercents {
+            let y = FaderValueMapping.yPosition(fromVolumePercent: percent, minY: minY, maxY: maxY)
+            let major = percent == 100
             let length: CGFloat = (major ? 8 : 5) * u
             let tickX = mirrored ? trackX + trackWidth / 2 + 4 * u : trackX - trackWidth / 2 - 4 * u - length
             context.fill(Path(CGRect(x: tickX, y: y, width: length, height: (major ? 1.5 : 1) * u)),
                          with: .color(Theme.ink.opacity(major ? 0.65 : 0.32)))
-            engraved(labels[index], in: context,
-                     at: CGPoint(x: mirrored ? tickX + length + 3 * u : tickX - 3 * u, y: y),
-                     size: 8 * u, anchor: mirrored ? .leading : .trailing, prominent: major)
+            let text = SoundSliderRow.formatDB(fromPercent: percent)
+            engraved(
+                text,
+                in: context,
+                unit: u,
+                at: CGPoint(x: mirrored ? tickX + length + 3 * u : tickX - 3 * u, y: y),
+                size: 8 * u,
+                anchor: mirrored ? .leading : .trailing,
+                prominent: major,
+                monospaced: true
+            )
         }
+    }
 
-        let capLevels: [CGFloat] = [0.72, 0.48, 0.88, 0.28]
-        let capWidth: CGFloat = (portrait ? 24 : 26) * u
-        let capHeight: CGFloat = (portrait ? 28 : 34) * u
-        let capY = min(rect.maxY - capHeight / 2, max(trackTop + capHeight / 2, rect.maxY - travel * capLevels[channel]))
+    private func drawCap(
+        in context: GraphicsContext,
+        unit u: CGFloat,
+        capWidth: CGFloat,
+        capHeight: CGFloat,
+        trackX: CGFloat,
+        capY: CGFloat
+    ) {
         let cap = CGRect(x: trackX - capWidth / 2, y: capY - capHeight / 2, width: capWidth, height: capHeight)
         let shape = Path(roundedRect: cap, cornerRadius: 3 * u)
         context.drawLayer { layer in
@@ -256,15 +546,25 @@ private struct HomeControllerHardware: View, Equatable {
             context.fill(Path(CGRect(x: cap.midX - 8 * u, y: cap.midY + offset * u, width: 16 * u, height: u)),
                          with: .color(Theme.black.opacity(darkAppearance ? 0.5 : 0.28)))
         }
+        // Center indicator stripe
         context.fill(Path(CGRect(x: cap.minX + 3 * u, y: cap.midY - u, width: cap.width - 6 * u, height: 2 * u)),
-                     with: .color(channel == 2 ? Theme.orange : Theme.ink))
+                     with: .color(channel == .pads ? Theme.orange : Theme.ink))
     }
 
-    private func engraved(_ text: String, in context: GraphicsContext, at point: CGPoint,
-                          size: CGFloat, anchor: UnitPoint = .center, prominent: Bool = false) {
-        let label = Text(verbatim: text).font(Theme.canvasDisplay(size).monospacedDigit())
+    private func engraved(
+        _ text: String,
+        in context: GraphicsContext,
+        unit u: CGFloat,
+        at point: CGPoint,
+        size: CGFloat,
+        anchor: UnitPoint = .center,
+        prominent: Bool = false,
+        monospaced: Bool = false
+    ) {
+        let font = monospaced ? Theme.canvasDisplay(size).monospacedDigit() : Theme.strong(size)
+        let label = Text(verbatim: text).font(font)
         context.draw(label.foregroundColor(Theme.white.opacity(darkAppearance ? 0.08 : 0.6)),
-                     at: CGPoint(x: point.x, y: point.y + layout.unit * 0.6), anchor: anchor)
+                     at: CGPoint(x: point.x, y: point.y + u * 0.6), anchor: anchor)
         context.draw(label.foregroundColor(prominent ? Theme.ink : Theme.secondary), at: point, anchor: anchor)
     }
 }
@@ -845,6 +1145,11 @@ public struct HomeScreen: View {
                     .equatable()
                     .opacity(plateVisible ? 1 : 0)
                     .animation(reduceMotion ? nil : .easeOut(duration: 0.2), value: plateVisible)
+
+                HomeControllerFaders(layout: layout, darkAppearance: colorScheme == .dark)
+                    .opacity(plateVisible ? 1 : 0)
+                    .animation(reduceMotion ? nil : .easeOut(duration: 0.2), value: plateVisible)
+                    .allowsHitTesting(plateVisible && animationFinished)
 
                 // 3x3 Pad Grid (outer pads + centre logo pad)
                 gridContent(cellSize: cellSize, gap: gap)

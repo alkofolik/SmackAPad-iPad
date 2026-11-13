@@ -725,7 +725,7 @@ private struct SoundKitSelectionView: View {
 }
 
 /// One-line volume row with label left, slider middle, and dB readout right.
-private struct SoundSliderRow: View {
+struct SoundSliderRow: View {
     let title: String
     @Binding var value: Int
 
