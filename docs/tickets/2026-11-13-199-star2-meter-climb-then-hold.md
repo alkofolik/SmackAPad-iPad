@@ -1,6 +1,6 @@
 # 199 — Star 2 meter: show the tempo climb first, the clean runs only at goal tempo
 
-Status: ready-for-agent. Design approved by Jakub on 2026-11-13 (mockups "A" and "B" in that conversation). Do after 198 (same HUD area).
+Status: implemented — awaiting Jakub's manual iPad check. Design approved by Jakub on 2026-11-13 (mockups "A" and "B" in that conversation). Implemented after 198 (same HUD area).
 
 ## Goal
 
@@ -40,11 +40,21 @@ Use the tdd skill (this decides what the scoring meter shows). Unit tests for a 
 - [ ] Below the goal tempo, after star 1, the meter shows the tempo ladder and no run blocks.
 - [ ] At the goal tempo the ladder turns into the run blocks and they count as today.
 - [ ] Lowering the tempo by hand goes back to the ladder.
-- [ ] Build and full test suite pass.
+- [x] Build and full test suite pass.
 
 ### Manual iPad checks for Jakub
 
 Take a lesson with star 1, start at a low tempo with auto step on: the ladder fills step by step, then at the goal it turns into three blocks that fill with clean runs. Check in Czech and light appearance.
+
+Also lower the tempo below the goal, check English and dark appearance, and verify VoiceOver and Reduce Motion. These manual checks remain pending.
+
+## Implementation and validation
+
+- Added a pure meter phase model and four unit tests covering segmented climb, continuous climb, goal-tempo run counts, and the unchanged Star 1 meter.
+- Shared the ladder and run-block presentation across lessons and training mix, with localized VoiceOver text and a Reduce Motion-aware cross-fade.
+- Excluded below-goal runs from the Star 2 live block fill, including a pending verdict at the climb-to-hold boundary. Scoring rules are unchanged.
+- iPad (A16), iOS 27.0 simulator: build succeeded; full suite passed all 279 tests, with no failures or skipped tests.
+- One intentional failing TDD run stalled while finalizing its log and was terminated. The final build and full test run exited successfully.
 
 ## Agent assignment
 

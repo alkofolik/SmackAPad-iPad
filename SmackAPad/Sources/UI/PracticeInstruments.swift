@@ -489,9 +489,44 @@ struct PassProgressBar: View {
     }
 }
 
+/// Presentation only; lesson credit remains owned by StarStreak.
+enum PracticeMeterPhase: Equatable {
+    case climbSegments(filled: Int, total: Int)
+    case climbContinuous(fraction: Double)
+    case runs(count: Int, required: Int)
+
+    var isClimbing: Bool {
+        switch self {
+        case .climbSegments, .climbContinuous: true
+        case .runs: false
+        }
+    }
+
+    init(starIndex: Int, count: Int, required: Int,
+         startBpm: Int, goalBpm: Int, step: Int, currentBpm: Int) {
+        guard starIndex == 1, currentBpm < goalBpm else {
+            self = .runs(count: count, required: required)
+            return
+        }
+        let span = goalBpm - startBpm
+        let distance = max(0, currentBpm - startBpm)
+        guard step > 0, span > 0 else {
+            self = .climbContinuous(fraction: span > 0 ? min(1, Double(distance) / Double(span)) : 0)
+            return
+        }
+        let total = (span + step - 1) / step
+        if total > 8 {
+            self = .climbContinuous(fraction: min(1, Double(distance) / Double(span)))
+        } else {
+            self = .climbSegments(filled: min(total, distance / step), total: total)
+        }
+    }
+}
+
 /// Top-right lesson-requirements progress cluster: warm-up eyes, counted passes, and live %.
 struct PracticeProgressMeter: View {
     @Environment(SettingsManager.self) private var settings
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     @ScaledMetric(relativeTo: .body) private var blockHeight: CGFloat = 40
     @ScaledMetric(relativeTo: .body) private var eyeSize: CGFloat = 34
@@ -500,6 +535,10 @@ struct PracticeProgressMeter: View {
     let completedWarmUps: Int
     let starProgress: (count: Int, required: Int, name: String, starIndex: Int)?
     let reviewProgress: (count: Int, required: Int, settled: Bool)?
+    let startBpm: Int
+    let goalBpm: Int
+    let currentBpm: Int
+    let tempoStep: Int
     let fraction: Double
     let verdict: RunVerdict?
     let starMomentActive: Bool
@@ -508,6 +547,13 @@ struct PracticeProgressMeter: View {
     private var accuracyText: String {
         guard let currentAccuracy else { return "—\u{00a0}%" }
         return "\(Int((currentAccuracy * 100).rounded()))\u{00a0}%"
+    }
+
+    private var phase: PracticeMeterPhase? {
+        starProgress.map {
+            PracticeMeterPhase(starIndex: $0.starIndex, count: $0.count, required: $0.required,
+                               startBpm: startBpm, goalBpm: goalBpm, step: tempoStep, currentBpm: currentBpm)
+        }
     }
 
     var body: some View {
@@ -522,13 +568,23 @@ struct PracticeProgressMeter: View {
                 }
             }
 
-            if let starProgress {
-                RunMeterView(
-                    progress: starProgress,
-                    fraction: fraction,
-                    verdict: verdict,
-                    starMomentActive: starMomentActive
-                )
+            if let starProgress, let phase {
+                ZStack {
+                    if case let .runs(count, required) = phase {
+                        RunMeterView(
+                            progress: (count, required, starProgress.name, starProgress.starIndex),
+                            fraction: fraction,
+                            verdict: verdict,
+                            starMomentActive: starMomentActive
+                        )
+                        .transition(reduceMotion ? .identity : .opacity)
+                    } else {
+                        TempoLadderView(startBpm: startBpm, goalBpm: goalBpm, currentBpm: currentBpm,
+                                        phase: phase, starMomentActive: starMomentActive)
+                            .transition(reduceMotion ? .identity : .opacity)
+                    }
+                }
+                .animation(reduceMotion ? nil : Theme.Motion.fast, value: phase.isClimbing)
             } else if let reviewProgress {
                 RunMeterView(
                     badgeTitle: settings.localized("Review"),
@@ -575,6 +631,57 @@ struct PracticeProgressMeter: View {
         .frame(height: blockHeight)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel("\(settings.localized("From memory")), \(progressText)")
+    }
+}
+
+private struct TempoLadderView: View {
+    @Environment(SettingsManager.self) private var settings
+    @ScaledMetric(relativeTo: .body) private var trackWidth: CGFloat = 108
+    @ScaledMetric(relativeTo: .body) private var trackHeight: CGFloat = 8
+
+    let startBpm: Int
+    let goalBpm: Int
+    let currentBpm: Int
+    let phase: PracticeMeterPhase
+    let starMomentActive: Bool
+
+    var body: some View {
+        HStack(spacing: Theme.Space.regular) {
+            RunMeterBadge(badgeTitle: nil, starNumber: 2, starMomentActive: starMomentActive)
+            HStack(spacing: Theme.Space.small) {
+                Text("\(startBpm)")
+                track.frame(width: trackWidth, height: trackHeight)
+                Text("\(goalBpm)")
+            }
+            .font(Theme.meta)
+            .monospacedDigit()
+            .foregroundStyle(Theme.secondary)
+        }
+        .fixedSize()
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(settings.localized("Star 2: tempo %lld of %lld BPM", currentBpm, goalBpm))
+    }
+
+    @ViewBuilder
+    private var track: some View {
+        switch phase {
+        case let .climbSegments(filled, total):
+            HStack(spacing: Theme.Space.tight) {
+                ForEach(0..<total, id: \.self) { index in
+                    Capsule().fill(index < filled ? Theme.ink : Theme.hairline)
+                }
+            }
+        case let .climbContinuous(fraction):
+            GeometryReader { geometry in
+                Capsule().fill(Theme.hairline)
+                    .overlay(alignment: .leading) {
+                        Capsule().fill(Theme.ink)
+                            .frame(width: geometry.size.width * fraction)
+                    }
+            }
+        case .runs:
+            EmptyView()
+        }
     }
 }
 
@@ -1121,6 +1228,31 @@ private struct BarChartGlyph: View {
     }
 }
 
+private struct RunMeterBadge: View {
+    @ScaledMetric(relativeTo: .body) private var height: CGFloat = 40
+
+    let badgeTitle: String?
+    let starNumber: Int?
+    let starMomentActive: Bool
+
+    var body: some View {
+        HStack(spacing: Theme.Space.tight) {
+            if let starNumber {
+                Image(systemName: "star.fill")
+                Text("\(starNumber)").monospacedDigit()
+            } else if let badgeTitle {
+                Text(badgeTitle)
+            }
+        }
+        .font(Theme.rowTitle)
+        .foregroundStyle(starMomentActive ? Theme.orange : Theme.ink)
+        .padding(.horizontal, Theme.Space.small)
+        .frame(height: height)
+        .background(Theme.surface, in: Capsule())
+        .overlay { Capsule().strokeBorder(Theme.hairline, lineWidth: 1) }
+    }
+}
+
 /// Three LEDs per qualifying run, stacked from the bottom as the tape advances.
 struct RunMeterView: View {
     @Environment(SettingsManager.self) private var settings
@@ -1182,20 +1314,7 @@ struct RunMeterView: View {
 
     var body: some View {
         HStack(spacing: Theme.Space.regular) {
-            HStack(spacing: Theme.Space.tight) {
-                if let starNumber {
-                    Image(systemName: "star.fill")
-                    Text("\(starNumber)").monospacedDigit()
-                } else if let badgeTitle {
-                    Text(badgeTitle)
-                }
-            }
-            .font(Theme.rowTitle)
-            .foregroundStyle(starMomentActive ? Theme.orange : Theme.ink)
-            .padding(.horizontal, Theme.Space.small)
-            .frame(height: blockHeight)
-            .background(Theme.surface, in: Capsule())
-            .overlay { Capsule().strokeBorder(Theme.hairline, lineWidth: 1) }
+            RunMeterBadge(badgeTitle: badgeTitle, starNumber: starNumber, starMomentActive: starMomentActive)
 
             HStack(spacing: Theme.Space.tight) {
                 ForEach(0..<required, id: \.self) { index in

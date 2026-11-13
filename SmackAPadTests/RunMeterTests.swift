@@ -2,6 +2,52 @@ import XCTest
 @testable import SmackAPad
 
 final class RunMeterTests: XCTestCase {
+    func testStar1KeepsTheRunMeterAtAnyTempo() {
+        for bpm in [50, 65, 80, 85] {
+            XCTAssertEqual(
+                PracticeMeterPhase(starIndex: 0, count: 1, required: 2,
+                                   startBpm: 60, goalBpm: 80, step: 5, currentBpm: bpm),
+                .runs(count: 1, required: 2)
+            )
+        }
+    }
+
+    func testStar2AtOrAboveGoalKeepsTheCountedRuns() {
+        for bpm in [80, 85] {
+            XCTAssertEqual(
+                PracticeMeterPhase(starIndex: 1, count: 1, required: 3,
+                                   startBpm: 60, goalBpm: 80, step: 5, currentBpm: bpm),
+                .runs(count: 1, required: 3)
+            )
+        }
+    }
+
+    func testStar2UsesContinuousTempoProgressWithManyStepsOrAutoStepOff() {
+        XCTAssertEqual(
+            PracticeMeterPhase(starIndex: 1, count: 0, required: 3,
+                               startBpm: 60, goalBpm: 80, step: 2, currentBpm: 65),
+            .climbContinuous(fraction: 0.25)
+        )
+        XCTAssertEqual(
+            PracticeMeterPhase(starIndex: 1, count: 0, required: 3,
+                               startBpm: 60, goalBpm: 80, step: 0, currentBpm: 65),
+            .climbContinuous(fraction: 0.25)
+        )
+    }
+
+    func testStar2BelowGoalShowsCompletedTempoSteps() {
+        XCTAssertEqual(
+            PracticeMeterPhase(starIndex: 1, count: 0, required: 3,
+                               startBpm: 60, goalBpm: 80, step: 5, currentBpm: 65),
+            .climbSegments(filled: 1, total: 4)
+        )
+        XCTAssertEqual(
+            PracticeMeterPhase(starIndex: 1, count: 0, required: 3,
+                               startBpm: 60, goalBpm: 82, step: 5, currentBpm: 80),
+            .climbSegments(filled: 4, total: 5)
+        )
+    }
+
     @MainActor
     func testRunFractionIncludesBothRepeatsAndWrapsAtTheNextRun() {
         XCTAssertEqual(PracticeSession.runFraction(tapePosition: 0, totalSteps: 32, repeatsPerRun: 2), 0)

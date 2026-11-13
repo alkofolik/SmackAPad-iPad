@@ -2,6 +2,7 @@
 "MIDI controller" = "MIDI controller";
 "%lld / %lld" = "%lld / %lld";
 "Consecutive passes for %@" = "Qualifying passes for %@";
+"Star 2: tempo %lld of %lld BPM" = "Star 2: tempo %lld of %lld BPM";
 "Run progress" = "Run progress";
 "bar %lld of %lld" = "bar %lld of %lld";
 "Star %lld earned" = "Star %lld earned";

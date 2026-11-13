@@ -2,6 +2,7 @@
 "MIDI controller" = "MIDI kontrolér";
 "%lld / %lld" = "%lld / %lld";
 "Consecutive passes for %@" = "Úspěšné průchody pro %@";
+"Star 2: tempo %lld of %lld BPM" = "Hvězda 2: tempo %lld z %lld BPM";
 "Run progress" = "Průběh kola";
 "bar %lld of %lld" = "takt %lld z %lld";
 "Star %lld earned" = "Získána %lld. hvězda";

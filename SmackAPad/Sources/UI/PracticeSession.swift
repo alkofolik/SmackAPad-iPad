@@ -549,11 +549,16 @@ final class PracticeSession {
     }
 
     func runMeterFraction(at frame: PatternFrame) -> Double {
+        let isGoalTempoStar = starRunProgress?.starIndex == 1
+        guard !isGoalTempoStar || frame.bpm >= lesson.targetBpm else { return 0 }
         let repeats = repeatsPerRun
         let runNumber = runNumber(for: frame.pass)
         // The tape can reach the next run before the previous verdict is published.
-        // Keep the finished block full until the verdict banks or drains it.
-        if passes.contains(where: { $0.number == runNumber - 1 && $0.scorer != nil }) {
+        // Keep an eligible finished block full until its verdict is published.
+        // The climb's last run must never fill the first goal-tempo block.
+        if passes.contains(where: {
+            $0.number == runNumber - 1 && $0.scorer != nil && (!isGoalTempoStar || $0.bpm >= lesson.targetBpm)
+        }) {
             return 1
         }
         return Self.runFraction(tapePosition: frame.tapePosition,
