@@ -326,7 +326,7 @@ struct HelpIllustration: View {
             hitKey
             let tempo = progress.map { $0 < 0.5 ? 75 : 100 } ?? 100
             TimingCue(offset: progress.map { $0 < 0.5 ? -1 : 1 } ?? 1)
-                .frame(maxWidth: .infinity)
+                .frame(maxWidth: .infinity, alignment: .trailing)
                 .accessibilityHidden(true)
             HelpPatternBand(band: BandTone.color(listen: false, memory: false, bpm: tempo, startBpm: 75, targetBpm: 100), height: 72)
             tags([("help.signals.behind", "arrow.right"), ("help.signals.ahead", "arrow.left"), ("Details", "list.bullet")])
@@ -367,7 +367,7 @@ struct HelpIllustration: View {
             .padding(Theme.Space.small)
             .background(Theme.surface, in: RoundedRectangle(cornerRadius: Theme.Radius.button))
             if showIncrease {
-                TempoUpLabel(label: settings.localized("Tempo up: %lld → %lld BPM", before, after), size: labelSize)
+                TempoUpLabel(bpm: after, isGoal: after >= 100, size: labelSize)
                     .opacity(increased || progress == nil ? 1 : 0)
             }
         }

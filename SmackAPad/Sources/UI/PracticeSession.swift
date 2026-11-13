@@ -13,6 +13,13 @@ struct TempoUpEvent: Identifiable {
     let id = UUID()
     let from: Int
     let to: Int
+    let isGoal: Bool
+
+    init(from: Int, to: Int, isGoal: Bool = false) {
+        self.from = from
+        self.to = to
+        self.isGoal = isGoal
+    }
 }
 
 /// Published when one or more badges are earned during a run.
@@ -1100,7 +1107,7 @@ final class PracticeSession {
                 // Announce a tempo increase at the moment the faster pass
                 // actually starts (audible change). Not on the first pass and
                 // not on manual changes (which are blocked while running).
-                if !listen, !afterMe, let event = tempo.tempoUpEvent(newBpm: current.bpm) {
+                if !listen, !afterMe, let event = tempo.tempoUpEvent(newBpm: current.bpm, goalBpm: lesson.targetBpm) {
                     tempoUpEvent = event
                 }
                 tempo.recordPassStart(bpm: current.bpm)

@@ -12,9 +12,10 @@ struct PracticeTempo {
     /// Returns a `TempoUpEvent` when the new pass's BPM is higher than the
     /// previous pass's BPM. Returns `nil` on the first pass of a run, when the
     /// tempo stays the same, or after a reset.
-    func tempoUpEvent(newBpm: Int) -> TempoUpEvent? {
+    func tempoUpEvent(newBpm: Int, goalBpm: Int? = nil) -> TempoUpEvent? {
         guard let prev = previousPassBpm, newBpm > prev else { return nil }
-        return TempoUpEvent(from: prev, to: newBpm)
+        let isGoal = goalBpm.map { newBpm >= $0 } ?? false
+        return TempoUpEvent(from: prev, to: newBpm, isGoal: isGoal)
     }
 
     /// Record the current pass's BPM so the next pass can compare against it.

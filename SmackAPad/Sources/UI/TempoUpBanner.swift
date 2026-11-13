@@ -7,7 +7,6 @@ import UIKit
 struct TempoUpBanner: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     let event: TempoUpEvent
-    let label: String
     let announcement: String
 
     @State private var visible = false
@@ -15,7 +14,7 @@ struct TempoUpBanner: View {
     private var motion: Theme.Motion.Policy { .init(reduced: reduceMotion) }
 
     var body: some View {
-        TempoUpLabel(label: label)
+        TempoUpLabel(bpm: event.to, isGoal: event.isGoal)
             .scaleEffect(motion.scale(pulse ? 1.08 : 1))
             .opacity(visible ? 1 : 0)
             .allowsHitTesting(false)
@@ -35,16 +34,22 @@ struct TempoUpBanner: View {
 }
 
 struct TempoUpLabel: View {
-    let label: String
-    var size = 28.0
+    let bpm: Int
+    var isGoal = false
+    var size: CGFloat = 20
 
     var body: some View {
-        Text(label)
-            .font(Theme.strong(size))
-            .fixedSize(horizontal: false, vertical: true)
-            .foregroundStyle(Theme.orange)
-            .padding(.horizontal, Theme.Space.regular)
-            .padding(.vertical, Theme.Space.small)
-            .satinPlate()
+        HStack(spacing: Theme.Space.tight) {
+            Image(systemName: isGoal ? "target" : "chevron.up.2")
+                .font(Theme.strong(size))
+                .fontWeight(.semibold)
+            Text("\(bpm)")
+                .font(Theme.strong(size))
+                .monospacedDigit()
+        }
+        .foregroundStyle(Theme.black)
+        .padding(.horizontal, Theme.Space.regular)
+        .padding(.vertical, 6)
+        .background(Theme.orange, in: Capsule())
     }
 }

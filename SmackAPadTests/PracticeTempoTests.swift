@@ -78,4 +78,29 @@ final class PracticeTempoTests: XCTestCase {
         XCTAssertNil(tempo.tempoUpEvent(newBpm: 90),
                      "No event after reset (simulates manual change or restart)")
     }
+
+    func testTempoUpEventMarksGoalReached() {
+        var tempo = PracticeTempo()
+        tempo.recordPassStart(bpm: 70)
+
+        // Step up below goal tempo: isGoal is false.
+        let midEvent = tempo.tempoUpEvent(newBpm: 75, goalBpm: 80)
+        XCTAssertNotNil(midEvent)
+        XCTAssertEqual(midEvent?.from, 70)
+        XCTAssertEqual(midEvent?.to, 75)
+        XCTAssertFalse(midEvent?.isGoal ?? true, "isGoal should be false below goal tempo")
+        tempo.recordPassStart(bpm: 75)
+
+        // Step up reaching goal tempo: isGoal is true.
+        let goalEvent = tempo.tempoUpEvent(newBpm: 80, goalBpm: 80)
+        XCTAssertNotNil(goalEvent)
+        XCTAssertEqual(goalEvent?.from, 75)
+        XCTAssertEqual(goalEvent?.to, 80)
+        XCTAssertTrue(goalEvent?.isGoal ?? false, "isGoal should be true when landing on goal tempo")
+        tempo.recordPassStart(bpm: 80)
+
+        // Same tempo as goal on next pass: no event.
+        let afterGoalEvent = tempo.tempoUpEvent(newBpm: 80, goalBpm: 80)
+        XCTAssertNil(afterGoalEvent, "No event when BPM stays at goal tempo")
+    }
 }

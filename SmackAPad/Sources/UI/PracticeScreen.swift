@@ -672,36 +672,25 @@ struct PracticeScreen: View {
     }
 
     private func practiceHUD(frame: PatternFrame, date: Date, scored: Bool) -> some View {
-        ViewThatFits(in: .horizontal) {
-            HStack(alignment: .top, spacing: Theme.Space.regular) {
-                HStack(alignment: .center, spacing: Theme.Space.regular) {
-                    hudTempo(bpm: frame.bpm)
-                    tempoUpBanner
-                }
-                .frame(maxWidth: .infinity, alignment: .leading)
+        VStack(spacing: Theme.Space.small) {
+            ZStack {
+                tempoUpBanner
 
-                VStack(alignment: .trailing, spacing: Theme.Space.controlGap) {
-                    runMeter(frame: frame, scored: scored)
-                    TimingCue(offset: scored ? session.timingHistory.cueOffset(at: date) : 0, active: scored)
-                }
-                .fixedSize(horizontal: true, vertical: false)
-            }
-
-            VStack(alignment: .leading, spacing: Theme.Space.controlGap) {
-                HStack(alignment: .top, spacing: Theme.Space.small) {
+                HStack(alignment: .center) {
                     hudTempo(bpm: frame.bpm)
                     Spacer(minLength: 0)
                     runMeter(frame: frame, scored: scored)
                 }
-                HStack(spacing: Theme.Space.small) {
-                    tempoUpBanner
-                    Spacer(minLength: 0)
-                    TimingCue(offset: scored ? session.timingHistory.cueOffset(at: date) : 0, active: scored)
-                }
             }
+            .frame(maxWidth: .infinity)
+
+            HStack {
+                Spacer(minLength: 0)
+                TimingCue(offset: scored ? session.timingHistory.cueOffset(at: date) : 0, active: scored)
+            }
+            .frame(maxWidth: .infinity)
         }
         .frame(maxWidth: .infinity)
-        .padding(.bottom, Theme.Space.small)
     }
 
     private func hudTempo(bpm: Int) -> some View {
@@ -738,10 +727,7 @@ struct PracticeScreen: View {
     private var tempoUpBanner: some View {
         if focusActive, session.countdown == nil, let event = session.tempoUpEvent {
             TempoUpBanner(event: event,
-                          label: settings.localized("Tempo up: %lld → %lld BPM", event.from, event.to),
                           announcement: settings.localized("Tempo %lld", event.to))
-                .lineLimit(1)
-                .minimumScaleFactor(0.65)
                 .id(event.id)
         }
     }

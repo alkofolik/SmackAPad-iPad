@@ -70,7 +70,7 @@ final class FirstRunAndLegibilityTests: XCTestCase {
             "help.memory.shown", "help.memory.fading", "help.memory.hiddenFromThird", "help.memory.hidden",
             "help.reviews.timeline", "help.reviews.warmups", "help.reviews.twoPasses", "help.library.stage",
             "help.library.progress", "help.keyboard.mapping", "Close", "Skip", "Done", "Next", "Start", "Intro",
-            "Today", "Training", "Home", "Starting tempo", "Tempo up: %lld → %lld BPM", "Path", "Genres",
+            "Today", "Training", "Home", "Starting tempo", "Path", "Genres",
             "Techniques", "MIDI controller", "Details", "Settled", "Did not count", "New lesson", "Mix",
             "Tempo knob", "Play pads with keyboard", "Sound kit", "Timing calibration", "Back up progress",
             "Fade notes in From memory", "Start of plan",

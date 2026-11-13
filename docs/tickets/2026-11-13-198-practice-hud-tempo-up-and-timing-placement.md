@@ -1,6 +1,6 @@
 # 198 — Practice HUD: short tempo-up sign in the centre, timing cue next to the band
 
-Status: ready-for-agent. Design approved by Jakub on 2026-11-13 (mockups "A" and "B" in that conversation).
+Status: ready-for-review. Completed on 2026-11-13.
 
 ## Goal
 
@@ -25,12 +25,12 @@ None new (layout only). If a localization or help test lists the removed "Tempo 
 
 ## Acceptance criteria
 
-- [ ] A tempo increase shows a short orange "up + new BPM" sign centred above the band, with a visible gap to the band.
-- [ ] Reaching the goal tempo shows the target sign once.
-- [ ] The timing cue sits directly above the band, right edge aligned with the band.
-- [ ] The help illustrations show the same new sign.
-- [ ] The old long text is gone from code and strings.
-- [ ] Build and full test suite pass.
+- [x] A tempo increase shows a short orange "up + new BPM" sign centred above the band, with a visible gap to the band.
+- [x] Reaching the goal tempo shows the target sign once.
+- [x] The timing cue sits directly above the band, right edge aligned with the band.
+- [x] The help illustrations show the same new sign.
+- [x] The old long text is gone from code and strings.
+- [x] Build and full test suite pass.
 
 ### Manual iPad checks for Jakub
 

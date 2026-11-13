@@ -164,7 +164,6 @@
 "Tempo" = "Tempo";
 "Starting tempo" = "Počáteční tempo";
 
-"Tempo up: %lld → %lld BPM" = "Tempo nahoru: %lld → %lld BPM";
 "Tempo %lld" = "Tempo %lld";
 "Practice summary" = "Souhrn hraní";
 "%lld completed passes" = "%lld dokončených průchodů";
