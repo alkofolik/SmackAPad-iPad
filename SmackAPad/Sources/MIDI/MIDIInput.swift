@@ -84,7 +84,7 @@ public final class MIDIInput {
         connectedSources.map { source in
             guard source.id == networkSourceID else { return source }
             // iPadOS exposes one default CoreMIDI network session.
-            return MIDISource(id: source.id, name: settings.localized("Network session %lld", 1))
+            return MIDISource(id: source.id, name: settings.localized("Network MIDI"))
         }
     }
     public private(set) var lastNote: MIDINoteEvent?

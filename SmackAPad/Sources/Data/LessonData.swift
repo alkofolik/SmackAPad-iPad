@@ -476,6 +476,19 @@ public final class DataLoader: Sendable {
             }
         }
 
+        // Check other loaded bundles if not found in primary bundle
+        let storeBundle = Bundle(for: LessonStore.self)
+        if bundle != storeBundle {
+            if let storeURL = try? findResourceURL(named: name, withExtension: ext, in: storeBundle) {
+                return storeURL
+            }
+        }
+        for altBundle in Bundle.allBundles where altBundle != bundle && altBundle != storeBundle {
+            if let altURL = try? findResourceURL(named: name, withExtension: ext, in: altBundle) {
+                return altURL
+            }
+        }
+
         let target = ext != nil ? "\(name).\(ext!)" : name
         throw DataLoaderError.fileNotFound(target)
     }

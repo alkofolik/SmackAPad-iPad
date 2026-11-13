@@ -109,6 +109,97 @@ final class HomePadSubtitlesTests: XCTestCase {
             HomePadSubtitles.controller(connectedName: "   ", language: .czech),
             "Nepřipojeno"
         )
+        // Network session
+        XCTAssertEqual(
+            HomePadSubtitles.controller(connectedName: "Network session 1", language: .english),
+            "Network MIDI"
+        )
+        XCTAssertEqual(
+            HomePadSubtitles.controller(connectedName: "Network session 1", language: .czech),
+            "Síťový MIDI"
+        )
+        XCTAssertEqual(
+            HomePadSubtitles.controller(connectedName: "Network MIDI", language: .english),
+            "Network MIDI"
+        )
+        XCTAssertEqual(
+            HomePadSubtitles.controller(connectedName: "Network MIDI", language: .czech),
+            "Síťový MIDI"
+        )
+        XCTAssertEqual(
+            HomePadSubtitles.controller(connectedName: "Síťová relace 1", language: .english),
+            "Network MIDI"
+        )
+        XCTAssertEqual(
+            HomePadSubtitles.controller(connectedName: "Síťová relace 1", language: .czech),
+            "Síťový MIDI"
+        )
+        // Long device name cut at word boundary within 14 chars
+        XCTAssertEqual(
+            HomePadSubtitles.controller(connectedName: "Akai MPD218 Controller", language: .english),
+            "Akai MPD218"
+        )
+        XCTAssertEqual(
+            HomePadSubtitles.controller(connectedName: "Novation Launchkey Mini", language: .english),
+            "Novation"
+        )
+        // First word already longer than limit
+        XCTAssertEqual(
+            HomePadSubtitles.controller(connectedName: "SuperLongControllerName Extra", language: .english),
+            "SuperLongControllerName"
+        )
+    }
+
+    func testContinueSubtitleUsesShortNameWhenTitleExceedsLimit() {
+        let kickLesson = makeLesson(id: 10001, title: "Kick on every beat")
+        XCTAssertEqual(
+            HomePadSubtitles.continueLesson(lastPlayedLesson: kickLesson, language: .english),
+            "Kick on beats"
+        )
+        XCTAssertEqual(
+            HomePadSubtitles.continueLesson(lastPlayedLesson: kickLesson, language: .czech),
+            "Kick na doby"
+        )
+    }
+
+    func testEveryLessonHasHomeLineAtMost14CharactersInEnglishAndCzech() throws {
+        let store = LessonStore.shared
+        if store.lessons.isEmpty {
+            try store.reload()
+        }
+        var allLessons = store.lessons
+        if allLessons.isEmpty {
+            for source in BundledLessonContentSource.allDefaultBundledSources() {
+                if let loaded = try? source.loadLessons() {
+                    allLessons.append(contentsOf: loaded)
+                }
+            }
+        }
+        XCTAssertFalse(allLessons.isEmpty, "Bundled lessons should not be empty")
+
+        var seenIDs: Set<Int> = []
+        for lesson in allLessons {
+            guard seenIDs.insert(lesson.id).inserted else { continue }
+            for language in [AppLanguage.english, AppLanguage.czech] {
+                let subtitle = try XCTUnwrap(
+                    HomePadSubtitles.continueLesson(lastPlayedLesson: lesson, language: language),
+                    "Missing subtitle for lesson \(lesson.id) '\(lesson.title)' in \(language)"
+                )
+                XCTAssertLessThanOrEqual(
+                    subtitle.count,
+                    14,
+                    "Lesson \(lesson.id) '\(lesson.title)' in \(language) subtitle '\(subtitle)' exceeds 14 chars (\(subtitle.count))"
+                )
+                XCTAssertFalse(
+                    subtitle.contains("…"),
+                    "Lesson \(lesson.id) '\(lesson.title)' in \(language) subtitle '\(subtitle)' contains ellipsis"
+                )
+                XCTAssertFalse(
+                    subtitle.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
+                    "Lesson \(lesson.id) '\(lesson.title)' in \(language) subtitle is empty"
+                )
+            }
+        }
     }
 
     func testRemainingPadsUseExpectedSubtitles() {

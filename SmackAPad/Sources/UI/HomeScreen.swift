@@ -364,7 +364,9 @@ enum HomePadSubtitles {
 
     static func continueLesson(lastPlayedLesson: Lesson?, language: AppLanguage) -> String? {
         guard let lastPlayedLesson else { return nil }
-        let localized = singleLine(language.localized(lastPlayedLesson.title))
+        let shortKey = "home.short.\(lastPlayedLesson.title)"
+        let localizedCandidate = language.localizedOptional(shortKey) ?? language.localized(lastPlayedLesson.title)
+        let localized = singleLine(localizedCandidate)
         return localized.isEmpty ? nil : localized
     }
 
@@ -381,13 +383,49 @@ enum HomePadSubtitles {
     }
 
     static func controller(connectedName: String?, language: AppLanguage) -> String {
-        if let connectedName {
-            let trimmed = singleLine(connectedName)
-            if !trimmed.isEmpty {
-                return trimmed
+        guard let connectedName else {
+            return singleLine(language.localized("Not connected"))
+        }
+        let trimmed = singleLine(connectedName)
+        guard !trimmed.isEmpty else {
+            return singleLine(language.localized("Not connected"))
+        }
+
+        if isNetworkSession(trimmed) {
+            return language == .czech ? "Síťový MIDI" : "Network MIDI"
+        }
+
+        return truncateAtWordBoundary(trimmed, limit: 14)
+    }
+
+    static func isNetworkSession(_ name: String) -> Bool {
+        let lower = name.lowercased()
+        if lower.contains("network session") || lower.contains("síťová relace") || lower.contains("sitova relace") {
+            return true
+        }
+        if lower == "network midi" || lower == "síťový midi" || lower == "sitovy midi" {
+            return true
+        }
+        return false
+    }
+
+    static func truncateAtWordBoundary(_ text: String, limit: Int = 14) -> String {
+        guard text.count > limit else { return text }
+        let words = text.split(whereSeparator: \.isWhitespace).map(String.init)
+        guard let first = words.first else { return "" }
+        if first.count >= limit {
+            return first
+        }
+        var result = first
+        for word in words.dropFirst() {
+            let candidate = result + " " + word
+            if candidate.count <= limit {
+                result = candidate
+            } else {
+                break
             }
         }
-        return singleLine(language.localized("Not connected"))
+        return result
     }
 
     static func badges(earned: Int, total: Int) -> String {
@@ -521,7 +559,6 @@ struct HomePadView: View {
             .foregroundStyle(isHero ? Theme.black : Theme.secondary)
             .multilineTextAlignment(.center)
             .lineLimit(1)
-            .truncationMode(.tail)
             .opacity(hasSubtitle ? 1 : 0)
             .accessibilityHidden(!hasSubtitle)
 

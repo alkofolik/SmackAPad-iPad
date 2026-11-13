@@ -25,12 +25,25 @@ public enum AppLanguage: String, CaseIterable, Identifiable, Codable, Sendable {
            let bundle = Bundle(path: path) {
             return bundle
         }
+        for candidate in Bundle.allBundles {
+            if let path = candidate.path(forResource: rawValue, ofType: "lproj"),
+               let bundle = Bundle(path: path) {
+                return bundle
+            }
+        }
         return .main
     }
 
     /// Localize a key using this language bundle.
     public func localized(_ key: String) -> String {
         bundle.localizedString(forKey: key, value: nil, table: nil)
+    }
+
+    /// Localize a key if defined in this language bundle, or return nil if missing.
+    public func localizedOptional(_ key: String) -> String? {
+        let sentinel = "\u{0000}__MISSING__\u{0000}"
+        let result = bundle.localizedString(forKey: key, value: sentinel, table: nil)
+        return result == sentinel ? nil : result
     }
 
     /// Localize a format key using this language bundle and locale.
