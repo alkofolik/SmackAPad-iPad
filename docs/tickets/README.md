@@ -204,3 +204,4 @@ Source: Jakub, retention and memory discussion; legacy "Trénink" concept 2026-1
 | 191 | Home faders set the real sound volumes (Metronome, Pattern, Pads) | Gemini 3.8 Flash, high (fallback Codex GPT-6.1 Sol, high) | any time |
 | 192 | Controller screen: live pad grid in the controller's own rows and columns | Codex GPT-6.1 Sol, high (fallback Gemini 3.8 Flash, high) | any time, not in parallel with 191 |
 | 193 | No monospaced text; delete eyebrow step tags; keyboard keys as keycaps | Gemini 3.8 Flash, medium (fallback Codex GPT-6.1 Sol, medium) | any time |
+| 194 | Home pad lines: one line, short text, no "…" (lesson short names, "Network MIDI") | Gemini 3.8 Flash, high (fallback Codex GPT-6.1 Sol, high) | any time, not in parallel with 191 |
