@@ -248,16 +248,18 @@ public final class AudioEngine: @unchecked Sendable {
         queue.async { [weak self] in self?.trimsDB = converted }
     }
 
-    /// Temporary diagnostics are controlled in AudioTimingDiagnostics only.
-    public func logTiming(_ event: String) { queue.sync { logTimingOnQueue(event) } }
-
-    private func logTimingOnQueue(_ event: String) {
-        #if DEBUG
-        AudioTimingDiagnostics.record(event, sessionOutputLatency: session.outputLatency,
-            ioBufferDuration: session.ioBufferDuration,
-            presentationLatency: engine.mainMixerNode.outputPresentationLatency)
-        #endif
+    #if DEBUG
+    var timingReadout: AudioTimingReadout {
+        queue.sync {
+            AudioTimingReadout(
+                route: session.currentRoute.outputs.map { "\($0.portName) (\($0.portType.rawValue))" }.joined(separator: ", "),
+                presentationLatency: engine.mainMixerNode.outputPresentationLatency,
+                sessionOutputLatency: session.outputLatency,
+                ioBufferDuration: session.ioBufferDuration
+            )
+        }
     }
+    #endif
 
     /// Do not calibrate against an unstarted clock or an unknown presentation delay.
     public var calibrationClockReady: Bool {
@@ -482,7 +484,6 @@ public final class AudioEngine: @unchecked Sendable {
             let timing = try outputTimingOnQueue()
             let id = UUID()
             calibrationCapture = CalibrationCapture(id: id, timing: timing, outputRoute: .current)
-            logTimingOnQueue("calibration-start")
             let detector = ClickDetector()
             engine.mainMixerNode.installTap(onBus: 0, bufferSize: 512, format: nil) { [weak self] buffer, time in
                 // Copy values while the tap owns the buffer; never retain audio memory.
@@ -545,7 +546,6 @@ public final class AudioEngine: @unchecked Sendable {
     }
 
     private func stopCalibrationOnQueue() {
-        if calibrationCapture != nil { logTimingOnQueue("calibration-end") }
         calibrationCapture = nil
         if calibrationTapInstalled {
             engine.mainMixerNode.removeTap(onBus: 0)

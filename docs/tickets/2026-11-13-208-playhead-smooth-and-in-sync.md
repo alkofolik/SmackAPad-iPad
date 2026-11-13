@@ -1,6 +1,6 @@
 # 208 — Playhead: no catch-up jumps, and proof that it matches the click
 
-Status: ready-for-agent. Reported by Jakub on 2026-11-13: "the position marker does not move evenly, at moments it speeds up a lot; I'm not sure whether it keeps to the metronome." Sound from the iPad's built-in speaker.
+Status: implemented; Instruments comparison and manual iPad validation pending. Reported by Jakub on 2026-11-13: "the position marker does not move evenly, at moments it speeds up a lot; I'm not sure whether it keeps to the metronome." Sound from the iPad's built-in speaker.
 
 ## What a frame-by-frame measurement showed
 
@@ -34,11 +34,11 @@ The playhead moves without visible catch-up jumps, on 60 Hz and 120 Hz iPads, an
 
 ## Acceptance criteria
 
-- [ ] Practice tape position is computed for each frame's target presentation time.
-- [ ] No frame-rate cap; 120 Hz on ProMotion devices.
+- [x] Practice tape position is computed for each frame's target presentation time.
+- [x] No frame-rate cap; 120 Hz on ProMotion devices (maximum refresh requested; physical-device check pending).
 - [ ] Instruments numbers before/after in the notes; fewer views updated per frame.
-- [ ] DEBUG timing readout works; old TEMP console diagnostics removed.
-- [ ] Build and full test suite pass.
+- [ ] DEBUG timing readout works; old TEMP console diagnostics removed (implemented; manual overlay check pending).
+- [x] Build and full test suite pass.
 
 ### Manual iPad checks for Jakub
 
@@ -52,3 +52,13 @@ Codex GPT-6.1 Sol, thinking **high** (render timing and audio-clock alignment). 
 ## Done rule
 
 Build, run the full test suite per `AGENTS.md`, commit, stop for Jakub's iPad check.
+
+## Implementation notes — 2026-11-13
+
+- `PracticeDisplayClock` receives `CADisplayLink.targetTimestamp` from the actual window's display. It converts the target's offset from `CACurrentMediaTime()` to native audio host seconds using `AVAudioTime.seconds(forHostTime:)`. Late callbacks retain their target; there is no Date fallback or target clamping. The audio schedule, scoring, calibration, passes and start times are unchanged.
+- A single display link feeds separate leaf views for the band, run meter, timing cue and pass progress. The middle-zone layout, mix header, tempo label, tempo banner, toolbar, pad legend and buttons do not observe the per-frame sample. The After me label follows the session's repetition changes. The link requests the display's maximum refresh rate and is invalidated while stopped or off screen.
+- DEBUG Settings → Developer → Test scenarios → Timing → Timing readout shows the route, mixer output presentation latency, session output latency, buffer duration, callback refresh rate and late-frame count. Audio values refresh once per second. The counter resets on each run and counts callbacks that arrive after their target or follow a missed refresh; it is a callback diagnostic, not a measurement of compositor presentation. All former TEMP ticket 09 console logging and its call sites are deleted.
+- TDD: the new 60/120 Hz target-sequence test failed before the host-time sampling interface existed, then passed. It includes a late callback and a skipped refresh, and checks literal tape positions and the maximum elapsed-time advance. The existing tempo-transition test now samples both sides of the queued pass boundary before the scheduler crosses it; both selected tests passed.
+- Validation: Debug and Release simulator builds succeeded. The full Debug suite on iPad (A16), iOS 27.0 Simulator passed: **285 tests, 0 failures**. `xcodebuild` exited successfully; no log-finalization stall occurred.
+- Instruments before: **not measured**. Instruments after: **not measured**. The original Debug build succeeded and the SwiftUI / Animation Hitches templates are installed, but the iPad is offline and the computer-use interface cannot access Simulator. No comparable running-practice trace was obtained; the fewer-updates claim above describes observation boundaries in the code, not measured Instruments numbers. This acceptance criterion remains open. Capture matching runs with SwiftUI and Animation Hitches on the connected iPad before closing the ticket.
+- Manual iPad checks remain as listed above. Also verify Timing readout in the debug menu, stop/restart resets its counter, After me phase labels still alternate, and a ProMotion device reports 120 Hz when the system permits it. The camera measurement of audible click versus beat crossing is still pending; no synchronization result is claimed from a screen recording or simulator.

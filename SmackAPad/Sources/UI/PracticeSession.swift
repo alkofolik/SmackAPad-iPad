@@ -588,12 +588,10 @@ final class PracticeSession {
     }
     var position: Double { patternFrame.position }
 
-    /// Samples the tape for the frame SwiftUI is about to show, not for the moment
-    /// the view body happens to run. Even frame spacing keeps the tape motion smooth.
-    /// Never sample in the past: if a frame was delayed, drawing an outdated moment
-    /// causes the next frame to catch up and visibly speed up across the gap.
-    func patternFrame(at date: Date) -> PatternFrame {
-        tapeFrame(seconds: now + min(0.05, max(0, date.timeIntervalSinceNow)))
+    /// Samples the display's target presentation time in the audio schedule's host seconds.
+    /// Delivery delays never replace a frame's target with the callback or body time.
+    func patternFrame(atHostSeconds seconds: Double) -> PatternFrame {
+        tapeFrame(seconds: seconds)
     }
 
     func prepare() async {
@@ -755,7 +753,6 @@ final class PracticeSession {
                 self.errorMessage = self.settings.localized("Audio output changed. Run stopped, press Start to continue.")
                 self.stop(restarting: false, audioSessionChanged: true)
             }
-            audio.logTiming("practice-start")
             errorMessage = nil
             summary = nil
             lastResult = nil

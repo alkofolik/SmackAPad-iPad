@@ -21,6 +21,7 @@ struct DebugDeveloperSection: View {
 
 @MainActor
 struct DebugTestMenu: View {
+    @AppStorage("smackapad.debug.timingReadout") private var timingReadout = false
     private let store = DebugSnapshotStore.shared
     @State private var names: [String] = []
     @State private var name = ""
@@ -35,6 +36,14 @@ struct DebugTestMenu: View {
 
     var body: some View {
         Form {
+            Section {
+                Toggle(isOn: $timingReadout) {
+                    Text(verbatim: "Timing readout")
+                }
+            } header: {
+                Text(verbatim: "Timing")
+            }
+
             Section {
                 ForEach(DebugScenario.allCases) { scenario in
                     Button {

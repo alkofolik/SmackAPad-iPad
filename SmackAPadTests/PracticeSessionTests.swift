@@ -7,6 +7,51 @@ final class PracticeSessionTests: XCTestCase {
     override func setUp() { super.setUp(); StarStreak.forgetAll() }
 
     @MainActor
+    func testTapeSamplesFrameTargetsEvenWhenDeliveryIsLate() async throws {
+        let suite = "frame-targets-\(UUID().uuidString)"
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))
+        defer { defaults.removePersistentDomain(forName: suite) }
+        let settings = SettingsManager(userDefaults: defaults)
+        let file = FileManager.default.temporaryDirectory.appendingPathComponent("\(suite).json")
+        defer { try? FileManager.default.removeItem(at: file) }
+        let progress = ProgressStore(fileURL: file, autoLoad: false)
+        let midi = MIDIInput(settings: settings)
+        let lesson = Lesson(id: 40_208, cat: "test", title: "Display targets", genre: "", tags: [],
+                            text: "", division: 16, bars: 4, startBpm: 120, targetBpm: 120,
+                            level: 1, src: "test", hits: [])
+        var time = AVAudioTime.seconds(forHostTime: mach_absolute_time())
+        let session = PracticeSession(lesson: lesson, settings: settings, progress: progress, midi: midi,
+                                      clock: { time })
+        session.metronome = false
+        await session.prepare()
+        defer { session.close() }
+        XCTAssertTrue(session.ready, session.errorMessage ?? "Sound preparation failed")
+        time = AVAudioTime.seconds(forHostTime: mach_absolute_time())
+        let start = time + 2.6
+        session.start()
+        XCTAssertTrue(session.running)
+
+        for hz in [60.0, 120.0] {
+            // At 120 BPM the tape covers eight steps per second. The third
+            // callback arrives late; a skipped refresh follows before recovery.
+            let targets = [0.0, 1, 2, 4, 5, 6].map { start + 1 + $0 / hz }
+            let expected = hz == 60 ? [8.0, 8.133333333, 8.266666667, 8.533333333, 8.666666667, 8.8]
+                                    : [8.0, 8.066666667, 8.133333333, 8.266666667, 8.333333333, 8.4]
+            var previous: PatternFrame?
+            for index in targets.indices {
+                time = targets[index] + (index == 2 ? 0.030 : -1 / hz)
+                let frame = session.patternFrame(atHostSeconds: targets[index])
+                XCTAssertEqual(frame.tapePosition, expected[index], accuracy: 0.00001)
+                if let previous {
+                    XCTAssertLessThanOrEqual(frame.tapePosition - previous.tapePosition,
+                                             (targets[index] - targets[index - 1]) * 8 + 0.00001)
+                }
+                previous = frame
+            }
+        }
+    }
+
+    @MainActor
     func testSteadyEightyMillisecondsLateStaysVisibleWithoutChangingMatchingOrStars() async throws {
         let suite = "true-timing-error-\(UUID().uuidString)"
         let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))
@@ -356,6 +401,19 @@ final class PracticeSessionTests: XCTestCase {
         let passDuration = Double(repeats * lesson.bars) * 240.0 / Double(initialBpm)
         time = firstStart + passDuration - 0.4
         session.tick()
+
+        // Presentation targets straddle the queued tempo change while the
+        // scheduler clock is still before it: the new slope starts at 64 steps.
+        let boundary = firstStart + passDuration
+        let before = session.patternFrame(atHostSeconds: boundary - 0.001)
+        let crossing = session.patternFrame(atHostSeconds: boundary)
+        let after = session.patternFrame(atHostSeconds: boundary + 0.001)
+        XCTAssertEqual(before.tapePosition, 63.996, accuracy: 0.00001)
+        XCTAssertEqual(crossing.tapePosition, 64, accuracy: 0.00001)
+        XCTAssertEqual(after.tapePosition, 64 + Double(initialBpm + settings.bpmStepEnum.rawValue) / 15_000,
+                       accuracy: 0.00001)
+        XCTAssertEqual(before.bpm, initialBpm)
+        XCTAssertEqual(crossing.bpm, initialBpm + settings.bpmStepEnum.rawValue)
 
         // Advance to the exact boundary when Pass 2 starts
         time = firstStart + passDuration + 0.001

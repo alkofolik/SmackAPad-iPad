@@ -1,3 +1,4 @@
+import AVFoundation
 import SwiftUI
 
 @MainActor
@@ -13,6 +14,7 @@ struct PracticeScreen: View {
     @Environment(ProgressStore.self) private var progress
     @Environment(ProgressionManager.self) private var progression
     @Environment(StoreManager.self) private var store
+    @State private var displayClock = PracticeDisplayClock()
     @State private var session: PracticeSession
     @AppStorage("smackapad.practice.scrolling") private var scrolling = false
     @AppStorage("smackapad.practice.visibleBars") private var visibleBars = 4
@@ -130,6 +132,9 @@ struct PracticeScreen: View {
         #if DEBUG
         .debugTestMarker()
         #endif
+        .background(PracticeDisplayLinkHost(clock: displayClock))
+        .onAppear { displayClock.setRunning(session.running) }
+        .onChange(of: session.running) { _, running in displayClock.setRunning(running) }
         .toolbar(.hidden, for: .navigationBar)
         .task(id: ObjectIdentifier(session)) {
             await session.prepare()
@@ -142,6 +147,7 @@ struct PracticeScreen: View {
             }
         }
         .onDisappear {
+            displayClock.setRunning(false)
             session.close()
             reportStepResult()
         }
@@ -615,78 +621,92 @@ struct PracticeScreen: View {
     }
 
     private var middleZone: some View {
-        TimelineView(.animation(minimumInterval: 1.0 / 60, paused: !session.running)) { timeline in
-            let frame = session.patternFrame(at: timeline.date)
-            let scored = focusActive && frame.countdown == nil
-                && (!session.afterMe || frame.pass.isMultiple(of: 2))
-            let showingResult = isShowingResult
-            let passLineReserve: CGFloat = session.running ? 24 : 0
-            let showMixHeader = session.isMix && !focusActive && !showingResult
-            let mixHeaderReserve: CGFloat = showMixHeader ? 40 : 0
+        let showingResult = isShowingResult
+        let passLineReserve: CGFloat = session.running ? 24 : 0
+        let showMixHeader = session.isMix && !focusActive && !showingResult
+        let mixHeaderReserve: CGFloat = showMixHeader ? 40 : 0
 
-            VStack(spacing: Theme.Space.small) {
-                if focusActive || session.listen {
-                    practiceHUD(frame: frame, date: timeline.date, scored: scored)
-                        .fixedSize(horizontal: false, vertical: true)
-                        .transition(.opacity)
-                }
+        return VStack(spacing: Theme.Space.small) {
+            if focusActive || session.listen {
+                practiceHUD
+                    .fixedSize(horizontal: false, vertical: true)
+                    .transition(.opacity)
+            }
 
-                if session.afterMe && focusActive {
-                    Text(settings.localized(session.afterMePhase(at: frame)))
-                        .font(Theme.rowTitle)
-                        .lineLimit(1)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .allowsHitTesting(false)
-                }
+            if session.afterMe && focusActive {
+                Text(settings.localized(session.countdown == nil && session.currentRepetition.isMultiple(of: 2)
+                                        ? "Your turn" : "Listen…"))
+                    .font(Theme.rowTitle)
+                    .lineLimit(1)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .allowsHitTesting(false)
+            }
 
-                GeometryReader { geometry in
-                    let rows = Set(session.patternHits.map(\.padIndex)).count
-                    let bandAvailableHeight = max(0, geometry.size.height - passLineReserve - mixHeaderReserve)
-                    let bandHeight = min(bandAvailableHeight,
-                        PracticeBandStyle.bandHeight(rows: rows, availableHeight: bandAvailableHeight))
+            GeometryReader { geometry in
+                let rows = Set(session.patternHits.map(\.padIndex)).count
+                let bandAvailableHeight = max(0, geometry.size.height - passLineReserve - mixHeaderReserve)
+                let bandHeight = min(bandAvailableHeight,
+                    PracticeBandStyle.bandHeight(rows: rows, availableHeight: bandAvailableHeight))
 
-                    VStack(spacing: Theme.Space.controlGap) {
-                        if showMixHeader {
-                            mixStatusHeader
-                        }
+                VStack(spacing: Theme.Space.controlGap) {
+                    if showMixHeader {
+                        mixStatusHeader
+                    }
 
-                        practiceBand(frame: frame, scored: scored)
-                            .frame(height: bandHeight)
-                            .opacity(showingResult ? 0.55 : 1)
-                            .animation(focusFade, value: showingResult)
+                    PracticeDisplayFrame(clock: displayClock, session: session) { frame, _ in
+                        practiceBand(frame: frame, scored: isScored(frame))
+                    }
+                    .frame(height: bandHeight)
+                    .opacity(showingResult ? 0.55 : 1)
+                    .animation(focusFade, value: showingResult)
 
-                        if session.running {
+                    if session.running {
+                        PracticeDisplayFrame(clock: displayClock, session: session) { frame, date in
                             PassProgressBar(
                                 pass: frame.pass,
                                 position: frame.position,
                                 bars: session.practiceLesson.bars,
                                 active: session.running && frame.countdown == nil,
-                                date: timeline.date
+                                date: date
                             )
                         }
                     }
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
                 }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
         }
+        #if DEBUG
+        .overlay(alignment: .topTrailing) {
+            PracticeTimingReadout(clock: displayClock)
+        }
+        #endif
     }
 
-    private func practiceHUD(frame: PatternFrame, date: Date, scored: Bool) -> some View {
+    private func isScored(_ frame: PatternFrame) -> Bool {
+        focusActive && frame.countdown == nil && (!session.afterMe || frame.pass.isMultiple(of: 2))
+    }
+
+    private var practiceHUD: some View {
         VStack(spacing: Theme.Space.small) {
             ZStack {
                 tempoUpBanner
 
                 HStack(alignment: .center) {
-                    hudTempo(bpm: frame.bpm)
+                    hudTempo(bpm: session.bpm)
                     Spacer(minLength: 0)
-                    runMeter(frame: frame, scored: scored)
+                    PracticeDisplayFrame(clock: displayClock, session: session) { frame, _ in
+                        runMeter(frame: frame, scored: isScored(frame))
+                    }
                 }
             }
             .frame(maxWidth: .infinity)
 
             HStack {
                 Spacer(minLength: 0)
-                TimingCue(offset: scored ? session.timingHistory.cueOffset(at: date) : 0, active: scored)
+                PracticeDisplayFrame(clock: displayClock, session: session) { frame, date in
+                    let scored = isScored(frame)
+                    TimingCue(offset: scored ? session.timingHistory.cueOffset(at: date) : 0, active: scored)
+                }
             }
             .frame(maxWidth: .infinity)
         }
