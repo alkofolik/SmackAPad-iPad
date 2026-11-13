@@ -384,4 +384,57 @@ final class TodayPlanTests: XCTestCase {
             mixLessonIDs: [10]
         ))
     }
+
+    @MainActor
+    func testAfterLastMixLessonOutcomeRecordedTodayStateReportsMixDoneAndNextActionDaySummary() throws {
+        let suite = "today-mix-done-\(UUID().uuidString)"
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))
+        defer { defaults.removePersistentDomain(forName: suite) }
+        let today = AppCalendar.today()
+
+        let plan = TodayPlan(day: today, steps: [
+            .init(kind: .review, lessonIDs: [1], outcome: PracticeStepOutcome(bestScore: 0.9, reviewFeedback: .settled)),
+            .init(kind: .newLesson, lessonIDs: [2], outcome: PracticeStepOutcome(bestScore: 0.85)),
+            .init(kind: .mix, lessonIDs: [1, 2])
+        ], index: 2, finished: false, phase: .practice)
+
+        let coordinator = TodaySessionCoordinator(plan: plan, defaults: defaults)
+        // Record the last mix lesson's outcome
+        coordinator.record(PracticeStepOutcome(bestScore: 0.9))
+
+        // 1. In coordinator.plan, mix is done
+        let mixStep = try XCTUnwrap(coordinator.plan.steps.first(where: { $0.kind == .mix }))
+        XCTAssertEqual(mixStep.status, .passed)
+
+        // 2. Next action is day summary without any extra reload call
+        let target = TodayContinueTarget.resolve(
+            currentPlan: coordinator.plan,
+            today: today,
+            nextLessonID: nil,
+            mixLessonIDs: [1, 2]
+        )
+        if case .summary(let summaryPlan) = target {
+            XCTAssertTrue(summaryPlan.finished)
+        } else {
+            XCTFail("Expected next action to be day summary, but got: \(String(describing: target))")
+        }
+
+        // 3. Saved day state in defaults also reports mix done and summary
+        let savedJson = try XCTUnwrap(defaults.string(forKey: TodayPlan.storageKey))
+        let savedPlan = try XCTUnwrap(TodayPlan.decode(savedJson, today: today))
+        let savedMixStep = try XCTUnwrap(savedPlan.steps.first(where: { $0.kind == .mix }))
+        XCTAssertEqual(savedMixStep.status, .passed)
+
+        let savedTarget = TodayContinueTarget.resolve(
+            currentPlan: savedPlan,
+            today: today,
+            nextLessonID: nil,
+            mixLessonIDs: [1, 2]
+        )
+        if case .summary(let summaryPlan) = savedTarget {
+            XCTAssertTrue(summaryPlan.finished)
+        } else {
+            XCTFail("Expected saved plan next action to be day summary, but got: \(String(describing: savedTarget))")
+        }
+    }
 }

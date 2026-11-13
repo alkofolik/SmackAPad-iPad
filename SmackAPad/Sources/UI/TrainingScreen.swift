@@ -133,8 +133,11 @@ public struct TrainingScreen: View {
     private var today: String { calendarDay }
     private var dueLessons: [Lesson] { data?.dueLessons ?? [] }
     private var nextLesson: Lesson? { data?.nextLesson }
-    private var currentPlan: TodayPlan? { data?.currentPlan }
-    private var isPlanFinished: Bool { currentPlan?.finished == true }
+    private var currentPlan: TodayPlan? {
+        let basePlan = TodayPlan.decode(savedTodayPlan, today: today) ?? data?.currentPlan
+        return basePlan?.reconcilingReviews(with: progress.records)
+    }
+    private var isPlanFinished: Bool { currentPlan?.isFinished == true }
     private var reviewLoad: TodayPlan.ReviewLoad {
         TodayPlan.ReviewLoad(dueLessonIDs: dueLessons.map(\.id), plan: currentPlan)
     }
@@ -241,10 +244,16 @@ public struct TrainingScreen: View {
             .onReceive(NotificationCenter.default.publisher(for: .NSCalendarDayChanged)) { _ in
                 refreshCalendarDay()
             }
-            .fullScreenCover(item: $selectedAfterMeLesson) { lesson in
+            .fullScreenCover(item: $selectedAfterMeLesson, onDismiss: {
+                isVisible = true
+                refreshTrainingData()
+            }) { lesson in
                 PracticeLessonDestination(launch: .afterMe(lesson))
             }
-            .fullScreenCover(item: $mixPresentation) { mix in
+            .fullScreenCover(item: $mixPresentation, onDismiss: {
+                isVisible = true
+                refreshTrainingData()
+            }) { mix in
                 if mix.lessons.isEmpty {
                     EmptyCoverFallbackView(context: "TrainingScreen.mixPresentation") {
                         mixPresentation = nil
@@ -266,6 +275,7 @@ public struct TrainingScreen: View {
                 }
             }
             .fullScreenCover(item: $todayPresentation, onDismiss: {
+                isVisible = true
                 refreshTrainingData()
             }) { presentation in
                 let plan = presentation.target.plan
@@ -282,6 +292,7 @@ public struct TrainingScreen: View {
         .practiceLessonPresentation(launch: $selectedLesson, namespace: lessonNamespace)
         .onChange(of: selectedLesson?.id) { _, id in
             if id == nil {
+                isVisible = true
                 refreshTrainingData()
             }
         }
@@ -316,7 +327,7 @@ public struct TrainingScreen: View {
     }
 
     private var effectiveNextStep: TodayPlan.Step? {
-        guard let plan = currentPlan, !plan.finished else { return nil }
+        guard let plan = currentPlan, !plan.isFinished else { return nil }
         let candidates = plan.steps.dropFirst(plan.index)
         return candidates.first { step in
             if step.kind == .review, step.outcome?.hasDecidedReview == true { return false }
@@ -341,7 +352,7 @@ public struct TrainingScreen: View {
         let isEmptyFirstRun = data?.hasMasteredLesson != true
             && dueLessons.isEmpty
             && currentPlan?.steps.contains(where: { $0.outcome?.played == true }) != true
-            && currentPlan?.finished != true
+            && currentPlan?.isFinished != true
 
         VStack(alignment: .leading, spacing: 18) {
             Text(settings.localized("Today").uppercased(with: Locale(identifier: settings.languagePreference.rawValue)))

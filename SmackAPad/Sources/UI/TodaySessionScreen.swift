@@ -29,6 +29,10 @@ final class TodaySessionCoordinator {
         var result = plan.steps[plan.index].outcome ?? PracticeStepOutcome()
         result.include(outcome)
         plan.steps[plan.index].outcome = result
+        if plan.isFinished {
+            plan.finished = true
+            plan.phase = .summary
+        }
         save()
     }
 
@@ -37,7 +41,12 @@ final class TodaySessionCoordinator {
         plan = plan.reconcilingReviews(with: progress.records)
         if !plan.finished {
             movePastDecidedReviews()
-            if plan.index != previous.index { updatePhaseAfterAdvance() }
+            if plan.isFinished {
+                plan.finished = true
+                plan.phase = .summary
+            } else if plan.index != previous.index {
+                updatePhaseAfterAdvance()
+            }
         }
         if plan != previous { save() }
     }

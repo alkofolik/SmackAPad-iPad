@@ -39,6 +39,15 @@ struct TodayPlan: Codable, Equatable {
     var reviewCount: Int { steps.filter { $0.kind == .review }.count }
     var hasNewLesson: Bool { steps.contains { $0.kind == .newLesson } }
 
+    var isFinished: Bool {
+        if finished || steps.isEmpty || index >= steps.count { return true }
+        return !steps.dropFirst(index).contains { step in
+            if step.kind == .review, step.outcome?.hasDecidedReview == true { return false }
+            if step.outcome?.played == true { return false }
+            return true
+        }
+    }
+
     struct ReviewSummary: Equatable {
         var played = 0
         var passed = 0

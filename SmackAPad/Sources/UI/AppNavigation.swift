@@ -79,7 +79,7 @@ enum TodayContinueTarget: Equatable {
         mixLessonIDs: [Int]
     ) -> TodayContinueTarget? {
         if var plan = currentPlan {
-            if plan.finished || plan.steps.isEmpty || plan.index >= plan.steps.count {
+            if plan.isFinished {
                 plan.index = plan.steps.count
                 plan.finished = true
                 plan.phase = .summary
