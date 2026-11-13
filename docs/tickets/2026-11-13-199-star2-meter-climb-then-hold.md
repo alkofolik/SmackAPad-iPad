@@ -1,6 +1,6 @@
 # 199 — Star 2 meter: show the tempo climb first, the clean runs only at goal tempo
 
-Status: needs-triage. Design proposal shown to Jakub on 2026-11-13 (mockups "A" and "B" in that conversation); waiting for his OK. Do after 198 (same HUD area).
+Status: ready-for-agent. Design approved by Jakub on 2026-11-13 (mockups "A" and "B" in that conversation). Do after 198 (same HUD area).
 
 ## Goal
 

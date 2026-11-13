@@ -1,6 +1,6 @@
 # 198 — Practice HUD: short tempo-up sign in the centre, timing cue next to the band
 
-Status: needs-triage. Design proposal shown to Jakub on 2026-11-13 (mockups "A" and "B" in that conversation); waiting for his OK.
+Status: ready-for-agent. Design approved by Jakub on 2026-11-13 (mockups "A" and "B" in that conversation).
 
 ## Goal
 

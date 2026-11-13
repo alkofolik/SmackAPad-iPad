@@ -1,6 +1,6 @@
 # 197 — Result card: calm layout without overlapping chips
 
-Status: needs-triage. Design proposal shown to Jakub on 2026-11-13 (mockup "C" in that conversation); waiting for his OK.
+Status: ready-for-agent. Design approved by Jakub on 2026-11-13 (mockup "C" in that conversation).
 
 ## Goal
 
