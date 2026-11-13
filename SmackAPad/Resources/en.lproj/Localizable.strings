@@ -325,7 +325,12 @@
 "Goal" = "Goal";
 "Watch for" = "Watch for";
 "Fingers" = "Fingers";
-"1 = thumb … 5 = little finger" = "1 = thumb … 5 = little finger";
+"Thumb (1)" = "Thumb (1)";
+"Index finger (2)" = "Index finger (2)";
+"Middle finger (3)" = "Middle finger (3)";
+"Ring finger (4)" = "Ring finger (4)";
+"Little finger (5)" = "Little finger (5)";
+"BPM, start to goal" = "BPM, start to goal";
 "left hand" = "left hand";
 "right hand" = "right hand";
 "finger %lld" = "finger %lld";
@@ -436,7 +441,12 @@
 /* Practice screen round 6 */
 "Memory ★3" = "Memory ★3";
 "Band colour" = "Band colour";
-"The band gets deeper as the tempo nears the goal. A glow on the right edge: you are rushing; on the left: you are dragging." = "The band gets deeper as the tempo nears the goal. A glow on the right edge: you are rushing; on the left: you are dragging.";
+"Pads in this lesson" = "Pads in this lesson";
+"Hands" = "Hands";
+"Deeper colour = closer to the goal tempo." = "Deeper colour = closer to the goal tempo.";
+"Timing glow" = "Timing glow";
+"Left edge: dragging" = "Left edge: dragging";
+"Right edge: rushing" = "Right edge: rushing";
 
 "%lld of 3 stars" = "%lld of 3 stars";
 "Detail" = "Detail";

@@ -1,6 +1,6 @@
 # 196 — Practice: new look for the Lesson info and Pad legend popovers
 
-Status: ready-for-agent. Design agreed with Jakub on 2026-11-13 (mockup in that conversation, described below).
+Status: ready-for-review. Completed on 2026-11-13.
 
 ## Goal
 
@@ -40,11 +40,11 @@ None (layout only). If a localization test lists removed keys (for example the "
 
 ## Acceptance criteria
 
-- [ ] Neither popover has a back button, a title row or divider lines.
-- [ ] Lesson info shows the three figures, the goal as the largest text, How to play and Fingers with "L3"-style marks.
-- [ ] Pad legend shows the blocks as on the band, filled = left and outlined = right, three distinct band colours and the timing glow strip.
-- [ ] Nothing is cut off in either popover, in English and Czech, for a lesson with one pad and one with many pads.
-- [ ] Build and full test suite pass.
+- [x] Neither popover has a back button, a title row or divider lines.
+- [x] Lesson info shows the three figures, the goal as the largest text, How to play and Fingers with "L3"-style marks.
+- [x] Pad legend shows the blocks as on the band, filled = left and outlined = right, three distinct band colours and the timing glow strip.
+- [x] Nothing is cut off in either popover, in English and Czech, for a lesson with one pad and one with many pads.
+- [x] Build and full test suite pass.
 
 ### Manual iPad checks for Jakub
 

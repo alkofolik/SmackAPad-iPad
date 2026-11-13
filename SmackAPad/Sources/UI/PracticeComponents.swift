@@ -29,24 +29,26 @@ struct PadFlash: Equatable {
     func strength(at now: Date) -> Double { max(0, 1 - now.timeIntervalSince(date) / 0.4) }
 }
 
-/// Hand colours never change with the page appearance.
+/// Hand colours never change with the page appearance: filled black = left, outlined white = right.
 struct PatternBlock: View {
     let abbreviation: String
     let hand: String
     var outlined = false
+    var size: CGFloat = 44
 
     var body: some View {
+        let isRight = hand.uppercased() == "R"
         Text(abbreviation)
-            .font(Theme.display(32))
-            .foregroundStyle(hand == "R" ? Theme.black : Theme.white)
-            .frame(minWidth: Theme.Size.touch, minHeight: Theme.Size.touch)
-            .background(hand == "R" ? Theme.white : Theme.black,
-                        in: Rectangle())
+            .font(Theme.canvasDisplay(max(14, size * 0.44)))
+            .foregroundStyle(isRight ? Theme.black : Theme.white)
+            .frame(width: size, height: size)
+            .background(isRight ? Theme.white : Theme.black,
+                        in: RoundedRectangle(cornerRadius: 6))
             .overlay {
-                Rectangle()
-                    .stroke(hand == "R" ? Theme.black : Theme.white,
-                            lineWidth: outlined ? Theme.Size.border : 0)
-                    .padding(-Theme.Space.tight)
+                if isRight || outlined {
+                    RoundedRectangle(cornerRadius: 6)
+                        .strokeBorder(Theme.black, lineWidth: 1.5)
+                }
             }
     }
 }

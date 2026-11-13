@@ -323,7 +323,12 @@
 "Goal" = "Cíl";
 "Watch for" = "Dávej pozor na";
 "Fingers" = "Prsty";
-"1 = thumb … 5 = little finger" = "1 = palec … 5 = malíček";
+"Thumb (1)" = "Palec (1)";
+"Index finger (2)" = "Ukazovák (2)";
+"Middle finger (3)" = "Prostředník (3)";
+"Ring finger (4)" = "Prsteník (4)";
+"Little finger (5)" = "Malíček (5)";
+"BPM, start to goal" = "BPM, od začátku po cíl";
 "left hand" = "levá ruka";
 "right hand" = "pravá ruka";
 "finger %lld" = "prst %lld";
@@ -434,7 +439,12 @@
 /* Practice screen round 6 */
 "Memory ★3" = "Zpaměti ★3";
 "Band colour" = "Barva pásu";
-"The band gets deeper as the tempo nears the goal. A glow on the right edge: you are rushing; on the left: you are dragging." = "Čím blíž cílovému tempu, tím sytější pás. Záře u pravého okraje: spěcháš, u levého: zpožďuješ se.";
+"Pads in this lesson" = "Pady v této lekci";
+"Hands" = "Ruce";
+"Deeper colour = closer to the goal tempo." = "Sytější barva = blíže k cílovému tempu.";
+"Timing glow" = "Záře časování";
+"Left edge: dragging" = "Levý okraj: zpožďování";
+"Right edge: rushing" = "Pravý okraj: spěchání";
 
 "%lld of 3 stars" = "%lld ze 3 hvězd";
 "Detail" = "Detail";
@@ -2602,7 +2612,7 @@
 "Intervals between anchors" = "Intervaly mezi kotvami";
 "Count in" = "Počítat v";
 "Beats" = "Dobách";
-"Bars" = "Taktech";
+"Bars" = "Takty";
 "Anchor A is the first beat" = "Kotva A je první doba";
 "Calculate tempo" = "Spočítat tempo";
 "Undo tempo change" = "Vrátit změnu tempa";

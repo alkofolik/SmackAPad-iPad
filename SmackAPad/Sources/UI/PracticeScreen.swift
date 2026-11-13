@@ -104,7 +104,7 @@ struct PracticeScreen: View {
 
             VStack(spacing: Theme.Space.regular) {
                 if !focusActive {
-                    topZone(isPortrait: isPortrait, width: geometry.size.width)
+                    topZone(isPortrait: isPortrait, width: geometry.size.width, screenHeight: geometry.size.height)
                         .fixedSize(horizontal: false, vertical: true)
                         .zIndex(20)
                         .transition(.opacity)
@@ -237,7 +237,7 @@ struct PracticeScreen: View {
         onStepResult?(outcome)
     }
 
-    private func topZone(isPortrait: Bool, width: CGFloat) -> some View {
+    private func topZone(isPortrait: Bool, width: CGFloat, screenHeight: CGFloat) -> some View {
         let stacked = isPortrait || width < 960 || dynamicType.isAccessibilitySize
 
         return Group {
@@ -256,7 +256,7 @@ struct PracticeScreen: View {
                     FlowLayout(spacing: 20) {
                         modeGroup
                         patternGroup
-                        infoGroup(windowWidth: width)
+                        infoGroup(windowWidth: width, screenHeight: screenHeight)
                         settingsButton
                     }
                 }
@@ -266,7 +266,7 @@ struct PracticeScreen: View {
                     titleAndSubtitle
                     modeGroup
                     patternGroup
-                    infoGroup(windowWidth: width)
+                    infoGroup(windowWidth: width, screenHeight: screenHeight)
                     settingsButton
                 }
             }
@@ -465,7 +465,7 @@ struct PracticeScreen: View {
         .accessibilityLabel(settings.localized("Pattern view"))
     }
 
-    private func infoGroup(windowWidth: CGFloat) -> some View {
+    private func infoGroup(windowWidth: CGFloat, screenHeight: CGFloat) -> some View {
         HStack(spacing: 8) {
             PracticeIconButton(
                 symbol: "info.circle",
@@ -478,7 +478,7 @@ struct PracticeScreen: View {
                 closeToolbarPopovers(except: .info)
                 showingInfo.toggle()
             }
-            .popover(isPresented: $showingInfo, arrowEdge: .top) { lessonInfo }
+            .popover(isPresented: $showingInfo, arrowEdge: .top) { lessonInfo(screenHeight: screenHeight) }
 
             PracticeIconButton(
                 icon: .padLegend,
@@ -491,7 +491,7 @@ struct PracticeScreen: View {
                 showingLegend.toggle()
             }
             .popover(isPresented: $showingLegend, arrowEdge: .top) {
-                legend.onAppear {
+                legend(screenHeight: screenHeight).onAppear {
                     if showingLegend && helpPresentation == nil && !showingInfo
                         && !session.running && session.countdown == nil && !session.patternHits.isEmpty {
                         legendShownOnce = true
@@ -1241,39 +1241,6 @@ struct PracticeScreen: View {
         )
     }
 
-    private var handLegend: some View {
-        HStack(spacing: Theme.Space.regular) {
-            HStack(spacing: Theme.Space.small) {
-                Rectangle().fill(Theme.black).frame(width: 12, height: 20)
-                    .overlay(Rectangle().stroke(Theme.white, lineWidth: 1))
-                Text(settings.localized("left"))
-            }
-            HStack(spacing: Theme.Space.small) {
-                Rectangle().fill(Theme.white).frame(width: 12, height: 20)
-                    .overlay(Rectangle().stroke(Theme.black, lineWidth: 1))
-                Text(settings.localized("right"))
-            }
-        }
-        .font(Theme.control)
-    }
-
-    private var bandLegend: some View {
-        VStack(alignment: .leading, spacing: Theme.Space.small) {
-            Text(settings.localized("Band colour")).font(Theme.control)
-            ForEach(["Listen", "Play", "From memory"], id: \.self) { name in
-                HStack(spacing: Theme.Space.small) {
-                    Rectangle().fill(BandTone.color(listen: name == "Listen", memory: name == "From memory",
-                                                    bpm: 1, startBpm: 0, targetBpm: 1))
-                        .frame(width: 28, height: 20)
-                    Text(settings.localized(name)).font(Theme.meta)
-                }
-            }
-            Text(settings.localized("The band gets deeper as the tempo nears the goal. A glow on the right edge: you are rushing; on the left: you are dragging."))
-                .font(Theme.meta).foregroundStyle(Theme.secondary)
-                .fixedSize(horizontal: false, vertical: true)
-        }
-    }
-
     private var tempoControls: some View {
         VStack(alignment: .leading, spacing: Theme.Space.regular) {
             HStack(spacing: Theme.Space.regular) {
@@ -1496,76 +1463,223 @@ struct PracticeScreen: View {
         showingLegend = true
     }
 
-    private var legend: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: Theme.Space.regular) {
-                HStack(spacing: Theme.Space.regular) {
-                    BackButton { showingLegend = false }
-                    Text(settings.localized("Pad legend")).font(Theme.sectionTitle)
-                    Spacer()
-                }
-                ForEach(Array(Set(session.patternHits.map { "\($0.padIndex):\($0.hand)" })).sorted(), id: \.self) { key in
-                    let parts = key.split(separator: ":")
-                    let pad = Int(parts[0]) ?? 0
-                    let hand = String(parts[1])
-                    HStack(spacing: Theme.Space.regular) {
-                        PatternBlock(abbreviation: PadVoice.abbreviation(pad), hand: hand)
-                            .overlay(Rectangle().stroke(Theme.ink, lineWidth: 1))
-                        Text("\(PadVoice.name(pad, settings: settings)) · \(settings.localized(hand == "R" ? "right" : "left"))")
-                            .font(Theme.control)
-                    }
-                }
-                handLegend
-                bandLegend
+    private func popoverBlock<Content: View>(
+        title: String? = nil,
+        @ViewBuilder content: () -> Content
+    ) -> some View {
+        VStack(alignment: .leading, spacing: Theme.Space.small) {
+            if let title {
+                Text(Theme.sentenceCase(settings.localized(title)))
+                    .font(Theme.display(14))
+                    .foregroundStyle(Theme.secondary)
             }
-            .padding(Theme.Space.page)
+            content()
         }
-        .frame(width: 420, height: min(620, CGFloat(Set(session.patternHits.map { "\($0.padIndex):\($0.hand)" }).count) * 64 + 320))
-        .foregroundStyle(Theme.ink).background(Theme.background)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(Theme.Space.regular)
+        .background(Theme.surface, in: RoundedRectangle(cornerRadius: 14))
     }
 
-    private var lessonInfo: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: Theme.Space.page) {
-                HStack(spacing: Theme.Space.regular) {
-                    BackButton { showingInfo = false }
-                    Text(settings.localized("Lesson info")).font(Theme.sectionTitle)
-                    Spacer()
-                }
+    private func fingerName(_ finger: Int) -> String {
+        switch finger {
+        case 1: return settings.localized("Thumb (1)")
+        case 2: return settings.localized("Index finger (2)")
+        case 3: return settings.localized("Middle finger (3)")
+        case 4: return settings.localized("Ring finger (4)")
+        case 5: return settings.localized("Little finger (5)")
+        default: return settings.localized("finger %lld", finger)
+        }
+    }
 
-                VStack(alignment: .leading, spacing: Theme.Space.tight) {
-                    Text(settings.localized(session.lesson.title))
-                        .font(Theme.rowTitle)
-                    let barsText = session.lesson.bars == 1
-                        ? settings.localized("1 bar")
-                        : settings.localized("%lld bars", session.lesson.bars)
-                    Text("\(Theme.sentenceCase(settings.localized("Level"))) \(session.lesson.level) · \(barsText) · \(session.lesson.startBpm) → \(session.lesson.targetBpm) BPM")
-                        .font(Theme.meta)
-                        .foregroundStyle(Theme.secondary)
-                }
+    private func legend(screenHeight: CGFloat) -> some View {
+        PopoverHeightContainer(maxHeight: max(200, screenHeight - 100)) {
+            VStack(alignment: .leading, spacing: Theme.Space.small) {
+                popoverBlock(title: "Pads in this lesson") {
+                    VStack(spacing: Theme.Space.small) {
+                        let usedPairs = Array(Set(session.patternHits.map { "\($0.padIndex):\($0.hand)" })).sorted()
+                        ForEach(usedPairs, id: \.self) { key in
+                            let parts = key.split(separator: ":")
+                            let pad = Int(parts[0]) ?? 0
+                            let hand = String(parts[1])
+                            let padName = PadVoice.name(pad, settings: settings)
+                            let handName = hand == "R" ? settings.localized("Right hand") : settings.localized("Left hand")
 
-                infoBlock("Goal") {
-                    if let goal = session.lesson.intro?.goal, !goal.isEmpty {
-                        infoParagraphs(settings.localized(goal))
-                    } else {
-                        infoParagraphs(settings.localized("Play a steady groove at %lld BPM.", session.lesson.targetBpm))
+                            HStack(spacing: Theme.Space.regular) {
+                                PatternBlock(abbreviation: PadVoice.abbreviation(pad), hand: hand)
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text(padName)
+                                        .font(Theme.control)
+                                        .foregroundStyle(Theme.ink)
+                                    Text(handName)
+                                        .font(Theme.meta)
+                                        .foregroundStyle(Theme.secondary)
+                                }
+                                Spacer()
+                            }
+                        }
                     }
                 }
 
-                infoBlock("How to play") {
-                    if !session.lesson.text.isEmpty {
-                        infoParagraphs(localizedInstructions(session.lesson.text))
-                    } else {
-                        infoParagraphs(settings.localized("Follow the pattern and keep the left and right hands steady."))
+                popoverBlock(title: "Hands") {
+                    HStack(spacing: Theme.Space.wide) {
+                        HStack(spacing: Theme.Space.small) {
+                            RoundedRectangle(cornerRadius: 6)
+                                .fill(Theme.black)
+                                .frame(width: 32, height: 32)
+                            Text(settings.localized("Left hand"))
+                                .font(Theme.control)
+                                .foregroundStyle(Theme.ink)
+                        }
+                        HStack(spacing: Theme.Space.small) {
+                            RoundedRectangle(cornerRadius: 6)
+                                .fill(Theme.white)
+                                .overlay(RoundedRectangle(cornerRadius: 6).strokeBorder(Theme.black, lineWidth: 1.5))
+                                .frame(width: 32, height: 32)
+                            Text(settings.localized("Right hand"))
+                                .font(Theme.control)
+                                .foregroundStyle(Theme.ink)
+                        }
                     }
-                    if let intro = session.lesson.intro {
-                        let fingersDict = (midi.activeProfile.padCount == 8 ? intro.fingers8 : intro.fingers16) ?? intro.fingers16 ?? intro.fingers8
-                        if let fingersDict, !fingersDict.isEmpty {
-                            VStack(alignment: .leading, spacing: Theme.Space.small) {
-                                Text(settings.localized("Fingers")).font(Theme.rowTitle)
-                                Text(settings.localized("1 = thumb … 5 = little finger"))
-                                    .font(Theme.meta)
-                                    .foregroundStyle(Theme.secondary)
+                }
+
+                popoverBlock(title: "Band colour") {
+                    VStack(alignment: .leading, spacing: Theme.Space.small) {
+                        HStack(spacing: Theme.Space.small) {
+                            let modes: [(String, Color)] = [
+                                ("Listen", BandTone.color(listen: true, memory: false, bpm: 0, startBpm: 0, targetBpm: 1)),
+                                ("Play", BandTone.color(listen: false, memory: false, bpm: 1, startBpm: 0, targetBpm: 2)),
+                                ("From memory", BandTone.color(listen: false, memory: true, bpm: 1, startBpm: 0, targetBpm: 1))
+                            ]
+                            ForEach(modes, id: \.0) { name, color in
+                                VStack(alignment: .leading, spacing: 4) {
+                                    RoundedRectangle(cornerRadius: 6)
+                                        .fill(color)
+                                        .frame(height: 32)
+                                    Text(settings.localized(name))
+                                        .font(Theme.meta)
+                                        .foregroundStyle(Theme.ink)
+                                        .lineLimit(1)
+                                        .minimumScaleFactor(0.8)
+                                }
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                            }
+                        }
+                        Text(settings.localized("Deeper colour = closer to the goal tempo."))
+                            .font(Theme.meta)
+                            .foregroundStyle(Theme.secondary)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                }
+
+                popoverBlock(title: "Timing glow") {
+                    VStack(alignment: .leading, spacing: Theme.Space.small) {
+                        ZStack {
+                            RoundedRectangle(cornerRadius: 6)
+                                .fill(PracticeBandStyle.orange)
+
+                            HStack {
+                                LinearGradient(
+                                    colors: [Theme.white.opacity(0.95), Theme.white.opacity(0)],
+                                    startPoint: .leading,
+                                    endPoint: .trailing
+                                )
+                                .frame(width: 48)
+                                Spacer()
+                                LinearGradient(
+                                    colors: [Theme.white.opacity(0), Theme.white.opacity(0.95)],
+                                    startPoint: .leading,
+                                    endPoint: .trailing
+                                )
+                                .frame(width: 48)
+                            }
+                            .clipShape(RoundedRectangle(cornerRadius: 6))
+                        }
+                        .frame(height: 36)
+
+                        HStack {
+                            Text(settings.localized("Left edge: dragging"))
+                                .font(Theme.meta)
+                                .foregroundStyle(Theme.secondary)
+                            Spacer()
+                            Text(settings.localized("Right edge: rushing"))
+                                .font(Theme.meta)
+                                .foregroundStyle(Theme.secondary)
+                        }
+                    }
+                }
+            }
+            .padding(Theme.Space.regular)
+        }
+    }
+
+    private func lessonInfo(screenHeight: CGFloat) -> some View {
+        PopoverHeightContainer(maxHeight: max(200, screenHeight - 100)) {
+            VStack(alignment: .leading, spacing: Theme.Space.small) {
+                popoverBlock {
+                    HStack(alignment: .top) {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("\(session.lesson.level)")
+                                .font(Theme.padTitle(size: 34))
+                                .foregroundStyle(Theme.ink)
+                            Text(settings.localized("Level"))
+                                .font(Theme.display(13))
+                                .foregroundStyle(Theme.secondary)
+                        }
+                        Spacer()
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("\(session.lesson.bars)")
+                                .font(Theme.padTitle(size: 34))
+                                .foregroundStyle(Theme.ink)
+                            Text(session.lesson.bars == 1 ? settings.localized("Bar") : settings.localized("Bars"))
+                                .font(Theme.display(13))
+                                .foregroundStyle(Theme.secondary)
+                        }
+                        Spacer()
+                        VStack(alignment: .leading, spacing: 2) {
+                            HStack(spacing: 4) {
+                                Text("\(session.lesson.startBpm)")
+                                Text("→").foregroundStyle(Theme.orange)
+                                Text("\(session.lesson.targetBpm)")
+                            }
+                            .font(Theme.padTitle(size: 34))
+                            .foregroundStyle(Theme.ink)
+                            Text(settings.localized("BPM, start to goal"))
+                                .font(Theme.display(13))
+                                .foregroundStyle(Theme.secondary)
+                        }
+                    }
+                    .frame(maxWidth: .infinity)
+                }
+
+                popoverBlock {
+                    VStack(alignment: .leading, spacing: Theme.Space.tight) {
+                        let goalText = (session.lesson.intro?.goal).flatMap { $0.isEmpty ? nil : $0 }
+                            .map { settings.localized($0) }
+                            ?? settings.localized("Play a steady groove at %lld BPM.", session.lesson.targetBpm)
+                        Text(goalText)
+                            .font(Theme.display(20))
+                            .foregroundStyle(Theme.ink)
+                            .fixedSize(horizontal: false, vertical: true)
+                        Text(settings.localized("Goal"))
+                            .font(Theme.display(13))
+                            .foregroundStyle(Theme.secondary)
+                    }
+                }
+
+                popoverBlock(title: "How to play") {
+                    let instructions = !session.lesson.text.isEmpty
+                        ? localizedInstructions(session.lesson.text)
+                        : settings.localized("Follow the pattern and keep the left and right hands steady.")
+                    infoParagraphs(instructions)
+                }
+
+                if let intro = session.lesson.intro {
+                    let fingersDict = (midi.activeProfile.padCount == 8 ? intro.fingers8 : intro.fingers16)
+                        ?? intro.fingers16
+                        ?? intro.fingers8
+                    if let fingersDict, !fingersDict.isEmpty {
+                        popoverBlock(title: "Fingers") {
+                            VStack(spacing: Theme.Space.small) {
                                 let sortedKeys = fingersDict.keys.sorted { a, b in
                                     let padA = Int(a.split(separator: ":").first ?? "") ?? 0
                                     let padB = Int(b.split(separator: ":").first ?? "") ?? 0
@@ -1580,74 +1694,30 @@ struct PracticeScreen: View {
                                     let hand = parts.count > 1 ? String(parts[1]) : "L"
                                     let finger = fingersDict[key] ?? 1
                                     let padName = PadVoice.name(pad, settings: settings)
-                                    let padLabel = "\(padName) \(hand)"
-                                    let handLabel = hand == "L" ? settings.localized("left hand") : settings.localized("right hand")
-                                    let fingerLabel = settings.localized("finger %lld", finger)
+                                    let handName = hand == "R" ? settings.localized("right hand") : settings.localized("left hand")
+
                                     HStack(spacing: Theme.Space.regular) {
                                         PatternBlock(abbreviation: PadVoice.abbreviation(pad), hand: hand)
-                                            .overlay(Rectangle().stroke(Theme.ink, lineWidth: 1))
-                                        Text("\(padLabel) · \(handLabel) · \(fingerLabel)")
-                                            .font(Theme.control)
+                                        VStack(alignment: .leading, spacing: 2) {
+                                            Text("\(padName), \(handName)")
+                                                .font(Theme.control)
+                                                .foregroundStyle(Theme.ink)
+                                            Text(fingerName(finger))
+                                                .font(Theme.meta)
+                                                .foregroundStyle(Theme.secondary)
+                                        }
+                                        Spacer()
+                                        Text("\(hand)\(finger)")
+                                            .font(Theme.padTitle(size: 28))
+                                            .foregroundStyle(Theme.secondary)
                                     }
                                 }
                             }
                         }
                     }
                 }
-
-                infoBlock("Tips") {
-                    if let watch = session.lesson.intro?.watch, !watch.isEmpty {
-                        infoParagraphs(settings.localized(watch))
-                    }
-                    infoParagraphs(settings.localized("Listen to the pattern first. Start slowly, then work towards the goal tempo."))
-                }
-
-                infoBlock("Stars") {
-                    ForEach(0..<3, id: \.self) { index in
-                        let earned = isStarEarned(index)
-                        let reqText = StarRequirement.requirementText(
-                            for: index,
-                            lesson: session.lesson,
-                            progress: session.savedProgress,
-                            padCount: midi.activeProfile.padCount,
-                            settings: settings
-                        )
-                        HStack(alignment: .top, spacing: Theme.Space.small) {
-                            StarShape()
-                                .fill(earned ? Theme.ink : Theme.background)
-                                .overlay(StarShape().stroke(Theme.ink, lineWidth: Theme.Size.border))
-                                .frame(width: 20, height: 20)
-                                .accessibilityLabel(settings.localized(earned ? "earned" : "not earned"))
-                            Text(reqText)
-                                .font(Theme.control)
-                                .foregroundStyle(earned ? Theme.ink : Theme.secondary)
-                        }
-                    }
-                }
-
-                if !session.lesson.src.isEmpty {
-                    Text(settings.localized("Source: %@", session.lesson.src))
-                        .font(Theme.meta)
-                        .foregroundStyle(Theme.secondary)
-                }
             }
-            .padding(Theme.Space.page)
-        }
-        .frame(width: 480, height: 580)
-        .foregroundStyle(Theme.ink)
-        .background(Theme.background)
-    }
-
-    private func infoBlock<Content: View>(_ title: String, @ViewBuilder content: () -> Content) -> some View {
-        VStack(alignment: .leading, spacing: Theme.Space.regular) {
-            Text(settings.localized(title)).font(Theme.rowTitle)
-                .accessibilityAddTraits(.isHeader)
-            content()
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(.top, Theme.Space.regular)
-        .overlay(alignment: .top) {
-            Rectangle().fill(Theme.hairline).frame(height: 1)
+            .padding(Theme.Space.regular)
         }
     }
 
@@ -1848,5 +1918,39 @@ enum ResultNextTarget: Equatable {
             return .lesson(nextPathLesson)
         }
         return .hidden
+    }
+}
+
+private struct PopoverContentHeightKey: PreferenceKey {
+    static var defaultValue: CGFloat = 0
+    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
+        value = max(value, nextValue())
+    }
+}
+
+private struct PopoverHeightContainer<Content: View>: View {
+    let maxHeight: CGFloat
+    @ViewBuilder let content: () -> Content
+    @State private var measuredHeight: CGFloat = 0
+
+    var body: some View {
+        ScrollView {
+            content()
+                .background(
+                    GeometryReader { geo in
+                        Color.clear.preference(
+                            key: PopoverContentHeightKey.self,
+                            value: geo.size.height
+                        )
+                    }
+                )
+        }
+        .onPreferenceChange(PopoverContentHeightKey.self) { height in
+            measuredHeight = height
+        }
+        .frame(width: 420)
+        .frame(height: measuredHeight > 0 ? min(measuredHeight, maxHeight) : nil)
+        .foregroundStyle(Theme.ink)
+        .background(Theme.background)
     }
 }
