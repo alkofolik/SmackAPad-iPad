@@ -8,22 +8,13 @@ struct MIDISettingsView: View {
     }
 }
 
-enum PhysicalPadGrid {
-    static let columns = 4
-
-    /// Top-to-bottom display of zero-based hardware slots, numbered from the bottom row.
-    static func displaySlots(padCount: Int) -> [Int] {
-        stride(from: padCount - columns, through: 0, by: -columns)
-            .flatMap { rowStart in rowStart..<(rowStart + columns) }
-    }
-}
-
 @MainActor
 struct MIDILearnView: View {
     @Environment(SettingsManager.self) private var settings
     @Environment(MIDIInput.self) private var midi
     @Environment(\.dismiss) private var dismiss
     @State private var padCount = 16
+    @State private var grid = PhysicalPadGrid.defaultArrangement(padCount: 16)
     @State private var profileName = ""
 
     private var trimmedName: String { profileName.trimmingCharacters(in: .whitespacesAndNewlines) }
@@ -38,6 +29,12 @@ struct MIDILearnView: View {
                             .font(Theme.control)
                         PlexSegmentedPicker(title: settings.localized("Pad count"), selection: $padCount,
                             options: [(8, settings.localized("8 pads")), (16, settings.localized("16 pads"))])
+                        .disabled(midi.isLearning)
+                        Picker(settings.localized("Arrangement"), selection: $grid) {
+                            ForEach(PhysicalPadGrid.arrangements(padCount: padCount), id: \.self) { arrangement in
+                                Text("\(arrangement.rows) × \(arrangement.columns)").tag(arrangement)
+                            }
+                        }
                         .disabled(midi.isLearning)
 
                         if nameExists {
@@ -61,8 +58,8 @@ struct MIDILearnView: View {
                                     .font(Theme.meta)
                             }
 
-                            LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: Theme.Space.small), count: PhysicalPadGrid.columns), spacing: Theme.Space.small) {
-                                ForEach(PhysicalPadGrid.displaySlots(padCount: padCount), id: \.self) { slot in
+                            LazyVGrid(columns: Array(repeating: GridItem(.flexible(minimum: Theme.Size.touch), spacing: Theme.Space.small), count: grid.columns), spacing: Theme.Space.small) {
+                                ForEach(grid.displaySlots, id: \.self) { slot in
                                     VStack(spacing: Theme.Space.small) {
                                         Text(settings.localized("Pad %lld", slot + 1))
                                             .font(Theme.control)
@@ -105,7 +102,7 @@ struct MIDILearnView: View {
                             }
 
                             Button {
-                                midi.startLearning(padCount: padCount)
+                                midi.startLearning(padCount: padCount, grid: grid)
                             } label: {
                                 Text(settings.localized("Start again"))
                                     .font(Theme.control)
@@ -114,7 +111,7 @@ struct MIDILearnView: View {
                             .buttonStyle(PadSecondaryButtonStyle())
                         } else {
                             Button {
-                                midi.startLearning(padCount: padCount)
+                                midi.startLearning(padCount: padCount, grid: grid)
                             } label: {
                                 Text(settings.localized("Start MIDI learn"))
                                     .font(Theme.control)
@@ -132,7 +129,7 @@ struct MIDILearnView: View {
                     } header: {
                         SectionHeader(title: settings.localized("MIDI learn"))
                     } footer: {
-                        Text(settings.localized("Press each physical pad once, left to right, starting with the top row. Use the same controller and MIDI channel throughout. In 8-pad mode, positions are slots 1–8; sounds follow the lesson."))
+                        Text(settings.localized("Press each physical pad once, left to right, starting with the bottom row. Use the same controller and MIDI channel throughout. In 8-pad mode, positions are slots 1–8; sounds follow the lesson."))
                             .font(Theme.meta)
                             .foregroundStyle(Theme.secondary)
                     }
@@ -143,6 +140,7 @@ struct MIDILearnView: View {
             }
             .appFormStyle()
             .motion(value: padCount)
+            .onChange(of: padCount) { _, count in grid = .defaultArrangement(padCount: count) }
             .motion(value: nameExists)
             .motion(value: midi.isLearning)
             .navigationTitle(settings.localized("MIDI learn"))

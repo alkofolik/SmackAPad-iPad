@@ -763,9 +763,7 @@ public struct PadLayoutModel: Equatable {
     public init(pads: [Int], used: Set<Int>, canShowKeys: Bool, settings: SettingsManager? = nil) {
         self.pads = pads
         self.canShowKeys = canShowKeys
-        // Eight-pad mappings use hardware slots. Sixteen-pad mappings follow the keyboard layout.
-        let displayPads = pads.count == 8 ? PhysicalPadGrid.displaySlots(padCount: pads.count).map { pads[$0] } : pads
-        self.cells = displayPads.map { pad in
+        self.cells = pads.map { pad in
             let abbr = PadVoice.abbreviation(pad)
             let key = KeyboardPadMapping.label(for: pad)
             let combined = key.map { "\(abbr) · \($0)" } ?? abbr
@@ -787,6 +785,7 @@ public struct PadLayoutModel: Equatable {
 
 /// The small diagram used in landscape and when touch pads are off. Tapping it toggles keyboard key labels.
 struct PadLayoutGrid: View {
+    @Environment(SettingsManager.self) private var settings
     @Environment(\.accessibilityReduceMotion) private var reduced
     @ScaledMetric(relativeTo: .body) private var width: CGFloat = 176
     var side: CGFloat? = nil
@@ -795,6 +794,15 @@ struct PadLayoutGrid: View {
     var showKeyboardKeys: Bool = false
 
     private var motion: Theme.Motion.Policy { .init(reduced: reduced) }
+
+    private var grid: PhysicalPadGrid { settings.activeProfile().grid }
+    private var displayCells: [PadLayoutCellData] {
+        grid.displaySlots.compactMap { slot in
+            let target = settings.activeProfile().target(forSlot: slot)
+            guard model.pads.indices.contains(target) else { return nil }
+            return model.cells.first { $0.pad == model.pads[target] }
+        }
+    }
 
     init(side: CGFloat? = nil, model: PadLayoutModel, flashes: [Int: PadFlash] = [:], showKeyboardKeys: Bool = false) {
         self.side = side
@@ -814,14 +822,14 @@ struct PadLayoutGrid: View {
         TimelineView(.animation(minimumInterval: 1.0 / 30, paused: flashes.isEmpty)) { timeline in
             if let side {
                 let spacing = Theme.Space.tight
-                let cellSize = max(0, (side - 3 * spacing) / 4)
+                let cellSize = max(0, (side - CGFloat(max(grid.rows, grid.columns) - 1) * spacing) / CGFloat(max(grid.rows, grid.columns)))
                 VStack(spacing: spacing) {
-                    ForEach(0..<4, id: \.self) { row in
+                    ForEach(0..<grid.rows, id: \.self) { row in
                         HStack(spacing: spacing) {
-                            ForEach(0..<4, id: \.self) { col in
-                                let index = row * 4 + col
-                                if model.cells.indices.contains(index) {
-                                    cell(model.cells[index], cellSize: cellSize, now: timeline.date)
+                            ForEach(0..<grid.columns, id: \.self) { col in
+                                let index = row * grid.columns + col
+                                if displayCells.indices.contains(index) {
+                                    cell(displayCells[index], cellSize: cellSize, now: timeline.date)
                                 }
                             }
                         }
@@ -829,8 +837,8 @@ struct PadLayoutGrid: View {
                 }
                 .frame(width: side, height: side)
             } else {
-                LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: Theme.Space.tight), count: 4), spacing: Theme.Space.tight) {
-                    ForEach(model.cells, id: \.pad) { cellData in
+                LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: Theme.Space.tight), count: grid.columns), spacing: Theme.Space.tight) {
+                    ForEach(displayCells, id: \.pad) { cellData in
                         cell(cellData, cellSize: nil, now: timeline.date)
                     }
                 }
@@ -911,7 +919,7 @@ struct PadLayoutGrid: View {
     }
 }
 
-/// The square in the bottom-left of the practice screen showing the 4x4 pad layout.
+/// The square in the bottom-left of the practice screen showing the controller layout.
 /// Tapping toggles keyboard key labels. State is isolated here so toggling never
 /// invalidates or re-renders the rest of PracticeScreen.
 struct PracticePadLayoutSquare: View {

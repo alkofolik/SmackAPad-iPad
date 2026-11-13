@@ -1,6 +1,6 @@
 # 192 — Controller screen: live pad grid in the controller's own layout
 
-Status: ready-for-agent. Decided by Jakub on 2026-11-13 (taste audit findings 57 and the "one big idea", variant 2).
+Status: implemented; awaiting Jakub's manual iPad checks. Decided by Jakub on 2026-11-13 (taste audit findings 57 and the "one big idea", variant 2).
 
 ## Goal
 
@@ -32,7 +32,7 @@ The Controller screen shows no controller, only text rows ("MIDI note", "Velocit
 - [ ] MIDI learn lets the player pick the arrangement and the highlighted pad matches the hardware order.
 - [ ] Existing profiles still load and work in lessons without being learned again.
 - [ ] Touch pads in Settings and the practice legend use the same arrangement.
-- [ ] Build and full test suite pass.
+- [x] Build and full test suite pass.
 
 ### Manual iPad checks for Jakub
 
@@ -47,3 +47,10 @@ Codex GPT-6.1 Sol, thinking **high** (profile migration plus a shared geometry r
 ## Done rule
 
 Build, run the full test suite per `AGENTS.md`, commit, stop for Jakub's iPad check.
+
+## Implementation notes
+
+- Profiles persist rows and columns; old note maps retain their sound assignments and receive the default arrangement.
+- Shared bottom-left slot geometry drives MIDI learn, the passive live monitor, Settings touch pads and the practice legend.
+- The monitor tracks held-pad velocities, fades on release, labels controller buttons and suppresses practice actions while open.
+- Validation: `xcodebuild test`, scheme `SmackAPad`, iPad (A16) simulator; full suite passed. Hardware checks remain for Jakub.

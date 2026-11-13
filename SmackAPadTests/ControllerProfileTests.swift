@@ -2,6 +2,49 @@ import XCTest
 @testable import SmackAPad
 
 final class ControllerProfileTests: XCTestCase {
+    func testProfilesWithoutArrangementDecodeWithDefaultsAndKeepTheirNoteMaps() throws {
+        for preset in [ControllerProfile.standard8, .standard16] {
+            let oldFormat: [String: Any] = [
+                "profileName": "Old \(preset.padCount)-pad profile",
+                "padCount": preset.padCount,
+                "noteMap": Dictionary(uniqueKeysWithValues: preset.noteMap.map { (String($0.key), $0.value) })
+            ]
+            let data = try JSONSerialization.data(withJSONObject: oldFormat)
+            let profile = try JSONDecoder().decode(ControllerProfile.self, from: data)
+            XCTAssertEqual(profile.rows, preset.padCount == 8 ? 2 : 4)
+            XCTAssertEqual(profile.columns, 4)
+            XCTAssertEqual(profile.noteMap, preset.noteMap)
+            XCTAssertTrue(profile.isValid)
+            XCTAssertEqual(try JSONDecoder().decode(ControllerProfile.self, from: JSONEncoder().encode(profile)), profile)
+        }
+    }
+
+    func testEveryHardwareArrangementNumbersSlotsFromBottomLeft() {
+        let cases: [(Int, PhysicalPadGrid, [Int])] = [
+            (8, .init(rows: 2, columns: 4), [4, 5, 6, 7, 0, 1, 2, 3]),
+            (8, .init(rows: 4, columns: 2), [6, 7, 4, 5, 2, 3, 0, 1]),
+            (8, .init(rows: 1, columns: 8), Array(0..<8)),
+            (16, .init(rows: 4, columns: 4), [12, 13, 14, 15, 8, 9, 10, 11, 4, 5, 6, 7, 0, 1, 2, 3]),
+            (16, .init(rows: 2, columns: 8), Array(8..<16) + Array(0..<8))
+        ]
+        for count in [8, 16] {
+            XCTAssertEqual(PhysicalPadGrid.arrangements(padCount: count), cases.filter { $0.0 == count }.map { $0.1 })
+        }
+        for (count, grid, expectedSlots) in cases {
+            XCTAssertEqual(grid.displaySlots, expectedSlots)
+            XCTAssertEqual(grid.position(forSlot: 0).row, grid.rows - 1)
+            XCTAssertEqual(grid.position(forSlot: 0).column, 0)
+            for (displayIndex, slot) in expectedSlots.enumerated() {
+                let position = grid.position(forSlot: slot)
+                XCTAssertEqual(position.row, displayIndex / grid.columns)
+                XCTAssertEqual(position.column, displayIndex % grid.columns)
+                let target = PhysicalPadGrid.target(forSlot: slot, padCount: count)
+                let preset = count == 8 ? ControllerProfile.standard8 : .standard16
+                XCTAssertEqual(preset.midiNote(forTarget: target), 36 + slot)
+            }
+        }
+    }
+
     func testBuiltInProfilesHaveNeutralNames() throws {
         XCTAssertEqual(ControllerProfile.builtInProfiles.map(\.profileName),
                        ["Standard 16-Pad", "Standard 8-Pad"])

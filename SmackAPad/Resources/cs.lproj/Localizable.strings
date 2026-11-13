@@ -28,7 +28,6 @@
 "Note on" = "Stisknutí";
 "Note off" = "Uvolnění";
 "Play a pad to check the input." = "Uhoď do padu a zkontroluj přijetí úderu.";
-"Mapped pad" = "Přiřazený pad";
 "This lesson requires 16 pads." = "Tato lekce vyžaduje 16 padů.";
 "Touch pads" = "Dotykové pady";
 "Touch pads in portrait" = "Dotykové pady na výšku";
@@ -53,7 +52,7 @@
 "Start MIDI learn" = "Spustit učení MIDI";
 "Connect a MIDI controller before starting." = "Před spuštěním připoj MIDI kontrolér.";
 "MIDI learn" = "Učení MIDI";
-"Press each physical pad once, left to right, starting with the top row. Use the same controller and MIDI channel throughout. In 8-pad mode, positions are slots 1–8; sounds follow the lesson." = "Stiskni každý fyzický pad jednou, zleva doprava. Používej stále stejný kontrolér a MIDI kanál. V režimu 8 padů se učí pozice 1–8; zvuky určuje lekce.";
+"Press each physical pad once, left to right, starting with the bottom row. Use the same controller and MIDI channel throughout. In 8-pad mode, positions are slots 1–8; sounds follow the lesson." = "Stiskni každý fyzický pad jednou, zleva doprava, od spodní řady. Používej stále stejný kontrolér a MIDI kanál. V režimu 8 padů se učí pozice 1–8; zvuky určuje lekce.";
 "Cancel" = "Zrušit";
 "Save" = "Uložit";
 "Crash" = "Crash";
@@ -3618,3 +3617,6 @@
 "home.short.UK funky 2 · hats and rim" = "UK funky 2";
 "home.short.Speed garage 1 · the skippy top" = "Speed garage 1";
 "home.short.Speed garage 2 · fill, restart" = "Speed garage 2";
+"Arrangement" = "Rozložení";
+"Note %lld is not mapped" = "Nota %lld není přiřazená";
+"Controller, %lld rows by %lld columns" = "Kontrolér, %lld řad a %lld sloupců";

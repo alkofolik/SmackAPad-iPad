@@ -94,6 +94,9 @@ public final class MIDIInput {
     public private(set) var controlLearningNotice: String?
     public private(set) var lastPad: PadInputEvent?
     public private(set) var pressedPadIndices: Set<Int> = []
+    public private(set) var pressedPadVelocities: [Int: Int] = [:]
+    public private(set) var pressedControlVelocities: [MIDIControlSignal: Int] = [:]
+    public var isControllerMonitorActive = false
     public private(set) var noteOnCount = 0
     public private(set) var fallbackCount = 0
     public private(set) var errorMessage: String?
@@ -109,6 +112,7 @@ public final class MIDIInput {
         didSet { updateSoundRoute() }
     }
     public private(set) var learnedNotes: [Int] = []
+    public private(set) var learningGrid: PhysicalPadGrid?
     public private(set) var learningNotice: String?
     public private(set) var lesson: Lesson?
     public private(set) var isKeyboardConnected = false
@@ -430,12 +434,19 @@ public final class MIDIInput {
 
     /// Returning true prevents the message from ever reaching pad/audio/scoring consumers.
     private func routeControl(_ message: MIDIControlMessage) -> Bool {
+        if settings.midiControls.buttons.values.contains(where: { $0.signal == message.signal }) {
+            pressedControlVelocities[message.signal] = message.value > 0 ? message.value : nil
+        }
         switch controlRouter.route(message, configuration: settings.midiControls,
                                    stoppedTempo: stoppedPracticeTempo?()) {
         case .pad: return false
         case .consumed: return true
-        case .action(let action): onPracticeAction?(action); return true
-        case .tempo(let bpm): onPracticeTempo?(bpm); return true
+        case .action(let action):
+            if !isControllerMonitorActive { onPracticeAction?(action) }
+            return true
+        case .tempo(let bpm):
+            if !isControllerMonitorActive { onPracticeTempo?(bpm) }
+            return true
         }
     }
 
@@ -611,12 +622,15 @@ public final class MIDIInput {
             soundEngine?.play(padIndex: event.padIndex, velocity: event.velocity)
         }
         pressedPadIndices = Set(heldPads.values)
+        if event.isNoteOn { pressedPadVelocities[event.padIndex] = event.velocity }
+        else if !pressedPadIndices.contains(event.padIndex) { pressedPadVelocities.removeValue(forKey: event.padIndex) }
         lastPad = event
         onPadEvent?(event)
     }
 
     private func releaseHeldPads() {
         controlRouter = MIDIControlRouter()
+        pressedControlVelocities = [:]
         let timestamp = mach_absolute_time()
         let pending = heldPads
         heldPads.removeAll()
@@ -627,16 +641,19 @@ public final class MIDIInput {
         }
     }
 
-    public func startLearning(padCount: Int) {
-        guard padCount == 8 || padCount == 16 else { return }
+    public func startLearning(padCount: Int, grid: PhysicalPadGrid? = nil) {
+        let arrangement = grid ?? .defaultArrangement(padCount: padCount)
+        guard PhysicalPadGrid.arrangements(padCount: padCount).contains(arrangement) else { return }
         releaseHeldPads()
         cancelLearning()
         learningPadCount = padCount
+        learningGrid = arrangement
     }
 
     public func cancelLearning() {
         cancelControlLearning()
         learningPadCount = nil
+        learningGrid = nil
         learnedNotes = []
         learningDeviceID = nil
         learningChannel = nil
@@ -659,11 +676,13 @@ public final class MIDIInput {
 
     public func saveLearnedProfile(name: String) -> Bool {
         let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard let count = learningPadCount, learnedNotes.count == count,
+        guard let count = learningPadCount, let grid = learningGrid, learnedNotes.count == count,
               !trimmed.isEmpty, settings.profile(named: trimmed) == nil else { return false }
-        // Learn order follows the grid, left-to-right, top row first. Eight-pad values are slots.
-        let map = Dictionary(uniqueKeysWithValues: learnedNotes.enumerated().map { ($0.element, $0.offset) })
-        settings.saveProfile(ControllerProfile(profileName: trimmed, noteMap: map, padCount: count))
+        let map = Dictionary(uniqueKeysWithValues: learnedNotes.enumerated().map {
+            ($0.element, PhysicalPadGrid.target(forSlot: $0.offset, padCount: count))
+        })
+        settings.saveProfile(ControllerProfile(profileName: trimmed, noteMap: map, padCount: count,
+                                               rows: grid.rows, columns: grid.columns))
         settings.activeProfileName = trimmed
         cancelLearning()
         return true

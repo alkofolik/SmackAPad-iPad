@@ -178,6 +178,11 @@ public struct ControllerSetupView: View {
 
                 // MARK: 5. Input Monitor
                 Section {
+                    ControllerLivePadGrid()
+                    if let note = midi.lastNote, midi.activeProfile.target(forMidiNote: note.note) == nil {
+                        Text(settings.localized("Note %lld is not mapped", note.note))
+                            .font(Theme.meta)
+                    }
                     LabeledContent(settings.localized("Received MIDI hits"), value: midi.noteOnCount.formatted())
                         .font(Theme.meta)
                     LabeledContent(settings.localized("Timestamp fallbacks"), value: midi.fallbackCount.formatted())
@@ -207,10 +212,6 @@ public struct ControllerSetupView: View {
                             .foregroundStyle(Theme.secondary)
                     }
 
-                    if let pad = midi.lastPad {
-                        LabeledContent(settings.localized("Mapped pad"), value: (pad.padIndex + 1).formatted())
-                            .font(Theme.meta)
-                    }
                 } header: {
                     SectionHeader(title: settings.localized("Input monitor"))
                 }
@@ -276,7 +277,75 @@ public struct ControllerSetupView: View {
                 }
             }
         }
-        .onDisappear { midi.cancelControlLearning() }
+        .onAppear { midi.isControllerMonitorActive = true }
+        .onDisappear {
+            midi.isControllerMonitorActive = false
+            midi.cancelControlLearning()
+        }
+    }
+}
+
+/// Passive hardware display: input feedback has no touch or navigation action.
+@MainActor
+private struct ControllerLivePadGrid: View {
+    @Environment(SettingsManager.self) private var settings
+    @Environment(MIDIInput.self) private var midi
+
+    var body: some View {
+        let profile = midi.activeProfile
+        LazyVGrid(columns: Array(repeating: GridItem(.flexible(minimum: Theme.Size.touch), spacing: Theme.Space.small),
+                                 count: profile.columns), spacing: Theme.Space.small) {
+            ForEach(profile.grid.displaySlots, id: \.self) { slot in
+                let target = profile.target(forSlot: slot)
+                let note = profile.midiNote(forTarget: target)
+                let control = MIDIPracticeAction.allCases.first { action in
+                    guard let signal = settings.midiControls.buttons[action.rawValue]?.signal else { return false }
+                    return signal.kind == .note && signal.number == note
+                }
+                let pad = midi.padIndices.flatMap { $0.indices.contains(target) ? $0[target] : nil }
+                let velocity = pad.map { midi.pressedPadVelocities[$0] ?? 0 } ?? 0
+                let strength = pad.map { midi.pressedPadIndices.contains($0) ? Double(velocity) / 127 : 0 } ?? 0
+                let signal = control.flatMap { settings.midiControls.buttons[$0.rawValue]?.signal }
+                let controlStrength = signal.map { Double(midi.pressedControlVelocities[$0] ?? 0) / 127 } ?? 0
+                ControllerLivePad(label: control.map { settings.localized($0.title) } ?? note.map { $0.formatted() } ?? "—",
+                                  strength: control == nil ? strength : controlStrength)
+            }
+        }
+        .padding(Theme.Space.small)
+        .background(Theme.cavity, in: RoundedRectangle(cornerRadius: Theme.Radius.pad))
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(settings.localized("Controller, %lld rows by %lld columns", profile.rows, profile.columns))
+        .allowsHitTesting(false)
+    }
+}
+
+private struct ControllerLivePad: View {
+    let label: String
+    let strength: Double
+
+    var body: some View {
+        Text(label)
+            .font(Theme.control)
+            .monospacedDigit()
+            .multilineTextAlignment(.center)
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .frame(minWidth: Theme.Size.touch, minHeight: Theme.Size.touch)
+            .aspectRatio(1, contentMode: .fit)
+            .foregroundStyle(Theme.ink)
+            .background {
+                RoundedRectangle(cornerRadius: Theme.Skin.Pad.radius)
+                    .fill(Theme.Skin.Pad.fill)
+                    .overlay {
+                        RoundedRectangle(cornerRadius: Theme.Skin.Pad.radius)
+                            .fill(Theme.orange.opacity(strength * 0.85))
+                    }
+                    .overlay {
+                        SkinBevel(radius: Theme.Skin.Pad.radius,
+                                  highlight: Theme.Skin.Pad.highlight, shade: Theme.Skin.Pad.shade,
+                                  top: Theme.Skin.Pad.topBevel, bottom: Theme.Skin.Pad.bottomBevel)
+                    }
+            }
+            .animation(strength == 0 ? Theme.Motion.padFlash : nil, value: strength)
     }
 }
 

@@ -28,7 +28,6 @@
 "Note on" = "Note on";
 "Note off" = "Note off";
 "Play a pad to check the input." = "Play a pad to check the input.";
-"Mapped pad" = "Mapped pad";
 "This lesson requires 16 pads." = "This lesson requires 16 pads.";
 "Touch pads" = "Touch pads";
 "Touch pads in portrait" = "Touch pads in portrait";
@@ -54,7 +53,7 @@
 "Start MIDI learn" = "Start MIDI learn";
 "Connect a MIDI controller before starting." = "Connect a MIDI controller before starting.";
 "MIDI learn" = "MIDI learn";
-"Press each physical pad once, left to right, starting with the top row. Use the same controller and MIDI channel throughout. In 8-pad mode, positions are slots 1–8; sounds follow the lesson." = "Press each physical pad once, left to right. Use the same controller and MIDI channel throughout. In 8-pad mode, positions are slots 1–8; sounds follow the lesson.";
+"Press each physical pad once, left to right, starting with the bottom row. Use the same controller and MIDI channel throughout. In 8-pad mode, positions are slots 1–8; sounds follow the lesson." = "Press each physical pad once, left to right, starting with the bottom row. Use the same controller and MIDI channel throughout. In 8-pad mode, positions are slots 1–8; sounds follow the lesson.";
 "Cancel" = "Cancel";
 "Save" = "Save";
 "Crash" = "Crash";
@@ -3613,3 +3612,6 @@
 "home.short.UK funky 2 · hats and rim" = "UK funky 2";
 "home.short.Speed garage 1 · the skippy top" = "Speed garage 1";
 "home.short.Speed garage 2 · fill, restart" = "Speed garage 2";
+"Arrangement" = "Arrangement";
+"Note %lld is not mapped" = "Note %lld is not mapped";
+"Controller, %lld rows by %lld columns" = "Controller, %lld rows by %lld columns";

@@ -140,16 +140,6 @@ final class FirstRunAndLegibilityTests: XCTestCase {
         }
     }
 
-    func testMIDILearnDisplaysRowsFromBottomWithoutReversingSlotsWithinARow() {
-        XCTAssertEqual(PhysicalPadGrid.displaySlots(padCount: 8), [4, 5, 6, 7, 0, 1, 2, 3])
-        XCTAssertEqual(PhysicalPadGrid.displaySlots(padCount: 16), [
-            12, 13, 14, 15,
-            8, 9, 10, 11,
-            4, 5, 6, 7,
-            0, 1, 2, 3
-        ])
-    }
-
     @MainActor
     func testGhostOutlineContrastAgainstTheDarkestMemoryBandInBothAppearances() {
         // The memory band is darkest at target tempo. Its top is shaded with 10% Theme.black.

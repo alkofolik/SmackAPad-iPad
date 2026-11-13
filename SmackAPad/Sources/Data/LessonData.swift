@@ -250,6 +250,49 @@ public struct SampleKit: Codable, Equatable, Identifiable, Sendable {
     }
 }
 
+/// Hardware slots start at the bottom-left and run left-to-right, row by row upwards.
+public struct PhysicalPadGrid: Equatable, Hashable, Sendable {
+    public let rows: Int
+    public let columns: Int
+
+    public init(rows: Int, columns: Int) {
+        self.rows = rows
+        self.columns = columns
+    }
+
+    public static func arrangements(padCount: Int) -> [Self] {
+        switch padCount {
+        case 8: return [.init(rows: 2, columns: 4), .init(rows: 4, columns: 2), .init(rows: 1, columns: 8)]
+        case 16: return [.init(rows: 4, columns: 4), .init(rows: 2, columns: 8)]
+        default: return []
+        }
+    }
+
+    public static func defaultArrangement(padCount: Int) -> Self {
+        .init(rows: padCount == 8 ? 2 : 4, columns: 4)
+    }
+
+    /// Row is measured from the top, column from the left, both zero-based.
+    public func position(forSlot slot: Int) -> (row: Int, column: Int) {
+        (rows - 1 - slot / columns, slot % columns)
+    }
+
+    public var displaySlots: [Int] {
+        (0..<rows).flatMap { row in
+            (0..<columns).map { column in (rows - 1 - row) * columns + column }
+        }
+    }
+
+    /// Sixteen-pad sound indices retain their original top-first 4×4 numbering.
+    /// This conversion preserves saved note maps and lesson sounds for every hardware shape.
+    public static func target(forSlot slot: Int, padCount: Int) -> Int {
+        guard padCount == 16 else { return slot }
+        let soundGrid = defaultArrangement(padCount: 16)
+        let position = soundGrid.position(forSlot: slot)
+        return position.row * soundGrid.columns + position.column
+    }
+}
+
 /// A MIDI controller mapping profile.
 /// Maps incoming MIDI note numbers to padIndex (0–15 in 16-pad mode) or physical slot (0–7 in 8-pad mode).
 public struct ControllerProfile: Codable, Equatable, Hashable, Sendable, Identifiable {
@@ -259,14 +302,35 @@ public struct ControllerProfile: Codable, Equatable, Hashable, Sendable, Identif
     public let noteMap: [Int: Int]
     /// Controller physical pad count: 8 or 16.
     public let padCount: Int
+    public let rows: Int
+    public let columns: Int
+    public var grid: PhysicalPadGrid { .init(rows: rows, columns: columns) }
 
     public var isEightPad: Bool { padCount == 8 }
     public var isSixteenPad: Bool { padCount == 16 }
 
-    public init(profileName: String, noteMap: [Int: Int], padCount: Int) {
+    public init(profileName: String, noteMap: [Int: Int], padCount: Int, rows: Int? = nil, columns: Int? = nil) {
         self.profileName = profileName
         self.noteMap = noteMap
         self.padCount = padCount
+        let fallback = PhysicalPadGrid.defaultArrangement(padCount: padCount)
+        self.rows = rows ?? fallback.rows
+        self.columns = columns ?? fallback.columns
+    }
+
+    private enum CodingKeys: String, CodingKey { case profileName, noteMap, padCount, rows, columns }
+
+    public init(from decoder: Decoder) throws {
+        let values = try decoder.container(keyedBy: CodingKeys.self)
+        self.init(profileName: try values.decode(String.self, forKey: .profileName),
+                  noteMap: try values.decode([Int: Int].self, forKey: .noteMap),
+                  padCount: try values.decode(Int.self, forKey: .padCount),
+                  rows: try values.decodeIfPresent(Int.self, forKey: .rows),
+                  columns: try values.decodeIfPresent(Int.self, forKey: .columns))
+    }
+
+    public func target(forSlot slot: Int) -> Int {
+        PhysicalPadGrid.target(forSlot: slot, padCount: padCount)
     }
 
     /// Returns the target padIndex or slot for a given MIDI note number.
@@ -298,6 +362,7 @@ extension ControllerProfile {
 
     public var isValid: Bool {
         (padCount == 8 || padCount == 16) &&
+        PhysicalPadGrid.arrangements(padCount: padCount).contains(grid) &&
         !profileName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty &&
         noteMap.count == padCount && Set(noteMap.values) == Set(0..<padCount) &&
         noteMap.keys.allSatisfy { (0...127).contains($0) }
