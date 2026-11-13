@@ -62,6 +62,8 @@ struct MixLineupScreen: View {
     @State private var previewLessonID: Int?
     @State private var previewTask: Task<Void, Never>?
     @State private var tryLesson: Lesson?
+    @State private var maxTitleHeight: CGFloat = 0
+    @State private var maxPatternHeight: CGFloat = 0
 
     var body: some View {
         GeometryReader { geometry in
@@ -86,7 +88,11 @@ struct MixLineupScreen: View {
         }
         .toolbar(.hidden, for: .navigationBar)
         .onDisappear { stopPreview() }
-        .onChange(of: lessons.map(\.id)) { _, _ in stopPreview() }
+        .onChange(of: lessons.map(\.id)) { _, _ in
+            stopPreview()
+            maxTitleHeight = 0
+            maxPatternHeight = 0
+        }
         .fullScreenCover(item: $tryLesson) { lesson in
             PracticeScreen(
                 lesson: lesson,
@@ -133,30 +139,34 @@ struct MixLineupScreen: View {
     @ViewBuilder
     private func cardGrid(columns: Int, width: CGFloat) -> some View {
         let rows = chunkedLessons(columns: columns)
-        if columns == 1 {
-            VStack(spacing: Theme.Space.regular) {
-                ForEach(Array(lessons.enumerated()), id: \.element.id) { index, lesson in
-                    cardView(index: index, lesson: lesson)
+        Group {
+            if columns == 1 {
+                VStack(spacing: Theme.Space.regular) {
+                    ForEach(Array(lessons.enumerated()), id: \.element.id) { index, lesson in
+                        cardView(index: index, lesson: lesson)
+                    }
                 }
-            }
-        } else {
-            Grid(horizontalSpacing: Theme.Space.regular, verticalSpacing: Theme.Space.regular) {
-                ForEach(Array(rows.enumerated()), id: \.offset) { _, row in
-                    GridRow {
-                        ForEach(row, id: \.element.id) { item in
-                            cardView(index: item.offset, lesson: item.element)
-                                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-                        }
-                        if row.count < columns {
-                            ForEach(0..<(columns - row.count), id: \.self) { _ in
-                                Color.clear.gridCellUnsizedAxes([.horizontal, .vertical])
+            } else {
+                Grid(horizontalSpacing: Theme.Space.regular, verticalSpacing: Theme.Space.regular) {
+                    ForEach(Array(rows.enumerated()), id: \.offset) { _, row in
+                        GridRow {
+                            ForEach(row, id: \.element.id) { item in
+                                cardView(index: item.offset, lesson: item.element)
+                                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+                            }
+                            if row.count < columns {
+                                ForEach(0..<(columns - row.count), id: \.self) { _ in
+                                    Color.clear.gridCellUnsizedAxes([.horizontal, .vertical])
+                                }
                             }
                         }
                     }
                 }
+                .frame(maxWidth: .infinity)
             }
-            .frame(maxWidth: .infinity)
         }
+        .onPreferenceChange(MixCardTitleHeightKey.self) { maxTitleHeight = $0 }
+        .onPreferenceChange(MixCardPatternHeightKey.self) { maxPatternHeight = $0 }
     }
 
     private func chunkedLessons(columns: Int) -> [[EnumeratedSequence<[Lesson]>.Element]] {
@@ -179,6 +189,8 @@ struct MixLineupScreen: View {
             kindText: kindText,
             isReview: isDue,
             padCount: padCount,
+            sharedTitleHeight: maxTitleHeight,
+            sharedPatternHeight: maxPatternHeight,
             isPreviewing: previewLessonID == lesson.id,
             onTogglePreview: { togglePreview(for: lesson) },
             onTry: {
@@ -311,6 +323,8 @@ private struct MixLineupCard: View {
     let kindText: String
     let isReview: Bool
     let padCount: Int
+    let sharedTitleHeight: CGFloat
+    let sharedPatternHeight: CGFloat
     let isPreviewing: Bool
     let onTogglePreview: () -> Void
     let onTry: () -> Void
@@ -320,7 +334,7 @@ private struct MixLineupCard: View {
     var body: some View {
         let padLabels = MixLineupLabels.labels(for: lesson, padCount: padCount)
 
-        VStack(alignment: .leading, spacing: Theme.Space.small) {
+        VStack(alignment: .leading, spacing: Theme.Space.regular) {
             HStack(alignment: .center, spacing: Theme.Space.small) {
                 Text("\(index + 1)")
                     .font(Theme.strong(14).monospacedDigit())
@@ -341,36 +355,32 @@ private struct MixLineupCard: View {
                 .foregroundStyle(Theme.ink)
                 .lineLimit(2)
                 .fixedSize(horizontal: false, vertical: true)
-                .frame(maxWidth: .infinity, alignment: .leading)
+                .background(
+                    GeometryReader { geo in
+                        Color.clear.preference(
+                            key: MixCardTitleHeightKey.self,
+                            value: geo.size.height
+                        )
+                    }
+                )
+                .frame(maxWidth: .infinity, alignment: .topLeading)
+                .frame(height: sharedTitleHeight > 0 ? sharedTitleHeight : nil, alignment: .topLeading)
 
-            Spacer(minLength: Theme.Space.small)
-
-            MixCardMiniPattern(lesson: lesson, padCount: padCount, labels: padLabels)
-                .frame(maxWidth: .infinity)
-
-            Spacer(minLength: Theme.Space.small)
+            MixCardMiniPattern(
+                lesson: lesson,
+                padCount: padCount,
+                labels: padLabels,
+                sharedHeight: sharedPatternHeight
+            )
+            .frame(maxWidth: .infinity)
 
             VStack(alignment: .leading, spacing: Theme.Space.small) {
-                FlowLayout(spacing: 6) {
-                    Text(settings.localized("%lld BPM", lesson.targetBpm))
-                        .font(Theme.display(12).weight(.semibold).monospacedDigit())
-                        .foregroundStyle(Theme.white)
-                        .padding(.horizontal, 10)
-                        .padding(.vertical, 5)
-                        .background(Theme.black, in: Capsule())
-
-                    ForEach(padLabels.orderedPads, id: \.self) { pad in
-                        if let name = padLabels.byPad[pad] {
-                            Text(name)
-                                .font(Theme.display(12).weight(.medium))
-                                .foregroundStyle(Theme.ink)
-                                .padding(.horizontal, 10)
-                                .padding(.vertical, 5)
-                                .background(Theme.white, in: Capsule())
-                                .overlay(Capsule().strokeBorder(Theme.hairline, lineWidth: 1))
-                        }
-                    }
-                }
+                Text(settings.localized("%lld BPM", lesson.targetBpm))
+                    .font(Theme.display(12).weight(.semibold).monospacedDigit())
+                    .foregroundStyle(Theme.white)
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 5)
+                    .background(Theme.black, in: Capsule())
 
                 HStack(spacing: Theme.Space.small) {
                     Button(action: onTogglePreview) {
@@ -432,6 +442,7 @@ private struct MixCardMiniPattern: View {
     let lesson: Lesson
     let padCount: Int
     let labels: MixLineupLabels
+    var sharedHeight: CGFloat = 0
 
     private let barSteps = 16
 
@@ -465,6 +476,30 @@ private struct MixCardMiniPattern: View {
             }
         }
         .padding(10)
+        .background(
+            GeometryReader { geo in
+                Color.clear.preference(
+                    key: MixCardPatternHeightKey.self,
+                    value: geo.size.height
+                )
+            }
+        )
+        .frame(maxWidth: .infinity, alignment: .topLeading)
+        .frame(height: sharedHeight > 0 ? sharedHeight : nil, alignment: .topLeading)
         .background(PracticeBandStyle.orange, in: RoundedRectangle(cornerRadius: Theme.Radius.button))
+    }
+}
+
+private struct MixCardTitleHeightKey: PreferenceKey {
+    static var defaultValue: CGFloat = 0
+    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
+        value = max(value, nextValue())
+    }
+}
+
+private struct MixCardPatternHeightKey: PreferenceKey {
+    static var defaultValue: CGFloat = 0
+    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
+        value = max(value, nextValue())
     }
 }

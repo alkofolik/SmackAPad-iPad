@@ -1043,8 +1043,9 @@ private struct DaySummaryView: View {
             .frame(height: 56)
 
             if isLandscape {
+                let bottomEdgeInset: CGFloat = 36
                 HStack(alignment: .top, spacing: 28) {
-                    heroPanel(padding: 36)
+                    heroPanel(padding: bottomEdgeInset)
                         .frame(maxWidth: 520, maxHeight: .infinity)
 
                     VStack(alignment: .leading, spacing: 20) {
@@ -1056,6 +1057,7 @@ private struct DaySummaryView: View {
                         .scrollBounceBehavior(.basedOnSize)
 
                         bottomButtons(height: 72)
+                            .padding(.bottom, bottomEdgeInset)
                     }
                     .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
                 }

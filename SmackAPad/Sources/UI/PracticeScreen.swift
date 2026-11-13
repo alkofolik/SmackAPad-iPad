@@ -774,7 +774,7 @@ struct PracticeScreen: View {
         let iconColor: Color
         if result.score == nil {
             iconName = "forward.end"
-            iconColor = Theme.secondary
+            iconColor = Theme.white.opacity(0.68)
         } else if result.met {
             iconName = "checkmark"
             iconColor = Theme.orange
@@ -783,7 +783,7 @@ struct PracticeScreen: View {
             iconColor = Theme.orange
         } else {
             iconName = "xmark"
-            iconColor = Theme.ink
+            iconColor = Theme.white
         }
 
         let labelText: String
@@ -799,14 +799,13 @@ struct PracticeScreen: View {
                 .foregroundStyle(iconColor)
             Text(labelText)
                 .font(Theme.display(13).weight(.semibold).monospacedDigit())
-                .foregroundStyle(Theme.ink)
+                .foregroundStyle(Theme.white)
                 .lineLimit(1)
                 .truncationMode(.tail)
         }
         .padding(.horizontal, 12)
-        .padding(.vertical, 6)
-        .background(Theme.white, in: Capsule())
-        .overlay(Capsule().strokeBorder(Theme.hairline, lineWidth: 1))
+        .padding(.vertical, 7)
+        .background(Theme.black, in: Capsule())
     }
 
     private var mixProgressChip: some View {
