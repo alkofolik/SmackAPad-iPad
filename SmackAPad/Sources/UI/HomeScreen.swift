@@ -1025,6 +1025,10 @@ public struct HomeScreen: View {
     @State private var padVisible: [Bool]
     @State private var animationFinished: Bool
     @State private var animationTask: Task<Void, Never>?
+    @State private var transientStatus: String?
+    @State private var statusResetTask: Task<Void, Never>?
+    @State private var midiLedBrightness: Double = 0.0
+    @State private var ledFadeTask: Task<Void, Never>?
 
     public init(
         isColdStart: Bool = false,
@@ -1062,10 +1066,16 @@ public struct HomeScreen: View {
                 HomeControllerBody(darkAppearance: colorScheme == .dark)
                     .equatable()
 
-                HomeHardwareDisplay(status: controllerDisplayStatus,
+                HomeHardwareDisplay(status: transientStatus ?? controllerDisplayStatus,
+                                    accessibilityStatus: controllerDisplayStatus,
                                     pixelsVisible: pixelsVisible, powered: displayPowered)
                     .frame(width: layout.display.width, height: layout.display.height)
                     .position(x: layout.display.midX, y: layout.display.midY)
+
+                HomeMidiActivityLed(brightness: midiLedBrightness)
+                    .position(x: layout.display.minX - 28, y: layout.display.midY)
+                    .opacity(plateVisible ? 1 : 0)
+                    .allowsHitTesting(false)
 
                 HomeControllerHardware(layout: layout, darkAppearance: colorScheme == .dark)
                     .equatable()
@@ -1125,6 +1135,17 @@ public struct HomeScreen: View {
             if isColdStart && !animationFinished {
                 startAnimation()
             }
+            await startHomeAudioIfNeeded()
+        }
+        .onDisappear {
+            stopHomeAudio()
+        }
+        .onChange(of: homeIsIdle) { _, isIdle in
+            if isIdle && scenePhase == .active {
+                Task { await startHomeAudioIfNeeded() }
+            } else {
+                stopHomeAudio()
+            }
         }
         .onChange(of: introFocusEligible, initial: true) { _, eligible in
             if eligible {
@@ -1154,10 +1175,167 @@ public struct HomeScreen: View {
             }
         }
         .onChange(of: scenePhase) { _, phase in
-            if phase == .active { calendarDay = AppCalendar.today() }
+            if phase == .active {
+                calendarDay = AppCalendar.today()
+                if homeIsIdle {
+                    Task { await startHomeAudioIfNeeded() }
+                }
+            } else {
+                stopHomeAudio()
+            }
+        }
+        .onChange(of: settings.padsVolume) { _, newVolume in
+            if homeIsIdle {
+                AudioEngine.practice.setPadsVolume(Float(newVolume) / 100)
+            }
+        }
+        .onChange(of: settings.metronomeVolume) { _, newVolume in
+            if homeIsIdle {
+                AudioEngine.practice.setMetronomeVolume(Float(newVolume) / 100)
+            }
+        }
+        .onChange(of: settings.patternVolume) { _, newVolume in
+            if homeIsIdle {
+                AudioEngine.practice.setPatternVolume(Float(newVolume) / 100)
+            }
+        }
+        .onChange(of: settings.instrumentTrims) { _, newTrims in
+            if homeIsIdle {
+                AudioEngine.practice.setInstrumentTrims(newTrims)
+            }
+        }
+        .onChange(of: settings.selectedKitId) { _, _ in
+            if homeIsIdle {
+                Task { await startHomeAudioIfNeeded() }
+            }
+        }
+        .onChange(of: settings.lastLessonID) { _, _ in
+            if homeIsIdle {
+                Task { await startHomeAudioIfNeeded() }
+            }
+        }
+        .onChange(of: midi.lastNote?.timestamp) { _, _ in
+            if let note = midi.lastNote {
+                handleIncomingNote(note)
+            }
+        }
+        .onChange(of: midi.lastControlMessage?.timestamp) { _, _ in
+            if let message = midi.lastControlMessage {
+                handleIncomingControlMessage(message)
+            }
         }
         .onReceive(NotificationCenter.default.publisher(for: .NSCalendarDayChanged)) { _ in
             calendarDay = AppCalendar.today()
+        }
+    }
+
+    // MARK: - MIDI Reaction & Audio (Ticket 207)
+
+    private var resolvedHomeKitId: String {
+        if settings.selectedKitId != SoundKitResolver.automaticKitId {
+            return settings.selectedKitId
+        }
+        let lastLesson = settings.lastLessonID == 0 ? nil : lessonStore.lesson(for: settings.lastLessonID)
+        if let lastLesson {
+            return SoundKitResolver.resolveKitId(for: lastLesson, settings: settings)
+        }
+        return SoundKitResolver.fallbackKitId
+    }
+
+    private func startHomeAudioIfNeeded() async {
+        guard homeIsIdle, scenePhase == .active else { return }
+        let audio = AudioEngine.practice
+        do {
+            _ = try await audio.prepare()
+            let kitId = resolvedHomeKitId
+            let kit = try await audio.loadKit(kitId)
+            audio.selectKit(kit)
+            audio.setMetronomeVolume(Float(settings.metronomeVolume) / 100)
+            audio.setPadsVolume(Float(settings.padsVolume) / 100)
+            audio.setPatternVolume(Float(settings.patternVolume) / 100)
+            audio.setInstrumentTrims(settings.instrumentTrims)
+            if !audio.isRunning {
+                try audio.start()
+            }
+            midi.setPracticeSound(audio)
+        } catch {
+            // Audio engine couldn't start (e.g. system interruption)
+        }
+    }
+
+    private func stopHomeAudio() {
+        midi.setPracticeSound(nil)
+        AudioEngine.practice.stop()
+        statusResetTask?.cancel()
+        transientStatus = nil
+        ledFadeTask?.cancel()
+        midiLedBrightness = 0.0
+    }
+
+    private func handleIncomingNote(_ event: MIDINoteEvent) {
+        // On Home, a hit on the MIDI controller plays audio and updates the display/LED,
+        // but never navigates or lights the eight Home tiles. The tiles are menu buttons,
+        // and lighting them would look like a selection.
+        guard homeIsIdle, scenePhase == .active else { return }
+        guard event.isNoteOn && event.velocity > 0 else { return }
+
+        triggerMidiLed(velocity: event.velocity)
+
+        let status = HomeDisplayStatusBuilder.statusText(
+            for: event.note,
+            channel: event.channel,
+            profile: midi.activeProfile,
+            padIndices: midi.padIndices,
+            controls: settings.midiControls
+        )
+
+        transientStatus = status
+        statusResetTask?.cancel()
+        statusResetTask = Task { @MainActor in
+            try? await Task.sleep(for: .milliseconds(1500))
+            guard !Task.isCancelled else { return }
+            transientStatus = nil
+        }
+    }
+
+    private func handleIncomingControlMessage(_ message: MIDIControlMessage) {
+        guard homeIsIdle, scenePhase == .active else { return }
+        guard message.signal.kind == .cc, message.value > 0 else { return }
+
+        let status = HomeDisplayStatusBuilder.statusText(
+            for: message.signal,
+            profile: midi.activeProfile,
+            padIndices: midi.padIndices,
+            controls: settings.midiControls
+        )
+
+        if settings.midiControls.buttons.values.contains(where: { $0.signal == message.signal }) {
+            transientStatus = status
+            statusResetTask?.cancel()
+            statusResetTask = Task { @MainActor in
+                try? await Task.sleep(for: .milliseconds(1500))
+                guard !Task.isCancelled else { return }
+                transientStatus = nil
+            }
+        }
+    }
+
+    private func triggerMidiLed(velocity: Int) {
+        let targetBrightness = max(0.2, min(1.0, Double(velocity) / 127.0))
+        midiLedBrightness = targetBrightness
+        ledFadeTask?.cancel()
+        ledFadeTask = Task { @MainActor in
+            if reduceMotion {
+                try? await Task.sleep(for: .milliseconds(100))
+                guard !Task.isCancelled else { return }
+                midiLedBrightness = 0.0
+            } else {
+                try? await Task.sleep(for: .milliseconds(50))
+                guard !Task.isCancelled else { return }
+                withAnimation(.easeOut(duration: 0.35)) {
+                    midiLedBrightness = 0.0
+                }
+            }
         }
     }
 

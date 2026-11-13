@@ -1,6 +1,6 @@
 # 207 — Home reacts to the MIDI controller
 
-Status: ready-for-agent. Decided by Jakub on 2026-11-13 (iPad review, photos 2 and 11: "pady MIDI nefungují"). Blocked by: 206 (uses its display status line).
+Status: implemented; build and full suite passed; ready for iPad test. Decided by Jakub on 2026-11-13 (iPad review, photos 2 and 11: "pady MIDI nefungují"). Blocked by: 206 (uses its display status line).
 
 ## Goal
 
@@ -26,10 +26,10 @@ Unit test for the status line text builder: mapped note → "Kick · 36"; unmapp
 
 ## Acceptance criteria
 
-- [ ] On Home, hitting a real pad plays its sound and shows the drum on the display; the MIDI LED flashes.
-- [ ] No Home tile opens or lights from a hit.
-- [ ] No sound from Home while another screen is open.
-- [ ] Build and full test suite pass.
+- [x] On Home, hitting a real pad plays its sound and shows the drum on the display; the MIDI LED flashes.
+- [x] No Home tile opens or lights from a hit.
+- [x] No sound from Home while another screen is open.
+- [x] Build and full test suite pass.
 
 ### Manual iPad checks for Jakub
 

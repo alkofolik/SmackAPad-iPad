@@ -15,6 +15,14 @@ public struct MIDIControlMessage: Sendable {
     public let signal: MIDIControlSignal
     public let value: Int
     public let deviceID: String
+    public let timestamp: UInt64
+
+    public init(signal: MIDIControlSignal, value: Int, deviceID: String, timestamp: UInt64 = 0) {
+        self.signal = signal
+        self.value = value
+        self.deviceID = deviceID
+        self.timestamp = timestamp
+    }
 }
 
 public enum MIDIPracticeAction: String, CaseIterable, Codable, Sendable {
@@ -86,6 +94,24 @@ public struct MIDITempoKnob: Codable, Equatable, Sendable {
     public var pickup = true
     public var reversed = false
 
+    public init() {}
+
+    public init(
+        signal: MIDIControlSignal? = nil,
+        mode: MIDIKnobMode = .absolute,
+        minimumBpm: Int = 30,
+        maximumBpm: Int = 400,
+        pickup: Bool = true,
+        reversed: Bool = false
+    ) {
+        self.signal = signal
+        self.mode = mode
+        self.minimumBpm = minimumBpm
+        self.maximumBpm = maximumBpm
+        self.pickup = pickup
+        self.reversed = reversed
+    }
+
     var range: ClosedRange<Int> {
         let low = PracticeTempo.clamp(minimumBpm)
         return low...max(low, PracticeTempo.clamp(maximumBpm))
@@ -96,6 +122,13 @@ public struct MIDIControlConfiguration: Codable, Equatable, Sendable {
     // Raw action keys keep the UserDefaults JSON readable and extensible.
     public var buttons: [String: MIDIButtonMapping] = [:]
     public var knob = MIDITempoKnob()
+
+    public init() {}
+
+    public init(buttons: [String: MIDIButtonMapping], knob: MIDITempoKnob = MIDITempoKnob()) {
+        self.buttons = buttons
+        self.knob = knob
+    }
 
     func conflicts(_ signal: MIDIControlSignal, excluding target: MIDIControlLearnTarget) -> Bool {
         buttons.contains { key, mapping in

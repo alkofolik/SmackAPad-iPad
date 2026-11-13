@@ -375,7 +375,7 @@ public final class MIDIInput {
                                     events.append(.cc(MIDIControlMessage(
                                         signal: MIDIControlSignal(kind: .cc, channel: Int((word >> 16) & 0xF) + 1,
                                                                   number: Int((word >> 8) & 0x7F)),
-                                        value: Int(word & 0x7F), deviceID: deviceID
+                                        value: Int(word & 0x7F), deviceID: deviceID, timestamp: resolved.timestamp
                                     )))
                                 }
                             }
@@ -396,7 +396,7 @@ public final class MIDIInput {
         if event.isNoteOn { noteOnCount += 1 }
         let message = MIDIControlMessage(
             signal: MIDIControlSignal(kind: .note, channel: event.channel, number: event.note),
-            value: event.isNoteOn ? event.velocity : 0, deviceID: event.deviceID)
+            value: event.isNoteOn ? event.velocity : 0, deviceID: event.deviceID, timestamp: event.timestamp)
         lastControlMessage = message
         if isLearningControl { learnControl(message); return }
         if isLearning {

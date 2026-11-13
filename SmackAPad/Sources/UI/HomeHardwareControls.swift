@@ -5,6 +5,7 @@ import UIKit
 /// The status input is intentionally independent of the logo and controller lookup.
 struct HomeHardwareDisplay: View {
     let status: String
+    var accessibilityStatus: String? = nil
     var pixelsVisible = true
     var powered = true
 
@@ -52,7 +53,7 @@ struct HomeHardwareDisplay: View {
         }
         .accessibilityElement(children: .ignore)
         .accessibilityLabel("Smack-a-Pad")
-        .accessibilityValue(status)
+        .accessibilityValue(accessibilityStatus ?? status)
         .allowsHitTesting(false)
     }
 
@@ -84,6 +85,87 @@ struct HomeHardwareDisplay: View {
             }
         }
         .accessibilityHidden(true)
+    }
+}
+
+/// Small circular hardware LED next to the display that flashes on incoming MIDI notes and fades out (ticket 207).
+struct HomeMidiActivityLed: View {
+    let brightness: Double
+
+    var body: some View {
+        VStack(spacing: 4) {
+            Circle()
+                .fill(Theme.cavity)
+                .frame(width: 14, height: 14)
+                .overlay {
+                    Circle()
+                        .fill(brightness > 0 ? Theme.orange.opacity(0.25 + 0.75 * brightness) : Theme.ledOff)
+                        .frame(width: 8, height: 8)
+                        .shadow(color: Theme.orange.opacity(brightness * 0.9), radius: 4)
+                }
+                .overlay {
+                    Circle()
+                        .strokeBorder(Theme.black.opacity(0.2), lineWidth: 0.5)
+                        .frame(width: 14, height: 14)
+                }
+            Text("MIDI")
+                .font(Theme.canvasDisplay(9).monospaced())
+                .tracking(0.5)
+                .foregroundStyle(Theme.secondary)
+        }
+        .accessibilityElement(children: .ignore)
+        .accessibilityHidden(true)
+    }
+}
+
+/// Pure builder for the hardware display's status line text on MIDI hits (ticket 207).
+public enum HomeDisplayStatusBuilder {
+    public static func statusText(
+        for note: Int,
+        channel: Int = 1,
+        profile: ControllerProfile,
+        padIndices: [Int]? = nil,
+        controls: MIDIControlConfiguration = MIDIControlConfiguration()
+    ) -> String {
+        let signal = MIDIControlSignal(kind: .note, channel: channel, number: note)
+        return statusText(for: signal, profile: profile, padIndices: padIndices, controls: controls)
+    }
+
+    public static func statusText(
+        for signal: MIDIControlSignal,
+        profile: ControllerProfile,
+        padIndices: [Int]? = nil,
+        controls: MIDIControlConfiguration = MIDIControlConfiguration()
+    ) -> String {
+        // 1. Controller button (MIDIControl)
+        if let action = MIDIPracticeAction.allCases.first(where: {
+            guard let btnSignal = controls.buttons[$0.rawValue]?.signal else { return false }
+            return btnSignal == signal || (btnSignal.kind == signal.kind && btnSignal.number == signal.number)
+        }) {
+            return action.title
+        }
+
+        // 2. Mapped note
+        if signal.kind == .note,
+           let target = profile.target(forMidiNote: signal.number) {
+            let pads = padIndices ?? (profile.isEightPad ? EightPadLayout.baseSlots : Array(0..<16))
+            if pads.indices.contains(target) {
+                let padIndex = pads[target]
+                let drum = PadVoice.displayName(padIndex)
+                return "\(drum) · \(signal.number)"
+            }
+        }
+
+        // 3. Unmapped note
+        if signal.kind == .note {
+            return "Note \(signal.number) · not mapped"
+        }
+
+        return "CC \(signal.number) · not mapped"
+    }
+
+    public static func statusText(for action: MIDIPracticeAction) -> String {
+        action.title
     }
 }
 
