@@ -1029,6 +1029,7 @@ public struct HomeScreen: View {
     @State private var statusResetTask: Task<Void, Never>?
     @State private var midiLedBrightness: Double = 0.0
     @State private var ledFadeTask: Task<Void, Never>?
+    @State private var homeOwnsAudio = false
 
     public init(
         isColdStart: Bool = false,
@@ -1071,6 +1072,16 @@ public struct HomeScreen: View {
                                     pixelsVisible: pixelsVisible, powered: displayPowered)
                     .frame(width: layout.display.width, height: layout.display.height)
                     .position(x: layout.display.midX, y: layout.display.midY)
+
+                // Per-hit MIDI observation lives in this tiny child view, which exists only
+                // while Home is idle. HomeScreen stays mounted under the practice cover, so
+                // observing every hit here would re-evaluate the whole Home body on each pad
+                // hit and stall the practice screen's main thread.
+                if homeIsIdle {
+                    HomeMidiListener(midi: midi,
+                                     onNote: handleIncomingNote,
+                                     onControl: handleIncomingControlMessage)
+                }
 
                 HomeMidiActivityLed(brightness: midiLedBrightness)
                     .position(x: layout.display.minX - 28, y: layout.display.midY)
@@ -1214,16 +1225,6 @@ public struct HomeScreen: View {
                 Task { await startHomeAudioIfNeeded() }
             }
         }
-        .onChange(of: midi.lastNote?.timestamp) { _, _ in
-            if let note = midi.lastNote {
-                handleIncomingNote(note)
-            }
-        }
-        .onChange(of: midi.lastControlMessage?.timestamp) { _, _ in
-            if let message = midi.lastControlMessage {
-                handleIncomingControlMessage(message)
-            }
-        }
         .onReceive(NotificationCenter.default.publisher(for: .NSCalendarDayChanged)) { _ in
             calendarDay = AppCalendar.today()
         }
@@ -1249,6 +1250,8 @@ public struct HomeScreen: View {
             _ = try await audio.prepare()
             let kitId = resolvedHomeKitId
             let kit = try await audio.loadKit(kitId)
+            // A lesson may have opened while the kit was loading; never touch its audio.
+            guard homeIsIdle, scenePhase == .active else { return }
             audio.selectKit(kit)
             audio.setMetronomeVolume(Float(settings.metronomeVolume) / 100)
             audio.setPadsVolume(Float(settings.padsVolume) / 100)
@@ -1258,14 +1261,18 @@ public struct HomeScreen: View {
                 try audio.start()
             }
             midi.setPracticeSound(audio)
+            homeOwnsAudio = true
         } catch {
             // Audio engine couldn't start (e.g. system interruption)
         }
     }
 
     private func stopHomeAudio() {
-        midi.setPracticeSound(nil)
-        AudioEngine.practice.stop()
+        if homeOwnsAudio {
+            homeOwnsAudio = false
+            midi.setPracticeSound(nil)
+            AudioEngine.practice.stop()
+        }
         statusResetTask?.cancel()
         transientStatus = nil
         ledFadeTask?.cancel()
@@ -1837,5 +1844,29 @@ public struct HomeScreen: View {
         guard !animationFinished else { return }
         animationFinished = true
         onColdStartFinished()
+    }
+}
+
+
+/// Invisible helper that observes per-hit MIDI state for the Home screen.
+/// Keeping this observation out of HomeScreen.body means a pad hit re-evaluates
+/// only this empty view, never the whole Home hierarchy.
+@MainActor
+private struct HomeMidiListener: View {
+    let midi: MIDIInput
+    let onNote: (MIDINoteEvent) -> Void
+    let onControl: (MIDIControlMessage) -> Void
+
+    var body: some View {
+        Color.clear
+            .frame(width: 0, height: 0)
+            .allowsHitTesting(false)
+            .accessibilityHidden(true)
+            .onChange(of: midi.lastNote?.timestamp) { _, _ in
+                if let note = midi.lastNote { onNote(note) }
+            }
+            .onChange(of: midi.lastControlMessage?.timestamp) { _, _ in
+                if let message = midi.lastControlMessage { onControl(message) }
+            }
     }
 }
