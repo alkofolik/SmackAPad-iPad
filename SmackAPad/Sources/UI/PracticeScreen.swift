@@ -879,9 +879,9 @@ struct PracticeScreen: View {
             bottomZoneRow(s: s, isPortrait: isPortrait, availableWidth: availableWidth, spaceAbove: spaceAbove)
 
             if portraitPads, let pads = midi.padIndices {
-                PracticeTouchPadGrid(pads: pads,
+                PracticeTouchPadGrid(session: session,
+                                     pads: pads,
                                      used: Set(session.patternHits.map(\.padIndex)),
-                                     flashes: session.padFlashes,
                                      enabled: touchPadsReady) { pad, pressed in
                     guard !pressed || touchPadsReady else { return }
                     midi.touch(padIndex: pad, isPressed: pressed)
@@ -1218,7 +1218,7 @@ struct PracticeScreen: View {
         PracticePadLayoutSquare(
             side: s,
             model: padLayoutModel,
-            flashes: session.padFlashes,
+            session: session,
             showPads: showPads
         )
         .id(session.lesson.id)

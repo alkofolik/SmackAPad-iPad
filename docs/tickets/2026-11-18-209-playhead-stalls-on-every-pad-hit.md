@@ -1,6 +1,6 @@
 # 209 — Playhead stalls on every pad hit
 
-Status: ready-for-agent. Reported by Jakub on 2026-11-18: "the playhead still does not move smoothly during practice; this time it stalls every time I hit a pad. It is unusable."
+Status: done. Reported by Jakub on 2026-11-18: "the playhead still does not move smoothly during practice; this time it stalls every time I hit a pad. It is unusable."
 
 Follows ticket 208 (display-link sampling) and commit 4b73d73 (Home no longer re-renders on each hit). Both removed other causes; this one is still there.
 
@@ -37,10 +37,10 @@ No new tests (view observation change only). Build, run the practice-area tests 
 
 ## Acceptance criteria
 
-- [ ] No `session.padFlashes` (or other per-hit value from rule 2) read in `PracticeScreen.body` or its helper functions.
-- [ ] Pad flashes still light up with the same colours and fade as before.
-- [ ] Pad flash timeline pauses when no flash is fading.
-- [ ] Build and tests pass.
+- [x] No `session.padFlashes` (or other per-hit value from rule 2) read in `PracticeScreen.body` or its helper functions.
+- [x] Pad flashes still light up with the same colours and fade as before.
+- [x] Pad flash timeline pauses when no flash is fading.
+- [x] Build and tests pass.
 
 ### Manual iPad checks for Jakub
 

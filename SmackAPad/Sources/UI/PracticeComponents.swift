@@ -22,11 +22,39 @@ enum HitMark {
 
 /// A short colour flash on the pad layout; `mark` is nil when nothing is scored.
 struct PadFlash: Equatable {
+    static let fadeDuration: TimeInterval = 0.4
+
     let mark: HitMark?
     let date: Date
 
     var color: Color { mark?.color ?? Theme.orange }
-    func strength(at now: Date) -> Double { max(0, 1 - now.timeIntervalSince(date) / 0.4) }
+    func strength(at now: Date) -> Double { max(0, 1 - now.timeIntervalSince(date) / Self.fadeDuration) }
+    func isFading(at now: Date = Date()) -> Bool { now.timeIntervalSince(date) < Self.fadeDuration }
+}
+
+/// Schedules animation frames only while at least one pad flash is fading.
+/// When no flash is fading, updates cease so the 30 Hz timeline pauses.
+struct PadFlashSchedule: TimelineSchedule {
+    let flashes: [Int: PadFlash]
+    private static let frameInterval: TimeInterval = 1.0 / 30.0
+
+    func entries(from startDate: Date, mode: TimelineScheduleMode) -> [Date] {
+        guard let latest = flashes.values.map(\.date).max() else {
+            return [startDate]
+        }
+        let finish = latest.addingTimeInterval(PadFlash.fadeDuration)
+        guard finish > startDate else {
+            return [startDate]
+        }
+        var dates: [Date] = []
+        var current = startDate
+        while current < finish {
+            dates.append(current)
+            current = current.addingTimeInterval(Self.frameInterval)
+        }
+        dates.append(finish)
+        return dates
+    }
 }
 
 /// Hand colours never change with the page appearance: filled black = left, outlined white = right.
@@ -819,7 +847,7 @@ struct PadLayoutGrid: View {
     }
 
     var body: some View {
-        TimelineView(.animation(minimumInterval: 1.0 / 30, paused: flashes.isEmpty)) { timeline in
+        TimelineView(PadFlashSchedule(flashes: flashes)) { timeline in
             if let side {
                 let spacing = Theme.Space.tight
                 let cellSize = max(0, (side - CGFloat(max(grid.rows, grid.columns) - 1) * spacing) / CGFloat(max(grid.rows, grid.columns)))
@@ -928,7 +956,7 @@ struct PracticePadLayoutSquare: View {
     @State private var showPadKeys = false
     let side: CGFloat
     let model: PadLayoutModel
-    let flashes: [Int: PadFlash]
+    let session: PracticeSession
     let showPads: Bool
 
     private var motion: Theme.Motion.Policy { .init(reduced: reduced) }
@@ -939,7 +967,7 @@ struct PracticePadLayoutSquare: View {
                 PadLayoutGrid(
                     side: side,
                     model: model,
-                    flashes: flashes,
+                    flashes: session.padFlashes,
                     showKeyboardKeys: model.canShowKeys && showPadKeys
                 )
                 .contentShape(Rectangle())
@@ -961,23 +989,24 @@ struct PracticePadLayoutSquare: View {
 /// A stable playing deck: only the reading section above it may scroll.
 struct PracticeTouchPadGrid: View {
     @Environment(SettingsManager.self) private var settings
+    let session: PracticeSession
     let pads: [Int]
     let used: Set<Int>
-    let flashes: [Int: PadFlash]
     let enabled: Bool
     let onPress: (Int, Bool) -> Void
 
     var body: some View {
+        let flashes = session.padFlashes
         GeometryReader { geometry in
             let cellWidth = max(0, (geometry.size.width - 24) / 4)
             let cellHeight = max(0, (geometry.size.height - 24) / 4)
-            TimelineView(.animation(minimumInterval: 1.0 / 30, paused: flashes.isEmpty)) { timeline in
+            TimelineView(PadFlashSchedule(flashes: flashes)) { timeline in
                 VStack(spacing: Theme.Space.small) {
                     ForEach(0..<4, id: \.self) { row in
                         HStack(spacing: Theme.Space.small) {
                             ForEach(0..<4, id: \.self) { column in
                                 let pad = pads[row * 4 + column]
-                                cell(pad, size: min(cellWidth, cellHeight), now: timeline.date)
+                                cell(pad, size: min(cellWidth, cellHeight), now: timeline.date, flashes: flashes)
                                     .frame(width: cellWidth, height: cellHeight)
                             }
                         }
@@ -987,7 +1016,7 @@ struct PracticeTouchPadGrid: View {
         }
     }
 
-    private func cell(_ pad: Int, size: CGFloat, now: Date) -> some View {
+    private func cell(_ pad: Int, size: CGFloat, now: Date, flashes: [Int: PadFlash]) -> some View {
         let flash = flashes[pad]
         let strength = flash?.strength(at: now) ?? 0
         let isUsed = used.contains(pad)

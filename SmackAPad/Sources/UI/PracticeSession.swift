@@ -1385,21 +1385,21 @@ final class PracticeSession {
     private func receive(_ event: PadInputEvent) {
         guard event.isNoteOn, ready, kitTask == nil else { return }
         guard running else {
-            padFlashes[event.padIndex] = PadFlash(mark: nil, date: Date())
+            recordFlash(padIndex: event.padIndex, mark: nil)
             return
         }
         let sourceTime = AVAudioTime.seconds(forHostTime: event.timestamp)
         let offset = settings.calibrationOffset(for: event.deviceID, outputRoute: runOutputRoute)
         let adjusted = max(0, sourceTime - offset / 1_000)
         guard !listen else {
-            padFlashes[event.padIndex] = PadFlash(mark: nil, date: Date())
+            recordFlash(padIndex: event.padIndex, mark: nil)
             recordPlayedHit(padIndex: event.padIndex, at: adjusted, mark: nil)
             return
         }
         // Boundary ownership follows the calibrated input timestamp, never the
         // display tick. Call hits cannot match even an early response note.
         if afterMe, !passes.contains(where: { $0.acceptsInput(at: adjusted) }) {
-            padFlashes[event.padIndex] = PadFlash(mark: nil, date: Date())
+            recordFlash(padIndex: event.padIndex, mark: nil)
             recordPlayedHit(padIndex: event.padIndex, at: adjusted, mark: nil)
             return
         }
@@ -1448,7 +1448,7 @@ final class PracticeSession {
             if let activePass { matchedPassNumber = activePass.number }
         }
         if matchedFeedback == nil {
-            padFlashes[event.padIndex] = PadFlash(mark: nil, date: Date())
+            recordFlash(padIndex: event.padIndex, mark: nil)
         }
         recordPlayedHit(padIndex: event.padIndex, at: adjusted, mark: mark)
 
@@ -1476,6 +1476,13 @@ final class PracticeSession {
         playedHits.append(PlayedHit(padIndex: padIndex, step: localStep, pass: cycle, mark: mark))
     }
 
+    private func recordFlash(padIndex: Int, mark: HitMark?) {
+        let now = Date()
+        var updated = padFlashes.filter { now.timeIntervalSince($0.value.date) < PadFlash.fadeDuration }
+        updated[padIndex] = PadFlash(mark: mark, date: now)
+        padFlashes = updated
+    }
+
     /// Colour feedback only. Scoring itself is unchanged.
     private func record(_ feedback: HitFeedback, pass: Int, padIndex: Int) -> HitMark? {
         let mark: HitMark
@@ -1485,7 +1492,7 @@ final class PracticeSession {
         case .wrongPad: mark = .wrong
         case .ignored: return nil
         }
-        padFlashes[padIndex] = PadFlash(mark: mark, date: Date())
+        recordFlash(padIndex: padIndex, mark: mark)
         let hits = patternHits
         guard !hits.isEmpty else { return mark }
         if let index = feedback.expectedHitIndex {
