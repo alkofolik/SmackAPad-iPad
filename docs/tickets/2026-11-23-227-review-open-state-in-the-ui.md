@@ -1,6 +1,6 @@
 # 227 — Review: show the "tried, not met yet" state in the app (UI)
 
-Status: blocked by 226 (rules). Requested by Jakub on 2026-11-23.
+Status: done. Requested by Jakub on 2026-11-23.
 
 ## Goal
 
@@ -26,10 +26,10 @@ None beyond a small test for the Today step status mapping (open failure becomes
 
 ## Acceptance criteria
 
-- [ ] Counter is visible through a failed attempt and a retry.
-- [ ] Texts match rules 1–3 in Czech and English.
-- [ ] Today plan, Training and Library show the new state, nothing says "postponed".
-- [ ] Build and tests of the area pass.
+- [x] Counter is visible through a failed attempt and a retry.
+- [x] Texts match rules 1–3 in Czech and English.
+- [x] Today plan, Training and Library show the new state, nothing says "postponed".
+- [x] Build and tests of the area pass.
 
 ### Manual iPad checks for Jakub
 

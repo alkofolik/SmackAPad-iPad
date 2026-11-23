@@ -354,12 +354,31 @@ final class PracticeSession {
         if let feedback = window?.outcome?.feedback {
             return feedback.message(language: settings.languagePreference)
         }
-        guard let schedule = progress.progress(for: lessonID)?.reviewSchedule,
-              schedule.isDueReview(on: today) else { return nil }
+        guard let schedule = progress.progress(for: lessonID)?.reviewSchedule else { return nil }
+        if schedule.lastReviewedDay == today {
+            return settings.localized("Review met today")
+        }
+        if schedule.lastReviewFailDay == today {
+            return settings.localized("Not met yet · keep playing")
+        }
+        guard schedule.isDueReview(on: today) else { return nil }
         if window == nil, progress.progress(for: lessonID)?.isUnstartedLegacyReview == true {
             return settings.localized("Review · start from memory")
         }
         return settings.localized("Review · %lld of 2 passed", window?.state.successes ?? 0)
+    }
+
+    func reviewSubtitleStatus(settings: SettingsManager) -> String? {
+        guard !unscored, !afterMe, !isMix else { return nil }
+        let today = currentDay()
+        let schedule = savedProgress?.reviewSchedule
+        if schedule?.lastReviewedDay == today {
+            return settings.localized("Review met today")
+        }
+        if schedule?.lastReviewFailDay == today {
+            return settings.localized("Not met yet · keep playing")
+        }
+        return nil
     }
 
     public var completedWarmUps: Int {
@@ -1290,6 +1309,7 @@ final class PracticeSession {
                         ? .notesVisible : .unfinishedReview
                     if let outcome = decision.outcome, let feedback = outcome.feedback {
                         reviewFeedback = feedback
+                        reviewPendingReason = nil
                         progress.updateReviewSchedule(outcome.newSchedule, for: lesson.id, autoSave: false)
                         switch feedback {
                         case .passed, .settled:

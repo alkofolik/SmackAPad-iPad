@@ -388,16 +388,22 @@ struct PracticeScreen: View {
                 if !session.isMix {
                     headerStars
                 }
-                Text(barText)
-                    .font(Theme.display(14))
-                    .foregroundStyle(Theme.secondary)
+                if let statusText = session.reviewSubtitleStatus(settings: settings) {
+                    Text(statusText)
+                        .font(Theme.display(14))
+                        .foregroundStyle(Theme.secondary)
+                } else {
+                    Text(barText)
+                        .font(Theme.display(14))
+                        .foregroundStyle(Theme.secondary)
+                }
             }
             .lineLimit(1)
             .accessibilityElement(children: .ignore)
             .accessibilityLabel(
                 session.isMix
                     ? barText
-                    : "\(settings.localized("%lld of 3 stars", earnedCount)), \(barText)"
+                    : "\(settings.localized("%lld of 3 stars", earnedCount)), \(session.reviewSubtitleStatus(settings: settings) ?? barText)"
             )
         }
     }

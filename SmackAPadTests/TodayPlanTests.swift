@@ -64,15 +64,15 @@ final class TodayPlanTests: XCTestCase {
         ])
         let reconciled = plan.reconcilingReviews(with: [
             1: .init(reviewStep: 1, reviewDueDay: "2026-11-12", lastReviewedDay: today),
-            2: .init(reviewStep: 0, lastReviewedDay: today, lastReviewFailDay: today),
+            2: .init(reviewStep: 0, lastReviewFailDay: today),
             3: .init(lastReviewedDay: "2026-11-08"),
             4: .init(lastReviewedDay: today, lastReviewFailDay: today),
             5: .init(lastReviewedDay: today)
         ])
         XCTAssertEqual(reconciled.steps[0].status, .passed)
         XCTAssertNil(reconciled.steps[0].outcome?.bestScore)
-        XCTAssertEqual(reconciled.steps[1].status, .didNotCount(.reviewNotPassed))
-        XCTAssertEqual(reconciled.steps[1].markerSymbol, "exclamationmark.circle")
+        XCTAssertEqual(reconciled.steps[1].status, .triedNotMet)
+        XCTAssertEqual(reconciled.steps[1].markerSymbol, "xmark")
         XCTAssertEqual(reconciled.steps.dropFirst(2), plan.steps.dropFirst(2))
     }
 
@@ -121,15 +121,16 @@ final class TodayPlanTests: XCTestCase {
         let plan = TodayPlan(day: "2026-11-08", steps: steps)
         XCTAssertEqual(steps[0].status, .didNotCount(.unfinishedReview))
         XCTAssertEqual(steps[1].status, .passed)
-        XCTAssertEqual(steps[2].status, .didNotCount(.reviewNotPassed))
+        XCTAssertEqual(steps[2].status, .triedNotMet)
         XCTAssertEqual(steps[3].status, .didNotCount(.requirements(goalBpm: 120)))
         XCTAssertEqual(steps[4].status, .passed)
         XCTAssertNil(steps[5].status)
         XCTAssertEqual(plan.reviewSummary.played, 5)
         XCTAssertEqual(plan.reviewSummary.passed, 2)
-        XCTAssertEqual(plan.reviewSummary.didNotCount, 3)
+        XCTAssertEqual(plan.reviewSummary.didNotCount, 2)
+        XCTAssertEqual(plan.reviewSummary.triedNotMet, 1)
         XCTAssertEqual(plan.reviewSummary.notPlayed, 1)
-        XCTAssertEqual(plan.reviewSummary.passed + plan.reviewSummary.didNotCount + plan.reviewSummary.notPlayed,
+        XCTAssertEqual(plan.reviewSummary.passed + plan.reviewSummary.didNotCount + plan.reviewSummary.triedNotMet + plan.reviewSummary.notPlayed,
                        plan.reviewCount)
     }
 
@@ -163,11 +164,11 @@ final class TodayPlanTests: XCTestCase {
         XCTAssertNil(PracticeStepOutcome.reviewFailureReason(outcome: countedPass.outcome, language: .english))
         XCTAssertNil(PracticeStepOutcome.reviewFailureReason(outcome: countedPass.outcome, language: .czech))
 
-        // Two hidden passes below 80 % → the "from memory" reason
-        XCTAssertEqual(failedTwoPasses.reviewFailureReason(language: .english), "From memory: 2× below 80 % · again tomorrow")
-        XCTAssertEqual(failedTwoPasses.reviewFailureReason(language: .czech), "Z paměti: 2× pod 80 % · zítra znovu")
-        XCTAssertEqual(PracticeStepOutcome.reviewFailureReason(outcome: failedTwoPasses.outcome, language: .english), "From memory: 2× below 80 % · again tomorrow")
-        XCTAssertEqual(PracticeStepOutcome.reviewFailureReason(outcome: failedTwoPasses.outcome, language: .czech), "Z paměti: 2× pod 80 % · zítra znovu")
+        // Two hidden passes below 80 % → the open failure reason
+        XCTAssertEqual(failedTwoPasses.reviewFailureReason(language: .english), "Review not met yet · you can still pass it today")
+        XCTAssertEqual(failedTwoPasses.reviewFailureReason(language: .czech), "Opakování zatím nesplněno · dnes ho ještě můžeš splnit")
+        XCTAssertEqual(PracticeStepOutcome.reviewFailureReason(outcome: failedTwoPasses.outcome, language: .english), "Review not met yet · you can still pass it today")
+        XCTAssertEqual(PracticeStepOutcome.reviewFailureReason(outcome: failedTwoPasses.outcome, language: .czech), "Opakování zatím nesplněno · dnes ho ještě můžeš splnit")
 
         // Skipped → the skipped reason
         XCTAssertEqual(skippedUnplayed.reviewFailureReason(language: .english), "Skipped · again tomorrow")
@@ -514,5 +515,26 @@ final class TodayPlanTests: XCTestCase {
         } else {
             XCTFail("Expected saved plan next action to be day summary, but got: \(String(describing: savedTarget))")
         }
+    }
+
+    func testTodayStepStatusMappingOpenFailureBecomesTriedNotMet() {
+        var step = TodayPlan.Step(kind: .review, lessonIDs: [1])
+        step.outcome = PracticeStepOutcome(bestScore: 0.7, reviewFeedback: .failed(newStep: 0))
+        XCTAssertEqual(step.status, .triedNotMet)
+        XCTAssertEqual(step.status?.titleKey, "Tried today · not met yet")
+        XCTAssertEqual(step.markerSymbol, "xmark")
+
+        let plan = TodayPlan(day: "2026-11-23", steps: [step])
+        XCTAssertEqual(plan.reviewSummary.played, 1)
+        XCTAssertEqual(plan.reviewSummary.passed, 0)
+        XCTAssertEqual(plan.reviewSummary.didNotCount, 0)
+        XCTAssertEqual(plan.reviewSummary.triedNotMet, 1)
+
+        // Reconciliation with open failure without lastReviewedDay
+        let unplayedPlan = TodayPlan(day: "2026-11-23", steps: [.init(kind: .review, lessonIDs: [1])])
+        let reconciled = unplayedPlan.reconcilingReviews(with: [
+            1: .init(reviewStep: 0, lastReviewFailDay: "2026-11-23")
+        ])
+        XCTAssertEqual(reconciled.steps[0].status, .triedNotMet)
     }
 }

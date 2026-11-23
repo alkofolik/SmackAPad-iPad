@@ -662,6 +662,10 @@
 "Settled" = "Settled";
 "Review · step %lld of 4" = "Review · step %lld of 4";
 "Review · %lld of 2 passed" = "Review · %lld of 2 passed";
+"Not met yet · keep playing" = "Not met yet · keep playing";
+"Review met today" = "Review met today";
+"Review not met yet · you can still pass it today" = "Review not met yet · you can still pass it today";
+"Tried today · not met yet" = "Tried today · not met yet";
 "Review not passed · again tomorrow · practice goes on" = "Review not passed · again tomorrow · practice goes on";
 "Review passed · next in %lld days" = "Review passed · next in %lld days";
 "Review passed · next in 1 day" = "Review passed · next in 1 day";
@@ -896,7 +900,7 @@
 "help.reviews.timeline" = "★★ → +%lld → +%lld → +%lld → +%lld days → %@";
 "help.reviews.warmups" = "Notes hide after 2 good passes in a row (80 %+).";
 "help.reviews.twoPasses" = "Two qualifying passes in one review";
-"help.reviews.caption" = "Open a due lesson from Home, Training or Library. It starts ready for From memory at goal tempo.\nPass two full hidden passes at goal tempo or faster, each at least %lld %%. Play then stops. The second successful review on a different day earns ★★★.\nAfter two failed eligible passes, the schedule goes back one step and the review returns tomorrow. The exclamation mark means you played but the review did not count.\nFollow the gaps above from ★★ to the fourth successful review. Turn on Review reminder in Settings if you want a reminder.";
+"help.reviews.caption" = "Open a due lesson from Home, Training or Library. It starts ready for From memory at goal tempo.\nPass two full hidden passes at goal tempo or faster, each at least %lld %%. Play then stops. The second successful review on a different day earns ★★★.\nWhen an attempt is not met, the review stays open for the day and you can try again. If left unmet at the end of the day, the schedule goes back one step and returns tomorrow. The exclamation mark means you played but the review did not count.\nFollow the gaps above from ★★ to the fourth successful review. Turn on Review reminder in Settings if you want a reminder.";
 "help.training.title" = "Training";
 "help.training.caption" = "Training is your plan for today. Continue starts the next step: up to two reviews, then a new lesson and a Mix when available. You can skip steps.\nBelow you find the review queue, your memory overview and the next seven days. You can put off reviews until tomorrow.\nStart an Extra mix once at least two lessons have ★★. Play them back to back at their goal tempos or choose Another mix.\nChoose Play after me to copy what the app plays, with the pattern hidden and no lesson stars.";
 "help.library.stage" = "Locked stage";

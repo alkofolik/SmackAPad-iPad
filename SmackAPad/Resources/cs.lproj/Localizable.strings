@@ -664,6 +664,10 @@
 "Settled" = "Upevněno";
 "Review · step %lld of 4" = "Opakování · krok %lld ze 4";
 "Review · %lld of 2 passed" = "Opakování · splněno %lld ze 2";
+"Not met yet · keep playing" = "Zatím nesplněno · hraj dál";
+"Review met today" = "Opakování dnes splněno";
+"Review not met yet · you can still pass it today" = "Opakování zatím nesplněno · dnes ho ještě můžeš splnit";
+"Tried today · not met yet" = "Dnes vyzkoušeno · zatím nesplněno";
 "Review not passed · again tomorrow · practice goes on" = "Opakování nesplněno · znovu zítra · hraješ dál";
 "Review passed · next in %lld days" = "Opakování splněno · další za %lld dní";
 "Review passed · next in 1 day" = "Opakování splněno · další za 1 den";
@@ -899,7 +903,7 @@
 "help.reviews.timeline" = "★★ → +%lld → +%lld → +%lld → +%lld dní → %@";
 "help.reviews.warmups" = "Noty zmizí po 2 úspěšných průchodech za sebou (80 % a víc).";
 "help.reviews.twoPasses" = "Dva úspěšné průchody v jednom opakování";
-"help.reviews.caption" = "Otevři lekci, která je na řadě, z Domova, Tréninku nebo Knihovny. Je připravená na hru Z paměti v cílovém tempu.\nZahraj dva celé skryté průchody v cílovém nebo vyšším tempu, každý aspoň na %lld %%. Hra se pak zastaví. Za druhé splněné opakování v jiný den získáš ★★★.\nPo dvou neúspěšných průchodech, které splnily podmínky opakování, se rozvrh vrátí o krok a lekce přijde na řadu zítra. Vykřičník znamená, že opakování bylo odehrané, ale nezapočítalo se.\nOsa ukazuje odstupy od ★★ až po čtvrté úspěšné opakování. Připomínku opakování zapneš v Nastavení.";
+"help.reviews.caption" = "Otevři lekci, která je na řadě, z Domova, Tréninku nebo Knihovny. Je připravená na hru Z paměti v cílovém tempu.\nZahraj dva celé skryté průchody v cílovém nebo vyšším tempu, každý aspoň na %lld %%. Hra se pak zastaví. Za druhé splněné opakování v jiný den získáš ★★★.\nKdyž se pokus nepovede, opakování zůstává pro tento den otevřené a můžeš ho zkusit znovu. Pokud zůstane nesplněné až do konce dne, rozvrh se vrátí o krok a lekce přijde na řadu zítra. Vykřičník znamená, že opakování bylo odehrané, ale nezapočítalo se.\nOsa ukazuje odstupy od ★★ až po čtvrté úspěšné opakování. Připomínku opakování zapneš v Nastavení.";
 "help.training.title" = "Trénink";
 "help.training.caption" = "Trénink je tvůj plán na dnes. Pokračovat spustí další krok: nejvýš dvě opakování, potom novou lekci a podle dostupnosti Mix. Kroky můžeš přeskočit.\nNíže najdeš frontu opakování, přehled paměti a výhled na sedm dní. Opakování můžeš odložit na zítra.\nSpusť Mix navíc, až budeš mít aspoň dvě lekce s ★★. Hraj je za sebou v cílovém tempu nebo vyber Jiný mix.\nZvol Zahraj po mně a zopakuj, co aplikace zahraje. Pattern je skrytý a hvězdy nezískáš.";
 "help.library.stage" = "Zamčená etapa";

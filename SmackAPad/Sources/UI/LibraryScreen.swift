@@ -1094,6 +1094,9 @@ struct LibraryLessonRow: View {
         if purchaseLocked { return "Purchase required" }
         if locked { return "Locked" }
         if isNext { return "Up next" }
+        if record?.lastReviewFailDay == AppCalendar.today() {
+            return "Tried today · not met yet"
+        }
         return LibraryStarFilter.classify(record).title
     }
 
@@ -1181,10 +1184,11 @@ struct LibraryLessonRow: View {
     @ViewBuilder
     private var dueMark: some View {
         if isDue {
+            let isTried = record?.lastReviewFailDay == AppCalendar.today()
             Image(systemName: "clock")
                 .font(Theme.meta)
-                .foregroundStyle(Theme.ink)
-                .accessibilityLabel(settings.localized("Due for review"))
+                .foregroundStyle(isTried ? Theme.orange : Theme.ink)
+                .accessibilityLabel(settings.localized(isTried ? "Tried today · not met yet" : "Due for review"))
         }
     }
 

@@ -740,8 +740,12 @@ struct EndOfRunCardModel: Equatable {
         } else if isSectionLoop {
             status = EndOfRunStatus(icon: "repeat", tintOrange: false, title: language.localized("Section loop"))
         } else if isDueReview {
-            // An undecided due review must never report a regular "Passed" card (ticket 189).
-            status = EndOfRunStatus(icon: "exclamationmark.circle", tintOrange: false, title: language.localized("Not counted"))
+            if saved?.lastReviewFailDay == AppCalendar.today() || saved?.reviewSchedule.lastReviewFailDay == AppCalendar.today() {
+                status = EndOfRunStatus(icon: "xmark", tintOrange: false, title: language.localized("Review not passed"))
+            } else {
+                // An undecided due review must never report a regular "Passed" card (ticket 189).
+                status = EndOfRunStatus(icon: "exclamationmark.circle", tintOrange: false, title: language.localized("Not counted"))
+            }
         } else if summary.passes == 0 {
             status = EndOfRunStatus(icon: "exclamationmark.circle", tintOrange: false, title: language.localized("Not counted"))
         } else if summary.passed || runs.last?.passed == true || summary.score >= Scoring.passMark {
@@ -771,7 +775,7 @@ struct EndOfRunCardModel: Equatable {
                 reviewLine = EndOfRunLine(
                     kind: .review,
                     icon: "calendar",
-                    text: language.localized("Review tomorrow"),
+                    text: language.localized("Review not met yet · you can still pass it today"),
                     isOrange: false
                 )
             case .doesNotCount(let goalBpm):
@@ -783,11 +787,17 @@ struct EndOfRunCardModel: Equatable {
                 )
             }
         } else if isDueReview {
-            let reason = reviewPendingReason ?? .unfinishedReview
+            let lineText: String
+            if saved?.lastReviewFailDay == AppCalendar.today() || saved?.reviewSchedule.lastReviewFailDay == AppCalendar.today() {
+                lineText = language.localized("Review not met yet · you can still pass it today")
+            } else {
+                let reason = reviewPendingReason ?? .unfinishedReview
+                lineText = reason.message(language: language)
+            }
             reviewLine = EndOfRunLine(
                 kind: .review,
                 icon: "calendar",
-                text: reason.message(language: language),
+                text: lineText,
                 isOrange: false
             )
         } else if isAfterMe {

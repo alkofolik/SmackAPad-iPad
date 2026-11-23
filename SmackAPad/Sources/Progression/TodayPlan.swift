@@ -16,15 +16,18 @@ struct TodayPlan: Codable, Equatable {
             guard kind == .review else { return (outcome.bestScore ?? 0) >= Scoring.passMark ? .passed : .played }
             switch outcome.reviewFeedback {
             case .passed, .settled: return .passed
-            case .failed: return .didNotCount(.reviewNotPassed)
+            case .failed: return .triedNotMet
             case .doesNotCount(let bpm): return .didNotCount(.requirements(goalBpm: bpm))
             case nil: return .didNotCount(outcome.reviewPendingReason ?? .unfinishedReview)
             }
         }
 
         var markerSymbol: String? {
-            if case .didNotCount = status { return "exclamationmark.circle" }
-            return nil
+            switch status {
+            case .didNotCount: return "exclamationmark.circle"
+            case .triedNotMet: return "xmark"
+            default: return nil
+            }
         }
     }
 
@@ -53,6 +56,7 @@ struct TodayPlan: Codable, Equatable {
         var passed = 0
         var didNotCount = 0
         var notPlayed = 0
+        var triedNotMet = 0
     }
 
     var reviewSummary: ReviewSummary {
@@ -60,6 +64,7 @@ struct TodayPlan: Codable, Equatable {
             switch step.status {
             case .passed: summary.passed += 1; summary.played += 1
             case .didNotCount: summary.didNotCount += 1; summary.played += 1
+            case .triedNotMet: summary.triedNotMet += 1; summary.played += 1
             case .played: summary.played += 1
             case nil: summary.notPlayed += 1
             }
@@ -72,7 +77,7 @@ struct TodayPlan: Codable, Equatable {
             let step = steps[index]
             guard step.kind == .review, step.outcome?.played != true,
                   let id = step.lessonIDs.first, let record = records[id],
-                  record.reviewSchedule.lastReviewedDay == day else { continue }
+                  (record.reviewSchedule.lastReviewedDay == day || record.lastReviewFailDay == day) else { continue }
 
             let reviewStep = record.reviewStep ?? 0
             let feedback: ReviewScheduler.ReviewFeedback
@@ -133,13 +138,14 @@ struct PracticeStepOutcome: Codable, Equatable {
     var reviewPendingReason: Reason?
 
     enum Status: Equatable {
-        case played, passed, didNotCount(Reason)
+        case played, passed, didNotCount(Reason), triedNotMet
 
         var titleKey: String {
             switch self {
             case .played: return "Played"
             case .passed: return "Passed"
             case .didNotCount: return "Did not count"
+            case .triedNotMet: return "Tried today · not met yet"
             }
         }
 
@@ -166,7 +172,7 @@ struct PracticeStepOutcome: Codable, Equatable {
                     : "Review unfinished · two successful hidden passes are needed."
             case .reviewNotPassed:
                 return PracticeStepOutcome.reviewFailureReason(feedback: .failed(newStep: 0), language: language)
-                    ?? (language == .czech ? "Z paměti: 2× pod 80 % · zítra znovu" : "From memory: 2× below 80 % · again tomorrow")
+                    ?? (language == .czech ? "Opakování zatím nesplněno · dnes ho ještě můžeš splnit" : "Review not met yet · you can still pass it today")
             case .requirements(let bpm):
                 return language == .czech
                     ? "Hraj zpaměti alespoň při \(bpm) BPM."
@@ -186,8 +192,11 @@ struct PracticeStepOutcome: Codable, Equatable {
 
     mutating func include(_ other: Self) {
         bestScore = [bestScore, other.bestScore].compactMap { $0 }.max()
-        // Later warm-ups or ordinary practice cannot undo a committed review result.
-        if !hasDecidedReview, other.played {
+        // A pass or settled decision takes precedence over an open failure.
+        if other.reviewFeedback?.isPassing == true {
+            reviewFeedback = other.reviewFeedback
+            reviewPendingReason = other.reviewPendingReason
+        } else if !hasDecidedReview, other.played {
             reviewFeedback = other.reviewFeedback
             reviewPendingReason = other.reviewPendingReason
         }
@@ -208,8 +217,8 @@ extension PracticeStepOutcome {
             return nil
         case .failed:
             return language == .czech
-                ? "Z paměti: 2× pod 80 % · zítra znovu"
-                : "From memory: 2× below 80 % · again tomorrow"
+                ? "Opakování zatím nesplněno · dnes ho ještě můžeš splnit"
+                : "Review not met yet · you can still pass it today"
         case .doesNotCount:
             return language == .czech ? "Přeskočeno · zítra znovu" : "Skipped · again tomorrow"
         }

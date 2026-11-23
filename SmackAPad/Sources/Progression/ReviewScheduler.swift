@@ -93,7 +93,9 @@ public struct ReviewScheduler: Sendable {
                 return language == .czech ? "Lekce je upevněná" : "Lesson settled"
 
             case .failed:
-                return language == .czech ? "Opakování nesplněno · znovu zítra" : "Review not passed · again tomorrow"
+                return language == .czech
+                    ? "Opakování zatím nesplněno · dnes ho ještě můžeš splnit"
+                    : "Review not met yet · you can still pass it today"
 
             case .doesNotCount(let goalBpm):
                 return language == .czech

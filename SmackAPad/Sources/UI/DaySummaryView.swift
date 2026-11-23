@@ -205,16 +205,20 @@ struct DaySummaryView: View {
         let status = step.status
         let isPassed = status == .passed
         let isPlayedOnly = status == .played
+        let isTriedNotMet = status == .triedNotMet
         let failureReason = step.reviewFailureReason(language: settings.languagePreference)
         let isDidNotCount: Bool = {
-            if step.kind == .review { return failureReason != nil }
+            if step.kind == .review {
+                if isTriedNotMet { return false }
+                return failureReason != nil
+            }
             if case .didNotCount = status { return true }
             return false
         }()
 
         return HStack(alignment: .top, spacing: 18) {
             VStack(spacing: 4) {
-                stepCircle(isPassed: isPassed, isPlayedOnly: isPlayedOnly, isDidNotCount: isDidNotCount)
+                stepCircle(isPassed: isPassed, isPlayedOnly: isPlayedOnly, isDidNotCount: isDidNotCount, isTriedNotMet: isTriedNotMet)
                 if !isLast {
                     Rectangle()
                         .fill(Theme.hairline)
@@ -239,12 +243,12 @@ struct DaySummaryView: View {
                     if let failureReason {
                         Text(failureReason)
                             .font(Theme.strong(12))
-                            .foregroundStyle(Theme.ink)
+                            .foregroundStyle(isTriedNotMet ? Theme.orange : Theme.ink)
                             .padding(.horizontal, 12)
                             .frame(height: 28)
                             .background(Theme.surface, in: Capsule())
                             .overlay {
-                                Capsule().strokeBorder(Theme.hairline, lineWidth: 1)
+                                Capsule().strokeBorder(isTriedNotMet ? Theme.orange : Theme.hairline, lineWidth: 1)
                             }
                             .padding(.top, 2)
                     }
@@ -265,7 +269,7 @@ struct DaySummaryView: View {
     }
 
     @ViewBuilder
-    private func stepCircle(isPassed: Bool, isPlayedOnly: Bool, isDidNotCount: Bool) -> some View {
+    private func stepCircle(isPassed: Bool, isPlayedOnly: Bool, isDidNotCount: Bool, isTriedNotMet: Bool = false) -> some View {
         if isPassed {
             Circle()
                 .fill(Theme.orange)
@@ -274,6 +278,15 @@ struct DaySummaryView: View {
                     Image(systemName: "checkmark")
                         .font(.system(size: 18, weight: .bold))
                         .foregroundStyle(Theme.black)
+                }
+        } else if isTriedNotMet {
+            Circle()
+                .strokeBorder(Theme.orange, lineWidth: 2)
+                .frame(width: 44, height: 44)
+                .overlay {
+                    Image(systemName: "xmark")
+                        .font(.system(size: 16, weight: .bold))
+                        .foregroundStyle(Theme.orange)
                 }
         } else if isDidNotCount {
             Circle()

@@ -466,6 +466,7 @@ public struct TrainingScreen: View {
                 if isDone {
                     Image(systemName: step.markerSymbol ?? (step.outcome?.played == true ? "checkmark" : "minus"))
                         .font(.system(size: 14, weight: .bold))
+                        .foregroundStyle(step.status == .triedNotMet ? Theme.orange : Theme.black.opacity(0.7))
                 } else if isCurrent {
                     Text(settings.localized("training.now"))
                         .font(Theme.strong(12))
@@ -963,9 +964,12 @@ public struct TrainingScreen: View {
                     .padding(.vertical, 3)
                     .overlay(Rectangle().stroke(Theme.ink, lineWidth: 2))
 
-                Text(settings.localized("Ready for review"))
+                let subtext = record?.lastReviewFailDay == today
+                    ? settings.localized("Tried today · not met yet")
+                    : settings.localized("Ready for review")
+                Text(subtext)
                     .font(Theme.text(14))
-                    .foregroundStyle(Theme.secondary)
+                    .foregroundStyle(record?.lastReviewFailDay == today ? Theme.orange : Theme.secondary)
                     .fixedSize()
             }
             .padding(.vertical, 8)
@@ -1085,7 +1089,9 @@ public struct TrainingScreen: View {
     private func waitingLessonRow(_ lesson: Lesson) -> some View {
         let record = progress.progress(for: lesson.id)
         let step = (record?.reviewStep ?? 0) + 1
-        let subtext = waitingSubtext(for: record?.reviewDueDay)
+        let subtext = record?.lastReviewFailDay == today
+            ? settings.localized("Tried today · not met yet")
+            : waitingSubtext(for: record?.reviewDueDay)
 
         return Button {
             guard !hasActiveCover else { return }
@@ -1583,6 +1589,8 @@ public struct TrainingScreen: View {
             guard let record = records[lesson.id] else { continue }
             if record.settled == true || record.reviewSchedule.isSettled {
                 settledCandidates.append(lesson)
+            } else if record.lastReviewFailDay == today {
+                // Open failure today stays in the due list; never in tomorrowCandidates.
             } else if let dueDay = record.reviewDueDay, dueDay > today {
                 let offset = AppCalendar.daysBetween(today, dueDay) ?? 0
                 if offset == 1 {
