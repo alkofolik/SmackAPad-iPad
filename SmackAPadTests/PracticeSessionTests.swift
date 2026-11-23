@@ -7,6 +7,144 @@ final class PracticeSessionTests: XCTestCase {
     override func setUp() { super.setUp(); StarStreak.forgetAll() }
 
     @MainActor
+    func testPeekedPassKeepsThePriorReviewSuccessAndCannotEarnTheMemoryStar() async throws {
+        let suite = "memory-peek-review-\(UUID().uuidString)"
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))
+        defer { defaults.removePersistentDomain(forName: suite) }
+        let settings = SettingsManager(userDefaults: defaults)
+        settings.fadeMemoryNotes = false
+        let file = FileManager.default.temporaryDirectory.appendingPathComponent("\(suite).json")
+        defer { try? FileManager.default.removeItem(at: file) }
+        let progress = ProgressStore(fileURL: file, autoLoad: false)
+        let midi = MIDIInput(settings: settings)
+        let hits = stride(from: 0, to: 64, by: 4).map {
+            LessonHit(step: $0, padIndex: 12, hand: "L", velocity: 100)
+        }
+        let lesson = Lesson(id: 40_216, cat: "test", title: "Memory peek", genre: "", tags: [],
+                            text: "", division: 16, bars: 4, startBpm: 120, targetBpm: 120,
+                            level: 1, src: "test", hits: hits)
+        let today = "2026-11-23"
+        progress.setProgress(LessonProgress(passed: true, mastery: true, memory: false, currentBpm: 120,
+                                            reviewStep: 1, reviewDueDay: today), for: lesson.id)
+        var time = AVAudioTime.seconds(forHostTime: mach_absolute_time())
+        let session = PracticeSession(lesson: lesson, settings: settings, progress: progress, midi: midi,
+                                      initialFromMemory: true, initialBpm: 120, clock: { time },
+                                      currentDay: { today })
+        session.metronome = false
+        await session.prepare()
+        defer { session.close() }
+        time = AVAudioTime.seconds(forHostTime: mach_absolute_time())
+        let firstStart = time + 2.6
+        session.start()
+        XCTAssertTrue(session.running)
+
+        func playPass(start: Double) {
+            for hit in hits {
+                time = start + Double(hit.step) / 8 + 0.02
+                session.tick()
+                midi.onPadEvent?(PadInputEvent(padIndex: hit.padIndex, velocity: 100, isNoteOn: true,
+                    timestamp: AVAudioTime.hostTime(forSeconds: time), deviceID: "test"))
+            }
+            time = start + 7.6
+            session.tick()
+            time = start + 8.01
+            session.tick()
+        }
+
+        playPass(start: firstStart)
+        XCTAssertEqual(session.reviewRunProgress?.count, 1)
+        XCTAssertTrue(session.peekAtPattern())
+        XCTAssertEqual(session.noteVisibility, .shown)
+        playPass(start: firstStart + 8)
+        XCTAssertEqual(session.lastResult?.score, 1)
+        XCTAssertEqual(session.reviewPendingReason, .peeked)
+        XCTAssertEqual(session.noteVisibility, .hidden)
+        XCTAssertEqual(session.reviewRunProgress?.count, 1)
+        XCTAssertEqual(progress.progress(for: lesson.id)?.reviewSchedule.reviewStep, 1)
+        XCTAssertEqual(progress.progress(for: lesson.id)?.memory, false)
+        XCTAssertTrue(session.running)
+
+        playPass(start: firstStart + 16)
+        XCTAssertEqual(session.reviewFeedback, .passed(nextStep: 2, gapDays: 7))
+        XCTAssertEqual(progress.progress(for: lesson.id)?.memory, true)
+    }
+
+    @MainActor
+    func testPeekIsRefusedInListenAfterMeSectionLoopsAndVisibleWarmUps() async throws {
+        let suite = "memory-peek-availability-\(UUID().uuidString)"
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))
+        defer { defaults.removePersistentDomain(forName: suite) }
+        let settings = SettingsManager(userDefaults: defaults)
+        let file = FileManager.default.temporaryDirectory.appendingPathComponent("\(suite).json")
+        defer { try? FileManager.default.removeItem(at: file) }
+        let progress = ProgressStore(fileURL: file, autoLoad: false)
+        let midi = MIDIInput(settings: settings)
+        let lesson = Lesson(id: 40_217, cat: "test", title: "Peek availability", genre: "", tags: [],
+                            text: "", division: 16, bars: 4, startBpm: 120, targetBpm: 120,
+                            level: 1, src: "test", hits: [])
+
+        for (mode, sectionLoop, fadeNotes) in [
+            (LessonPlaybackMode.listen, false, false),
+            (.afterMe, false, false),
+            (.play, true, false),
+            (.play, false, true),
+        ] {
+            settings.fadeMemoryNotes = fadeNotes
+            var time = AVAudioTime.seconds(forHostTime: mach_absolute_time())
+            let session = PracticeSession(lesson: lesson, settings: settings, progress: progress, midi: midi,
+                                          initialFromMemory: true, clock: { time })
+            session.selectPlaybackMode(mode)
+            if sectionLoop { session.loopEndBar = 1 }
+            session.metronome = false
+            await session.prepare()
+            defer { session.close() }
+            session.start()
+            XCTAssertTrue(session.running)
+            time += 2.7
+            session.tick()
+            XCTAssertFalse(session.peekAtPattern(), "\(mode), section loop: \(sectionLoop)")
+        }
+    }
+
+    @MainActor
+    func testAutomaticPeekStartsTheNextPassAndLastsOnlyOnePass() async throws {
+        let suite = "automatic-memory-peek-\(UUID().uuidString)"
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))
+        defer { defaults.removePersistentDomain(forName: suite) }
+        let settings = SettingsManager(userDefaults: defaults)
+        settings.fadeMemoryNotes = false
+        let file = FileManager.default.temporaryDirectory.appendingPathComponent("\(suite).json")
+        let progress = ProgressStore(fileURL: file, autoLoad: false)
+        defer { try? FileManager.default.removeItem(at: file) }
+        let midi = MIDIInput(settings: settings)
+        let lesson = Lesson(id: 40_218, cat: "test", title: "Automatic peek", genre: "", tags: [],
+                            text: "", division: 16, bars: 4, startBpm: 120, targetBpm: 120,
+                            level: 1, src: "test",
+                            hits: [LessonHit(step: 0, padIndex: 12, hand: "L", velocity: 100)])
+
+        for enabled in [true, false] {
+            settings.autoPeekMemory = enabled
+            var time = AVAudioTime.seconds(forHostTime: mach_absolute_time())
+            let session = PracticeSession(lesson: lesson, settings: settings, progress: progress, midi: midi,
+                                          initialFromMemory: true, initialBpm: 120, clock: { time })
+            session.metronome = false
+            await session.prepare()
+            defer { session.close() }
+            time = AVAudioTime.seconds(forHostTime: mach_absolute_time())
+            let firstStart = time + 2.6
+            session.start()
+            XCTAssertTrue(session.running)
+            for (index, expected) in [false, enabled, false, false].enumerated() {
+                time = firstStart + Double(index) * 8 + 7.6
+                session.tick()
+                time += 0.41
+                session.tick()
+                XCTAssertEqual(session.noteVisibility, expected ? .shown : .hidden, "Pass \(index + 2)")
+            }
+        }
+    }
+
+    @MainActor
     func testTapeSamplesFrameTargetsEvenWhenDeliveryIsLate() async throws {
         let suite = "frame-targets-\(UUID().uuidString)"
         let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))

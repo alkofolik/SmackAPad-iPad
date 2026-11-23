@@ -182,6 +182,9 @@ public final class SettingsManager: @unchecked Sendable {
     public var fadeMemoryNotes: Bool {
         didSet { userDefaults.set(fadeMemoryNotes, forKey: SettingsKey.fadeMemoryNotes.rawValue) }
     }
+    public var autoPeekMemory: Bool {
+        didSet { userDefaults.set(autoPeekMemory, forKey: SettingsKey.autoPeekMemory.rawValue) }
+    }
     public var reviewReminderEnabled: Bool {
         didSet {
             persistReviewReminderEnabled()
@@ -409,6 +412,7 @@ public final class SettingsManager: @unchecked Sendable {
 
         self.playPadsWithKeyboard = userDefaults.object(forKey: SettingsKey.playPadsWithKeyboard.rawValue) as? Bool ?? true
         self.fadeMemoryNotes = userDefaults.object(forKey: SettingsKey.fadeMemoryNotes.rawValue) as? Bool ?? true
+        self.autoPeekMemory = userDefaults.object(forKey: SettingsKey.autoPeekMemory.rawValue) as? Bool ?? true
         self.reviewReminderEnabled = userDefaults.bool(forKey: SettingsKey.reviewReminderEnabled.rawValue)
         if let storedReminderTime = userDefaults.object(forKey: SettingsKey.reviewReminderTime.rawValue) as? Date {
             self.reviewReminderTime = storedReminderTime
@@ -655,6 +659,7 @@ public final class SettingsManager: @unchecked Sendable {
         self.patternVolume = Self.defaultPatternVolume
         self.instrumentTrims = [:]
         self.playPadsWithKeyboard = true
+        self.autoPeekMemory = true
         self.reviewReminderEnabled = false
         self.reviewReminderTime = Self.defaultReminderTime()
         userDefaults.removeObject(forKey: "smackapad.training.dueStepFilter")
@@ -713,6 +718,7 @@ public final class SettingsManager: @unchecked Sendable {
             instrumentTrims: instrumentTrims,
             playPadsWithKeyboard: playPadsWithKeyboard,
             fadeMemoryNotes: fadeMemoryNotes,
+            autoPeekMemory: autoPeekMemory,
             reviewReminderEnabled: reviewReminderEnabled,
             reviewReminderTime: reviewReminderTime,
             hideCompletedLessons: hideCompletedLessons,
@@ -759,6 +765,7 @@ public final class SettingsManager: @unchecked Sendable {
         self.instrumentTrims = settings.instrumentTrims
         self.playPadsWithKeyboard = settings.playPadsWithKeyboard
         self.fadeMemoryNotes = settings.fadeMemoryNotes
+        self.autoPeekMemory = settings.autoPeekMemory
         self.reviewReminderEnabled = settings.reviewReminderEnabled
         if let time = settings.reviewReminderTime {
             self.reviewReminderTime = time

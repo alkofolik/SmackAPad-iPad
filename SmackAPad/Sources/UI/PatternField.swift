@@ -15,11 +15,13 @@ public enum NoteVisibility: String, Sendable, Equatable {
         listen: Bool,
         isSectionLoop: Bool,
         warmUp: LearningRules.MemoryWarmUp,
-        fadeNotes: Bool
+        fadeNotes: Bool,
+        peeking: Bool = false
     ) -> NoteVisibility {
         guard fromMemory, running, !listen else {
             return .shown
         }
+        if peeking && !isSectionLoop { return .shown }
         guard !isSectionLoop, fadeNotes else {
             return .hidden
         }
@@ -71,6 +73,7 @@ struct PatternField: View {
     @ScaledMetric(relativeTo: .headline) private var notationScale: CGFloat = 1
     @Environment(SettingsManager.self) private var settings
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    var session: PracticeSession? = nil
     let lesson: Lesson
     let hits: [LessonHit]
     let position: Double
@@ -79,6 +82,8 @@ struct PatternField: View {
     let visibility: NoteVisibility
     var fromMemory: Bool = false
     var afterMe: Bool = false
+    var peekNotesOpacity: Double? = nil
+    var peekCycles: Range<Int>? = nil
     var hidden: Bool { visibility == .hidden }
     let scrolling: Bool
     let visibleBars: Int
@@ -115,58 +120,77 @@ struct PatternField: View {
 
     var body: some View {
         GeometryReader { geometry in
-            let contentSize = CGSize(
-                width: max(1, geometry.size.width - 2 * Theme.Space.page),
-                height: geometry.size.height
-            )
             let count = min(visibleBars, min(lesson.bars, 4))
-            let layout = BandGeometry(size: contentSize, rows: rows.count)
+            let layout = BandGeometry(size: geometry.size, rows: rows.count)
             let labelLayout = PracticeBandStyle.bandLabelLayout(
                 rows: rows,
-                availableWidth: contentSize.width,
+                availableWidth: geometry.size.width,
                 rowHeight: layout.rowHeight,
                 barCount: scrolling ? 1 : count
             )
+            let gutter = labelLayout.gutter
+            let orangeFieldWidth = max(1, geometry.size.width - gutter)
 
-            ZStack {
-                Group {
-                    if scrolling {
-                        ScrollingPattern(lesson: lesson, hits: hits, rows: rows, position: tapePosition,
-                                         running: running, visibility: visibility, fromMemory: fromMemory, afterMe: afterMe,
-                                         verdicts: verdicts, judgments: judgments, pass: pass,
-                                         playedHits: playedHits, scoring: scoring,
-                                         missGraceSteps: missGraceSteps, band: band, layout: layout,
-                                         labelLayout: labelLayout)
-                    } else {
-                        let currentBar = min(lesson.bars - 1, max(0, Int(position) / 16))
-                        let first = (currentBar / max(1, count)) * max(1, count)
-                        let bars = Array(first..<min(first + count, lesson.bars))
-                        let startStep = first * 16
-                        let endStep = min(first + count, lesson.bars) * 16
-                        let staticPlayed = visiblePlayedHits(steps: startStep..<endStep)
-                        StaticPattern(lesson: lesson, hits: hits, rows: rows, bars: bars, firstBar: first,
-                                      position: position, running: running, visibility: visibility,
-                                      verdicts: verdicts, feedback: feedback,
-                                      playedHits: staticPlayed,
-                                      scoring: scoring, missGraceSteps: missGraceSteps,
-                                      band: band, layout: layout, labelLayout: labelLayout,
-                                      bpm: bpm, reduceMotion: reduceMotion,
-                                      afterMe: afterMe,
-                                      fromMemory: fromMemory)
+            HStack(spacing: 0) {
+                if gutter > 0 {
+                    BandMarginView(
+                        rows: rows,
+                        layout: layout,
+                        labelLayout: labelLayout,
+                        session: session
+                    )
+                    .frame(width: gutter, height: geometry.size.height)
+                }
+
+                ZStack(alignment: .topLeading) {
+                    Group {
+                        if scrolling {
+                            ScrollingPattern(lesson: lesson, hits: hits, rows: rows, position: tapePosition,
+                                             running: running, visibility: visibility, fromMemory: fromMemory, afterMe: afterMe,
+                                             verdicts: verdicts, judgments: judgments, pass: pass,
+                                             playedHits: playedHits, scoring: scoring,
+                                             missGraceSteps: missGraceSteps, band: band, layout: layout,
+                                             labelLayout: labelLayout,
+                                             peekNotesOpacity: peekNotesOpacity, peekCycles: peekCycles)
+                        } else {
+                            let currentBar = min(lesson.bars - 1, max(0, Int(position) / 16))
+                            let first = (currentBar / max(1, count)) * max(1, count)
+                            let bars = Array(first..<min(first + count, lesson.bars))
+                            let startStep = first * 16
+                            let endStep = min(first + count, lesson.bars) * 16
+                            let staticPlayed = visiblePlayedHits(steps: startStep..<endStep)
+                            StaticPattern(lesson: lesson, hits: hits, rows: rows, bars: bars, firstBar: first,
+                                          position: position, running: running, visibility: visibility,
+                                          verdicts: verdicts, feedback: feedback,
+                                          playedHits: staticPlayed,
+                                          scoring: scoring, missGraceSteps: missGraceSteps,
+                                          band: band, layout: layout, labelLayout: labelLayout,
+                                          bpm: bpm, reduceMotion: reduceMotion,
+                                          afterMe: afterMe,
+                                          fromMemory: fromMemory, peekNotesOpacity: peekNotesOpacity)
+                        }
+                    }
+                    .frame(width: orangeFieldWidth, height: geometry.size.height)
+
+                    if scoring && countdown == nil {
+                        BandTopSpineRuler(
+                            bars: runBars,
+                            tapePosition: tapePosition,
+                            starMomentBeamActive: starMomentBeamActive
+                        )
+                        .frame(width: orangeFieldWidth, height: 8)
                     }
                 }
-                .frame(width: contentSize.width, height: contentSize.height)
-
-                if scoring && countdown == nil {
-                    BandTopSpineRuler(
-                        bars: runBars,
-                        tapePosition: tapePosition,
-                        starMomentBeamActive: starMomentBeamActive
-                    )
-                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+                .frame(width: orangeFieldWidth, height: geometry.size.height)
+                .background {
+                    ZStack(alignment: .top) {
+                        band
+                        Theme.black.opacity(0.10).frame(height: layout.headerTintHeight)
+                    }
+                    .animation(reduceMotion ? nil : .easeInOut(duration: 1.2), value: band)
                 }
+                .clipShape(Rectangle())
             }
-            .padding(.horizontal, Theme.Space.page)
             .opacity(countdown == nil ? 1 : 0.22)
             .frame(width: geometry.size.width, height: geometry.size.height)
             .overlay {
@@ -176,13 +200,6 @@ struct PatternField: View {
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
                         .allowsHitTesting(false)
                 }
-            }
-            .background {
-                ZStack(alignment: .top) {
-                    band
-                    Theme.black.opacity(0.10).frame(height: layout.headerTintHeight)
-                }
-                .animation(reduceMotion ? nil : .easeInOut(duration: 1.2), value: band)
             }
         }
         .clipShape(Rectangle())
@@ -273,24 +290,6 @@ private struct PatternLanes {
         }
     }
 
-    /// Drawn after every moving note, so old notes deliberately slide underneath.
-    func drawLabels(band: Color, labelLayout: BandLabelLayout, context: inout GraphicsContext) {
-        guard PracticeBandStyle.showPadLabels, labelLayout.gutter > 0 else { return }
-        let backdropWidth = max(0, labelLayout.gutter + 6)
-        let labelFontSize = min(labelLayout.fontSize, max(3, height * 0.68))
-        for (row, pad) in rows.enumerated() {
-            let rect = CGRect(x: -12, y: y(row) - height / 2, width: backdropWidth, height: height)
-            context.fill(Path(roundedRect: rect, cornerRadius: 6), with: .color(band))
-            let label = labelLayout.labels[pad] ?? PadVoice.displayName(pad)
-            context.draw(
-                Text(label)
-                    .font(Theme.canvasDisplay(labelFontSize))
-                    .foregroundColor(Theme.black),
-                at: CGPoint(x: 0, y: y(row)),
-                anchor: .leading
-            )
-        }
-    }
 }
 
 private func drawBeat(step: Int, x: CGFloat, lanes: PatternLanes, context: inout GraphicsContext) {
@@ -333,9 +332,9 @@ private struct StaticPattern: View {
     var reduceMotion: Bool = false
     var afterMe: Bool = false
     var fromMemory: Bool = false
+    var peekNotesOpacity: Double? = nil
 
     var body: some View {
-        let gutter: CGFloat = labelLayout.gutter
         let barCount = max(1, bars.count)
         let totalSteps = barCount * 16
         let startStep = firstBar * 16
@@ -343,7 +342,7 @@ private struct StaticPattern: View {
 
         ZStack {
             Canvas { context, size in
-                let cellWidth = max(1, (size.width - gutter) / CGFloat(totalSteps))
+                let cellWidth = max(1, (size.width - 24) / CGFloat(totalSteps))
                 let lanes = PatternLanes(geometry: layout, rows: rows)
                 lanes.drawRows(context: &context)
 
@@ -352,28 +351,29 @@ private struct StaticPattern: View {
                     let barOffsetSteps = barIndex * 16
                     for step in 0..<16 {
                         let visibleStep = barOffsetSteps + step
-                        let x = gutter + (CGFloat(visibleStep) + 0.5) * cellWidth
+                        let x = (CGFloat(visibleStep) + 0.5) * cellWidth
                         drawBeat(step: step, x: x, lanes: lanes, context: &context)
                     }
                 }
             }
 
             Canvas { context, size in
-                let cellWidth = max(1, (size.width - gutter) / CGFloat(totalSteps))
+                let cellWidth = max(1, (size.width - 24) / CGFloat(totalSteps))
                 let lanes = PatternLanes(geometry: layout, rows: rows)
 
-                if visibility != .hidden || afterMe {
+                if visibility != .hidden || afterMe || peekNotesOpacity != nil {
+                    context.opacity = peekNotesOpacity ?? 1
                     for (row, pad) in rows.enumerated() {
                         for hit in hits where hit.padIndex == pad && hit.step >= startStep && hit.step < endStep {
                             let visibleStep = hit.step - startStep
-                            let x = gutter + (CGFloat(visibleStep) + 0.5) * cellWidth
+                            let x = (CGFloat(visibleStep) + 0.5) * cellWidth
                             let rect = lanes.tile(x: x, width: cellWidth, row: row)
                             let tail = !fromMemory && feedback.position < Double(hit.step) ? feedback.strength(offset: -1, step: Double(hit.step)) : 0
                             let mark = hitMark(hit, judgments: feedback.judgments[feedback.pass + (tail > 0 ? -1 : 0)] ?? [:],
                                                scoring: scoring, elapsedSteps: tail > 0 ? Double(feedback.totalSteps) : position - Double(hit.step),
                                                grace: missGraceSteps)
                             drawHit(hit, in: rect, mark: mark, strength: tail > 0 ? tail : 1,
-                                    visibility: afterMe ? .shown : visibility,
+                                    visibility: afterMe || peekNotesOpacity != nil ? .shown : visibility,
                                     fontSize: lanes.fontSize, context: &context)
                         }
                     }
@@ -383,14 +383,14 @@ private struct StaticPattern: View {
             .animation(reduceMotion ? nil : Theme.Motion.fast, value: afterMe)
 
             Canvas { context, size in
-                let cellWidth = max(1, (size.width - gutter) / CGFloat(totalSteps))
+                let cellWidth = max(1, (size.width - 24) / CGFloat(totalSteps))
                 let lanes = PatternLanes(geometry: layout, rows: rows)
 
                 if visibility == .hidden && running {
                     for (row, pad) in rows.enumerated() {
                         var playedContext = context
                         let visiblePosition = position - Double(startStep)
-                        let markerX = gutter + CGFloat(visiblePosition) * cellWidth
+                        let markerX = CGFloat(visiblePosition) * cellWidth
                         let behindMarker = min(size.width, max(0, markerX))
                         playedContext.clip(to: Path(CGRect(x: 0, y: 0, width: behindMarker, height: size.height)))
 
@@ -399,13 +399,13 @@ private struct StaticPattern: View {
                         }
                         for hit in barPlayedHits {
                             let visibleStep = hit.step - Double(startStep)
-                            let x = gutter + (CGFloat(visibleStep) + 0.5) * cellWidth
+                            let x = (CGFloat(visibleStep) + 0.5) * cellWidth
                             let rect = lanes.tile(x: x, width: cellWidth, row: row)
                             var hitContext = hit.pass == feedback.pass ? playedContext : context
                             if hit.pass != feedback.pass {
                                 hitContext.opacity = feedback.strength(offset: hit.pass - feedback.pass, step: hit.step)
                             }
-                            drawPlayedHit(hit, in: rect, fontSize: lanes.fontSize, context: &hitContext)
+                            drawPlayedHit(hit, in: rect, fontSize: lanes.fontSize, context: &hitContext, hits: hits)
                         }
                     }
                 }
@@ -413,12 +413,9 @@ private struct StaticPattern: View {
                 // Smooth playhead moving across bar boundaries at constant speed
                 let visiblePosition = position - Double(startStep)
                 if running && visiblePosition >= 0 && visiblePosition <= Double(totalSteps) {
-                    let markerX = gutter + CGFloat(visiblePosition) * cellWidth
+                    let markerX = CGFloat(visiblePosition) * cellWidth
                     drawMarker(x: markerX, top: lanes.top - 4 * lanes.scale, bottom: lanes.bottom + 4, context: &context)
                 }
-
-                // Pad labels appear once, on the left of the whole row of bars
-                lanes.drawLabels(band: band, labelLayout: labelLayout, context: &context)
             }
         }
     }
@@ -444,6 +441,8 @@ private struct ScrollingPattern: View {
     let band: Color
     let layout: BandGeometry
     let labelLayout: BandLabelLayout
+    var peekNotesOpacity: Double? = nil
+    var peekCycles: Range<Int>? = nil
 
     var body: some View {
         let total = max(16, lesson.bars * 16)
@@ -471,11 +470,13 @@ private struct ScrollingPattern: View {
                 let firstStep = Int(floor(position - Double(markerX / cellWidth))) - 1
                 let lastStep = Int(ceil(position + Double((size.width - markerX) / cellWidth))) + 1
 
+                context.opacity = peekNotesOpacity ?? 1
                 for globalStep in firstStep...lastStep {
                     guard globalStep >= 0 else { continue }
                     let step = (globalStep % total + total) % total
                     let recordedPass = globalStep / total + 1
-                    let stepVisibility: NoteVisibility = afterMe ? .shown : visibility
+                    if let peekCycles, !peekCycles.contains(recordedPass) { continue }
+                    let stepVisibility: NoteVisibility = afterMe || peekNotesOpacity != nil ? .shown : visibility
                     let x = markerX + CGFloat(Double(globalStep) - position) * cellWidth
                     if stepVisibility != .hidden || afterMe {
                         for hit in hits where hit.step == step {
@@ -513,19 +514,19 @@ private struct ScrollingPattern: View {
                         let rect = lanes.tile(x: x, width: cellWidth, row: row)
                         var hitContext = playedContext
                         hitContext.opacity = min(1, max(0, rect.maxX / rect.width))
-                        drawPlayedHit(hit, in: rect, fontSize: lanes.fontSize, context: &hitContext)
+                        drawPlayedHit(hit, in: rect, fontSize: lanes.fontSize, context: &hitContext, hits: hits)
                     }
                 }
                 drawMarker(x: markerX, top: lanes.top - 4 * lanes.scale, bottom: rowBottom + 4, context: &context)
-                lanes.drawLabels(band: band, labelLayout: labelLayout, context: &context)
             }
         }
     }
 }
 
 private func drawPlayedHit(_ hit: PlayedHit, in rect: CGRect, fontSize: CGFloat,
-                           context: inout GraphicsContext) {
-    let note = LessonHit(step: Int(hit.step), padIndex: hit.padIndex, hand: "L", velocity: 0)
+                           context: inout GraphicsContext, hits: [LessonHit]? = nil) {
+    let hand = hits?.first(where: { $0.padIndex == hit.padIndex && abs(Double($0.step) - hit.step) < 0.75 })?.hand ?? "R"
+    let note = LessonHit(step: Int(hit.step), padIndex: hit.padIndex, hand: hand, velocity: 0)
     drawHit(note, in: rect, mark: hit.mark, strength: 1, visibility: .shown, fontSize: fontSize, context: &context)
 }
 
@@ -552,14 +553,24 @@ private func drawHit(_ hit: LessonHit, in rect: CGRect, mark: HitMark?, strength
     let innerRadius = max(1, cornerRadius - 1)
     let hitFontSize = min(fontSize, max(7, min(rect.width * 0.65, rect.height * 0.68)))
 
+    let isLeft = hit.hand.uppercased() == "L"
+    let baseColor = isLeft ? Theme.black : Theme.white
+    let textColor = isLeft ? Theme.white : Theme.black
+
     switch visibility {
     case .shown:
         var fillContext = context
         fillContext.opacity *= strength
-        fillContext.fill(Path(roundedRect: rect, cornerRadius: cornerRadius), with: .color(Theme.white))
+        fillContext.fill(Path(roundedRect: rect, cornerRadius: cornerRadius), with: .color(baseColor))
+        if isLeft {
+            fillContext.stroke(Path(roundedRect: rect, cornerRadius: cornerRadius), with: .color(Theme.white), lineWidth: 1)
+        }
         if let mark {
             fillContext.fill(Path(roundedRect: rect.insetBy(dx: 1.5, dy: 1.5), cornerRadius: innerRadius),
                              with: .color(PracticeBandStyle.hitColor(mark)))
+            if isLeft {
+                fillContext.stroke(Path(roundedRect: rect, cornerRadius: cornerRadius), with: .color(Theme.white), lineWidth: 1)
+            }
             var accent = Path()
             let padInset = min(4, rect.width * 0.25)
             let vPad = min(5, rect.height * 0.2)
@@ -572,8 +583,11 @@ private func drawHit(_ hit: LessonHit, in rect: CGRect, mark: HitMark?, strength
             }
             fillContext.stroke(accent, with: .color(Theme.black), lineWidth: 1.4)
         }
-        fillContext.draw(Text(PadVoice.abbreviation(hit.padIndex)).font(Theme.canvasDisplay(hitFontSize))
-            .foregroundColor(Theme.black), at: CGPoint(x: rect.midX, y: rect.midY))
+        if PracticeBandStyle.showPadLabels {
+            let fgColor = mark != nil ? Theme.black : textColor
+            fillContext.draw(Text(PadVoice.abbreviation(hit.padIndex)).font(Theme.canvasDisplay(hitFontSize))
+                .foregroundColor(fgColor), at: CGPoint(x: rect.midX, y: rect.midY))
+        }
 
     case .faded:
         var fadedContext = context
@@ -593,10 +607,15 @@ private func drawHit(_ hit: LessonHit, in rect: CGRect, mark: HitMark?, strength
             }
             fadedContext.stroke(accent, with: .color(Theme.black), lineWidth: 1.4)
         } else {
-            fadedContext.fill(interior, with: .color(Theme.white.opacity(0.12)))
+            if isLeft {
+                fadedContext.fill(interior, with: .color(Theme.black.opacity(0.35)))
+                fadedContext.stroke(interior, with: .color(Theme.white.opacity(0.35)), lineWidth: 1)
+            } else {
+                fadedContext.fill(interior, with: .color(Theme.white.opacity(0.20)))
+            }
         }
         fadedContext.stroke(Path(roundedRect: rect.insetBy(dx: 1, dy: 1), cornerRadius: innerRadius),
-                            with: .color(PatternField.ghostOutline), lineWidth: 2)
+                            with: .color(PatternField.ghostOutline.opacity(0.4)), lineWidth: 1.5)
 
     case .hidden:
         break
@@ -832,7 +851,16 @@ struct HelpPatternBand: View {
                     }
                 }
             }
-            lanes.drawLabels(band: band, labelLayout: labelLayout, context: &context)
+            for (row, pad) in Self.rows.enumerated() {
+                let label = labelLayout.labels[pad] ?? PadVoice.displayName(pad).uppercased()
+                context.draw(
+                    Text(label)
+                        .font(Theme.canvasPadTitle(size: labelLayout.fontSize))
+                        .foregroundColor(Theme.ink),
+                    at: CGPoint(x: gutter - 8 * scale, y: lanes.y(row)),
+                    anchor: .trailing
+                )
+            }
         }
         .padding(.horizontal, Theme.Space.small)
         .frame(height: height)
@@ -846,5 +874,83 @@ struct HelpPatternBand: View {
             }
         }
         .accessibilityHidden(true)
+    }
+}
+
+// MARK: - Margin & Hit Indicator (Ticket 218)
+
+private struct BandRowDotSchedule: TimelineSchedule {
+    let flashDate: Date?
+    private static let fadeDuration: TimeInterval = 0.15
+    private static let frameInterval: TimeInterval = 1.0 / 30.0
+
+    func entries(from startDate: Date, mode: TimelineScheduleMode) -> [Date] {
+        guard let flashDate else { return [startDate] }
+        let finish = flashDate.addingTimeInterval(Self.fadeDuration)
+        guard finish > startDate else { return [startDate] }
+        var dates: [Date] = []
+        var current = startDate
+        while current < finish {
+            dates.append(current)
+            current = current.addingTimeInterval(Self.frameInterval)
+        }
+        dates.append(finish)
+        return dates
+    }
+}
+
+/// A leaf view reading pad flashes only for its own padIndex to avoid re-rendering PatternField or PracticeScreen.
+private struct BandRowDot: View {
+    let session: PracticeSession?
+    let padIndex: Int
+
+    var body: some View {
+        let flash = session?.padFlashes[padIndex]
+        TimelineView(BandRowDotSchedule(flashDate: flash?.date)) { timeline in
+            let age = flash.map { timeline.date.timeIntervalSince($0.date) } ?? 1.0
+            let opacity = max(0, min(1, 1 - age / 0.15))
+            Circle()
+                .fill(Theme.orange)
+                .opacity(opacity)
+                .frame(width: 6, height: 6)
+        }
+    }
+}
+
+/// Left margin holding plain-text drum names right-aligned against the orange field,
+/// with an orange strike dot next to each name (Ticket 218).
+private struct BandMarginView: View {
+    let rows: [Int]
+    let layout: BandGeometry
+    let labelLayout: BandLabelLayout
+    let session: PracticeSession?
+
+    var body: some View {
+        GeometryReader { geometry in
+            let lanes = PatternLanes(geometry: layout, rows: rows)
+            ZStack(alignment: .topLeading) {
+                ForEach(rows.indices, id: \.self) { row in
+                    let pad = rows[row]
+                    let rowY = lanes.y(row)
+                    let name = labelLayout.labels[pad] ?? PadVoice.displayName(pad).uppercased()
+
+                    HStack(spacing: 6) {
+                        Spacer(minLength: 0)
+                        Text(name)
+                            .font(Theme.canvasPadTitle(size: labelLayout.fontSize))
+                            .tracking(max(0.8, labelLayout.fontSize * 0.06))
+                            .foregroundStyle(Theme.ink)
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.5)
+
+                        BandRowDot(session: session, padIndex: pad)
+                    }
+                    .padding(.trailing, 10)
+                    .padding(.leading, 16)
+                    .frame(width: geometry.size.width, height: layout.rowHeight)
+                    .position(x: geometry.size.width / 2, y: rowY)
+                }
+            }
+        }
     }
 }

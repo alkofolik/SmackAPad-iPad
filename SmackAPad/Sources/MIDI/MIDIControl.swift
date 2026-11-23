@@ -26,7 +26,7 @@ public struct MIDIControlMessage: Sendable {
 }
 
 public enum MIDIPracticeAction: String, CaseIterable, Codable, Sendable {
-    case startStop, restart, listen, tempoDown, tempoUp
+    case startStop, restart, listen, tempoDown, tempoUp, peek
 
     static let tempoButtonStep = 5
     var title: String {
@@ -36,6 +36,7 @@ public enum MIDIPracticeAction: String, CaseIterable, Codable, Sendable {
         case .listen: return "Listen"
         case .tempoDown: return "Tempo −"
         case .tempoUp: return "Tempo +"
+        case .peek: return "Peek at pattern"
         }
     }
 }

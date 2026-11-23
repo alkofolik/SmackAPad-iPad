@@ -36,6 +36,7 @@ public struct BackupSettings: Codable, Equatable, Sendable {
     public var instrumentTrims: [String: Int]
     public var playPadsWithKeyboard: Bool
     public var fadeMemoryNotes: Bool
+    public var autoPeekMemory: Bool
     public var reviewReminderEnabled: Bool
     public var reviewReminderTime: Date?
     public var hideCompletedLessons: Bool
@@ -70,6 +71,7 @@ public struct BackupSettings: Codable, Equatable, Sendable {
         instrumentTrims: [String: Int] = [:],
         playPadsWithKeyboard: Bool = true,
         fadeMemoryNotes: Bool = true,
+        autoPeekMemory: Bool = true,
         reviewReminderEnabled: Bool = false,
         reviewReminderTime: Date? = nil,
         hideCompletedLessons: Bool = false,
@@ -103,6 +105,7 @@ public struct BackupSettings: Codable, Equatable, Sendable {
         self.instrumentTrims = SettingsManager.cleanTrims(instrumentTrims)
         self.playPadsWithKeyboard = playPadsWithKeyboard
         self.fadeMemoryNotes = fadeMemoryNotes
+        self.autoPeekMemory = autoPeekMemory
         self.reviewReminderEnabled = reviewReminderEnabled
         self.reviewReminderTime = reviewReminderTime
         self.hideCompletedLessons = hideCompletedLessons
@@ -125,6 +128,7 @@ public struct BackupSettings: Codable, Equatable, Sendable {
         case settingsModifiedAt, selectedKitId, lessonKitOverrides, midiControls, bpmStep, practiceMode
         case activeProfileName, customProfiles, languagePreference, appearance, metronomeVolume, padsVolume, patternVolume, instrumentTrims
         case playPadsWithKeyboard, fadeMemoryNotes, reviewReminderEnabled, reviewReminderTime, hideCompletedLessons
+        case autoPeekMemory
         case hiddenCategoryIDsByMode, libraryView, libraryStarFilters, trainingDueStepFilter, nextLessonSource, lastLessonID
         case showPads, visibleBars, touchPadsInPortrait, scrolling, practiceAppearance
         case legendShownOnce, memoryHintShownLessonIds
@@ -149,6 +153,7 @@ public struct BackupSettings: Codable, Equatable, Sendable {
             try c.decodeIfPresent([String: Int].self, forKey: .instrumentTrims) ?? [:])
         self.playPadsWithKeyboard = try c.decodeIfPresent(Bool.self, forKey: .playPadsWithKeyboard) ?? true
         self.fadeMemoryNotes = try c.decodeIfPresent(Bool.self, forKey: .fadeMemoryNotes) ?? true
+        self.autoPeekMemory = try c.decodeIfPresent(Bool.self, forKey: .autoPeekMemory) ?? true
         self.reviewReminderEnabled = try c.decodeIfPresent(Bool.self, forKey: .reviewReminderEnabled) ?? false
         self.reviewReminderTime = try c.decodeIfPresent(Date.self, forKey: .reviewReminderTime)
         self.hideCompletedLessons = try c.decodeIfPresent(Bool.self, forKey: .hideCompletedLessons) ?? false

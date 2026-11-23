@@ -57,7 +57,7 @@ struct PadFlashSchedule: TimelineSchedule {
     }
 }
 
-/// Hand colours never change with the page appearance: filled black = left, outlined white = right.
+/// Hand colours: cream white = right, filled black with 1 pt light outline = left.
 struct PatternBlock: View {
     let abbreviation: String
     let hand: String
@@ -73,7 +73,10 @@ struct PatternBlock: View {
             .background(isRight ? Theme.white : Theme.black,
                         in: RoundedRectangle(cornerRadius: 6))
             .overlay {
-                if isRight || outlined {
+                if !isRight {
+                    RoundedRectangle(cornerRadius: 6)
+                        .strokeBorder(Theme.white, lineWidth: 1)
+                } else if outlined {
                     RoundedRectangle(cornerRadius: 6)
                         .strokeBorder(Theme.black, lineWidth: 1.5)
                 }

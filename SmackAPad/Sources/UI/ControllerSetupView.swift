@@ -398,8 +398,9 @@ struct ControllerMappingSections: View {
         Group {
             Section {
                 actionRow(.startStop)
+                actionRow(.peek)
                 DisclosureGroup(settings.localized("Advanced"), isExpanded: $advanced) {
-                    ForEach(MIDIPracticeAction.allCases.filter { $0 != .startStop }, id: \.self) { action in
+                    ForEach(MIDIPracticeAction.allCases.filter { $0 != .startStop && $0 != .peek }, id: \.self) { action in
                         actionRow(action)
                     }
                 }

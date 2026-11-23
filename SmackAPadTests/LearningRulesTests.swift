@@ -2,6 +2,26 @@ import XCTest
 @testable import SmackAPad
 
 final class LearningRulesTests: XCTestCase {
+    func testAutomaticPeekAfterTwoHiddenMissesResetsForTheNextPair() {
+        var rule = LearningRules.AutomaticMemoryPeek()
+        XCTAssertFalse(rule.recordPass(score: 0.79, notesHidden: true, enabled: true))
+        XCTAssertTrue(rule.recordPass(score: 0.79, notesHidden: true, enabled: true))
+        XCTAssertFalse(rule.recordPass(score: 0, notesHidden: false, enabled: true))
+        XCTAssertFalse(rule.recordPass(score: 0.79, notesHidden: true, enabled: true))
+        XCTAssertTrue(rule.recordPass(score: 0.79, notesHidden: true, enabled: true))
+    }
+
+    func testAutomaticPeekResetsAtThePassMarkAndWhileDisabled() {
+        var rule = LearningRules.AutomaticMemoryPeek()
+        XCTAssertFalse(rule.recordPass(score: 0.79, notesHidden: true, enabled: true))
+        XCTAssertFalse(rule.recordPass(score: 0.8, notesHidden: true, enabled: true))
+        XCTAssertFalse(rule.recordPass(score: 0.79, notesHidden: true, enabled: true))
+        for _ in 0..<3 {
+            XCTAssertFalse(rule.recordPass(score: 0.79, notesHidden: true, enabled: false))
+        }
+        XCTAssertFalse(rule.recordPass(score: 0.79, notesHidden: true, enabled: true))
+    }
+
     func testMainLearningConstants() {
         XCTAssertEqual(LearningRules.passMark, 0.8)
         XCTAssertEqual(LearningRules.minimumHitsPerStar, 16)

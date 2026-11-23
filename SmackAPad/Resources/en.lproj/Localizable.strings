@@ -116,6 +116,7 @@
 "%lld / %lld PASSED" = "%lld / %lld PASSED";
 "No matching lessons" = "No matching lessons";
 "Clear filters" = "Clear filters";
+"Filters" = "Filters";
 "Overall progress" = "Overall progress";
 "Star requirements" = "Star requirements";
 "%lld of %lld stars" = "%lld of %lld stars";
@@ -412,6 +413,7 @@
 "Pattern view" = "Pattern view";
 "Bars shown" = "Bars shown";
 "Next lesson" = "Next lesson";
+"Again" = "Again";
 "No next lesson available" = "No next lesson available";
 "How to play" = "How to play";
 "Tips" = "Tips";
@@ -678,6 +680,10 @@
 
 /* Ticket 99: From memory fading notes */
 "Fade notes in From memory" = "Fade notes in From memory";
+"Peek at pattern" = "Peek at pattern";
+"Peeked · only passes from memory count." = "Peeked · only passes from memory count.";
+"Automatic peek in From memory" = "Automatic peek in From memory";
+"After two missed passes the notes show for one pass. That pass does not count." = "After two missed passes the notes show for one pass. That pass does not count.";
 
 /* Ticket 100: Training Mix. */
 "Mix" = "Mix";
@@ -857,7 +863,7 @@
 "help.hit.off" = "Right pad, off time";
 "help.hit.wrong" = "Wrong pad or missed hit";
 "help.tutorial.modes.title" = "Practice modes";
-"help.tutorial.modes.caption" = "Listen: hear the pattern and join in. No stars.\nPlay: play the pattern yourself and earn stars. The metronome is optional.\nAfter me: listen to the app play a phrase, then repeat it. No stars.\nFrom memory: hide the notes to test yourself. Notes hide after two good passes.";
+"help.tutorial.modes.caption" = "Listen: hear the pattern and join in. No stars.\nPlay: play the pattern yourself and earn stars. The metronome is optional.\nAfter me: listen to the app play a phrase, then repeat it. No stars.\nFrom memory: hide the notes to test yourself. Notes hide after two good passes. Tap the eye to show the notes for the rest of the pass.";
 "help.tutorial.starsAndTempo.title" = "Stars and tempo";
 "help.tutorial.starsAndTempo.caption" = "★ Pass the lesson.\n★★ Play cleanly at goal tempo. Clean passes in Play raise the tempo towards the goal.\n★★★ Pass two scheduled reviews from memory on different days.\nTap the stars for the lesson requirements. Tap the tempo field while stopped to change it.";
 "help.tutorial.whereNext.title" = "Where to go next";
@@ -882,7 +888,7 @@
 "help.stars.caption" = "★ Pass at %lld %% or higher. In Learning, accurate hits with few errors can also qualify at a lower score.\n★★ Play cleanly at goal tempo. ★★★ Pass two scheduled reviews on different days.\nTap the stars for the required passes. For the first two stars the app aims for at least 16 hits, with at most four passes. Intro needs at least three passes for ★★.\nChoose Learning to add up good passes or Challenge to require them in a row. Play stops when you earn ★★ or ★★★.";
 "help.tempo.tap" = "Tap the tempo field while stopped";
 "help.tempo.caption" = "Adjust by −5, −1, +1 or +5 BPM, or return to Starting tempo. The lesson remembers your tempo.\nIn Play, clean passes raise the tempo up to the goal. Set the automatic step to 1, 2, 5 or 10 BPM in Settings.\nPlay with no errors in Intro. Elsewhere, a clean pass allows no errors through 15 hits, one through 32, and two above that.";
-"help.memory.caption" = "While stopped, tap the brain icon, then Start.\nWith “%@” on in Settings, the first pass shows the pattern and the second fades it only after a good first pass. Turn it off to hide the pattern right after the count-in.\nThe pattern hides after two good passes in a row (80 %%+). A weaker pass starts the count again.\nPractise from memory to prepare for reviews. Stars for this option come only from a successful scheduled review.";
+"help.memory.caption" = "While stopped, tap the brain icon, then Start.\nWith “%@” on in Settings, the first pass shows the pattern and the second fades it only after a good first pass. Turn it off to hide the pattern right after the count-in.\nThe pattern hides after two good passes in a row (80 %%+). A weaker pass starts the count again.\nPractise from memory to prepare for reviews. Stars for this option come only from a successful scheduled review. Tap the eye to show the notes for the rest of the pass.";
 "help.memory.shown" = "Pass 1 · pattern visible";
 "help.memory.fading" = "Pass 2 · pattern fades";
 "help.memory.hiddenFromThird" = "Pass 3 onward · pattern hidden";

@@ -117,6 +117,31 @@ struct PracticeDisplayFrame<Content: View>: View {
     }
 }
 
+@MainActor
+struct MemoryPeekTimeLine: View {
+    let clock: PracticeDisplayClock
+    let session: PracticeSession
+
+    var body: some View {
+        if session.isPeeking, let peek = session.memoryPeek {
+            PracticeDisplayFrame(clock: clock, session: session) { frame, _ in
+                let repeats = session.repeatsPerRun
+                let remaining = session.runNumber(for: frame.pass) == peek.passNumber
+                    ? 1 - PracticeSession.runFraction(tapePosition: frame.tapePosition,
+                                                      totalSteps: frame.totalSteps, repeatsPerRun: repeats)
+                    : 0
+                GeometryReader { geometry in
+                    Capsule()
+                        .fill(Theme.orange)
+                        .frame(width: geometry.size.width * remaining)
+                }
+                .frame(height: 3)
+                .accessibilityHidden(true)
+            }
+        }
+    }
+}
+
 /// Attach to the actual window's screen, including an external display.
 struct PracticeDisplayLinkHost: UIViewRepresentable {
     let clock: PracticeDisplayClock

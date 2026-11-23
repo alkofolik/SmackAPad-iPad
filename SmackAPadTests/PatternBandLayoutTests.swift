@@ -60,7 +60,7 @@ final class PatternBandLayoutTests: XCTestCase {
         }
     }
 
-    func testFiveAndEightRowLabelsStayInsideRowHeightAndTruncateInMiddleWhenNarrow() {
+    func testFiveAndEightRowLabelsStayInsideRowHeightAndDoNotTruncateWithEllipsis() {
         let fivePads = [8, 11, 7, 13, 12]
         let bandHeight = PracticeBandStyle.bandHeight(rows: fivePads.count, availableHeight: 220)
         let geometry = BandGeometry(size: CGSize(width: 340, height: bandHeight), rows: fivePads.count)
@@ -72,9 +72,10 @@ final class PatternBandLayoutTests: XCTestCase {
         )
         XCTAssertLessThanOrEqual(narrowLabels.fontSize, geometry.rowHeight * 0.72)
         XCTAssertEqual(Set(narrowLabels.labels.values).count, fivePads.count, "Duplicate pad numbers must stay distinct")
-        if let pad9 = narrowLabels.labels[8], let pad12 = narrowLabels.labels[11], pad9.contains("…") || pad12.contains("…") {
-            XCTAssertTrue(pad9.hasSuffix("9"))
-            XCTAssertTrue(pad12.hasSuffix("12"))
+        XCTAssertFalse(narrowLabels.labels.values.contains { $0.contains("…") }, "Labels must never truncate with ellipsis")
+        if let pad9 = narrowLabels.labels[8], let pad12 = narrowLabels.labels[11] {
+            XCTAssertTrue(pad9.contains("9"))
+            XCTAssertTrue(pad12.contains("12"))
         }
 
         let eightPads = [8, 11, 7, 2, 3, 4, 13, 12]
@@ -87,6 +88,7 @@ final class PatternBandLayoutTests: XCTestCase {
             barCount: 4
         )
         XCTAssertLessThanOrEqual(eightLabels.fontSize, eightGeometry.rowHeight * 0.72)
+        XCTAssertFalse(eightLabels.labels.values.contains { $0.contains("…") }, "Labels must never truncate with ellipsis")
     }
 
     func testRowOrderForKickSnareHiHatAndOpenHiHat() {

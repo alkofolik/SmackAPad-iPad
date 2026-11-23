@@ -150,7 +150,7 @@ struct PracticeStepOutcome: Codable, Equatable {
     }
 
     enum Reason: Codable, Equatable {
-        case notesVisible, unfinishedReview, reviewNotPassed, requirements(goalBpm: Int)
+        case notesVisible, peeked, unfinishedReview, reviewNotPassed, requirements(goalBpm: Int)
 
         func message(language: AppLanguage) -> String {
             switch self {
@@ -158,6 +158,8 @@ struct PracticeStepOutcome: Codable, Equatable {
                 return language == .czech
                     ? "Průchod s nápovědou · započítají se až průchody bez not."
                     : "Warm-up with notes · only hidden passes count."
+            case .peeked:
+                return language.localized("Peeked · only passes from memory count.")
             case .unfinishedReview:
                 return language == .czech
                     ? "Opakování není dokončené · jsou potřeba dva úspěšné průchody bez not."

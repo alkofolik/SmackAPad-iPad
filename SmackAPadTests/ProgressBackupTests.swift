@@ -324,6 +324,26 @@ final class ProgressBackupTests: XCTestCase {
 
     // MARK: - Test 7: Current format without new fields and legacy flat format load unchanged
 
+    func testAutomaticPeekDefaultsOnAndOldBackupRestoresThatDefault() throws {
+        let suite = "auto-peek-settings-\(UUID().uuidString)"
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))
+        defer { defaults.removePersistentDomain(forName: suite) }
+        let settings = SettingsManager(userDefaults: defaults)
+        XCTAssertTrue(settings.autoPeekMemory)
+
+        settings.autoPeekMemory = false
+        XCTAssertFalse(SettingsManager(userDefaults: defaults).autoPeekMemory)
+        let exported = try JSONEncoder().encode(settings.exportSettings())
+        let decoder = JSONDecoder()
+        XCTAssertFalse(try decoder.decode(BackupSettings.self, from: exported).autoPeekMemory)
+
+        var oldBackup = try XCTUnwrap(JSONSerialization.jsonObject(with: exported) as? [String: Any])
+        oldBackup.removeValue(forKey: "autoPeekMemory")
+        let oldData = try JSONSerialization.data(withJSONObject: oldBackup)
+        settings.applyImportedSettings(try decoder.decode(BackupSettings.self, from: oldData))
+        XCTAssertTrue(settings.autoPeekMemory)
+    }
+
     func testLegacyAndCurrentProgressFormatsLoadUnchanged() throws {
         let tempDir = try createTempDirectory()
         defer { cleanupDirectory(tempDir) }

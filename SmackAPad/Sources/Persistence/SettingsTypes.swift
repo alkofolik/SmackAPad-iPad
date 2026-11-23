@@ -26,6 +26,7 @@ public enum SettingsKey: String, CaseIterable, Sendable {
     case appearance = "smackapad.settings.appearance"
     case playPadsWithKeyboard = "smackapad.settings.playPadsWithKeyboard"
     case fadeMemoryNotes = "smackapad.settings.fadeMemoryNotes"
+    case autoPeekMemory = "smackapad.settings.autoPeekMemory"
     case reviewReminderEnabled = "smackapad.settings.reviewReminderEnabled"
     case reviewReminderTime = "smackapad.settings.reviewReminderTime"
 }

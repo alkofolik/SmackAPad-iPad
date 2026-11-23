@@ -24,6 +24,9 @@ struct LibraryScreen: View {
     @State private var showingIntro = false
     @State private var cross = ""
     @State private var query = ""
+    @State private var showingFilters = false
+    @State private var isSearchOpen = false
+    @FocusState private var isSearchFocused: Bool
     @State private var selectedLesson: LessonLaunch?
     @Namespace private var lessonNamespace
     @State private var starsBefore: [Bool] = []
@@ -38,6 +41,29 @@ struct LibraryScreen: View {
     @State private var columnVisibility: NavigationSplitViewVisibility = .all
     @State private var pendingCategoryToHide: PendingHideTarget?
     @State private var isHiddenExpanded = false
+
+    private var isSearchVisible: Bool {
+        isSearchOpen || !query.isEmpty
+    }
+
+    private var activeFilterGroupCount: Int {
+        var count = 0
+        if Set(settings.libraryStarFilters) != Set(LibraryStarFilter.allCases.map(\.id)) {
+            count += 1
+        }
+        if !cross.isEmpty {
+            count += 1
+        }
+        return count
+    }
+
+    private var filtersButtonTitle: String {
+        let base = settings.localized("Filters")
+        if activeFilterGroupCount > 0 {
+            return "\(base) (\(activeFilterGroupCount))"
+        }
+        return base
+    }
 
     private struct PendingHideTarget: Identifiable {
         let id: String
@@ -224,6 +250,8 @@ struct LibraryScreen: View {
             query = ""; cross = ""; showingIntro = false; progression.cancelStageAccessChange()
             isHiddenExpanded = false
             pendingCategoryToHide = nil
+            isSearchOpen = false
+            showingFilters = false
         }
         .onChange(of: group?.id) { _, _ in progression.cancelStageAccessChange() }
         .onChange(of: showingIntro) { _, _ in progression.cancelStageAccessChange() }
@@ -520,6 +548,8 @@ struct LibraryScreen: View {
             showingIntro = false
             selections[mode.id] = item.id
             query = ""; cross = ""
+            isSearchOpen = false
+            showingFilters = false
         } label: {
             HStack(spacing: Theme.Space.small) {
                 AnimatedLock(locked: locked).font(Theme.meta)
@@ -680,8 +710,11 @@ struct LibraryScreen: View {
             .disabled(next == nil)
 
             HStack(alignment: .center, spacing: Theme.Space.regular) {
-                filters(matching: matching)
-                    .frame(maxWidth: .infinity, alignment: .leading)
+                HStack(spacing: Theme.Space.small) {
+                    magnifierButton
+                    filtersButton(matching: matching)
+                }
+                Spacer(minLength: 0)
                 playNextButton
             }
 
@@ -711,6 +744,11 @@ struct LibraryScreen: View {
             if let stage = group.stage, !progression.isStageOpen(stage) || progression.canRelockStage(stage) {
                 stageBanner(stage).id("stage-lock").transition(motion.transition)
                     .padding(.bottom, Theme.Space.small)
+            }
+            if isSearchVisible {
+                searchBar
+                    .transition(motion.transition)
+                    .padding(.bottom, Theme.Space.tight)
             }
             List {
                 if isGroupAllCompleted && settings.hideCompletedLessons && !isSearching {
@@ -743,6 +781,11 @@ struct LibraryScreen: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         .calmChassisBackground()
         .motion(Theme.Motion.standard, value: group.stage.map { progression.isStageOpen($0) })
+        .onChange(of: isSearchOpen) { _, isOpen in
+            if isOpen {
+                isSearchFocused = true
+            }
+        }
     }
 
     private var allCompletedRow: some View {
@@ -789,27 +832,121 @@ struct LibraryScreen: View {
         .frame(minWidth: 180, idealWidth: 240)
     }
 
-    private func filters(matching: [Lesson]) -> some View {
-        ScrollView(.horizontal, showsIndicators: false) {
-            HStack(spacing: Theme.Space.controlGap) {
-                HStack(spacing: Theme.Space.tight) {
-                    Image(systemName: "magnifyingglass").font(Theme.meta).foregroundStyle(Theme.secondary)
-                    TextField(settings.localized("Search"), text: $query)
-                        .textFieldStyle(.plain).font(Theme.meta)
+    private var magnifierButton: some View {
+        Button {
+            withAnimation(motion.animation(Theme.Motion.standard)) {
+                if isSearchVisible && query.isEmpty {
+                    isSearchOpen = false
+                    isSearchFocused = false
+                } else {
+                    isSearchOpen = true
+                    isSearchFocused = true
                 }
-                .padding(.horizontal, Theme.Space.small)
-                .frame(minWidth: 100, idealWidth: 140, maxWidth: 170)
-                .frame(height: Theme.Size.touch)
-                .background {
-                    RoundedRectangle(cornerRadius: Theme.Skin.Pad.radius)
-                        .fill(Theme.Skin.Pad.fill)
-                        .overlay {
-                            RoundedRectangle(cornerRadius: Theme.Skin.Pad.radius)
-                                .strokeBorder(Theme.hairline, lineWidth: 1)
-                        }
-                }
-                .accessibilityLabel(settings.localized("Search"))
+            }
+        } label: {
+            Image(systemName: "magnifyingglass")
+                .font(Theme.meta)
+                .frame(width: Theme.Size.touch, height: Theme.Size.touch)
+        }
+        .buttonStyle(PadIconButtonStyle(selected: isSearchVisible))
+        .accessibilityLabel(settings.localized("Search"))
+    }
 
+    private func filtersButton(matching: [Lesson]) -> some View {
+        Button {
+            showingFilters = true
+        } label: {
+            HStack(spacing: Theme.Space.tight) {
+                Image(systemName: "line.3.horizontal.decrease")
+                Text(filtersButtonTitle)
+            }
+            .font(Theme.meta).lineLimit(1)
+            .padding(.horizontal, Theme.Space.small)
+            .frame(height: Theme.Size.touch)
+            .background {
+                RoundedRectangle(cornerRadius: Theme.Skin.Pad.radius)
+                    .fill(activeFilterGroupCount > 0 ? Theme.activeFill : Theme.Skin.Pad.fill)
+                    .overlay {
+                        RoundedRectangle(cornerRadius: Theme.Skin.Pad.radius)
+                            .strokeBorder(activeFilterGroupCount > 0 ? Theme.orange : Theme.hairline,
+                                          lineWidth: activeFilterGroupCount > 0 ? 1.5 : 1)
+                    }
+            }
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(filtersButtonTitle)
+        .popover(isPresented: $showingFilters, arrowEdge: .top) {
+            filtersPopover(matching: matching)
+        }
+    }
+
+    private var searchBar: some View {
+        HStack(spacing: Theme.Space.tight) {
+            Image(systemName: "magnifyingglass")
+                .font(Theme.meta)
+                .foregroundStyle(Theme.secondary)
+            TextField(settings.localized("Search"), text: $query)
+                .textFieldStyle(.plain)
+                .font(Theme.meta)
+                .focused($isSearchFocused)
+                .submitLabel(.search)
+                .onSubmit { isSearchFocused = false }
+            Button {
+                withAnimation(motion.animation(Theme.Motion.standard)) {
+                    query = ""
+                    isSearchOpen = false
+                    isSearchFocused = false
+                }
+            } label: {
+                Image(systemName: "xmark")
+                    .font(Theme.meta)
+                    .foregroundStyle(Theme.secondary)
+                    .frame(width: Theme.Size.touch, height: Theme.Size.touch)
+                    .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel(settings.localized("Close"))
+        }
+        .padding(.leading, Theme.Space.small)
+        .padding(.trailing, 2)
+        .frame(height: Theme.Size.touch)
+        .background {
+            RoundedRectangle(cornerRadius: Theme.Skin.Pad.radius)
+                .fill(Theme.Skin.Pad.fill)
+                .overlay {
+                    RoundedRectangle(cornerRadius: Theme.Skin.Pad.radius)
+                        .strokeBorder(Theme.hairline, lineWidth: 1)
+                }
+        }
+        .onAppear {
+            isSearchFocused = true
+        }
+        .accessibilityElement(children: .contain)
+        .accessibilityLabel(settings.localized("Search"))
+    }
+
+    private func filtersPopover(matching: [Lesson]) -> some View {
+        VStack(alignment: .leading, spacing: Theme.Space.regular) {
+            FlowLayout(spacing: Theme.Space.small) {
+                ForEach(LibraryStarFilter.allCases) { filter in
+                    let count = matching.filter { LibraryStarFilter.classify(progress.progress(for: $0.id)) == filter }.count
+                    let selected = settings.libraryStarFilters.contains(filter.id)
+                    FilterChip(title: "\(settings.localized(filter.title)) (\(count))", selected: selected) {
+                        if selected {
+                            settings.libraryStarFilters.removeAll { $0 == filter.id }
+                        } else {
+                            settings.libraryStarFilters.append(filter.id)
+                        }
+                    }
+                    .frame(height: Theme.Size.touch)
+                }
+            }
+
+            HStack {
+                Text(settings.localized(mode == .genre ? "Technique" : "Genre"))
+                    .font(Theme.meta)
+                    .foregroundStyle(Theme.secondary)
+                Spacer()
                 Menu {
                     Picker(settings.localized(mode == .genre ? "Technique" : "Genre"), selection: $cross) {
                         Text(settings.localized("All")).tag("")
@@ -821,10 +958,12 @@ struct LibraryScreen: View {
                     }
                 } label: {
                     HStack(spacing: Theme.Space.tight) {
-                        Image(systemName: "line.3.horizontal.decrease")
                         Text(crossTitle)
+                            .font(Theme.meta)
+                            .lineLimit(1)
+                        Image(systemName: "chevron.up.chevron.down")
+                            .font(Theme.meta)
                     }
-                    .font(Theme.meta).lineLimit(1)
                     .padding(.horizontal, Theme.Space.small)
                     .frame(height: Theme.Size.touch)
                     .background {
@@ -837,39 +976,42 @@ struct LibraryScreen: View {
                     }
                 }
                 .accessibilityValue(crossTitle)
+            }
 
-                ForEach(LibraryStarFilter.allCases) { filter in
-                    let count = matching.filter { LibraryStarFilter.classify(progress.progress(for: $0.id)) == filter }.count
-                    let selected = settings.libraryStarFilters.contains(filter.id)
-                    FilterChip(title: "\(settings.localized(filter.title)) (\(count))", selected: selected) {
-                        if selected { settings.libraryStarFilters.removeAll { $0 == filter.id } }
-                        else { settings.libraryStarFilters.append(filter.id) }
-                    }
-                    .frame(height: Theme.Size.touch)
-                }
-
-                if hasActiveFilter {
-                    Button {
-                        query = ""
+            HStack(alignment: .center) {
+                Button {
+                    withAnimation(motion.animation(Theme.Motion.standard)) {
                         cross = ""
                         settings.libraryStarFilters = LibraryStarFilter.allCases.map(\.id)
-                    } label: {
-                        Image(systemName: "xmark").font(Theme.meta)
-                            .frame(width: Theme.Size.touch, height: Theme.Size.touch)
                     }
-                    .buttonStyle(PadIconButtonStyle())
-                    .accessibilityLabel(settings.localized("Clear filters"))
+                } label: {
+                    Text(settings.localized("Clear filters"))
+                        .font(Theme.meta)
+                        .foregroundStyle(activeFilterGroupCount > 0 ? Theme.orange : Theme.secondary)
+                        .frame(minHeight: Theme.Size.touch)
                 }
+                .buttonStyle(.plain)
+                .disabled(activeFilterGroupCount == 0)
+
+                Spacer()
+
+                Button {
+                    showingFilters = false
+                } label: {
+                    Text(settings.localized("Done"))
+                        .font(Theme.control)
+                        .frame(minHeight: Theme.Size.touch)
+                        .padding(.horizontal, Theme.Space.regular)
+                }
+                .buttonStyle(PadPrimaryButtonStyle())
             }
         }
-        .scrollBounceBehavior(.basedOnSize)
-        .frame(height: Theme.Size.touch)
-    }
-
-    private var hasActiveFilter: Bool {
-        !query.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-            || !cross.isEmpty
-            || Set(settings.libraryStarFilters) != Set(LibraryStarFilter.allCases.map(\.id))
+        .padding(Theme.Space.page)
+        .frame(width: 360)
+        .calmChassisBackground()
+        .foregroundStyle(Theme.ink)
+        .tint(Theme.orange)
+        .presentationCompactAdaptation(.sheet)
     }
 
     private var crossTitle: String {

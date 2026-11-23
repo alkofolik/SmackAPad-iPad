@@ -2,6 +2,43 @@ import AVFoundation
 import SwiftUI
 
 @MainActor
+private struct MemoryPeekButton: View {
+    @Environment(SettingsManager.self) private var settings
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @State private var glowing = false
+
+    let session: PracticeSession
+
+    var body: some View {
+        let peeking = session.isPeeking
+        let automaticPeek = peeking && session.memoryPeek?.automatic == true ? session.memoryPeek : nil
+        Button {
+            session.peekAtPattern()
+        } label: {
+            Image(systemName: peeking ? "eye.fill" : "eye")
+                .font(.system(size: 16, weight: .semibold))
+                .foregroundStyle(peeking ? Theme.orange : Theme.ink)
+                .frame(width: 36, height: 30)
+                .background(Theme.surface, in: Capsule())
+                .overlay { Capsule().strokeBorder(Theme.hairline, lineWidth: 1) }
+                .contentShape(Rectangle())
+                .shadow(color: Theme.orange.opacity(glowing ? 0.5 : 0), radius: 7)
+        }
+        .buttonStyle(.plain)
+        .disabled(!session.canPeek)
+        .accessibilityLabel(settings.localized("Peek at pattern"))
+        .task(id: automaticPeek) {
+            glowing = false
+            guard automaticPeek != nil, !reduceMotion else { return }
+            glowing = true
+            try? await Task.sleep(for: .milliseconds(100))
+            guard !Task.isCancelled else { return }
+            withAnimation(.easeOut(duration: 0.45)) { glowing = false }
+        }
+    }
+}
+
+@MainActor
 struct PracticeScreen: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.dismissLesson) private var dismissLesson
@@ -668,6 +705,13 @@ struct PracticeScreen: View {
                         practiceBand(frame: frame, scored: isScored(frame))
                     }
                     .frame(height: bandHeight)
+                    .contentShape(Rectangle())
+                    .simultaneousGesture(TapGesture().onEnded { session.peekAtPattern() })
+                    .overlay(alignment: .top) {
+                        MemoryPeekTimeLine(clock: displayClock, session: session)
+                            .offset(y: -3)
+                            .allowsHitTesting(false)
+                    }
                     .opacity(showingResult ? 0.55 : 1)
                     .animation(focusFade, value: showingResult)
 
@@ -712,11 +756,14 @@ struct PracticeScreen: View {
             }
             .frame(maxWidth: .infinity)
 
-            HStack {
+            HStack(spacing: Theme.Space.controlGap) {
                 Spacer(minLength: 0)
                 PracticeDisplayFrame(clock: displayClock, session: session) { frame, date in
                     let scored = isScored(frame)
                     TimingCue(offset: scored ? session.timingHistory.cueOffset(at: date) : 0, active: scored)
+                }
+                if session.supportsMemoryPeek {
+                    MemoryPeekButton(session: session)
                 }
             }
             .frame(maxWidth: .infinity)
@@ -847,12 +894,20 @@ struct PracticeScreen: View {
     }
 
     private func practiceBand(frame: PatternFrame, scored: Bool) -> some View {
-        PatternField(lesson: session.practiceLesson, hits: session.patternHits,
+        let peekOpacity = frame.hostSeconds.flatMap {
+            session.memoryPeek?.noteOpacity(at: $0, reduceMotion: reduced)
+        }
+        let repeats = session.repeatsPerRun
+        let firstCycle = (session.runNumber(for: frame.pass) - 1) * repeats + 1
+        return PatternField(session: session,
+                            lesson: session.practiceLesson, hits: session.patternHits,
                      position: frame.position, tapePosition: frame.tapePosition,
                      running: session.running && frame.countdown == nil,
                      visibility: session.noteVisibility(at: frame),
                      fromMemory: session.fromMemory && !session.afterMe,
                      afterMe: session.afterMe,
+                     peekNotesOpacity: peekOpacity,
+                     peekCycles: peekOpacity == nil ? nil : firstCycle..<(firstCycle + repeats),
                      scrolling: scrolling, visibleBars: [1, 2, 3, 4].contains(visibleBars) ? visibleBars : 4,
                      verdicts: session.barVerdicts,
                      judgments: session.hitJudgments, bpm: frame.bpm,
@@ -899,16 +954,10 @@ struct PracticeScreen: View {
 
     private func bottomZoneRow(s: CGFloat, isPortrait: Bool, availableWidth: CGFloat, spaceAbove: CGFloat) -> some View {
         let showingResult = isShowingResult && !session.isMix
-        let transportWidth = min(200, max(s, 176))
-        let resultGap = Theme.Space.regular
-        let stackedResult = isPortrait || availableWidth < 840
-        let cardWidth = stackedResult
-            ? availableWidth
-            : max(0, availableWidth - transportWidth - resultGap)
-        let cardHeight: CGFloat = 168
 
         return Group {
             if showingResult, let summary = activeSummary {
+                let nextTarget = resolveResultNextTarget()
                 let resultView = ResultCard(
                     summary: summary,
                     runs: session.runResults,
@@ -922,7 +971,17 @@ struct PracticeScreen: View {
                     isAfterMe: session.afterMe,
                     isSectionLoop: session.isSectionLoop,
                     bestResponseScore: session.bestResponseScore,
-                    cardWidth: cardWidth,
+                    cardWidth: availableWidth,
+                    nextAction: nextTarget.action,
+                    nextEnabled: nextTarget.enabled,
+                    nextLocked: nextTarget.locked,
+                    nextHint: nextTarget.hint,
+                    restartAction: {
+                        dismissDebugResult()
+                        showingInfo = false
+                        session.restart()
+                    },
+                    restartEnabled: session.ready && session.available,
                     openRules: {
                         showingDetails = false
                         showingTempo = false
@@ -952,27 +1011,8 @@ struct PracticeScreen: View {
                     sessionResultsView(summary)
                 }
 
-                if stackedResult {
-                    VStack(spacing: Theme.Space.controlGap) {
-                        resultView
-                            .frame(maxWidth: .infinity)
-                        transportSquare(
-                            s: s,
-                            resultSize: nil,
-                            horizontalResultButtons: true
-                        )
-                    }
-                } else {
-                    HStack(alignment: .center, spacing: resultGap) {
-                        resultView
-                            .frame(width: cardWidth)
-                        transportSquare(
-                            s: s,
-                            resultSize: CGSize(width: transportWidth, height: cardHeight),
-                            horizontalResultButtons: false
-                        )
-                    }
-                }
+                resultView
+                    .frame(maxWidth: .infinity)
             } else {
                 HStack(spacing: 0) {
                     padLayoutSquare(s: s)
@@ -983,7 +1023,7 @@ struct PracticeScreen: View {
                         .accessibilityHidden(focusActive)
                         .animation(focusFade, value: focusActive)
                     Spacer(minLength: 0)
-                    transportSquare(s: s, resultSize: nil, horizontalResultButtons: false)
+                    transportSquare(s: s)
                 }
             }
         }
@@ -1284,12 +1324,7 @@ struct PracticeScreen: View {
         .accessibilityLabel(settings.localized("Tempo %lld BPM, goal %lld", session.bpm, session.lesson.targetBpm))
     }
 
-    private func transportSquare(
-        s: CGFloat,
-        resultSize: CGSize?,
-        horizontalResultButtons: Bool
-    ) -> some View {
-        let showingResult = isShowingResult && !session.isMix
+    private func resolveResultNextTarget() -> (enabled: Bool, locked: Bool, hint: String?, action: (() -> Void)?) {
         let target = ResultNextTarget.resolve(
             isStepResult: onStepResult != nil,
             isMix: session.isMix,
@@ -1302,43 +1337,45 @@ struct PracticeScreen: View {
             nextPathLesson: nextLesson
         )
 
-        var nextEnabled = false
-        var nextLocked = false
-        var nextHint: String?
-        var nextAction: (() -> Void)?
-
         switch target {
         case .stepResult:
-            nextEnabled = true
-            nextAction = {
-                dismissDebugResult()
-                session.stop()
-                reportStepResult()
-                if let dismissLesson { dismissLesson() } else { dismiss() }
-            }
+            return (
+                enabled: true,
+                locked: false,
+                hint: settings.localized("Next lesson"),
+                action: {
+                    dismissDebugResult()
+                    session.stop()
+                    reportStepResult()
+                    if let dismissLesson { dismissLesson() } else { dismiss() }
+                }
+            )
         case .lesson(let next):
-            nextEnabled = true
-            nextLocked = !store.isUnlocked(next)
-            nextHint = settings.localized(next.title)
-            nextAction = {
-                dismissDebugResult()
-                openNextLesson(next)
-            }
+            return (
+                enabled: true,
+                locked: !store.isUnlocked(next),
+                hint: settings.localized(next.title),
+                action: {
+                    dismissDebugResult()
+                    openNextLesson(next)
+                }
+            )
         case .hidden:
-            nextHint = settings.localized("No next lesson available")
+            return (
+                enabled: false,
+                locked: false,
+                hint: settings.localized("No next lesson available"),
+                action: nil
+            )
         }
+    }
 
-        return TransportControls(
+    private func transportSquare(s: CGFloat) -> some View {
+        TransportControls(
             running: session.running,
             enabled: session.ready && session.available,
-            showsResult: showingResult,
-            nextEnabled: nextEnabled,
-            nextLocked: nextLocked,
-            nextHint: nextHint,
-            nextAction: nextAction,
+            showsResult: false,
             squareSize: s,
-            resultSize: resultSize,
-            horizontalResultButtons: horizontalResultButtons,
             start: {
                 dismissDebugResult()
                 showingInfo = false
@@ -1350,7 +1387,7 @@ struct PracticeScreen: View {
                 showingInfo = false
                 session.restart()
             },
-            skipAction: (session.isMix && !session.running && !showingResult) ? {
+            skipAction: (session.isMix && !session.running) ? {
                 dismissDebugResult()
                 showingInfo = false
                 session.skipMixLesson()
@@ -1466,7 +1503,11 @@ struct PracticeScreen: View {
                         ForEach(session.runResults.reversed()) { run in
                             HStack(spacing: Theme.Space.small) {
                                 ZStack {
-                                    if run.passed {
+                                    if run.peeked {
+                                        Image(systemName: "eye")
+                                            .font(.system(size: 12, weight: .semibold))
+                                            .foregroundStyle(Theme.secondary)
+                                    } else if run.passed {
                                         Rectangle()
                                             .fill(Theme.orange)
                                             .frame(width: 5, height: 20)
@@ -1476,7 +1517,7 @@ struct PracticeScreen: View {
                                             .frame(width: 5, height: 20)
                                     }
                                 }
-                                .frame(width: 5, height: 20)
+                                .frame(width: 16, height: 20)
 
                                 Text(settings.localized("Run %lld", run.runNumber))
                                     .font(Theme.control)
@@ -1641,18 +1682,18 @@ struct PracticeScreen: View {
                     HStack(spacing: Theme.Space.wide) {
                         HStack(spacing: Theme.Space.small) {
                             RoundedRectangle(cornerRadius: 6)
-                                .fill(Theme.black)
+                                .fill(Theme.white)
                                 .frame(width: 32, height: 32)
-                            Text(settings.localized("Left hand"))
+                            Text(settings.localized("Right hand"))
                                 .font(Theme.control)
                                 .foregroundStyle(Theme.ink)
                         }
                         HStack(spacing: Theme.Space.small) {
                             RoundedRectangle(cornerRadius: 6)
-                                .fill(Theme.white)
-                                .overlay(RoundedRectangle(cornerRadius: 6).strokeBorder(Theme.black, lineWidth: 1.5))
+                                .fill(Theme.black)
+                                .overlay(RoundedRectangle(cornerRadius: 6).strokeBorder(Theme.white, lineWidth: 1))
                                 .frame(width: 32, height: 32)
-                            Text(settings.localized("Right hand"))
+                            Text(settings.localized("Left hand"))
                                 .font(Theme.control)
                                 .foregroundStyle(Theme.ink)
                         }

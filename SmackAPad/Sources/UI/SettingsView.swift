@@ -228,12 +228,16 @@ public struct SettingsView: View {
                         Toggle(settings.localized("Small pad layout"), isOn: $showPads)
                         Toggle(settings.localized("Touch pads in portrait"), isOn: $touchPadsInPortrait)
                         Toggle(settings.localized("Fade notes in From memory"), isOn: $settings.fadeMemoryNotes)
+                        Toggle(settings.localized("Automatic peek in From memory"), isOn: $settings.autoPeekMemory)
                     } header: {
                         SectionHeader(title: settings.localized("Practice screen"))
                     } footer: {
-                        Text(settings.localized("Shows a small pad layout in the lesson that lights up the pads you hit."))
-                            .font(Theme.meta)
-                            .foregroundStyle(Theme.secondary)
+                        VStack(alignment: .leading, spacing: Theme.Space.tight) {
+                            Text(settings.localized("Shows a small pad layout in the lesson that lights up the pads you hit."))
+                            Text(settings.localized("After two missed passes the notes show for one pass. That pass does not count."))
+                        }
+                        .font(Theme.meta)
+                        .foregroundStyle(Theme.secondary)
                     }
 
                     // MARK: 2c. Training

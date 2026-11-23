@@ -68,6 +68,23 @@ public enum LearningRules {
             }
         }
     }
+
+    /// Schedules one visible pass after two consecutive misses with hidden notes.
+    struct AutomaticMemoryPeek {
+        private var consecutiveMisses = 0
+
+        mutating func recordPass(score: Double, notesHidden: Bool, enabled: Bool) -> Bool {
+            guard enabled, notesHidden, score < LearningRules.passMark else {
+                consecutiveMisses = 0
+                return false
+            }
+            consecutiveMisses += 1
+            guard consecutiveMisses == 2 else { return false }
+            consecutiveMisses = 0
+            return true
+        }
+    }
+
     /// Last review step, whose successful review settles the lesson.
     public static let lastReviewStep = 3
     /// Next-day delay for initial, migrated, failed and postponed reviews.

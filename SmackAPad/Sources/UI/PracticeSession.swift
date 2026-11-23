@@ -42,9 +42,10 @@ struct PracticeRunResult: Identifiable, Equatable, Sendable {
     let score: Double
     let bpm: Int
     let passed: Bool
+    var peeked = false
 
     func accessibilityDescription(settings: SettingsManager) -> String {
-        let passedText = settings.localized(passed ? "passed" : "not passed")
+        let passedText = settings.localized(peeked ? "Not counted" : (passed ? "passed" : "not passed"))
         let percent = Int((score * 100).rounded())
         return settings.localized("Run %lld: %lld percent, %lld BPM, %@", runNumber, percent, bpm, passedText)
     }
@@ -56,12 +57,14 @@ struct PatternFrame {
     let totalSteps: Int
     let bpm: Int
     let countdown: Int?
+    let hostSeconds: Double?
 
-    init(tapePosition: Double, totalSteps: Int, bpm: Int, countdown: Int? = nil) {
+    init(tapePosition: Double, totalSteps: Int, bpm: Int, countdown: Int? = nil, hostSeconds: Double? = nil) {
         self.tapePosition = tapePosition
         self.totalSteps = totalSteps
         self.bpm = bpm
         self.countdown = countdown
+        self.hostSeconds = hostSeconds
     }
 
     var pass: Int { Int(floor(tapePosition / Double(totalSteps))) + 1 }
@@ -199,6 +202,24 @@ final class PracticeSession {
     private(set) var finishedByStar: Int?
     private(set) var finishedByReview = false
     private(set) var memoryWarmUp = LearningRules.MemoryWarmUp()
+    @ObservationIgnored private var automaticMemoryPeek = LearningRules.AutomaticMemoryPeek()
+    @ObservationIgnored private var nextAutomaticPeekPass: Int?
+    private(set) var memoryPeek: MemoryPeek?
+
+    struct MemoryPeek: Equatable {
+        let passNumber: Int
+        let revealedAt: Double
+        let endsAt: Double
+        let automatic: Bool
+
+        func noteOpacity(at time: Double, reduceMotion: Bool) -> Double? {
+            let active = time < endsAt
+            if reduceMotion { return active ? 1 : nil }
+            if active { return min(1, max(0, (time - revealedAt) / 0.15)) }
+            let remaining = 1 - (time - endsAt) / 0.25
+            return remaining > 0 ? remaining : nil
+        }
+    }
 
     private struct DailyReviewWindow {
         let day: String
@@ -232,6 +253,7 @@ final class PracticeSession {
         let responseStart: Double?
         var scorer: ScoringEngine?
         var sounds: [Sound]
+        var peek: MemoryPeek?
 
         init(number: Int, start: Double, bpm: Int, lesson: Lesson, padCount: Int,
              listen: Bool, lessonSound: Bool, metronome: Bool, bpmStep: BpmStep, callLesson: Lesson? = nil) {
@@ -276,7 +298,8 @@ final class PracticeSession {
     private(set) var reviewPendingReason: PracticeStepOutcome.Reason?
 
     var todayStepOutcome: PracticeStepOutcome? {
-        guard !isSectionLoop, !afterMe, !listen, let best = runResults.map(\.score).max() else { return nil }
+        guard !isSectionLoop, !afterMe, !listen,
+              let best = runResults.filter({ !$0.peeked }).map(\.score).max() else { return nil }
         return PracticeStepOutcome(bestScore: best, reviewFeedback: reviewFeedback,
                                    reviewPendingReason: reviewPendingReason)
     }
@@ -355,6 +378,10 @@ final class PracticeSession {
     }
 
     public var noteVisibility: NoteVisibility {
+        deriveNoteVisibility(peeking: isPeeking)
+    }
+
+    private func deriveNoteVisibility(peeking: Bool) -> NoteVisibility {
         if afterMe { return .hidden }
         return NoteVisibility.derive(
             fromMemory: fromMemory,
@@ -362,7 +389,8 @@ final class PracticeSession {
             listen: listen,
             isSectionLoop: isSectionLoop,
             warmUp: memoryWarmUp,
-            fadeNotes: settings.fadeMemoryNotes
+            fadeNotes: settings.fadeMemoryNotes,
+            peeking: peeking
         )
     }
 
@@ -372,7 +400,46 @@ final class PracticeSession {
     }
 
     func noteVisibility(at frame: PatternFrame) -> NoteVisibility {
-        noteVisibility
+        deriveNoteVisibility(peeking: running && frame.countdown == nil
+            && memoryPeek?.passNumber == runNumber(for: frame.pass))
+    }
+
+    var supportsMemoryPeek: Bool {
+        fromMemory && !listen && !afterMe && !isSectionLoop
+    }
+
+    var isPeeking: Bool {
+        running && memoryPeek?.passNumber == passNumber
+    }
+
+    var canPeek: Bool {
+        supportsMemoryPeek && running && countdown == nil && noteVisibility == .hidden
+    }
+
+    @discardableResult
+    func peekAtPattern() -> Bool {
+        guard supportsMemoryPeek, running, deriveNoteVisibility(peeking: false) == .hidden else { return false }
+        let time = now
+        guard let pass = passes.last(where: { $0.start <= time }),
+              time < pass.start + pass.duration, pass.peek == nil else { return false }
+        revealPattern(in: pass, at: time, automatic: false)
+        return true
+    }
+
+    private func revealPattern(in pass: Pass, at time: Double, automatic: Bool) {
+        let peek = MemoryPeek(passNumber: pass.number, revealedAt: time,
+                              endsAt: pass.start + pass.duration, automatic: automatic)
+        pass.peek = peek
+        memoryPeek = peek
+        // Hits from this pass are now represented by note judgments. They must
+        // not reappear as hidden-hit tails when the notes fade at the boundary.
+        playedHits.removeAll { runNumber(for: $0.pass) == pass.number }
+    }
+
+    private func resetMemoryPeek() {
+        automaticMemoryPeek = LearningRules.AutomaticMemoryPeek()
+        nextAutomaticPeekPass = nil
+        memoryPeek = nil
     }
 
     var hits: [LessonHit] { lesson.hits(forPadCount: midi.activeProfile.padCount) }
@@ -574,7 +641,7 @@ final class PracticeSession {
             // Do not clamp at the pass end: a delayed scheduler tick cannot freeze drawing.
             let distance = Double((current.number - 1) * repeatsPerRun * total)
                 + max(0, seconds - current.start) * Double(current.bpm) / 15
-            return PatternFrame(tapePosition: distance, totalSteps: total, bpm: current.bpm, countdown: nil)
+            return PatternFrame(tapePosition: distance, totalSteps: total, bpm: current.bpm, hostSeconds: seconds)
         }
         let start = passes.first?.start ?? displayStart
         guard start > 0 else {
@@ -698,6 +765,7 @@ final class PracticeSession {
         case .listen: if !running && !isMix { listen = true }
         case .tempoDown: setTempo(bpm - MIDIPracticeAction.tempoButtonStep)
         case .tempoUp: setTempo(bpm + MIDIPracticeAction.tempoButtonStep)
+        case .peek: peekAtPattern()
         }
     }
 
@@ -753,6 +821,7 @@ final class PracticeSession {
             errorMessage = nil
             summary = nil
             lastResult = nil
+            reviewPendingReason = nil
             bestResponseScore = nil
             // STOP abandons undecided review windows; decided outcomes survive restarts.
             let today = currentDay()
@@ -793,6 +862,7 @@ final class PracticeSession {
             judgmentVersion += 1
             completedPasses = 0
             memoryWarmUp = LearningRules.MemoryWarmUp()
+            resetMemoryPeek()
             passNumber = 1
             currentRepetition = 1
             let first = now + 0.6
@@ -842,6 +912,7 @@ final class PracticeSession {
         stopAfterPass = false
         mixNeedsAdvance = false
         running = false
+        resetMemoryPeek()
         BluetoothTimingDiagnostics.shared.stopRun()
         midi.resetControlPickup()
         if practiceMode == .challenge { starStreak.reset() }
@@ -1016,6 +1087,8 @@ final class PracticeSession {
         starStreak = !unscored && practiceMode == .learning
             ? progress.learningCredit(lessonId: nextLesson.id, padCount: runPadCount) : StarStreak()
         memoryWarmUp = LearningRules.MemoryWarmUp()
+        resetMemoryPeek()
+        reviewPendingReason = nil
         passNumber = 1
         currentRepetition = 1
         lastResult = nil
@@ -1097,6 +1170,12 @@ final class PracticeSession {
             )
         }
         if let current = passes.last(where: { $0.start <= time }) {
+            if let nextAutomaticPeekPass, current.number >= nextAutomaticPeekPass {
+                if current.number == nextAutomaticPeekPass, canAutoPeek(current, at: time) {
+                    revealPattern(in: current, at: time, automatic: true)
+                }
+                self.nextAutomaticPeekPass = nil
+            }
             let total = practiceLesson.bars * 16
             let elapsed = max(0, time - current.start) * Double(current.bpm) / 15
             let rep = total > 0 ? min(repeatsPerRun, max(1, Int(floor(elapsed / Double(total))) + 1)) : 1
@@ -1180,9 +1259,15 @@ final class PracticeSession {
             let runPassed: Bool
             var award: StarAward?
             let lessonReviewDue = !unscored && progress.progress(for: lesson.id)?.reviewSchedule.isDueReview(on: currentDay()) == true
-            let memoryNotesHidden = memoryWarmUp.areNotesHidden(fadeNotes: settings.fadeMemoryNotes)
+            let peeked = pass.peek != nil
+            let memoryNotesHidden = !peeked && memoryWarmUp.areNotesHidden(fadeNotes: settings.fadeMemoryNotes)
             let isHiddenPass = !fromMemory || memoryNotesHidden
-            if !isSectionLoop && !unscored {
+            if reviewPendingReason == .peeked { reviewPendingReason = nil }
+            if peeked {
+                runPassed = false
+                lastVerdict = nil
+                reviewPendingReason = .peeked
+            } else if !isSectionLoop && !unscored {
                 let saved = progress.progress(for: lesson.id)
 
                 let today = currentDay()
@@ -1316,7 +1401,8 @@ final class PracticeSession {
             runResults.append(PracticeRunResult(runNumber: runResults.count + 1,
                                                 score: result.score,
                                                 bpm: result.bpm,
-                                                passed: runPassed))
+                                                passed: runPassed,
+                                                peeked: peeked))
             if isMix {
                 let currentAward = award ?? StarAward(previous: progress.progress(for: lesson.id),
                                                       passed: false, mastery: false, memory: false)
@@ -1375,11 +1461,21 @@ final class PracticeSession {
             }
             // The tempo preference is saved once at STOP, not at every pass.
             if let error = progress.lastSaveError { errorMessage = error.localizedDescription }
-            if fromMemory && !isSectionLoop {
+            if supportsMemoryPeek, automaticMemoryPeek.recordPass(
+                score: result.score, notesHidden: memoryNotesHidden, enabled: settings.autoPeekMemory
+            ) {
+                nextAutomaticPeekPass = pass.number + 1
+            }
+            if fromMemory && !isSectionLoop && !peeked {
                 memoryWarmUp.recordPass(score: result.score, fadeNotes: settings.fadeMemoryNotes)
             }
             if stopAfterPass { return }
         }
+    }
+
+    private func canAutoPeek(_ pass: Pass, at time: Double) -> Bool {
+        supportsMemoryPeek && settings.autoPeekMemory && pass.peek == nil
+            && deriveNoteVisibility(peeking: false) == .hidden && time < pass.start + pass.duration
     }
 
     private func receive(_ event: PadInputEvent) {
@@ -1473,7 +1569,7 @@ final class PracticeSession {
         let repIndex = Int(floor(elapsedSteps / Double(total)))
         let cycle = (pass.number - 1) * repeatsPerRun + repIndex + 1
         let localStep = elapsedSteps.truncatingRemainder(dividingBy: Double(total))
-        let wasHidden = fromMemory && memoryWarmUp.areNotesHidden(fadeNotes: settings.fadeMemoryNotes)
+        let wasHidden = pass.peek == nil && fromMemory && memoryWarmUp.areNotesHidden(fadeNotes: settings.fadeMemoryNotes)
         playedHits.append(PlayedHit(padIndex: padIndex, step: localStep, pass: cycle, mark: mark, hidden: wasHidden))
     }
 

@@ -78,7 +78,8 @@ enum PracticeBandStyle {
         barCount: Int = 1,
         maxFontSize: CGFloat = 26,
         minFontSize: CGFloat = 18,
-        trailingPadding: CGFloat = 12,
+        trailingPadding: CGFloat = 22,
+        leadingPadding: CGFloat = 20,
         showLabels: Bool = PracticeBandStyle.showPadLabels
     ) -> BandLabelLayout {
         guard showLabels, !rows.isEmpty, availableWidth > 0 else {
@@ -93,9 +94,9 @@ enum PracticeBandStyle {
         let rawLabels = Dictionary(uniqueKeysWithValues: rows.map { pad -> (Int, String) in
             let base = baseNames[pad] ?? PadVoice.displayName(pad)
             if (nameCounts[base] ?? 0) > 1 {
-                return (pad, "\(base) \(pad + 1)")
+                return (pad, "\(base) \(pad + 1)".uppercased())
             }
-            return (pad, base)
+            return (pad, base.uppercased())
         })
 
         let rowCappedFont: CGFloat = switch rows.count {
@@ -111,61 +112,41 @@ enum PracticeBandStyle {
 
         // Keep at least ~74–78% of width for pattern bars so labels never squeeze cells.
         let maxFraction: CGFloat = barCount >= 3 ? 0.22 : 0.26
-        let maxGutter = max(48, min(220, availableWidth * maxFraction))
+        let maxGutter = max(60, min(240, availableWidth * maxFraction))
+        let totalPadding = leadingPadding + trailingPadding
 
         var chosenFont = floorFont
         var widestAtChosen: CGFloat = 0
         var size = startFont
         var fitted = false
-        while size >= floorFont {
-            let font = UIFont(name: "IBMPlexSans-Bold", size: size) ?? .boldSystemFont(ofSize: size)
-            let widest = rawLabels.values.map { textWidth($0, font: font) }.max() ?? 0
+        while size >= 10 {
+            let font = UIFont(name: "BarlowCondensed-ExtraBold", size: size) ?? .boldSystemFont(ofSize: size)
+            let tracking = max(0.8, size * 0.06)
+            let widest = rawLabels.values.map { textWidth($0, font: font, tracking: tracking) }.max() ?? 0
             widestAtChosen = widest
             chosenFont = size
-            if widest + trailingPadding <= maxGutter {
+            if widest + totalPadding <= maxGutter {
                 fitted = true
                 break
             }
-            if size == floorFont { break }
-            size = max(floorFont, size - 0.5)
+            if size == 10 { break }
+            size = max(10, size - 0.5)
         }
 
-        let font = UIFont(name: "IBMPlexSans-Bold", size: chosenFont) ?? .boldSystemFont(ofSize: chosenFont)
         if fitted {
-            let fittedGutter = ceil(widestAtChosen + trailingPadding)
+            let fittedGutter = ceil(widestAtChosen + totalPadding)
             return BandLabelLayout(gutter: fittedGutter, fontSize: chosenFont, labels: rawLabels)
         }
 
-        let maxTextWidth = max(12, floor(maxGutter - trailingPadding))
-        let truncatedLabels = rawLabels.mapValues { truncateMiddle($0, maxWidth: maxTextWidth, font: font) }
-        return BandLabelLayout(gutter: floor(maxGutter), fontSize: chosenFont, labels: truncatedLabels)
+        return BandLabelLayout(gutter: floor(maxGutter), fontSize: chosenFont, labels: rawLabels)
     }
 
-    private static func textWidth(_ string: String, font: UIFont) -> CGFloat {
-        (string as NSString).size(withAttributes: [.font: font]).width
-    }
-
-    private static func truncateMiddle(_ string: String, maxWidth: CGFloat, font: UIFont) -> String {
-        guard textWidth(string, font: font) > maxWidth else { return string }
-        let chars = Array(string)
-        guard chars.count > 2 else { return "…" }
-
-        var leftCount = (chars.count + 1) / 2
-        var rightCount = chars.count / 2
-        while leftCount + rightCount > 1 {
-            if leftCount > rightCount {
-                leftCount -= 1
-            } else {
-                rightCount -= 1
-            }
-            let left = String(chars.prefix(leftCount)).trimmingCharacters(in: .whitespaces)
-            let right = String(chars.suffix(rightCount)).trimmingCharacters(in: .whitespaces)
-            let candidate = left + "…" + right
-            if textWidth(candidate, font: font) <= maxWidth {
-                return candidate
-            }
+    private static func textWidth(_ string: String, font: UIFont, tracking: CGFloat = 0) -> CGFloat {
+        var attributes: [NSAttributedString.Key: Any] = [.font: font]
+        if tracking > 0 {
+            attributes[.kern] = tracking
         }
-        return "…"
+        return (string as NSString).size(withAttributes: attributes).width
     }
 }
 
@@ -737,7 +718,9 @@ struct EndOfRunCardModel: Equatable {
         let earnedStars = [saved?.passed == true, saved?.mastery == true, saved?.memory == true]
 
         let status: EndOfRunStatus
-        if let reviewFeedback {
+        if reviewPendingReason == .peeked {
+            status = EndOfRunStatus(icon: "exclamationmark.circle", tintOrange: false, title: language.localized("Not counted"))
+        } else if let reviewFeedback {
             switch reviewFeedback {
             case .passed:
                 status = EndOfRunStatus(icon: "checkmark", tintOrange: true, title: language.localized("Review passed"))
@@ -770,7 +753,10 @@ struct EndOfRunCardModel: Equatable {
         }
 
         let reviewLine: EndOfRunLine?
-        if let reviewFeedback {
+        if reviewPendingReason == .peeked {
+            reviewLine = EndOfRunLine(kind: .review, icon: "eye",
+                                     text: PracticeStepOutcome.Reason.peeked.message(language: language), isOrange: false)
+        } else if let reviewFeedback {
             switch reviewFeedback {
             case .passed(_, let gapDays):
                 reviewLine = EndOfRunLine(
@@ -915,7 +901,7 @@ struct EndOfRunCardModel: Equatable {
     }
 }
 
-/// Modern black end-of-run card replacing the old summary strip.
+/// Modern black end-of-run card with symmetric 3-zone layout.
 struct ResultCard: View {
     @Environment(SettingsManager.self) private var settings
     @Environment(\.accessibilityReduceMotion) private var reduced
@@ -933,6 +919,12 @@ struct ResultCard: View {
     var isSectionLoop: Bool = false
     var bestResponseScore: Double? = nil
     let cardWidth: CGFloat?
+    var nextAction: (() -> Void)? = nil
+    var nextEnabled: Bool = false
+    var nextLocked: Bool = false
+    var nextHint: String? = nil
+    var restartAction: (() -> Void)? = nil
+    var restartEnabled: Bool = true
     let openRules: () -> Void
     let openSessionResults: () -> Void
     var starRulesAttachment: AnyView? = nil
@@ -956,6 +948,36 @@ struct ResultCard: View {
         )
     }
 
+    private var isNotCounted: Bool {
+        reviewPendingReason != nil
+            || summary.passes == 0
+            || model.status.icon == "exclamationmark.circle"
+            || model.status.title == settings.localized("Not counted")
+    }
+
+    private var notCountedReason: String {
+        if let reviewPendingReason {
+            return reviewPendingReason.message(language: settings.languagePreference)
+        }
+        if let reviewLine = model.reviewLine {
+            return reviewLine.text
+        }
+        if summary.passes == 0 {
+            return settings.localized("Run stopped before the first pass finished.")
+        }
+        return model.status.title
+    }
+
+    private var verdictText: String {
+        if isNotCounted {
+            return settings.localized("Not counted")
+        }
+        if let reviewLine = model.reviewLine, model.runsLine != nil {
+            return "\(model.status.title) · \(reviewLine.text)"
+        }
+        return model.status.title
+    }
+
     private var accuracySubtitle: String {
         let locale = Locale(identifier: settings.languagePreference == .czech ? "cs" : "en")
         let word = settings.localized("Accuracy").lowercased(with: locale)
@@ -967,33 +989,42 @@ struct ResultCard: View {
         return false
     }
 
+    private var showNext: Bool {
+        !isNotCounted && nextEnabled && nextAction != nil
+    }
+
+    private var sideZoneWidth: CGFloat {
+        if let cardWidth, cardWidth < 800 {
+            return 156
+        }
+        return 176
+    }
+
+    private var dividerGap: CGFloat {
+        if let cardWidth, cardWidth < 800 {
+            return 20
+        }
+        return 28
+    }
+
     var body: some View {
         Group {
             if isCompactWidth {
-                VStack(alignment: .leading, spacing: Theme.Space.regular) {
-                    HStack(alignment: .center, spacing: Theme.Space.regular) {
-                        scoreColumn
-                        Spacer(minLength: 0)
-                        if model.showsStars {
-                            starsRow
-                        }
-                    }
-                    factsColumn
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                }
+                compactBody
             } else {
-                HStack(alignment: .center, spacing: Theme.Space.regular) {
+                HStack(alignment: .center, spacing: 0) {
                     scoreColumn
-                    if model.showsStars {
-                        starsRow
-                    }
-                    factsColumn
-                        .frame(maxWidth: .infinity, alignment: .leading)
+                    verticalDivider
+                        .padding(.horizontal, dividerGap)
+                    middleZone
+                    verticalDivider
+                        .padding(.horizontal, dividerGap)
+                    buttonsColumn
                 }
             }
         }
-        .padding(.horizontal, Theme.Space.handoff)
-        .padding(.vertical, Theme.Space.regular)
+        .padding(.horizontal, 28)
+        .padding(.vertical, 18)
         .frame(width: cardWidth)
         .frame(minHeight: 168)
         .foregroundStyle(Theme.white)
@@ -1004,6 +1035,14 @@ struct ResultCard: View {
                 UIAccessibility.post(notification: .announcement, argument: announcement)
             }
         }
+    }
+
+    private var verticalDivider: some View {
+        Rectangle()
+            .fill(Theme.white.opacity(0.12))
+            .frame(width: 1)
+            .frame(maxHeight: 112)
+            .accessibilityHidden(true)
     }
 
     private var scoreColumn: some View {
@@ -1019,8 +1058,9 @@ struct ResultCard: View {
                 .monospacedDigit()
                 .foregroundStyle(Theme.white.opacity(0.68))
                 .lineLimit(1)
+                .minimumScaleFactor(0.8)
         }
-        .frame(minWidth: isCompactWidth ? 110 : 138, alignment: .leading)
+        .frame(width: isCompactWidth ? nil : sideZoneWidth, alignment: .leading)
     }
 
     private var starsRow: some View {
@@ -1036,15 +1076,15 @@ struct ResultCard: View {
                         if isFresh && visible {
                             Circle()
                                 .fill(Theme.orange.opacity(0.22))
-                                .frame(width: 60, height: 60)
+                                .frame(width: 52, height: 52)
                                 .transition(.opacity)
                         }
                         Image(systemName: visible ? "star.fill" : "star")
-                            .font(.system(size: isCompactWidth ? 34 : 44, weight: .regular))
+                            .font(.system(size: isCompactWidth ? 32 : 38, weight: .regular))
                             .foregroundStyle(visible ? Theme.orange : Theme.white.opacity(0.28))
                             .scaleEffect(popping ? 1.14 : 1)
                     }
-                    .frame(width: isFresh ? 60 : (isCompactWidth ? 36 : 44), height: 60)
+                    .frame(width: isFresh ? 52 : (isCompactWidth ? 32 : 38), height: 52)
                 }
             }
             .contentShape(Rectangle())
@@ -1060,76 +1100,69 @@ struct ResultCard: View {
         }
     }
 
-    private var factsColumn: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            statusRow
-
-            if let reviewLine = model.reviewLine {
-                reviewRow(reviewLine)
-            }
-
-            if let runsLine = model.runsLine {
-                runsButton(runsLine)
-            }
-
-            if let badgeLine = model.badgeLine {
-                badgeRow(badgeLine)
-            }
-        }
+    private var notCountedIcon: some View {
+        let iconName = reviewPendingReason == .peeked ? "eye" : model.status.icon
+        return Image(systemName: iconName)
+            .font(.system(size: isCompactWidth ? 30 : 36, weight: .regular))
+            .foregroundStyle(Theme.white.opacity(0.85))
+            .frame(height: 52)
+            .accessibilityHidden(true)
     }
 
-    private var statusRow: some View {
-        HStack(alignment: .center, spacing: 8) {
-            Image(systemName: model.status.icon)
-                .font(.system(size: 18, weight: .bold))
-                .foregroundStyle(model.status.tintOrange ? Theme.orange : Theme.white.opacity(0.75))
-                .frame(width: 20, alignment: .center)
-                .accessibilityHidden(true)
-            Text(model.status.title)
+    private var middleZone: some View {
+        VStack(alignment: .center, spacing: 6) {
+            if isNotCounted {
+                notCountedIcon
+            } else if model.showsStars {
+                starsRow
+            } else {
+                Image(systemName: model.status.icon)
+                    .font(.system(size: 36, weight: .regular))
+                    .foregroundStyle(Theme.white.opacity(0.85))
+                    .frame(height: 52)
+                    .accessibilityHidden(true)
+            }
+
+            Text(verdictText)
                 .font(Theme.strong(20))
                 .foregroundStyle(Theme.white)
                 .lineLimit(1)
                 .minimumScaleFactor(0.8)
+                .multilineTextAlignment(.center)
+
+            if isNotCounted {
+                Text(notCountedReason)
+                    .font(Theme.text(14).weight(.medium))
+                    .foregroundStyle(Theme.white.opacity(0.8))
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.8)
+                    .multilineTextAlignment(.center)
+                    .frame(minHeight: 44, alignment: .center)
+            } else if let runsLine = model.runsLine {
+                summaryRowButton(runsLine)
+            } else if let reviewLine = model.reviewLine {
+                summaryRowButton(reviewLine)
+            } else {
+                Color.clear.frame(height: 44)
+            }
         }
-        .frame(minHeight: 28, alignment: .leading)
+        .frame(maxWidth: .infinity, alignment: .center)
     }
 
-    private func reviewRow(_ line: EndOfRunLine) -> some View {
-        HStack(spacing: 8) {
-            Image(systemName: line.icon)
-                .font(.system(size: 15, weight: .semibold))
-                .foregroundStyle(Theme.white.opacity(0.75))
-                .frame(width: 20, alignment: .center)
-                .accessibilityHidden(true)
-            Text(line.text)
-                .font(Theme.text(14).weight(.medium))
-                .foregroundStyle(Theme.white)
-                .lineLimit(1)
-                .minimumScaleFactor(0.8)
-        }
-        .frame(minHeight: 24, alignment: .leading)
-    }
-
-    private func runsButton(_ line: EndOfRunLine) -> some View {
+    private func summaryRowButton(_ line: EndOfRunLine) -> some View {
         Button(action: openSessionResults) {
             HStack(spacing: 8) {
-                Image(systemName: line.icon)
-                    .font(.system(size: 14, weight: .semibold))
-                    .foregroundStyle(Theme.white.opacity(0.85))
-                    .frame(width: 20, alignment: .center)
-                    .accessibilityHidden(true)
                 Text(line.text)
                     .font(Theme.text(14).weight(.medium))
                     .foregroundStyle(Theme.white)
                     .lineLimit(1)
                     .minimumScaleFactor(0.8)
-                Spacer(minLength: 4)
                 Image(systemName: "chevron.right")
                     .font(.system(size: 12, weight: .semibold))
                     .foregroundStyle(Theme.white.opacity(0.55))
                     .accessibilityHidden(true)
             }
-            .padding(.horizontal, 12)
+            .padding(.horizontal, 14)
             .padding(.vertical, 8)
             .frame(minHeight: 44)
             .overlay {
@@ -1143,20 +1176,143 @@ struct ResultCard: View {
         .accessibilityHint(settings.localized("Shows all runs"))
     }
 
-    private func badgeRow(_ line: EndOfRunLine) -> some View {
-        HStack(spacing: 8) {
-            Image(systemName: line.icon)
-                .font(.system(size: 15, weight: .semibold))
-                .foregroundStyle(Theme.orange)
-                .frame(width: 20, alignment: .center)
-                .accessibilityHidden(true)
-            Text(line.text)
-                .font(Theme.text(14).weight(.semibold))
-                .foregroundStyle(Theme.orange)
-                .lineLimit(1)
-                .minimumScaleFactor(0.8)
+    private var buttonsColumn: some View {
+        VStack(spacing: 10) {
+            if showNext {
+                Button {
+                    nextAction?()
+                } label: {
+                    Text(settings.localized("Next lesson"))
+                        .font(Theme.action)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.8)
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                }
+                .buttonStyle(ResultPrimaryButtonStyle())
+                .frame(width: sideZoneWidth, height: 48)
+                .accessibilityLabel(settings.localized("Next lesson"))
+                .accessibilityHint(nextHint ?? "")
+                .disabled(!nextEnabled || nextAction == nil)
+
+                Button {
+                    restartAction?()
+                } label: {
+                    Text(settings.localized("Again"))
+                        .font(Theme.action)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.8)
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                }
+                .buttonStyle(ResultSecondaryButtonStyle())
+                .frame(width: sideZoneWidth, height: 48)
+                .accessibilityLabel(settings.localized("Again"))
+                .disabled(!restartEnabled || restartAction == nil)
+                .opacity(restartEnabled ? 1 : 0.5)
+            } else {
+                Button {
+                    restartAction?()
+                } label: {
+                    Text(settings.localized("Again"))
+                        .font(Theme.action)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.8)
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                }
+                .buttonStyle(ResultPrimaryButtonStyle())
+                .frame(width: sideZoneWidth, height: 52)
+                .accessibilityLabel(settings.localized("Again"))
+                .disabled(!restartEnabled || restartAction == nil)
+                .opacity(restartEnabled ? 1 : 0.5)
+            }
         }
-        .frame(minHeight: 24, alignment: .leading)
+        .frame(width: sideZoneWidth, alignment: .trailing)
+    }
+
+    private var compactBody: some View {
+        VStack(spacing: Theme.Space.regular) {
+            HStack(alignment: .center, spacing: Theme.Space.regular) {
+                scoreColumn
+                Spacer(minLength: 0)
+                if isNotCounted {
+                    notCountedIcon
+                } else if model.showsStars {
+                    starsRow
+                }
+            }
+
+            VStack(spacing: 8) {
+                Text(verdictText)
+                    .font(Theme.strong(18))
+                    .foregroundStyle(Theme.white)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.8)
+                    .multilineTextAlignment(.center)
+
+                if isNotCounted {
+                    Text(notCountedReason)
+                        .font(Theme.text(14).weight(.medium))
+                        .foregroundStyle(Theme.white.opacity(0.8))
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.8)
+                        .multilineTextAlignment(.center)
+                        .frame(minHeight: 44, alignment: .center)
+                } else if let runsLine = model.runsLine {
+                    summaryRowButton(runsLine)
+                } else if let reviewLine = model.reviewLine {
+                    summaryRowButton(reviewLine)
+                }
+            }
+            .frame(maxWidth: .infinity, alignment: .center)
+
+            HStack(spacing: Theme.Space.controlGap) {
+                if showNext {
+                    Button {
+                        nextAction?()
+                    } label: {
+                        Text(settings.localized("Next lesson"))
+                            .font(Theme.action)
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.8)
+                            .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    }
+                    .buttonStyle(ResultPrimaryButtonStyle())
+                    .frame(height: 48)
+                    .accessibilityLabel(settings.localized("Next lesson"))
+                    .accessibilityHint(nextHint ?? "")
+                    .disabled(!nextEnabled || nextAction == nil)
+
+                    Button {
+                        restartAction?()
+                    } label: {
+                        Text(settings.localized("Again"))
+                            .font(Theme.action)
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.8)
+                            .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    }
+                    .buttonStyle(ResultSecondaryButtonStyle())
+                    .frame(height: 48)
+                    .accessibilityLabel(settings.localized("Again"))
+                    .disabled(!restartEnabled || restartAction == nil)
+                    .opacity(restartEnabled ? 1 : 0.5)
+                } else {
+                    Button {
+                        restartAction?()
+                    } label: {
+                        Text(settings.localized("Again"))
+                            .font(Theme.action)
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.8)
+                            .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    }
+                    .buttonStyle(ResultPrimaryButtonStyle())
+                    .frame(height: 52)
+                    .accessibilityLabel(settings.localized("Again"))
+                    .disabled(!restartEnabled || restartAction == nil)
+                    .opacity(restartEnabled ? 1 : 0.5)
+                }
+            }
+        }
     }
 
     @MainActor
@@ -1185,6 +1341,37 @@ struct ResultCard: View {
             }
         }
         UIAccessibility.post(notification: .announcement, argument: announcement)
+    }
+}
+
+struct ResultPrimaryButtonStyle: ButtonStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .foregroundStyle(Theme.black)
+            .background {
+                RoundedRectangle(cornerRadius: 12)
+                    .fill(Theme.orange)
+                    .opacity(configuration.isPressed ? 0.85 : 1.0)
+            }
+            .scaleEffect(configuration.isPressed ? 0.98 : 1.0)
+            .animation(.easeOut(duration: 0.12), value: configuration.isPressed)
+    }
+}
+
+struct ResultSecondaryButtonStyle: ButtonStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .foregroundStyle(Theme.white)
+            .background {
+                RoundedRectangle(cornerRadius: 12)
+                    .fill(configuration.isPressed ? Theme.white.opacity(0.12) : Color.clear)
+                    .overlay {
+                        RoundedRectangle(cornerRadius: 12)
+                            .strokeBorder(Theme.white.opacity(configuration.isPressed ? 0.6 : 0.35), lineWidth: 1.5)
+                    }
+            }
+            .scaleEffect(configuration.isPressed ? 0.98 : 1.0)
+            .animation(.easeOut(duration: 0.12), value: configuration.isPressed)
     }
 }
 
