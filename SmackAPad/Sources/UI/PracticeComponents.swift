@@ -875,6 +875,246 @@ struct PracticeGlyph: View {
     }
 }
 
+// MARK: - Drum Glyphs (Ticket 229)
+
+/// Drum category glyph kinds for the band margin and pad legend (Ticket 229).
+enum DrumKind: String, CaseIterable, Equatable {
+    case kick
+    case snare
+    case hiHat
+    case openHiHat
+    case clap
+    case tom
+    case crashRide
+    case genericDrum
+
+    static func forPad(_ pad: Int) -> DrumKind {
+        switch pad {
+        case 12, 15:
+            return .kick
+        case 13, 14:
+            return .snare
+        case 8, 11:
+            return .hiHat
+        case 7:
+            return .openHiHat
+        case 9:
+            return .clap
+        case 0, 1:
+            return .tom
+        case 2, 3:
+            return .crashRide
+        default:
+            let name = PadVoice.displayName(pad).lowercased()
+            if name.contains("kick") { return .kick }
+            if name.contains("snare") { return .snare }
+            if name.contains("open") && name.contains("hat") { return .openHiHat }
+            if name.contains("hat") { return .hiHat }
+            if name.contains("clap") { return .clap }
+            if name.contains("tom") { return .tom }
+            if name.contains("crash") || name.contains("ride") || name.contains("cymbal") { return .crashRide }
+            return .genericDrum
+        }
+    }
+}
+
+/// A crisp, vector drum icon drawn to row height with a unified stroke aesthetic (Ticket 229).
+struct DrumGlyph: View {
+    let kind: DrumKind
+    var color: Color = Theme.ink
+
+    init(kind: DrumKind, color: Color = Theme.ink) {
+        self.kind = kind
+        self.color = color
+    }
+
+    var body: some View {
+        Canvas { context, size in
+            Self.draw(kind: kind, in: CGRect(origin: .zero, size: size), context: &context, color: color)
+        }
+        .accessibilityHidden(true)
+    }
+
+    static func draw(kind: DrumKind, in rect: CGRect, context: inout GraphicsContext, color: Color = Theme.ink) {
+        let dim = min(rect.width, rect.height)
+        guard dim > 2 else { return }
+        let s = dim / 24.0
+        let ox = rect.midX - 12.0 * s
+        let oy = rect.midY - 12.0 * s
+        let p: (CGFloat, CGFloat) -> CGPoint = { CGPoint(x: ox + $0 * s, y: oy + $1 * s) }
+        let stroke = StrokeStyle(lineWidth: max(1.1, 1.75 * s), lineCap: .round, lineJoin: .round)
+
+        switch kind {
+        case .kick:
+            // Bass drum circular shell
+            var head = Path()
+            head.addEllipse(in: CGRect(x: ox + 4.5 * s, y: oy + 3.5 * s, width: 15.0 * s, height: 15.0 * s))
+            context.stroke(head, with: .color(color), style: stroke)
+
+            // Spurs (legs) and bass pedal
+            var legs = Path()
+            legs.move(to: p(6.5, 16.5))
+            legs.addLine(to: p(2.5, 21.5))
+            legs.move(to: p(17.5, 16.5))
+            legs.addLine(to: p(21.5, 21.5))
+
+            // Center pedal footboard
+            legs.move(to: p(12.0, 18.5))
+            legs.addLine(to: p(12.0, 21.5))
+            legs.move(to: p(9.0, 21.5))
+            legs.addLine(to: p(15.0, 21.5))
+            context.stroke(legs, with: .color(color), style: stroke)
+
+        case .snare:
+            // Top head ellipse
+            var top = Path()
+            top.addEllipse(in: CGRect(x: ox + 4.5 * s, y: oy + 4.5 * s, width: 15.0 * s, height: 5.0 * s))
+            context.stroke(top, with: .color(color), style: stroke)
+
+            // Shallow shell sides & bottom head
+            var body = Path()
+            body.move(to: p(4.5, 7.0))
+            body.addLine(to: p(4.5, 14.5))
+            body.addQuadCurve(to: p(19.5, 14.5), control: p(12.0, 18.5))
+            body.addLine(to: p(19.5, 7.0))
+
+            // Snare center band
+            body.move(to: p(4.5, 11.0))
+            body.addQuadCurve(to: p(19.5, 11.0), control: p(12.0, 14.5))
+
+            // Snare lugs
+            body.move(to: p(8.5, 9.0))
+            body.addLine(to: p(8.5, 13.0))
+            body.move(to: p(15.5, 9.0))
+            body.addLine(to: p(15.5, 13.0))
+            context.stroke(body, with: .color(color), style: stroke)
+
+        case .hiHat:
+            // Stand rod
+            var path = Path()
+            path.move(to: p(12.0, 3.5))
+            path.addLine(to: p(12.0, 21.5))
+
+            // Closed cymbals: top and bottom touching closely
+            path.move(to: p(4.0, 11.0))
+            path.addQuadCurve(to: p(20.0, 11.0), control: p(12.0, 8.0))
+            path.move(to: p(4.0, 12.5))
+            path.addQuadCurve(to: p(20.0, 12.5), control: p(12.0, 9.5))
+
+            // Tripod legs
+            path.move(to: p(7.0, 21.5))
+            path.addLine(to: p(12.0, 19.5))
+            path.addLine(to: p(17.0, 21.5))
+            context.stroke(path, with: .color(color), style: stroke)
+
+        case .openHiHat:
+            // Stand rod
+            var path = Path()
+            path.move(to: p(12.0, 3.0))
+            path.addLine(to: p(12.0, 21.5))
+
+            // Open cymbals: top cymbal tilted up, leaving a clear gap
+            path.move(to: p(4.5, 7.5))
+            path.addQuadCurve(to: p(19.5, 9.5), control: p(12.0, 5.5))
+
+            // Bottom cymbal
+            path.move(to: p(4.0, 13.5))
+            path.addQuadCurve(to: p(20.0, 13.5), control: p(12.0, 11.5))
+
+            // Tripod legs
+            path.move(to: p(7.0, 21.5))
+            path.addLine(to: p(12.0, 19.5))
+            path.addLine(to: p(17.0, 21.5))
+            context.stroke(path, with: .color(color), style: stroke)
+
+        case .clap:
+            // Clapping hands angled together
+            var path = Path()
+            // Left hand
+            path.move(to: p(5.0, 18.0))
+            path.addLine(to: p(9.5, 9.5))
+            path.addQuadCurve(to: p(11.5, 10.5), control: p(10.5, 9.0))
+            path.addLine(to: p(8.0, 19.0))
+
+            // Right hand
+            path.move(to: p(19.0, 18.0))
+            path.addLine(to: p(14.5, 9.5))
+            path.addQuadCurve(to: p(12.5, 10.5), control: p(13.5, 9.0))
+            path.addLine(to: p(16.0, 19.0))
+
+            // Impact sparks
+            path.move(to: p(12.0, 2.5))
+            path.addLine(to: p(12.0, 5.5))
+            path.move(to: p(8.0, 4.5))
+            path.addLine(to: p(10.0, 6.5))
+            path.move(to: p(16.0, 4.5))
+            path.addLine(to: p(14.0, 6.5))
+            context.stroke(path, with: .color(color), style: stroke)
+
+        case .tom:
+            // Tom-tom top head
+            var head = Path()
+            head.addEllipse(in: CGRect(x: ox + 4.5 * s, y: oy + 4.5 * s, width: 15.0 * s, height: 5.5 * s))
+            context.stroke(head, with: .color(color), style: stroke)
+
+            // Deep shell & bottom head
+            var body = Path()
+            body.move(to: p(4.5, 7.2))
+            body.addLine(to: p(4.5, 15.5))
+            body.addQuadCurve(to: p(19.5, 15.5), control: p(12.0, 19.5))
+            body.addLine(to: p(19.5, 7.2))
+
+            // Vertical tension lugs
+            body.move(to: p(8.5, 9.5))
+            body.addLine(to: p(8.5, 17.5))
+            body.move(to: p(15.5, 9.5))
+            body.addLine(to: p(15.5, 17.5))
+            context.stroke(body, with: .color(color), style: stroke)
+
+        case .crashRide:
+            // Stand rod
+            var path = Path()
+            path.move(to: p(12.0, 4.0))
+            path.addLine(to: p(12.0, 21.5))
+
+            // Wing nut
+            path.move(to: p(10.0, 4.5))
+            path.addLine(to: p(14.0, 4.5))
+
+            // Wide cymbal saucer with center bell dome
+            path.move(to: p(3.5, 10.5))
+            path.addQuadCurve(to: p(10.0, 7.5), control: p(6.5, 8.5))
+            path.addQuadCurve(to: p(14.0, 7.5), control: p(12.0, 5.5))
+            path.addQuadCurve(to: p(20.5, 10.5), control: p(17.5, 8.5))
+
+            // Stand legs
+            path.move(to: p(7.0, 21.5))
+            path.addLine(to: p(12.0, 19.5))
+            path.addLine(to: p(17.0, 21.5))
+            context.stroke(path, with: .color(color), style: stroke)
+
+        case .genericDrum:
+            // Frame drum with crossed drum sticks
+            var head = Path()
+            head.addEllipse(in: CGRect(x: ox + 4.5 * s, y: oy + 4.5 * s, width: 15.0 * s, height: 5.0 * s))
+            context.stroke(head, with: .color(color), style: stroke)
+
+            var body = Path()
+            body.move(to: p(4.5, 7.0))
+            body.addLine(to: p(4.5, 15.0))
+            body.addQuadCurve(to: p(19.5, 15.0), control: p(12.0, 18.5))
+            body.addLine(to: p(19.5, 7.0))
+
+            // Crossed sticks
+            body.move(to: p(6.5, 19.0))
+            body.addLine(to: p(17.5, 9.0))
+            body.move(to: p(17.5, 19.0))
+            body.addLine(to: p(6.5, 9.0))
+            context.stroke(body, with: .color(color), style: stroke)
+        }
+    }
+}
+
 struct PadVoice {
     static let abbreviations = ["TH", "TL", "CR", "RD", "SH", "WD", "CB", "OH", "HH", "CP", "RM", "HH", "KD", "SN", "SN", "KD"]
     static let names = ["High tom", "Low tom", "Crash", "Ride", "Shaker", "Wood", "Cowbell", "Open hi-hat", "Hi-hat", "Clap", "Rim", "Hi-hat", "Kick", "Snare", "Snare", "Kick"]

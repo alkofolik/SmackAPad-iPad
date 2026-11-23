@@ -852,14 +852,14 @@ struct HelpPatternBand: View {
                 }
             }
             for (row, pad) in Self.rows.enumerated() {
-                let label = labelLayout.labels[pad] ?? PadVoice.displayName(pad).uppercased()
-                context.draw(
-                    Text(label)
-                        .font(Theme.canvasPadTitle(size: labelLayout.fontSize))
-                        .foregroundColor(Theme.ink),
-                    at: CGPoint(x: gutter - 8 * scale, y: lanes.y(row)),
-                    anchor: .trailing
+                let iconSize = labelLayout.iconSize
+                let iconRect = CGRect(
+                    x: (gutter - iconSize) / 2,
+                    y: lanes.y(row) - iconSize / 2,
+                    width: iconSize,
+                    height: iconSize
                 )
+                DrumGlyph.draw(kind: DrumKind.forPad(pad), in: iconRect, context: &context, color: Theme.ink)
             }
         }
         .padding(.horizontal, Theme.Space.small)
@@ -877,7 +877,7 @@ struct HelpPatternBand: View {
     }
 }
 
-// MARK: - Margin & Hit Indicator (Ticket 218)
+// MARK: - Margin & Hit Indicator (Ticket 218 & 229)
 
 private struct BandRowDotSchedule: TimelineSchedule {
     let flashDate: Date?
@@ -899,7 +899,7 @@ private struct BandRowDotSchedule: TimelineSchedule {
     }
 }
 
-/// A leaf view reading pad flashes only for its own padIndex to avoid re-rendering PatternField or PracticeScreen.
+/// A leaf view reading pad flashes only for its own padIndex to avoid re-rendering PatternField or PracticeScreen (Tickets 209, 229).
 private struct BandRowDot: View {
     let session: PracticeSession?
     let padIndex: Int
@@ -908,47 +908,97 @@ private struct BandRowDot: View {
         let flash = session?.padFlashes[padIndex]
         TimelineView(BandRowDotSchedule(flashDate: flash?.date)) { timeline in
             let age = flash.map { timeline.date.timeIntervalSince($0.date) } ?? 1.0
-            let opacity = max(0, min(1, 1 - age / 0.15))
+            let strike = max(0, min(1, 1 - age / 0.15))
+            let color = flash?.color ?? Theme.orange
+            let opacity = max(0.25, strike)
             Circle()
-                .fill(Theme.orange)
+                .fill(color)
                 .opacity(opacity)
                 .frame(width: 6, height: 6)
         }
     }
 }
 
-/// Left margin holding plain-text drum names right-aligned against the orange field,
-/// with an orange strike dot next to each name (Ticket 218).
+/// Left margin holding drum icons and hit indicator dots right-aligned against the orange field (Ticket 229).
+/// Tapping an icon reveals the full drum name in a small bubble for ~2 s.
 private struct BandMarginView: View {
     let rows: [Int]
     let layout: BandGeometry
     let labelLayout: BandLabelLayout
     let session: PracticeSession?
+    @State private var activeBubblePad: Int? = nil
+    @State private var bubbleTask: Task<Void, Never>? = nil
 
     var body: some View {
         GeometryReader { geometry in
             let lanes = PatternLanes(geometry: layout, rows: rows)
+            let iconSize = labelLayout.iconSize
+
             ZStack(alignment: .topLeading) {
                 ForEach(rows.indices, id: \.self) { row in
                     let pad = rows[row]
                     let rowY = lanes.y(row)
-                    let name = labelLayout.labels[pad] ?? PadVoice.displayName(pad).uppercased()
+                    let name = labelLayout.labels[pad] ?? PadVoice.displayName(pad)
 
                     HStack(spacing: 6) {
                         Spacer(minLength: 0)
-                        Text(name)
-                            .font(Theme.canvasPadTitle(size: labelLayout.fontSize))
-                            .tracking(max(0.8, labelLayout.fontSize * 0.06))
-                            .foregroundStyle(Theme.ink)
-                            .lineLimit(1)
-                            .minimumScaleFactor(0.5)
+
+                        Button {
+                            withAnimation(Theme.Motion.fast) {
+                                activeBubblePad = pad
+                            }
+                            bubbleTask?.cancel()
+                            bubbleTask = Task {
+                                try? await Task.sleep(nanoseconds: 2_000_000_000)
+                                await MainActor.run {
+                                    withAnimation(Theme.Motion.fast) {
+                                        if activeBubblePad == pad {
+                                            activeBubblePad = nil
+                                        }
+                                    }
+                                }
+                            }
+                        } label: {
+                            DrumGlyph(kind: DrumKind.forPad(pad))
+                                .frame(width: iconSize, height: iconSize)
+                                .foregroundStyle(Theme.ink)
+                                .contentShape(Rectangle())
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityLabel(name)
 
                         BandRowDot(session: session, padIndex: pad)
                     }
-                    .padding(.trailing, 10)
-                    .padding(.leading, 16)
+                    .padding(.trailing, 8)
+                    .padding(.leading, 8)
                     .frame(width: geometry.size.width, height: layout.rowHeight)
                     .position(x: geometry.size.width / 2, y: rowY)
+                }
+
+                // Bubble callout for active drum name
+                if let activeBubblePad,
+                   let activeRowIndex = rows.firstIndex(of: activeBubblePad) {
+                    let rowY = lanes.y(activeRowIndex)
+                    let name = labelLayout.labels[activeBubblePad] ?? PadVoice.displayName(activeBubblePad)
+
+                    Text(name)
+                        .font(Theme.canvasPadTitle(size: 13))
+                        .foregroundStyle(Theme.ink)
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 5)
+                        .background(
+                            RoundedRectangle(cornerRadius: 6)
+                                .fill(Theme.surface)
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: 6)
+                                        .strokeBorder(Theme.ink.opacity(0.2), lineWidth: 1)
+                                )
+                                .shadow(color: Theme.black.opacity(0.3), radius: 4, x: 0, y: 2)
+                        )
+                        .position(x: geometry.size.width + 45, y: rowY)
+                        .transition(.scale(scale: 0.85).combined(with: .opacity))
+                        .zIndex(100)
+                        .allowsHitTesting(false)
                 }
             }
         }

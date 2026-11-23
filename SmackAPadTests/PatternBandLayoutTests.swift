@@ -70,13 +70,23 @@ final class PatternBandLayoutTests: XCTestCase {
             rowHeight: geometry.rowHeight,
             barCount: 4
         )
-        XCTAssertLessThanOrEqual(narrowLabels.fontSize, geometry.rowHeight * 0.72)
+        XCTAssertLessThanOrEqual(narrowLabels.iconSize, geometry.rowHeight)
+        XCTAssertLessThanOrEqual(narrowLabels.gutter, 56)
+        XCTAssertGreaterThan(narrowLabels.gutter, 0)
         XCTAssertEqual(Set(narrowLabels.labels.values).count, fivePads.count, "Duplicate pad numbers must stay distinct")
-        XCTAssertFalse(narrowLabels.labels.values.contains { $0.contains("…") }, "Labels must never truncate with ellipsis")
         if let pad9 = narrowLabels.labels[8], let pad12 = narrowLabels.labels[11] {
             XCTAssertTrue(pad9.contains("9"))
             XCTAssertTrue(pad12.contains("12"))
         }
+
+        // Margin width depends only on row height, not on available width (Ticket 229)
+        let wideLabels = PracticeBandStyle.bandLabelLayout(
+            rows: fivePads,
+            availableWidth: 1000,
+            rowHeight: geometry.rowHeight,
+            barCount: 1
+        )
+        XCTAssertEqual(narrowLabels.gutter, wideLabels.gutter, "Margin width must depend only on row height, not on available width")
 
         let eightPads = [8, 11, 7, 2, 3, 4, 13, 12]
         let eightBandHeight = PracticeBandStyle.bandHeight(rows: eightPads.count, availableHeight: 220)
@@ -87,8 +97,9 @@ final class PatternBandLayoutTests: XCTestCase {
             rowHeight: eightGeometry.rowHeight,
             barCount: 4
         )
-        XCTAssertLessThanOrEqual(eightLabels.fontSize, eightGeometry.rowHeight * 0.72)
-        XCTAssertFalse(eightLabels.labels.values.contains { $0.contains("…") }, "Labels must never truncate with ellipsis")
+        XCTAssertLessThanOrEqual(eightLabels.iconSize, eightGeometry.rowHeight)
+        XCTAssertLessThanOrEqual(eightLabels.gutter, 56)
+        XCTAssertGreaterThan(eightLabels.gutter, 0)
     }
 
     func testRowOrderForKickSnareHiHatAndOpenHiHat() {

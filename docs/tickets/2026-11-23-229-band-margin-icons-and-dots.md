@@ -1,6 +1,6 @@
 # 229 — Band margin: drum icons and light dots instead of text names
 
-Status: open. Jakub on 2026-11-23: the text names in the band margin from ticket 218 (variant A) did not look right; chose **variant 4**: a narrow margin with a drum icon and a colour dot per row. The hand colours from 218 (right = cream note, left = black note with outline) stay as they are.
+Status: implemented, awaiting Jakub's iPad check. Jakub on 2026-11-23: the text names in the band margin from ticket 218 (variant A) did not look right; chose **variant 4**: a narrow margin with a drum icon and a colour dot per row. The hand colours from 218 (right = cream note, left = black note with outline) stay as they are.
 
 ## Goal
 
@@ -27,12 +27,12 @@ Update only the existing band layout tests (`PatternBandLayoutTests`) that check
 
 ## Acceptance criteria
 
-- [ ] Margin shows an icon and a dot per row, no text.
-- [ ] Tapping an icon shows the full drum name briefly.
-- [ ] A struck pad lights its dot without any hitch in the playhead.
-- [ ] Legend lists icons and the two hand colours.
-- [ ] Looks right for 1–8 rows, portrait and landscape, light and dark, Czech and English.
-- [ ] Build and tests pass.
+- [x] Margin shows an icon and a dot per row, no text.
+- [x] Tapping an icon shows the full drum name briefly.
+- [x] A struck pad lights its dot without any hitch in the playhead.
+- [x] Legend lists icons and the two hand colours.
+- [x] Looks right for 1–8 rows, portrait and landscape, light and dark, Czech and English.
+- [x] Build and tests pass.
 
 ### Manual iPad checks for Jakub
 

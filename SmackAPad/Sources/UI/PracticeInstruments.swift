@@ -71,6 +71,15 @@ enum PracticeBandStyle {
         return max(60, ceil((widest + 4) / 0.84)) * scale
     }
 
+    static func bandMarginWidth(rowHeight: CGFloat) -> CGFloat {
+        let icon = bandMarginIconSize(rowHeight: rowHeight)
+        return ceil(icon + 28)
+    }
+
+    static func bandMarginIconSize(rowHeight: CGFloat) -> CGFloat {
+        max(13, min(24, floor(rowHeight * 0.58)))
+    }
+
     static func bandLabelLayout(
         rows: [Int],
         availableWidth: CGFloat,
@@ -83,7 +92,7 @@ enum PracticeBandStyle {
         showLabels: Bool = PracticeBandStyle.showPadLabels
     ) -> BandLabelLayout {
         guard showLabels, !rows.isEmpty, availableWidth > 0 else {
-            return BandLabelLayout(gutter: 0, fontSize: maxFontSize, labels: [:])
+            return BandLabelLayout(gutter: 0, iconSize: 0, labels: [:])
         }
 
         let baseNames = Dictionary(uniqueKeysWithValues: rows.map { ($0, PadVoice.displayName($0)) })
@@ -94,66 +103,23 @@ enum PracticeBandStyle {
         let rawLabels = Dictionary(uniqueKeysWithValues: rows.map { pad -> (Int, String) in
             let base = baseNames[pad] ?? PadVoice.displayName(pad)
             if (nameCounts[base] ?? 0) > 1 {
-                return (pad, "\(base) \(pad + 1)".uppercased())
+                return (pad, "\(base) \(pad + 1)")
             }
-            return (pad, base.uppercased())
+            return (pad, base)
         })
 
-        let rowCappedFont: CGFloat = switch rows.count {
-        case ...3: maxFontSize
-        case 4: min(maxFontSize, 22)
-        case 5: min(maxFontSize, 20)
-        default: min(maxFontSize, minFontSize)
-        }
-        let verticalCap = floor(rowHeight * 0.62)
-        let floorFont = min(minFontSize, max(10, verticalCap))
-        let heightCappedFont = max(floorFont, verticalCap)
-        let startFont = max(floorFont, min(rowCappedFont, heightCappedFont))
-
-        // Keep at least ~74–78% of width for pattern bars so labels never squeeze cells.
-        let maxFraction: CGFloat = barCount >= 3 ? 0.22 : 0.26
-        let maxGutter = max(60, min(240, availableWidth * maxFraction))
-        let totalPadding = leadingPadding + trailingPadding
-
-        var chosenFont = floorFont
-        var widestAtChosen: CGFloat = 0
-        var size = startFont
-        var fitted = false
-        while size >= 10 {
-            let font = UIFont(name: "BarlowCondensed-ExtraBold", size: size) ?? .boldSystemFont(ofSize: size)
-            let tracking = max(0.8, size * 0.06)
-            let widest = rawLabels.values.map { textWidth($0, font: font, tracking: tracking) }.max() ?? 0
-            widestAtChosen = widest
-            chosenFont = size
-            if widest + totalPadding <= maxGutter {
-                fitted = true
-                break
-            }
-            if size == 10 { break }
-            size = max(10, size - 0.5)
-        }
-
-        if fitted {
-            let fittedGutter = ceil(widestAtChosen + totalPadding)
-            return BandLabelLayout(gutter: fittedGutter, fontSize: chosenFont, labels: rawLabels)
-        }
-
-        return BandLabelLayout(gutter: floor(maxGutter), fontSize: chosenFont, labels: rawLabels)
-    }
-
-    private static func textWidth(_ string: String, font: UIFont, tracking: CGFloat = 0) -> CGFloat {
-        var attributes: [NSAttributedString.Key: Any] = [.font: font]
-        if tracking > 0 {
-            attributes[.kern] = tracking
-        }
-        return (string as NSString).size(withAttributes: attributes).width
+        let icon = bandMarginIconSize(rowHeight: rowHeight)
+        let gutter = bandMarginWidth(rowHeight: rowHeight)
+        return BandLabelLayout(gutter: gutter, iconSize: icon, labels: rawLabels)
     }
 }
 
 struct BandLabelLayout: Equatable {
     let gutter: CGFloat
-    let fontSize: CGFloat
+    let iconSize: CGFloat
     let labels: [Int: String]
+
+    var fontSize: CGFloat { iconSize }
 }
 
 /// Single source of truth for the vertical geometry of the practice pattern band,

@@ -1660,24 +1660,21 @@ struct PracticeScreen: View {
             VStack(alignment: .leading, spacing: Theme.Space.small) {
                 popoverBlock(title: "Pads in this lesson") {
                     VStack(spacing: Theme.Space.small) {
-                        let usedPairs = Array(Set(session.patternHits.map { "\($0.padIndex):\($0.hand)" })).sorted()
-                        ForEach(usedPairs, id: \.self) { key in
-                            let parts = key.split(separator: ":")
-                            let pad = Int(parts[0]) ?? 0
-                            let hand = String(parts[1])
+                        let hitPads = Set(session.patternHits.map(\.padIndex))
+                        let orderedPads = PadVoice.rowOrder.filter { hitPads.contains($0) }
+                        let extraPads = hitPads.subtracting(PadVoice.rowOrder).sorted()
+                        let usedPads = orderedPads + extraPads
+
+                        ForEach(usedPads, id: \.self) { pad in
                             let padName = PadVoice.name(pad, settings: settings)
-                            let handName = hand == "R" ? settings.localized("Right hand") : settings.localized("Left hand")
 
                             HStack(spacing: Theme.Space.regular) {
-                                PatternBlock(abbreviation: PadVoice.abbreviation(pad), hand: hand)
-                                VStack(alignment: .leading, spacing: 2) {
-                                    Text(padName)
-                                        .font(Theme.control)
-                                        .foregroundStyle(Theme.ink)
-                                    Text(handName)
-                                        .font(Theme.meta)
-                                        .foregroundStyle(Theme.secondary)
-                                }
+                                DrumGlyph(kind: DrumKind.forPad(pad))
+                                    .frame(width: 22, height: 22)
+                                    .foregroundStyle(Theme.ink)
+                                Text(padName)
+                                    .font(Theme.control)
+                                    .foregroundStyle(Theme.ink)
                                 Spacer()
                             }
                         }
