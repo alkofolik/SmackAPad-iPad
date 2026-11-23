@@ -54,15 +54,15 @@ The "overall 23/100" Desloppify prints is not a real result: 75 % of it is a sub
 - `Data/LessonData.swift` (861 lines): lesson data, long by nature.
 - Large test files (`PracticeSessionTests`, `TodayPlanTests`, `ProgressBackupTests`, …) and the flat `SmackAPadTests/` folder (52 files): low value.
 
-## Proposed follow-up tickets (create one at a time, after Jakub picks)
+## Proposed follow-up tickets (create one at a time, after Jakub picks; numbers start at 221 because 211–220 are used by the 2026-11-22 fix and redesign round)
 
 | # | Ticket | Group | Model |
 |---|---|---|---|
-| 211 | Share repeated blocks between Calibration / Content / ControllerSetup / Settings views | A1 | Gemini 3.8 Flash, low |
-| 212 | Split `Components.swift` by topic (Code Simplifier) | A2 | Gemini 3.8 Flash, low |
-| 213 | Group `UI/` into subfolders | A3 | Gemini 3.8 Flash, low |
-| 214 | Split `SettingsManager.swift` by area | B4 | Gemini 3.8 Flash, medium |
-| 215+ | One large screen per ticket (start with `HomeScreen.swift`) | B5 | Gemini 3.8 Flash, medium |
+| 221 | Share repeated blocks between Calibration / Content / ControllerSetup / Settings views | A1 | Gemini 3.8 Flash, low |
+| 222 | Split `Components.swift` by topic (Code Simplifier) | A2 | Gemini 3.8 Flash, low |
+| 223 | Group `UI/` into subfolders | A3 | Gemini 3.8 Flash, low |
+| 224 | Split `SettingsManager.swift` by area | B4 | Gemini 3.8 Flash, medium |
+| 225+ | One large screen per ticket (start with `HomeScreen.swift`) | B5 | Gemini 3.8 Flash, medium |
 
 Each follow-up: run Code Simplifier on the listed files only, build, run area tests with `-only-testing` (full suite for persistence / progression / timing), commit, then re-run the scan and note the new objective score in the ticket.
 

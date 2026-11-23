@@ -216,3 +216,14 @@ Source: Jakub, retention and memory discussion; legacy "Trénink" concept 2026-1
 | 206 | Home as a real controller: display, language knob, appearance switch, no "How it works" | Codex GPT-6.1 Sol, high (fallback Gemini 3.8 Flash, high) | any time, not in parallel with 207 |
 | 207 | Home reacts to the MIDI controller (sound, display, LED; no navigation) | Gemini 3.8 Flash, high (fallback Codex GPT-6.1 Sol, high) | after 206 |
 | 208 | Playhead: sample each frame at its display time, no catch-up jumps; DEBUG timing readout for a slow-motion sync check | Codex GPT-6.1 Sol, high (fallback Gemini 3.8 Pro, high) | any time, not in parallel with 203 (both touch PracticeScreen) |
+| 210 | Desloppify baseline scan and clean-up plan (planning only, no code; follow-up tickets 211+ are created one at a time after Jakub picks) | Gemini 3.8 Flash, low (fallback Codex GPT-6.1 Sol) | any time |
+| 211 | Long-press hint on the top toolbar is cut off at the right edge | Gemini 3.8 Flash, medium (fallback Codex GPT-6.1 Sol, medium) | any time |
+| 212 | Orange band jumps down while the badge banner is shown | Gemini 3.8 Flash, medium (fallback Codex GPT-6.1 Sol, medium) | any time, not in parallel with 215 (both touch PracticeScreen) |
+| 213 | In English a lesson does not stop by itself when the requirement is met (reproduce first) | Gemini 3.8 Flash, high (fallback Codex GPT-6.1 Sol, high) | any time |
+| 214 | Help for the practice modes matches the real toolbar controls (text and icons) | Gemini 3.8 Flash, medium (fallback Codex GPT-6.1 Sol, medium) | any time |
+| 215 | From memory: previous run flashes at the end of the pattern at a run start (reproduce first) | Gemini 3.8 Flash, high (fallback Codex GPT-6.1 Sol, high) | any time, not in parallel with 212 |
+| 216 | From memory: peek at the pattern (manual by tap/eye/controller button, automatic after two missed passes; peeked pass never counts) | Codex GPT-6.1 Sol, high (fallback Gemini 3.8 Flash, high) | after 212 and 215 |
+| 217 | Home: language knob and appearance switch look like real hardware, labels without underline (rest of Home unchanged) | Gemini 3.8 Flash, high (fallback Codex GPT-6.1 Sol, high) | any time, parallel with the practice-screen tickets |
+| 218 | Band: drum names in a dark margin (orange field starts after them), right/left hand shown as white/black notes | Gemini 3.8 Flash, high (fallback Codex GPT-6.1 Sol, high) | after 212, 215 and 216 |
+| 219 | Result card: symmetric three-zone layout, no icon beside the buttons, detail via the summary row | Gemini 3.8 Flash, high (fallback Codex GPT-6.1 Sol, high) | after 212, 215, 216 and 218 |
+| 220 | Library: filters in one pop-up, search as a magnifier | Gemini 3.8 Flash, high (fallback Codex GPT-6.1 Sol, high) | any time, parallel with the practice-screen tickets |
