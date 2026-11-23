@@ -43,7 +43,6 @@ public struct BackupSettings: Codable, Equatable, Sendable {
     public var hiddenCategoryIDsByMode: [String: Set<String>]
     public var libraryView: String
     public var libraryStarFilters: [String]
-    public var trainingDueStepFilter: String
     public var nextLessonSource: String
     public var lastLessonID: Int
     public var showPads: Bool
@@ -78,7 +77,6 @@ public struct BackupSettings: Codable, Equatable, Sendable {
         hiddenCategoryIDsByMode: [String: Set<String>] = [:],
         libraryView: String = "categories",
         libraryStarFilters: [String] = [],
-        trainingDueStepFilter: String = "all",
         nextLessonSource: String = "library",
         lastLessonID: Int = 10001,
         showPads: Bool = true,
@@ -112,7 +110,6 @@ public struct BackupSettings: Codable, Equatable, Sendable {
         self.hiddenCategoryIDsByMode = hiddenCategoryIDsByMode
         self.libraryView = libraryView
         self.libraryStarFilters = libraryStarFilters
-        self.trainingDueStepFilter = trainingDueStepFilter
         self.nextLessonSource = nextLessonSource
         self.lastLessonID = lastLessonID
         self.showPads = showPads
@@ -129,7 +126,7 @@ public struct BackupSettings: Codable, Equatable, Sendable {
         case activeProfileName, customProfiles, languagePreference, appearance, metronomeVolume, padsVolume, patternVolume, instrumentTrims
         case playPadsWithKeyboard, fadeMemoryNotes, reviewReminderEnabled, reviewReminderTime, hideCompletedLessons
         case autoPeekMemory
-        case hiddenCategoryIDsByMode, libraryView, libraryStarFilters, trainingDueStepFilter, nextLessonSource, lastLessonID
+        case hiddenCategoryIDsByMode, libraryView, libraryStarFilters, nextLessonSource, lastLessonID
         case showPads, visibleBars, touchPadsInPortrait, scrolling, practiceAppearance
         case legendShownOnce, memoryHintShownLessonIds
     }
@@ -160,7 +157,6 @@ public struct BackupSettings: Codable, Equatable, Sendable {
         self.hiddenCategoryIDsByMode = try c.decodeIfPresent([String: Set<String>].self, forKey: .hiddenCategoryIDsByMode) ?? [:]
         self.libraryView = try c.decodeIfPresent(String.self, forKey: .libraryView) ?? "categories"
         self.libraryStarFilters = try c.decodeIfPresent([String].self, forKey: .libraryStarFilters) ?? []
-        self.trainingDueStepFilter = try c.decodeIfPresent(String.self, forKey: .trainingDueStepFilter) ?? "all"
         self.nextLessonSource = try c.decodeIfPresent(String.self, forKey: .nextLessonSource) ?? "library"
         self.lastLessonID = try c.decodeIfPresent(Int.self, forKey: .lastLessonID) ?? 10001
         self.showPads = try c.decodeIfPresent(Bool.self, forKey: .showPads) ?? true

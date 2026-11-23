@@ -68,6 +68,17 @@ public struct ReviewForecast: Sendable {
 // MARK: - ReviewQueue
 
 public enum ReviewQueue: Sendable {
+    /// Display order for the Review queue screen: easiest first.
+    /// `level` ascending, then `targetBpm` ascending, then lesson id ascending.
+    /// Not used for picking reviews (see `order`).
+    public static func displayOrder(_ lessons: [Lesson]) -> [Lesson] {
+        lessons.sorted { a, b in
+            if a.level != b.level { return a.level < b.level }
+            if a.targetBpm != b.targetBpm { return a.targetBpm < b.targetBpm }
+            return a.id < b.id
+        }
+    }
+
     /// Pure function ordering candidate due lessons for spaced review:
     /// 1. lowest `reviewStep` first (step 1 is the most fragile, internally step 0)
     /// 2. most days late (higher days between dueDay and today first)

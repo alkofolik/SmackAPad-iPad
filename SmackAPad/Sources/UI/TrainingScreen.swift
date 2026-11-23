@@ -47,7 +47,7 @@ public struct TrainingScreen: View {
     @State private var daySummary: DaySummaryPresentation?
     @State private var startMixAfterSummary = false
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
-    @State private var isDueExpanded = false
+    @State private var queueSectionOpen: [Int: Bool] = [:]
     @State private var expandedWaitingGroup: WaitingGroup?
     @State private var isSettledExpanded = false
 
@@ -62,36 +62,6 @@ public struct TrainingScreen: View {
         case later
 
         var id: String { rawValue }
-    }
-
-    private enum DueStepFilter: String, CaseIterable, Identifiable {
-        case all = "all"
-        case step1 = "step1"
-        case step2 = "step2"
-        case step3 = "step3"
-        case step4 = "step4"
-
-        var id: String { rawValue }
-
-        var stepIndex: Int? {
-            switch self {
-            case .all: return nil
-            case .step1: return 0
-            case .step2: return 1
-            case .step3: return 2
-            case .step4: return 3
-            }
-        }
-
-        func title(settings: SettingsManager) -> String {
-            switch self {
-            case .all: return settings.localized("All")
-            case .step1: return settings.localized("Step 1")
-            case .step2: return settings.localized("Step 2")
-            case .step3: return settings.localized("Step 3")
-            case .step4: return settings.localized("Step 4")
-            }
-        }
     }
 
     public init(onHome: @escaping () -> Void = {}) {
@@ -818,49 +788,77 @@ public struct TrainingScreen: View {
 
     // MARK: - 3. Due Now
 
-    private var currentStepFilter: DueStepFilter {
-        DueStepFilter(rawValue: settings.trainingDueStepFilter) ?? .all
-    }
+    /// Section keys: 0...3 are review steps 1...4, `allSectionKey` is "All lessons".
+    private static let allSectionKey = -1
 
-    private var filteredDueLessons: [Lesson] {
-        guard let targetIndex = currentStepFilter.stepIndex else {
-            return queuedLessons
-        }
-        return queuedLessons.filter { lesson in
-            let record = progress.progress(for: lesson.id)
-            let step = record?.reviewStep ?? 0
-            return step == targetIndex
+    private var firstOpenQueueStep: Int? {
+        (0...3).first { step in
+            queuedLessons.contains { (progress.progress(for: $0.id)?.reviewStep ?? 0) == step }
         }
     }
 
-    private var stepFilterChips: some View {
-        ScrollView(.horizontal, showsIndicators: false) {
-            HStack(spacing: Theme.Space.small) {
-                ForEach(DueStepFilter.allCases) { filter in
-                    let count: Int = {
-                        if let targetIndex = filter.stepIndex {
-                            return queuedLessons.filter { (progress.progress(for: $0.id)?.reviewStep ?? 0) == targetIndex }.count
-                        } else {
-                            return queuedLessons.count
-                        }
-                    }()
-                    let isSelected = (currentStepFilter == filter)
-                    let isDisabled = (count == 0)
+    private func queueLessons(forStep step: Int?) -> [Lesson] {
+        let matching = step == nil ? queuedLessons : queuedLessons.filter {
+            (progress.progress(for: $0.id)?.reviewStep ?? 0) == step
+        }
+        return ReviewQueue.displayOrder(matching)
+    }
 
-                    FilterChip(title: filter.title(settings: settings), selected: isSelected) {
-                        if isSelected && filter != .all {
-                            settings.trainingDueStepFilter = DueStepFilter.all.rawValue
-                        } else {
-                            settings.trainingDueStepFilter = filter.rawValue
-                        }
-                    }
-                    .disabled(isDisabled)
-                    .opacity(isDisabled ? 0.35 : 1.0)
+    private func isQueueSectionOpen(_ key: Int) -> Bool {
+        queueSectionOpen[key] ?? (key == firstOpenQueueStep)
+    }
+
+    private func queueSection(key: Int, title: String, lessons: [Lesson]) -> some View {
+        let isEmpty = lessons.isEmpty
+        let isOpen = !isEmpty && isQueueSectionOpen(key)
+
+        return VStack(alignment: .leading, spacing: 0) {
+            Button {
+                withAnimation(reduceMotion ? nil : .easeInOut(duration: 0.2)) {
+                    queueSectionOpen[key] = !isOpen
                 }
+            } label: {
+                HStack(spacing: Theme.Space.regular) {
+                    Text(title)
+                        .font(Theme.strong(18))
+                        .foregroundStyle(Theme.ink)
+                    Spacer()
+                    Text(settings.localized("%lld lessons", lessons.count))
+                        .font(Theme.meta.monospacedDigit())
+                        .foregroundStyle(Theme.secondary)
+                    Image(systemName: isOpen ? "chevron.up" : "chevron.down")
+                        .font(.system(size: 11, weight: .bold))
+                        .foregroundStyle(isOpen ? Theme.orange : Theme.secondary)
+                }
+                .padding(.horizontal, 14)
+                .frame(minHeight: Theme.Size.touch)
+                .background(isOpen ? Theme.activeFill : Theme.surface)
+                .overlay(
+                    RoundedRectangle(cornerRadius: Theme.Radius.button)
+                        .stroke(isOpen ? Theme.orange : Theme.hairline, lineWidth: isOpen ? 1.5 : 1)
+                )
+                .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.button))
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .disabled(isEmpty)
+            .opacity(isEmpty ? 0.35 : 1.0)
+            .accessibilityAddTraits(isOpen ? [.isSelected] : [])
+
+            if isOpen {
+                VStack(spacing: 0) {
+                    ForEach(Array(lessons.enumerated()), id: \.element.id) { index, lesson in
+                        if index > 0 {
+                            Rectangle()
+                                .fill(Theme.hairline)
+                                .frame(height: 1)
+                        }
+                        dueLessonRow(lesson)
+                    }
+                }
+                .padding(.top, Theme.Space.small)
             }
         }
-        .scrollBounceBehavior(.basedOnSize)
-        .frame(height: Theme.Size.touch)
     }
 
     private var dueNowPanel: some View {
@@ -887,42 +885,19 @@ public struct TrainingScreen: View {
                     }()
                     emptyCardText(settings.localized("Nothing to review today. Next: %@", nextDateFormatted))
                 } else {
-                    stepFilterChips
-                        .padding(.bottom, Theme.Space.small)
-
-                    let filtered = filteredDueLessons
-                    if filtered.isEmpty {
-                        emptyCardText(settings.localized("No lessons for this step."))
-                    } else {
-                        let displayed = isDueExpanded ? filtered : Array(filtered.prefix(5))
-                        VStack(spacing: 0) {
-                            ForEach(Array(displayed.enumerated()), id: \.element.id) { index, lesson in
-                                if index > 0 {
-                                    Rectangle()
-                                        .fill(Theme.hairline)
-                                        .frame(height: 1)
-                                }
-                                dueLessonRow(lesson)
-                            }
+                    VStack(alignment: .leading, spacing: Theme.Space.small) {
+                        ForEach(0..<4, id: \.self) { step in
+                            queueSection(
+                                key: step,
+                                title: [settings.localized("Step 1"), settings.localized("Step 2"), settings.localized("Step 3"), settings.localized("Step 4")][step],
+                                lessons: queueLessons(forStep: step)
+                            )
                         }
-
-                        if filtered.count > 5 {
-                            Button {
-                                withAnimation(.easeInOut(duration: 0.2)) {
-                                    isDueExpanded.toggle()
-                                }
-                            } label: {
-                                Text(isDueExpanded
-                                    ? settings.localized("Show fewer")
-                                    : settings.localized("Show all (%lld)", filtered.count))
-                                    .font(Theme.control)
-                                    .padding(.horizontal, Theme.Space.regular)
-                                    .frame(minHeight: Theme.Size.touch)
-                            }
-                            .buttonStyle(PadSecondaryButtonStyle())
-                            .frame(maxWidth: .infinity, alignment: .center)
-                            .padding(.top, Theme.Space.small)
-                        }
+                        queueSection(
+                            key: Self.allSectionKey,
+                            title: settings.localized("All lessons"),
+                            lessons: queueLessons(forStep: nil)
+                        )
                     }
                 }
             }

@@ -1,6 +1,6 @@
 # 228 — Review queue: one section per step, easiest first, plus an "All lessons" section
 
-Status: open. Requested by Jakub on 2026-11-23.
+Status: done. Requested by Jakub on 2026-11-23.
 
 ## Goal
 
@@ -28,12 +28,12 @@ One small test for the sort helper: lessons sorted by `level`, then `targetBpm`,
 
 ## Acceptance criteria
 
-- [ ] Queue shows Step 1–4 sections and "All lessons"; no chips, no "Show all" button.
-- [ ] Each section lists only its step's lessons, easiest first; "All lessons" lists everything, easiest first.
-- [ ] Counts in the headers match the lists.
-- [ ] The order Today uses for picking reviews is unchanged (existing tests still pass).
-- [ ] Old backups still load; no dead code or unused strings left.
-- [ ] Build and tests of the area pass.
+- [x] Queue shows Step 1–4 sections and "All lessons"; no chips, no "Show all" button.
+- [x] Each section lists only its step's lessons, easiest first; "All lessons" lists everything, easiest first.
+- [x] Counts in the headers match the lists.
+- [x] The order Today uses for picking reviews is unchanged (existing tests still pass).
+- [x] Old backups still load; no dead code or unused strings left.
+- [x] Build and tests of the area pass.
 
 ### Manual iPad checks for Jakub
 

@@ -63,4 +63,20 @@ final class ReviewForecastTests: XCTestCase {
             XCTAssertEqual(entry.count, 0)
         }
     }
+
+    // Ticket 228: review queue display order is easiest first.
+    func testDisplayOrderIsLevelThenTargetTempoThenId() {
+        func lesson(_ id: Int, level: Int, target: Int) -> Lesson {
+            Lesson(id: id, cat: "t", title: "L\(id)", genre: "Basic", tags: [], text: "",
+                   division: 4, bars: 1, startBpm: 60, targetBpm: target, level: level,
+                   src: "test", hits: [])
+        }
+        let lessons = [
+            lesson(5, level: 2, target: 100),
+            lesson(3, level: 1, target: 120),
+            lesson(4, level: 1, target: 90),
+            lesson(2, level: 1, target: 90),
+        ]
+        XCTAssertEqual(ReviewQueue.displayOrder(lessons).map(\.id), [2, 4, 3, 5])
+    }
 }

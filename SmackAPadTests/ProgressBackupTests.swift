@@ -382,6 +382,19 @@ final class ProgressBackupTests: XCTestCase {
         XCTAssertTrue(settings.autoPeekMemory)
     }
 
+    // Ticket 228: the removed queue-filter key in an old backup is ignored.
+    func testOldBackupWithRemovedQueueFilterKeyStillLoads() throws {
+        let suite = "queue-filter-\(UUID().uuidString)"
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))
+        defer { defaults.removePersistentDomain(forName: suite) }
+        let settings = SettingsManager(userDefaults: defaults)
+        let exported = try JSONEncoder().encode(settings.exportSettings())
+        var old = try XCTUnwrap(JSONSerialization.jsonObject(with: exported) as? [String: Any])
+        old["trainingDueStepFilter"] = "step2"
+        let data = try JSONSerialization.data(withJSONObject: old)
+        XCTAssertNoThrow(try JSONDecoder().decode(BackupSettings.self, from: data))
+    }
+
     func testLegacyAndCurrentProgressFormatsLoadUnchanged() throws {
         let tempDir = try createTempDirectory()
         defer { cleanupDirectory(tempDir) }

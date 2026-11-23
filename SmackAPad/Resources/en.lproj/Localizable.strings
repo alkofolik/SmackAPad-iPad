@@ -813,8 +813,6 @@
 
 /* Ticket 144: Training order, step filter, waiting boxes, settled box */
 "Step 4" = "Step 4";
-"Show all (%lld)" = "Show all (%lld)";
-"Show fewer" = "Show fewer";
 "Tomorrow (%lld)" = "Tomorrow (%lld)";
 "In 2–3 days (%lld)" = "In 2–3 days (%lld)";
 "In 4–7 days (%lld)" = "In 4–7 days (%lld)";
@@ -822,7 +820,6 @@
 "Review tomorrow · practice only" = "Review tomorrow · practice only";
 "Review in %lld days · practice only" = "Review in %lld days · practice only";
 "Settled (%lld)" = "Settled (%lld)";
-"No lessons for this step." = "No lessons for this step.";
 
 // Ticket 150: daily outcomes and a calm review queue.
 "Played" = "Played";

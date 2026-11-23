@@ -817,15 +817,12 @@
 
 /* Ticket 144: Training order, step filter, waiting boxes, settled box */
 "Step 4" = "Krok 4";
-"Show all (%lld)" = "Zobrazit vše (%lld)";
-"Show fewer" = "Zobrazit méně";
 "Tomorrow (%lld)" = "Zítra (%lld)";
 "In 2–3 days (%lld)" = "Za 2–3 dny (%lld)";
 "In 4–7 days (%lld)" = "Za 4–7 dní (%lld)";
 "Later (%lld)" = "Později (%lld)";
 "Review tomorrow · practice only" = "Opakování zítra · jen cvičení";
 "Settled (%lld)" = "Upevněné (%lld)";
-"No lessons for this step." = "Pro tento krok nejsou žádné lekce.";
 
 // Ticket 150: daily outcomes and a calm review queue.
 "Played" = "Odehráno";
