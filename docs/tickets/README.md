@@ -227,3 +227,4 @@ Source: Jakub, retention and memory discussion; legacy "Trénink" concept 2026-1
 | 218 | Band: drum names in a dark margin (orange field starts after them), right/left hand shown as white/black notes | Gemini 3.8 Flash, high (fallback Codex GPT-6.1 Sol, high) | after 212, 215 and 216 |
 | 219 | Result card: symmetric three-zone layout, no icon beside the buttons, detail via the summary row | Gemini 3.8 Flash, high (fallback Codex GPT-6.1 Sol, high) | after 212, 215, 216 and 218 |
 | 220 | Library: filters in one pop-up, search as a magnifier | Gemini 3.8 Flash, high (fallback Codex GPT-6.1 Sol, high) | any time, parallel with the practice-screen tickets |
+| 228 | Review queue: one collapsible section per step (easiest first) plus an "All lessons" section, chips and "Show all" removed | Gemini 3.8 Flash, high (fallback Codex GPT-6.1 Sol, high) | any time, not in parallel with 220 (both touch TrainingScreen) |
