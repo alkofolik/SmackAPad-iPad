@@ -266,7 +266,7 @@ struct PracticeToolbarHintContainerModifier: ViewModifier {
 
     func body(content: Content) -> some View {
         content
-            .coordinateSpace(name: PracticeToolbarHintCoordinator.coordinateSpaceName)
+            .coordinateSpace(.named(PracticeToolbarHintCoordinator.coordinateSpaceName))
             .environment(\.practiceToolbarHintCoordinator, coordinator)
             .overlay(alignment: .topLeading) {
                 if let hint = coordinator.currentHint {

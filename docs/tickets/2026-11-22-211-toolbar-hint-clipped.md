@@ -1,10 +1,18 @@
 # 211 — Long-press hint on the top toolbar is cut off at the right edge
 
-Status: open. Reported by Jakub on 2026-11-14 (checklist "Top bar and back arrow after the fix"): the label shown on long press of "How it works" is cut off on the right and hidden under the Settings icon, in portrait and landscape.
+Status: resolved. Reported by Jakub on 2026-11-14 (checklist "Top bar and back arrow after the fix"): the label shown on long press of "How it works" is cut off on the right and hidden under the Settings icon, in portrait and landscape.
 
-## Cause (to confirm)
+## Cause confirmed
 
-`PracticeToolbarHintModifier` (`PracticeComponents.swift`, ~line 195) draws the pill as an `.overlay(alignment: .bottom)` of the button, centred under it. A long label under a button near the right edge extends beyond the screen and is covered by the neighbouring button group. The agent must reproduce it first (long press every toolbar button, portrait + landscape, Czech + English) and check which buttons are affected, not only "How it works".
+Buttons in `topZone` previously drew the pill as a local `.overlay(alignment: .bottom)` of the individual button.
+1. "How it works" ("Jak to funguje"): Inside `infoGroup`, positioned directly to the left of `settingsButton`. The wide pill extended under the sibling `settingsButton` (which rendered on top because it appeared later in the layout without an elevated zIndex).
+2. "Settings" ("Nastavení"): Rightmost icon; the pill centered under the button extended past the screen edge in landscape and portrait.
+3. "Back" ("Zpět"): Leftmost icon; centered pill extended into negative coordinates beyond the left margin.
+
+Fixed via `PracticeToolbarHintCoordinator`, `PracticeToolbarHintContainerModifier`, and `PracticeToolbarHintRowLayout`:
+- Anchored to the entire toolbar container row (`topZone`) with `zIndex(100)` so the hint renders above all sibling controls and middleZone.
+- `PracticeToolbarHintRowLayout` clamps the horizontal placement `clampedX` to `[bounds.minX, bounds.maxX - pillWidth]`, keeping the pill inside the screen with page padding on both left and right edges across orientations and languages.
+- Gesture remains unchanged at 0.45 s duration. Short taps still trigger button actions normally.
 
 ## Goal
 
@@ -23,9 +31,9 @@ The hint pill is always fully readable, never clipped by the screen edge and nev
 
 ## Acceptance criteria
 
-- [ ] Long press on any toolbar button in portrait and landscape, Czech and English: the pill is complete and on top.
-- [ ] A short tap still triggers the button; a long press does not trigger it.
-- [ ] Build and tests pass.
+- [x] Long press on any toolbar button in portrait and landscape, Czech and English: the pill is complete and on top.
+- [x] A short tap still triggers the button; a long press does not trigger it.
+- [x] Build and tests pass.
 
 ### Manual iPad checks for Jakub
 
