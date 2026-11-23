@@ -192,10 +192,119 @@ private struct PracticeToolbarButtonStyle: ButtonStyle {
     }
 }
 
+@Observable
+final class PracticeToolbarHintCoordinator {
+    static let coordinateSpaceName = "PracticeToolbarHintSpace"
+
+    struct Hint: Equatable {
+        let title: String
+        let anchor: CGRect
+    }
+
+    var currentHint: Hint?
+    private var dismissTask: Task<Void, Never>?
+
+    func show(title: String, anchor: CGRect) {
+        dismissTask?.cancel()
+        currentHint = Hint(title: title, anchor: anchor)
+        dismissTask = Task { @MainActor [weak self] in
+            try? await Task.sleep(for: .seconds(2))
+            guard !Task.isCancelled else { return }
+            self?.currentHint = nil
+        }
+    }
+
+    func hide(for title: String? = nil) {
+        if let title {
+            guard currentHint?.title == title else { return }
+        }
+        dismissTask?.cancel()
+        dismissTask = nil
+        currentHint = nil
+    }
+}
+
+private struct PracticeToolbarHintCoordinatorKey: EnvironmentKey {
+    static let defaultValue: PracticeToolbarHintCoordinator? = nil
+}
+
+extension EnvironmentValues {
+    var practiceToolbarHintCoordinator: PracticeToolbarHintCoordinator? {
+        get { self[PracticeToolbarHintCoordinatorKey.self] }
+        set { self[PracticeToolbarHintCoordinatorKey.self] = newValue }
+    }
+}
+
+struct PracticeToolbarHintRowLayout: Layout {
+    let anchor: CGRect
+
+    func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
+        CGSize(width: proposal.width ?? 0, height: proposal.height ?? 0)
+    }
+
+    func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) {
+        guard let pill = subviews.first else { return }
+        let pillSize = pill.sizeThatFits(.unspecified)
+        let pillWidth = pillSize.width
+
+        let desiredX = anchor.midX - pillWidth / 2
+        let minX = bounds.minX
+        let maxX = max(bounds.minX, bounds.maxX - pillWidth)
+        let clampedX = min(max(desiredX, minX), maxX)
+
+        let y = bounds.minY + anchor.maxY + 6
+        pill.place(at: CGPoint(x: clampedX, y: y), proposal: ProposedViewSize(pillSize))
+    }
+}
+
+struct PracticeToolbarHintContainerModifier: ViewModifier {
+    @State private var coordinator = PracticeToolbarHintCoordinator()
+    @Environment(\.accessibilityReduceMotion) private var reduced
+
+    func body(content: Content) -> some View {
+        content
+            .coordinateSpace(name: PracticeToolbarHintCoordinator.coordinateSpaceName)
+            .environment(\.practiceToolbarHintCoordinator, coordinator)
+            .overlay(alignment: .topLeading) {
+                if let hint = coordinator.currentHint {
+                    PracticeToolbarHintRowLayout(anchor: hint.anchor) {
+                        hintPill(for: hint.title)
+                    }
+                    .transition(.opacity)
+                    .allowsHitTesting(false)
+                    .zIndex(100)
+                }
+            }
+            .animation(reduced ? nil : Theme.Motion.fast, value: coordinator.currentHint)
+            .onDisappear { coordinator.hide() }
+    }
+
+    private func hintPill(for title: String) -> some View {
+        Text(title)
+            .font(Theme.strong(15))
+            .lineLimit(1)
+            .fixedSize()
+            .foregroundStyle(Theme.white)
+            .padding(.horizontal, Theme.Space.controlGap)
+            .padding(.vertical, Theme.Space.small)
+            .background(
+                RoundedRectangle(cornerRadius: Theme.Radius.pad)
+                    .fill(Theme.black)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: Theme.Radius.pad)
+                            .strokeBorder(Theme.orange, lineWidth: 1.5)
+                    )
+            )
+            .allowsHitTesting(false)
+    }
+}
+
 private struct PracticeToolbarHintModifier: ViewModifier {
     let title: String
-    @State private var showingHint = false
-    @State private var dismissTask: Task<Void, Never>?
+    @Environment(\.practiceToolbarHintCoordinator) private var coordinator
+    @State private var buttonFrame: CGRect = .zero
+    @State private var showingFallbackHint = false
+    @State private var fallbackDismissTask: Task<Void, Never>?
     @Environment(\.accessibilityReduceMotion) private var reduced
 
     private var hintGesture: some Gesture {
@@ -206,22 +315,30 @@ private struct PracticeToolbarHintModifier: ViewModifier {
     }
 
     private func showHint() {
-        showingHint = true
-        dismissTask?.cancel()
-        dismissTask = Task { @MainActor in
-            try? await Task.sleep(for: .seconds(2))
-            guard !Task.isCancelled else { return }
-            showingHint = false
+        if let coordinator {
+            coordinator.show(title: title, anchor: buttonFrame)
+        } else {
+            showingFallbackHint = true
+            fallbackDismissTask?.cancel()
+            fallbackDismissTask = Task { @MainActor in
+                try? await Task.sleep(for: .seconds(2))
+                guard !Task.isCancelled else { return }
+                showingFallbackHint = false
+            }
         }
     }
 
     private func hideHint() {
-        dismissTask?.cancel()
-        dismissTask = nil
-        showingHint = false
+        if let coordinator {
+            coordinator.hide(for: title)
+        } else {
+            fallbackDismissTask?.cancel()
+            fallbackDismissTask = nil
+            showingFallbackHint = false
+        }
     }
 
-    private var hintPill: some View {
+    private var fallbackHintPill: some View {
         Text(title)
             .font(Theme.strong(15))
             .lineLimit(1)
@@ -245,15 +362,24 @@ private struct PracticeToolbarHintModifier: ViewModifier {
             .contentShape(Rectangle())
             .help(title)
             .highPriorityGesture(hintGesture)
+            .background(
+                GeometryReader { geo in
+                    let frame = geo.frame(in: .named(PracticeToolbarHintCoordinator.coordinateSpaceName))
+                    Color.clear
+                        .onChange(of: frame, initial: true) { _, newFrame in
+                            buttonFrame = newFrame
+                        }
+                }
+            )
             .overlay(alignment: .bottom) {
-                if showingHint {
-                    hintPill
+                if coordinator == nil && showingFallbackHint {
+                    fallbackHintPill
                         .alignmentGuide(.bottom) { d in d[.top] - 6 }
                         .transition(.opacity)
                 }
             }
-            .zIndex(showingHint ? 100 : 0)
-            .animation(reduced ? nil : Theme.Motion.fast, value: showingHint)
+            .zIndex(coordinator == nil && showingFallbackHint ? 100 : 0)
+            .animation(reduced ? nil : Theme.Motion.fast, value: showingFallbackHint)
             .onDisappear { hideHint() }
     }
 }
@@ -261,6 +387,10 @@ private struct PracticeToolbarHintModifier: ViewModifier {
 extension View {
     func practiceToolbarHint(_ title: String) -> some View {
         modifier(PracticeToolbarHintModifier(title: title))
+    }
+
+    func practiceToolbarHintContainer() -> some View {
+        modifier(PracticeToolbarHintContainerModifier())
     }
 }
 

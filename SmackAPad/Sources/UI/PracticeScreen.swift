@@ -109,17 +109,20 @@ struct PracticeScreen: View {
                 if !focusActive {
                     topZone(isPortrait: isPortrait, width: geometry.size.width, screenHeight: geometry.size.height)
                         .fixedSize(horizontal: false, vertical: true)
+                        .practiceToolbarHintContainer()
                         .zIndex(20)
                         .transition(.opacity)
                 }
 
-                if let event = session.badgeBannerEvent {
-                    BadgeBanner(event: event) { session.clearBadgeBannerEvent() }
-                        .id(event.id)
-                }
-
                 middleZone
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .overlay(alignment: .top) {
+                        if let event = session.badgeBannerEvent {
+                            BadgeBanner(event: event) { session.clearBadgeBannerEvent() }
+                                .id(event.id)
+                                .zIndex(30)
+                        }
+                    }
 
                 bottomZone(s: s, isPortrait: isPortrait, portraitPads: portraitPads, screenHeight: geometry.size.height, availableWidth: availableWidth)
                     .fixedSize(horizontal: false, vertical: true)

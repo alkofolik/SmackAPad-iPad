@@ -1473,7 +1473,8 @@ final class PracticeSession {
         let repIndex = Int(floor(elapsedSteps / Double(total)))
         let cycle = (pass.number - 1) * repeatsPerRun + repIndex + 1
         let localStep = elapsedSteps.truncatingRemainder(dividingBy: Double(total))
-        playedHits.append(PlayedHit(padIndex: padIndex, step: localStep, pass: cycle, mark: mark))
+        let wasHidden = fromMemory && memoryWarmUp.areNotesHidden(fadeNotes: settings.fadeMemoryNotes)
+        playedHits.append(PlayedHit(padIndex: padIndex, step: localStep, pass: cycle, mark: mark, hidden: wasHidden))
     }
 
     private func recordFlash(padIndex: Int, mark: HitMark?) {

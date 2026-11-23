@@ -49,6 +49,12 @@ final class PlayedHitTests: XCTestCase {
         XCTAssertFalse(previous.isVisible(in: 2, before: 1, steps: 16..<32, totalSteps: 32))
     }
 
+    func testNonHiddenPlayedHitDoesNotShareTailAcrossPassBoundary() {
+        let nonHidden = PlayedHit(padIndex: 12, step: 15.75, pass: 1, mark: .correct, hidden: false)
+        XCTAssertFalse(nonHidden.isVisible(in: 2, before: 0, steps: 0..<16, totalSteps: 16))
+        XCTAssertTrue(nonHidden.isVisible(in: 1, before: 16, steps: 0..<16, totalSteps: 16))
+    }
+
     func testVisibilityUsesTheCurrentPassPositionAndVisibleBars() {
         let hit = PlayedHit(padIndex: 12, step: 15.75, pass: 2, mark: .correct)
         // The same rule serves the scrolling strip and each static bar/page.

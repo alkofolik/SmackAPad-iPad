@@ -36,6 +36,7 @@ struct PlayedHit {
     let step: Double
     let pass: Int
     let mark: HitMark?
+    var hidden: Bool = true
 
     func tapeStep(totalSteps: Int) -> Double { Double((pass - 1) * totalSteps) + step }
 
@@ -43,7 +44,7 @@ struct PlayedHit {
                    totalSteps: Int? = nil, bpm: Int = 60, reduceMotion: Bool = false) -> Bool {
         guard step >= Double(steps.lowerBound), step < Double(steps.upperBound) else { return false }
         if pass == currentPass { return step < position }
-        guard let totalSteps else { return false }
+        guard hidden, let totalSteps else { return false }
         return FeedbackWindow.strength(recordedPass: pass, step: step, pass: currentPass,
             position: position, totalSteps: totalSteps, bpm: bpm, reduceMotion: reduceMotion) > 0
     }
@@ -150,7 +151,8 @@ struct PatternField: View {
                                       scoring: scoring, missGraceSteps: missGraceSteps,
                                       band: band, layout: layout, labelLayout: labelLayout,
                                       bpm: bpm, reduceMotion: reduceMotion,
-                                      afterMe: afterMe)
+                                      afterMe: afterMe,
+                                      fromMemory: fromMemory)
                     }
                 }
                 .frame(width: contentSize.width, height: contentSize.height)
@@ -330,6 +332,7 @@ private struct StaticPattern: View {
     var bpm: Int = 60
     var reduceMotion: Bool = false
     var afterMe: Bool = false
+    var fromMemory: Bool = false
 
     var body: some View {
         let gutter: CGFloat = labelLayout.gutter
@@ -358,30 +361,19 @@ private struct StaticPattern: View {
             Canvas { context, size in
                 let cellWidth = max(1, (size.width - gutter) / CGFloat(totalSteps))
                 let lanes = PatternLanes(geometry: layout, rows: rows)
-                let elapsedSeconds = position * 15.0 / Double(max(1, bpm))
-                let fadeProgress = reduceMotion ? 1.0 : min(1.0, max(0.0, elapsedSeconds / 0.25))
 
-                for (row, pad) in rows.enumerated() {
-                    if visibility != .hidden || afterMe {
+                if visibility != .hidden || afterMe {
+                    for (row, pad) in rows.enumerated() {
                         for hit in hits where hit.padIndex == pad && hit.step >= startStep && hit.step < endStep {
                             let visibleStep = hit.step - startStep
                             let x = gutter + (CGFloat(visibleStep) + 0.5) * cellWidth
                             let rect = lanes.tile(x: x, width: cellWidth, row: row)
-                            let tail = feedback.position < Double(hit.step) ? feedback.strength(offset: -1, step: Double(hit.step)) : 0
+                            let tail = !fromMemory && feedback.position < Double(hit.step) ? feedback.strength(offset: -1, step: Double(hit.step)) : 0
                             let mark = hitMark(hit, judgments: feedback.judgments[feedback.pass + (tail > 0 ? -1 : 0)] ?? [:],
                                                scoring: scoring, elapsedSteps: tail > 0 ? Double(feedback.totalSteps) : position - Double(hit.step),
                                                grace: missGraceSteps)
                             drawHit(hit, in: rect, mark: mark, strength: tail > 0 ? tail : 1,
-                                    visibility: afterMe ? .shown : visibility, fadeProgress: fadeProgress,
-                                    fontSize: lanes.fontSize, context: &context)
-                        }
-                    } else if fadeProgress < 1 {
-                        for hit in hits where hit.padIndex == pad && hit.step >= startStep && hit.step < endStep {
-                            let visibleStep = hit.step - startStep
-                            let x = gutter + (CGFloat(visibleStep) + 0.5) * cellWidth
-                            let rect = lanes.tile(x: x, width: cellWidth, row: row)
-                            drawHit(hit, in: rect, mark: nil, strength: 1,
-                                    visibility: .hidden, fadeProgress: fadeProgress,
+                                    visibility: afterMe ? .shown : visibility,
                                     fontSize: lanes.fontSize, context: &context)
                         }
                     }
@@ -411,7 +403,7 @@ private struct StaticPattern: View {
                             let rect = lanes.tile(x: x, width: cellWidth, row: row)
                             var hitContext = hit.pass == feedback.pass ? playedContext : context
                             if hit.pass != feedback.pass {
-                                hitContext.opacity = feedback.strength(offset: -1, step: hit.step)
+                                hitContext.opacity = feedback.strength(offset: hit.pass - feedback.pass, step: hit.step)
                             }
                             drawPlayedHit(hit, in: rect, fontSize: lanes.fontSize, context: &hitContext)
                         }
@@ -512,6 +504,7 @@ private struct ScrollingPattern: View {
                     var playedContext = context
                     playedContext.clip(to: Path(CGRect(x: 0, y: rowTop, width: markerX, height: max(1, rowBottom - rowTop))))
                     for hit in playedHits {
+                        guard hit.pass == pass || hit.hidden else { continue }
                         guard let row = rows.firstIndex(of: hit.padIndex) else { continue }
                         let step = hit.tapeStep(totalSteps: total)
                         guard step >= 0, step < position else { continue }
@@ -544,14 +537,14 @@ private func hitMark(_ hit: LessonHit, judgments: [LessonHit: HitJudgment], scor
 }
 
 private func drawHit(_ hit: LessonHit, in rect: CGRect, mark: HitMark?, strength: Double = 1,
-                     visibility: NoteVisibility = .shown, fadeProgress: Double = 1,
+                     visibility: NoteVisibility = .shown,
                      fontSize: CGFloat, context: inout GraphicsContext) {
     if mark != nil, strength < 1 {
-        drawHit(hit, in: rect, mark: nil, strength: 1, visibility: visibility, fadeProgress: fadeProgress, fontSize: fontSize, context: &context)
+        drawHit(hit, in: rect, mark: nil, strength: 1, visibility: visibility, fontSize: fontSize, context: &context)
         if strength > 0 {
             var coloured = context
             coloured.opacity *= strength
-            drawHit(hit, in: rect, mark: mark, strength: 1, visibility: visibility, fadeProgress: fadeProgress, fontSize: fontSize, context: &coloured)
+            drawHit(hit, in: rect, mark: mark, strength: 1, visibility: visibility, fontSize: fontSize, context: &coloured)
         }
         return
     }
@@ -602,23 +595,11 @@ private func drawHit(_ hit: LessonHit, in rect: CGRect, mark: HitMark?, strength
         } else {
             fadedContext.fill(interior, with: .color(Theme.white.opacity(0.12)))
         }
-        if fadeProgress < 1 {
-            var crossContext = context
-            crossContext.opacity *= strength * (1.0 - fadeProgress)
-            crossContext.fill(Path(roundedRect: rect, cornerRadius: cornerRadius), with: .color(Theme.white))
-            crossContext.draw(Text(PadVoice.abbreviation(hit.padIndex)).font(Theme.canvasDisplay(hitFontSize))
-                .foregroundColor(Theme.black), at: CGPoint(x: rect.midX, y: rect.midY))
-        }
         fadedContext.stroke(Path(roundedRect: rect.insetBy(dx: 1, dy: 1), cornerRadius: innerRadius),
                             with: .color(PatternField.ghostOutline), lineWidth: 2)
 
     case .hidden:
-        if fadeProgress < 1 {
-            var crossContext = context
-            crossContext.opacity *= strength * (1.0 - fadeProgress)
-            crossContext.stroke(Path(roundedRect: rect.insetBy(dx: 1, dy: 1), cornerRadius: innerRadius),
-                                with: .color(PatternField.ghostOutline), lineWidth: 2)
-        }
+        break
     }
 }
 

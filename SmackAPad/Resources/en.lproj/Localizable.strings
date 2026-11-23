@@ -856,8 +856,8 @@
 "help.hit.correct" = "Right pad, on time";
 "help.hit.off" = "Right pad, off time";
 "help.hit.wrong" = "Wrong pad or missed hit";
-"help.tutorial.modes.title" = "Three ways to practise";
-"help.tutorial.modes.caption" = "Listen: hear the pattern and join in. No stars.\nPlay: play the pattern yourself and earn stars. The metronome is optional.\nAfter me: listen to the app play a phrase, then repeat it. No stars.";
+"help.tutorial.modes.title" = "Practice modes";
+"help.tutorial.modes.caption" = "Listen: hear the pattern and join in. No stars.\nPlay: play the pattern yourself and earn stars. The metronome is optional.\nAfter me: listen to the app play a phrase, then repeat it. No stars.\nFrom memory: hide the notes to test yourself. Notes hide after two good passes.";
 "help.tutorial.starsAndTempo.title" = "Stars and tempo";
 "help.tutorial.starsAndTempo.caption" = "★ Pass the lesson.\n★★ Play cleanly at goal tempo. Clean passes in Play raise the tempo towards the goal.\n★★★ Pass two scheduled reviews from memory on different days.\nTap the stars for the lesson requirements. Tap the tempo field while stopped to change it.";
 "help.tutorial.whereNext.title" = "Where to go next";
@@ -873,7 +873,7 @@
 "tap to change" = "tap to change";
 "Start · Stop · Restart" = "Start · Stop · Restart";
 "help.modes.title" = "Modes";
-"help.modes.caption" = "Listen: hear the pattern and join in. Tempo stays fixed and you earn no stars.\nPlay: earn stars by playing the pattern. Use More tools to turn the metronome or pattern sound on or off.\nAfter me: hear a phrase, then repeat it. Your response gets a score, with no lesson stars.";
+"help.modes.caption" = "Listen: hear the pattern and join in. Tempo stays fixed and you earn no stars.\nPlay: earn stars by playing the pattern. Use More tools to turn the metronome or pattern sound on or off.\nAfter me: hear a phrase, then repeat it. Your response gets a score, with no lesson stars.\nFrom memory: hide the notes to prepare for reviews. Notes hide after two good passes in a row.";
 "help.signals.title" = "Colours and signals";
 "help.signals.caption" = "Read the hit colours in the band. Listen uses a lighter band than Play.\nWatch the band deepen as the tempo approaches the goal. A glow on the right means you are early, on the left you are late.\nOpen Details after playing to see which bars were clean, early, late or uneven.\nUse the result controls to try again, play on or move to the next lesson when offered.";
 "help.signals.behind" = "Late";
@@ -882,7 +882,7 @@
 "help.stars.caption" = "★ Pass at %lld %% or higher. In Learning, accurate hits with few errors can also qualify at a lower score.\n★★ Play cleanly at goal tempo. ★★★ Pass two scheduled reviews on different days.\nTap the stars for the required passes. For the first two stars the app aims for at least 16 hits, with at most four passes. Intro needs at least three passes for ★★.\nChoose Learning to add up good passes or Challenge to require them in a row. Play stops when you earn ★★ or ★★★.";
 "help.tempo.tap" = "Tap the tempo field while stopped";
 "help.tempo.caption" = "Adjust by −5, −1, +1 or +5 BPM, or return to Starting tempo. The lesson remembers your tempo.\nIn Play, clean passes raise the tempo up to the goal. Set the automatic step to 1, 2, 5 or 10 BPM in Settings.\nPlay with no errors in Intro. Elsewhere, a clean pass allows no errors through 15 hits, one through 32, and two above that.";
-"help.memory.caption" = "While stopped, tap the crossed-out eye, then Start.\nWith “%@” on in Settings, the first pass shows the pattern and the second fades it only after a good first pass. Turn it off to hide the pattern right after the count-in.\nThe pattern hides after two good passes in a row (80 %%+). A weaker pass starts the count again.\nPractise from memory to prepare for reviews. Stars for this option come only from a successful scheduled review.";
+"help.memory.caption" = "While stopped, tap the brain icon, then Start.\nWith “%@” on in Settings, the first pass shows the pattern and the second fades it only after a good first pass. Turn it off to hide the pattern right after the count-in.\nThe pattern hides after two good passes in a row (80 %%+). A weaker pass starts the count again.\nPractise from memory to prepare for reviews. Stars for this option come only from a successful scheduled review.";
 "help.memory.shown" = "Pass 1 · pattern visible";
 "help.memory.fading" = "Pass 2 · pattern fades";
 "help.memory.hiddenFromThird" = "Pass 3 onward · pattern hidden";

@@ -666,4 +666,153 @@ final class PracticeSessionTests: XCTestCase {
         XCTAssertEqual(coordinator.plan.reviewSummary.passed, 1)
         XCTAssertFalse(progress.dueLessonIds(today: today).contains(lesson.id))
     }
+
+    @MainActor
+    func testReproductionCzechVsEnglishAllModes() async throws {
+        for lang in [AppLanguage.czech, AppLanguage.english] {
+            let label = lang == .czech ? "Czech" : "English"
+            print("--- Testing Reproduction for \(label) ---")
+
+            let suite = "reproduction-\(lang.rawValue)-\(UUID().uuidString)"
+            let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))
+            defer { defaults.removePersistentDomain(forName: suite) }
+            let settings = SettingsManager(userDefaults: defaults)
+            settings.languagePreference = lang
+            settings.fadeMemoryNotes = true
+            let file = FileManager.default.temporaryDirectory.appendingPathComponent("\(suite).json")
+            defer { try? FileManager.default.removeItem(at: file) }
+            let progress = ProgressStore(fileURL: file, autoLoad: false)
+
+            let hits = stride(from: 0, to: 16, by: 4).map {
+                LessonHit(step: $0, padIndex: 12, hand: "L", velocity: 100)
+            }
+            let lesson = Lesson(id: 10_001, cat: "intro", title: "Kick on every beat", genre: "", tags: [],
+                                text: "", division: 16, bars: 1, startBpm: 60, targetBpm: 80,
+                                level: 1, src: "test", hits: hits)
+            let today = "2026-11-20"
+
+            // 1. Due review (Star 3 already earned or due for review step 2)
+            do {
+                let due = LessonProgress(passed: true, mastery: true, memory: true,
+                                         currentBpm: 80, reviewStep: 2, reviewDueDay: today)
+                progress.setProgress(due, for: lesson.id)
+                let midi = MIDIInput(settings: settings)
+                var time = AVAudioTime.seconds(forHostTime: mach_absolute_time())
+                let session = PracticeSession(lesson: lesson, settings: settings, progress: progress, midi: midi,
+                                              initialFromMemory: true, initialBpm: 80,
+                                              clock: { time }, currentDay: { today })
+                defer { session.close() }
+                session.metronome = false
+                await session.prepare()
+                let firstStart = time + 0.6 + 240.0 / 80.0
+                session.start()
+                for pass in 0..<4 {
+                    let passStart = firstStart + Double(pass) * 12.0
+                    for bar in 0..<4 {
+                        let barStart = passStart + Double(bar) * 3.0
+                        for hit in hits {
+                            time = barStart + Double(hit.step) * 15.0 / 80.0
+                            session.tick()
+                            midi.onPadEvent?(PadInputEvent(padIndex: hit.padIndex, velocity: 100, isNoteOn: true,
+                                                           timestamp: AVAudioTime.hostTime(forSeconds: time), deviceID: "test"))
+                        }
+                    }
+                    time = passStart + 11.6; session.tick()
+                    time = passStart + 12.01; session.tick()
+                }
+                XCTAssertFalse(session.running, "[\(label)] Due review must auto-stop")
+                XCTAssertTrue(session.finishedByReview, "[\(label)] Due review must set finishedByReview")
+            }
+
+            // 2. Fresh lesson earning Star 1 (Pass the lesson)
+            do {
+                progress.setProgress(LessonProgress(passed: false, mastery: false, memory: false), for: lesson.id)
+                let midi = MIDIInput(settings: settings)
+                var time = AVAudioTime.seconds(forHostTime: mach_absolute_time())
+                let session = PracticeSession(lesson: lesson, settings: settings, progress: progress, midi: midi,
+                                              clock: { time }, currentDay: { today })
+                defer { session.close() }
+                session.metronome = false
+                await session.prepare()
+                let firstStart = time + 0.6 + 240.0 / 60.0
+                session.start()
+                // Play 1 pass at 60 BPM (qualifies for Star 1)
+                let passStart = firstStart
+                for bar in 0..<4 {
+                    let barStart = passStart + Double(bar) * 4.0
+                    for hit in hits {
+                        time = barStart + Double(hit.step) * 15.0 / 60.0
+                        session.tick()
+                        midi.onPadEvent?(PadInputEvent(padIndex: hit.padIndex, velocity: 100, isNoteOn: true,
+                                                       timestamp: AVAudioTime.hostTime(forSeconds: time), deviceID: "test"))
+                    }
+                }
+                time = passStart + 15.6; session.tick()
+                time = passStart + 16.01; session.tick()
+                XCTAssertTrue(session.running, "[\(label)] Star 1 does not auto-stop per StarAward.shouldStop rule")
+                XCTAssertEqual(session.starEvent?.award.fresh[0], true, "[\(label)] Star 1 must be earned")
+                XCTAssertEqual(session.starEvent?.award.shouldStop, false, "[\(label)] Star 1 shouldStop must be false")
+            }
+
+            // 3. Lesson earning Star 2 (Goal tempo mastery)
+            do {
+                // Intro lesson requires 3 runs at goal tempo
+                progress.setProgress(LessonProgress(passed: true, mastery: false, memory: false, currentBpm: 80), for: lesson.id)
+                let midi = MIDIInput(settings: settings)
+                var time = AVAudioTime.seconds(forHostTime: mach_absolute_time())
+                let session = PracticeSession(lesson: lesson, settings: settings, progress: progress, midi: midi,
+                                              initialBpm: 80, clock: { time }, currentDay: { today })
+                defer { session.close() }
+                session.metronome = false
+                await session.prepare()
+                let firstStart = time + 0.6 + 240.0 / 80.0
+                session.start()
+                for pass in 0..<3 {
+                    let passStart = firstStart + Double(pass) * 12.0
+                    for bar in 0..<4 {
+                        let barStart = passStart + Double(bar) * 3.0
+                        for hit in hits {
+                            time = barStart + Double(hit.step) * 15.0 / 80.0
+                            session.tick()
+                            midi.onPadEvent?(PadInputEvent(padIndex: hit.padIndex, velocity: 100, isNoteOn: true,
+                                                           timestamp: AVAudioTime.hostTime(forSeconds: time), deviceID: "test"))
+                        }
+                    }
+                    time = passStart + 11.6; session.tick()
+                    time = passStart + 12.01; session.tick()
+                }
+                XCTAssertFalse(session.running, "[\(label)] Star 2 mastery must auto-stop")
+                XCTAssertEqual(session.finishedByStar, 2, "[\(label)] Star 2 must set finishedByStar = 2")
+            }
+
+            // 4. Two-star lesson played From memory outside of review (eye button toggled)
+            do {
+                progress.setProgress(LessonProgress(passed: true, mastery: true, memory: false, currentBpm: 80, masteryDay: "2026-11-19"), for: lesson.id)
+                let midi = MIDIInput(settings: settings)
+                var time = AVAudioTime.seconds(forHostTime: mach_absolute_time())
+                let session = PracticeSession(lesson: lesson, settings: settings, progress: progress, midi: midi,
+                                              initialFromMemory: true, initialBpm: 80, clock: { time }, currentDay: { today })
+                defer { session.close() }
+                session.metronome = false
+                await session.prepare()
+                let firstStart = time + 0.6 + 240.0 / 80.0
+                session.start()
+                for pass in 0..<4 {
+                    let passStart = firstStart + Double(pass) * 12.0
+                    for bar in 0..<4 {
+                        let barStart = passStart + Double(bar) * 3.0
+                        for hit in hits {
+                            time = barStart + Double(hit.step) * 15.0 / 80.0
+                            session.tick()
+                            midi.onPadEvent?(PadInputEvent(padIndex: hit.padIndex, velocity: 100, isNoteOn: true,
+                                                           timestamp: AVAudioTime.hostTime(forSeconds: time), deviceID: "test"))
+                        }
+                    }
+                    time = passStart + 11.6; session.tick()
+                    time = passStart + 12.01; session.tick()
+                }
+                XCTAssertTrue(session.running, "[\(label)] From memory outside review must not auto-stop")
+            }
+        }
+    }
 }

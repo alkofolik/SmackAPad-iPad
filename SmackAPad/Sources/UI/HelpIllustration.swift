@@ -15,7 +15,7 @@ struct HelpIllustration: View {
         var cycleDuration: TimeInterval? {
             switch self {
             case .playLesson, .signals, .starsAndTempo, .tempo: 6
-            case .modes, .memory: 9
+            case .modes, .memory: 8
             default: nil
             }
         }
@@ -286,15 +286,35 @@ struct HelpIllustration: View {
         .accessibilityHidden(true)
     }
 
+    private struct ModeHelpItem: Identifiable {
+        let id: String
+        let titleKey: String
+        let icon: PracticeToolbarIcon
+        let earnsStars: Bool
+    }
+
+    private var modeHelpItems: [ModeHelpItem] {
+        [
+            ModeHelpItem(id: "listen", titleKey: "Listen", icon: .symbol("ear"), earnsStars: false),
+            ModeHelpItem(id: "play", titleKey: "Play", icon: .crossedSticks, earnsStars: true),
+            ModeHelpItem(id: "afterMe", titleKey: "After me", icon: .symbol("bubble.left.and.bubble.right"), earnsStars: false),
+            ModeHelpItem(id: "fromMemory", titleKey: "From memory", icon: .symbol("brain.head.profile"), earnsStars: false)
+        ]
+    }
+
     private func modesExample(_ progress: Double?) -> some View {
-        VStack(alignment: .leading, spacing: Theme.Space.tight) {
-            ForEach(Array(LessonPlaybackMode.allCases.enumerated()), id: \.element) { index, mode in
-                let active = progress.map { Int($0 * 3) == index } ?? (mode == .play)
+        let items = modeHelpItems
+        return VStack(alignment: .leading, spacing: Theme.Space.tight) {
+            ForEach(Array(items.enumerated()), id: \.element.id) { index, item in
+                let active = progress.map { min(items.count - 1, Int($0 * Double(items.count))) == index } ?? (index == 1)
                 HStack(spacing: Theme.Space.small) {
-                    key(mode.rawValue, selected: active)
+                    key(item.titleKey, selected: active)
                     Spacer(minLength: 0)
-                    Image(systemName: mode == .listen ? "speaker.wave.2" : mode == .play ? "hand.tap" : "repeat")
-                    Image(systemName: mode == .play ? "star.fill" : "star.slash")
+                    PracticeToolbarGlyph(icon: item.icon, size: 19)
+                        .frame(width: 24, height: 24)
+                    Image(systemName: item.earnsStars ? "star.fill" : "star.slash")
+                        .font(.system(size: 16, weight: .semibold))
+                        .frame(width: 22, height: 22)
                 }
             }
         }
@@ -379,7 +399,7 @@ struct HelpIllustration: View {
 
     private func memoryExample(_ progress: Double?) -> some View {
         VStack(alignment: .leading, spacing: Theme.Space.small) {
-            tags([("From memory", "eye.slash"), ("Start", "play.fill"), ("help.lesson.countIn", "arrow.right")])
+            tags([("From memory", "brain.head.profile"), ("Start", "play.fill"), ("help.lesson.countIn", "arrow.right")])
             if settings.fadeMemoryNotes {
                 memoryPass("help.memory.shown", .shown, highlighted: progress.map { $0 < 1.0 / 3 } ?? false)
                 memoryPass("help.memory.fading", .faded, highlighted: progress.map { (1.0 / 3..<2.0 / 3).contains($0) } ?? false)
