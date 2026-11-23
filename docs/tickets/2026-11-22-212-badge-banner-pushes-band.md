@@ -1,6 +1,6 @@
 # 212 — Orange band jumps down while the badge banner is shown
 
-Status: open. Reported by Jakub on 2026-11-14 (checklist "Tempo increase mid-run"): when a badge is earned, the orange band drops down for as long as the badge notice is visible and jumps back when it disappears. Only the band moves; it must stay in place.
+Status: resolved. Reported by Jakub on 2026-11-14 (checklist "Tempo increase mid-run"): when a badge is earned, the orange band drops down for as long as the badge notice is visible and jumps back when it disappears. Only the band moves; it must stay in place.
 
 ## Cause found in the code
 
