@@ -352,9 +352,6 @@ final class PracticeSession {
         let today = currentDay()
         let window = reviewWindows[lessonID].flatMap { $0.day == today ? $0 : nil }
         if let feedback = window?.outcome?.feedback {
-            if case .failed = feedback {
-                return settings.localized("Review not passed · again tomorrow · practice goes on")
-            }
             return feedback.message(language: settings.languagePreference)
         }
         guard let schedule = progress.progress(for: lessonID)?.reviewSchedule,
@@ -823,10 +820,10 @@ final class PracticeSession {
             lastResult = nil
             reviewPendingReason = nil
             bestResponseScore = nil
-            // STOP abandons undecided review windows; decided outcomes survive restarts.
+            // STOP abandons undecided review windows; passed outcomes survive restarts.
             let today = currentDay()
             if !unscored {
-                reviewWindows = reviewWindows.filter { $0.value.day == today && $0.value.outcome != nil }
+                reviewWindows = reviewWindows.filter { $0.value.day == today && $0.value.outcome?.feedback?.isPassing == true }
                 reviewFeedback = afterMe ? nil : reviewWindows[lesson.id]?.outcome?.feedback
             } else {
                 reviewFeedback = nil
@@ -1320,6 +1317,9 @@ final class PracticeSession {
                             }
                         case .failed:
                             progress.recordReviewRun(lessonId: lesson.id, passed: false, today: today, autoSave: false)
+                            // Ticket 226 Rule 2: review window starts empty again (0 of 2), run does not stop.
+                            window = DailyReviewWindow(day: today)
+                            reviewWindows[lesson.id] = window
                         case .doesNotCount:
                             break
                         }

@@ -28,8 +28,9 @@ final class ReviewWindowTests: XCTestCase {
         XCTAssertNil(first.outcome)
         let second = ReviewScheduler.advanceWindow(first.window, with: passResult(score: 0.4))
         XCTAssertEqual(second.window.failures, 2)
-        XCTAssertEqual(second.outcome?.feedback, .failed(newStep: 0))
-        XCTAssertEqual(second.outcome?.newSchedule.reviewDueDay, "2026-11-08")
+        XCTAssertEqual(second.outcome?.feedback, .failed(newStep: 1))
+        XCTAssertEqual(second.outcome?.newSchedule.reviewDueDay, today)
+        XCTAssertEqual(second.outcome?.newSchedule.lastReviewFailDay, today)
     }
 
     func testSuccessFailureSuccessPassesAfterThree() {
@@ -49,7 +50,7 @@ final class ReviewWindowTests: XCTestCase {
         let third = ReviewScheduler.advanceWindow(second.window, with: passResult(score: 0.79))
         XCTAssertEqual(third.window.successes, 1)
         XCTAssertEqual(third.window.failures, 2)
-        XCTAssertEqual(third.outcome?.feedback, .failed(newStep: 0))
+        XCTAssertEqual(third.outcome?.feedback, .failed(newStep: 1))
     }
 
     func testDoesNotCountLeavesWindowUnchanged() {

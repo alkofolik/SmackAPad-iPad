@@ -78,14 +78,14 @@ final class ReviewScheduleTests: XCTestCase {
         XCTAssertEqual(outcome2.feedback, .passed(nextStep: 3, gapDays: 21))
     }
 
-    // 2. fail steps back and is due tomorrow
-    func testFailStepsBackAndIsDueTomorrow() {
+    // (a) fail then pass the same day gives step +1 and no step-down
+    func testFailThenPassTheSameDayGivesStepPlusOneAndNoStepDown() {
         let today = "2026-11-05"
+        let initial = ReviewScheduler.ScheduleState(reviewStep: 1, reviewDueDay: today, settled: false)
 
-        // Step 2 -> fail steps back to Step 1, due tomorrow (2026-11-06)
-        let schedule2 = ReviewScheduler.ScheduleState(reviewStep: 2, reviewDueDay: today, settled: false)
-        let outcome2 = ReviewScheduler.evaluate(
-            schedule: schedule2,
+        // 1. First review attempt fails today
+        let failedOutcome = ReviewScheduler.evaluate(
+            schedule: initial,
             today: today,
             isFullRun: true,
             fromMemory: true,
@@ -93,26 +93,97 @@ final class ReviewScheduleTests: XCTestCase {
             targetBpm: 100,
             score: 0.75
         )
-        XCTAssertEqual(outcome2.newSchedule.reviewStep, 1)
-        XCTAssertEqual(outcome2.newSchedule.reviewDueDay, "2026-11-06")
-        XCTAssertEqual(outcome2.newSchedule.settled, false)
-        XCTAssertEqual(outcome2.feedback, .failed(newStep: 1))
+        // Failed so far: step unchanged, due day unchanged, lastReviewedDay unchanged, lastReviewFailDay set
+        XCTAssertEqual(failedOutcome.newSchedule.reviewStep, 1)
+        XCTAssertEqual(failedOutcome.newSchedule.reviewDueDay, today)
+        XCTAssertNil(failedOutcome.newSchedule.lastReviewedDay)
+        XCTAssertEqual(failedOutcome.newSchedule.lastReviewFailDay, today)
+        XCTAssertEqual(failedOutcome.feedback, .failed(newStep: 1))
 
-        // Step 0 -> fail steps back to minimum Step 0, due tomorrow (2026-11-06)
-        let schedule0 = ReviewScheduler.ScheduleState(reviewStep: 0, reviewDueDay: today, settled: false)
-        let outcome0 = ReviewScheduler.evaluate(
-            schedule: schedule0,
+        // 2. Later the same day: Jakub retries and passes
+        let passedOutcome = ReviewScheduler.evaluate(
+            schedule: failedOutcome.newSchedule,
             today: today,
+            isFullRun: true,
+            fromMemory: true,
+            bpm: 100,
+            targetBpm: 100,
+            score: 0.85
+        )
+        // Passed: normal pass from original step (step 1 -> 2, gap 7 days), lastReviewFailDay cleared
+        XCTAssertEqual(passedOutcome.newSchedule.reviewStep, 2)
+        XCTAssertEqual(passedOutcome.newSchedule.reviewDueDay, "2026-11-12")
+        XCTAssertEqual(passedOutcome.newSchedule.lastReviewedDay, today)
+        XCTAssertNil(passedOutcome.newSchedule.lastReviewFailDay)
+        XCTAssertEqual(passedOutcome.feedback, .passed(nextStep: 2, gapDays: 7))
+    }
+
+    // (b) fail and nothing else, then next day: step -1 and due = failure day + 1, same as old result
+    func testFailAndNothingElseNextDayStepsDownAndDueFailureDayPlusOne() {
+        let day1 = "2026-11-05"
+        let day2 = "2026-11-06"
+        let initial2 = ReviewScheduler.ScheduleState(reviewStep: 2, reviewDueDay: day1, settled: false)
+
+        // Review attempt fails on day1
+        let failedOutcome2 = ReviewScheduler.evaluate(
+            schedule: initial2,
+            today: day1,
             isFullRun: true,
             fromMemory: true,
             bpm: 100,
             targetBpm: 100,
             score: 0.75
         )
-        XCTAssertEqual(outcome0.newSchedule.reviewStep, 0)
-        XCTAssertEqual(outcome0.newSchedule.reviewDueDay, "2026-11-06")
-        XCTAssertEqual(outcome0.newSchedule.settled, false)
-        XCTAssertEqual(outcome0.feedback, .failed(newStep: 0))
+        XCTAssertEqual(failedOutcome2.newSchedule.reviewStep, 2)
+        XCTAssertEqual(failedOutcome2.newSchedule.lastReviewFailDay, day1)
+
+        // Next day rollover settles the open failure
+        let settled2 = ReviewScheduler.settleOpenFailure(failedOutcome2.newSchedule, today: day2)
+        XCTAssertEqual(settled2.reviewStep, 1) // step - 1
+        XCTAssertEqual(settled2.reviewDueDay, "2026-11-06") // failure day + 1
+        XCTAssertEqual(settled2.lastReviewedDay, day1)
+        XCTAssertTrue(settled2.isDue(on: day2))
+
+        // Also test step 0 -> steps back to minimum 0
+        let initial0 = ReviewScheduler.ScheduleState(reviewStep: 0, reviewDueDay: day1, settled: false)
+        let failedOutcome0 = ReviewScheduler.evaluate(
+            schedule: initial0,
+            today: day1,
+            isFullRun: true,
+            fromMemory: true,
+            bpm: 100,
+            targetBpm: 100,
+            score: 0.75
+        )
+        let settled0 = ReviewScheduler.settleOpenFailure(failedOutcome0.newSchedule, today: day2)
+        XCTAssertEqual(settled0.reviewStep, 0)
+        XCTAssertEqual(settled0.reviewDueDay, "2026-11-06")
+        XCTAssertEqual(settled0.lastReviewedDay, day1)
+    }
+
+    // (d) open failure is due the same day
+    func testOpenFailureIsDueTheSameDay() {
+        let today = "2026-11-05"
+        let failedSchedule = ReviewScheduler.ScheduleState(
+            reviewStep: 1,
+            reviewDueDay: today,
+            settled: false,
+            lastReviewedDay: nil,
+            lastReviewFailDay: today
+        )
+        XCTAssertTrue(failedSchedule.isDue(on: today))
+        XCTAssertTrue(failedSchedule.isDueReview(on: today))
+
+        // In ProgressStore, open failure appears in due count and due IDs
+        let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        try? FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: tempDir) }
+        let store = ProgressStore(fileURL: tempDir.appendingPathComponent("progress.json"), autoLoad: false)
+        store.setProgress(LessonProgress(passed: true, mastery: true, memory: true,
+                                         reviewStep: 1, reviewDueDay: today,
+                                         lastReviewFailDay: today), for: 101)
+        XCTAssertEqual(store.dueLessonsCount(today: today), 1)
+        XCTAssertEqual(store.dueLessonIds(today: today), [101])
     }
 
     // 3. below goal tempo / not from memory / not yet due → unchanged

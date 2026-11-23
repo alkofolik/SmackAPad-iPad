@@ -1,6 +1,6 @@
 # 226 — Review: a failed attempt keeps the review open for the rest of the day (rules)
 
-Status: ready-for-agent. Rule chosen by Jakub on 2026-11-23 (variant B). UI part is ticket 227 (do 226 first).
+Status: done. Rule chosen by Jakub on 2026-11-23 (variant B). UI part is ticket 227 (do 226 first).
 
 ## Goal
 
@@ -35,10 +35,10 @@ Use the tdd skill (scoring/progression). Write: (a) fail then pass the same day 
 
 ## Acceptance criteria
 
-- [ ] Rules 1–6 implemented, old locking rule and its tests deleted.
-- [ ] The run after a failed decision keeps going and can still pass the review that day.
-- [ ] Nothing is postponed while the day is open; settled on the next day with the old result.
-- [ ] Build and full tests pass.
+- [x] Rules 1–6 implemented, old locking rule and its tests deleted.
+- [x] The run after a failed decision keeps going and can still pass the review that day.
+- [x] Nothing is postponed while the day is open; settled on the next day with the old result.
+- [x] Build and full tests pass.
 
 ### Manual iPad checks for Jakub
 

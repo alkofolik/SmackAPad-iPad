@@ -267,6 +267,44 @@ final class ProgressBackupTests: XCTestCase {
         XCTAssertNil(settledMerged.reviewDueDay)
     }
 
+    // (e) device merge keeps an open failure
+    func testDeviceMergeKeepsAnOpenFailure() {
+        let today = "2026-11-23"
+        let local = LessonProgress(
+            passed: true,
+            mastery: true,
+            memory: true,
+            reviewStep: 1,
+            reviewDueDay: today,
+            settled: false,
+            lastReviewedDay: "2026-11-16",
+            lastReviewFailDay: today,
+            modifiedAt: Date(timeIntervalSince1970: 2000)
+        )
+        let incoming = LessonProgress(
+            passed: true,
+            mastery: true,
+            memory: true,
+            reviewStep: 1,
+            reviewDueDay: today,
+            settled: false,
+            lastReviewedDay: "2026-11-16",
+            lastReviewFailDay: nil,
+            modifiedAt: Date(timeIntervalSince1970: 1000)
+        )
+
+        let merged = ProgressMerge.mergeLesson(local: local, incoming: incoming)
+        XCTAssertEqual(merged.lastReviewFailDay, today)
+        XCTAssertEqual(merged.reviewStep, 1)
+        XCTAssertTrue(merged.reviewSchedule.isDueReview(on: today))
+
+        // Also test store merging
+        let storeMerged = ProgressStore.merging(local, with: incoming)
+        XCTAssertEqual(storeMerged.lastReviewFailDay, today)
+        XCTAssertEqual(storeMerged.reviewStep, 1)
+        XCTAssertTrue(storeMerged.reviewSchedule.isDueReview(on: today))
+    }
+
     // MARK: - Test 6: Settings replaced on fresh device, kept on device with progress; calibration offsets never exported
 
     func testSettingsReplacedOnFreshDeviceKeptOnDeviceWithProgress() throws {

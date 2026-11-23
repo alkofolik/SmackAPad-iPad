@@ -953,4 +953,78 @@ final class PracticeSessionTests: XCTestCase {
             }
         }
     }
+
+    // (c) a failed decision does not stop the run and the next 2 passes decide again
+    @MainActor
+    func testFailedDecisionDoesNotStopTheRunAndNextTwoPassesDecideAgain() async throws {
+        let suite = "review-fail-keep-going-\(UUID().uuidString)"
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))
+        defer { defaults.removePersistentDomain(forName: suite) }
+        let settings = SettingsManager(userDefaults: defaults)
+        settings.fadeMemoryNotes = false // notes hidden immediately
+        settings.autoPeekMemory = false
+        let file = FileManager.default.temporaryDirectory.appendingPathComponent("\(suite).json")
+        defer { try? FileManager.default.removeItem(at: file) }
+        let progress = ProgressStore(fileURL: file, autoLoad: false)
+        let hits = stride(from: 0, to: 64, by: 4).map {
+            LessonHit(step: $0, padIndex: 12, hand: "L", velocity: 100)
+        }
+        let lesson = Lesson(id: 40_226, cat: "test", title: "Review fail retry", genre: "", tags: [],
+                            text: "", division: 16, bars: 4, startBpm: 120, targetBpm: 120,
+                            level: 1, src: "test", hits: hits)
+        let today = "2026-11-23"
+        progress.setProgress(LessonProgress(passed: true, mastery: true, memory: true, currentBpm: 120,
+                                            reviewStep: 1, reviewDueDay: today), for: lesson.id)
+        let midi = MIDIInput(settings: settings)
+        var time = AVAudioTime.seconds(forHostTime: mach_absolute_time())
+        let session = PracticeSession(lesson: lesson, settings: settings, progress: progress, midi: midi,
+                                      initialFromMemory: true, initialBpm: 120, clock: { time },
+                                      currentDay: { today })
+        defer { session.close() }
+        session.metronome = false
+        await session.prepare()
+        session.start()
+        XCTAssertTrue(session.running)
+
+        func playPass(start: Double, hitAll: Bool) {
+            for hit in hits {
+                if hitAll {
+                    time = start + Double(hit.step) * 15.0 / 120.0
+                    session.tick()
+                    midi.onPadEvent?(PadInputEvent(padIndex: hit.padIndex, velocity: 100, isNoteOn: true,
+                        timestamp: AVAudioTime.hostTime(forSeconds: time), deviceID: "test"))
+                }
+            }
+            time = start + 7.95
+            session.tick()
+            time = start + 8.01
+            session.tick()
+        }
+
+        let firstStart = time + 0.6 + 240.0 / 120.0
+        // Pass 1: fail (no hits)
+        playPass(start: firstStart, hitAll: false)
+        XCTAssertTrue(session.running)
+        // Pass 2: fail (no hits) -> window decided: .failed
+        playPass(start: firstStart + 8.0, hitAll: false)
+        // Run must KEEP GOING!
+        XCTAssertTrue(session.running)
+        XCTAssertFalse(session.finishedByReview)
+        XCTAssertEqual(session.reviewFeedback, .failed(newStep: 1))
+        XCTAssertEqual(session.reviewRunProgress?.count, 0) // window starts empty again (0 of 2)
+        XCTAssertEqual(progress.progress(for: lesson.id)?.reviewSchedule.reviewStep, 1) // step not lowered
+        XCTAssertEqual(progress.progress(for: lesson.id)?.lastReviewFailDay, today)
+
+        // Pass 3: pass (hit all)
+        playPass(start: firstStart + 16.0, hitAll: true)
+        XCTAssertTrue(session.running)
+        XCTAssertEqual(session.reviewRunProgress?.count, 1) // 1 of 2
+
+        // Pass 4: pass (hit all) -> window decided: .passed!
+        playPass(start: firstStart + 24.0, hitAll: true)
+        XCTAssertFalse(session.running) // Stops after pass decision
+        XCTAssertTrue(session.finishedByReview)
+        XCTAssertEqual(progress.progress(for: lesson.id)?.reviewSchedule.reviewStep, 2) // Step +1
+        XCTAssertNil(progress.progress(for: lesson.id)?.lastReviewFailDay) // Fail day cleared
+    }
 }

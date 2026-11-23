@@ -112,6 +112,9 @@ public final class ProgressStore: @unchecked Sendable {
             if migrateTwoReviewsStar3() {
                 didMigrate = true
             }
+            if settleOpenFailuresLocked(today: AppCalendar.today()) {
+                didMigrate = true
+            }
             if didMigrate {
                 // Atomic saving leaves the original file intact on failure. Keep merged
                 // progress in memory for the next normal save; do not treat it as a decode error.
@@ -270,7 +273,15 @@ public final class ProgressStore: @unchecked Sendable {
         } else {
             result.lastReviewFailDay = existing.lastReviewFailDay ?? incoming.lastReviewFailDay
         }
-        let mergedSchedule = ReviewScheduler.merge(existing.reviewSchedule, incoming.reviewSchedule)
+        var mergedSchedule = ReviewScheduler.merge(existing.reviewSchedule, incoming.reviewSchedule)
+        if let failDay = result.lastReviewFailDay {
+            if let lastReviewed = mergedSchedule.lastReviewedDay, lastReviewed >= failDay {
+                mergedSchedule.lastReviewFailDay = nil
+                result.lastReviewFailDay = nil
+            } else {
+                mergedSchedule.lastReviewFailDay = failDay
+            }
+        }
         result.reviewSchedule = mergedSchedule
         return result
     }
@@ -674,6 +685,7 @@ public final class ProgressStore: @unchecked Sendable {
     public func dueLessonsCount(today: String = AppCalendar.today()) -> Int {
         lock.lock()
         defer { lock.unlock() }
+        settleOpenFailuresLocked(today: today)
         return records.values.filter { $0.reviewSchedule.isDue(on: today) }.count
     }
 
@@ -681,6 +693,7 @@ public final class ProgressStore: @unchecked Sendable {
     public func dueLessonIds(today: String = AppCalendar.today()) -> [Int] {
         lock.lock()
         defer { lock.unlock() }
+        settleOpenFailuresLocked(today: today)
         let dueRecords = records.filter { $0.value.reviewSchedule.isDue(on: today) }
         return dueRecords.sorted { a, b in
             let dayA = a.value.reviewDueDay ?? ""
@@ -695,11 +708,40 @@ public final class ProgressStore: @unchecked Sendable {
     public func nearestDueDay(today: String = AppCalendar.today()) -> String? {
         lock.lock()
         defer { lock.unlock() }
+        settleOpenFailuresLocked(today: today)
         let futureDueDays = records.values.compactMap { record -> String? in
             guard !record.reviewSchedule.isSettled, let due = record.reviewDueDay else { return nil }
             return due
         }
         return futureDueDays.sorted().first
+    }
+
+    /// Settles unresolved review failures from previous days (day rollover).
+    @discardableResult
+    public func settleOpenFailures(today: String = AppCalendar.today(), autoSave: Bool = true) -> Bool {
+        lock.lock()
+        let didChange = settleOpenFailuresLocked(today: today)
+        lock.unlock()
+        if didChange && autoSave {
+            try? save()
+        }
+        return didChange
+    }
+
+    @discardableResult
+    private func settleOpenFailuresLocked(today: String) -> Bool {
+        var didChange = false
+        for (id, record) in records {
+            let settled = ReviewScheduler.settleOpenFailure(record.reviewSchedule, today: today)
+            if settled != record.reviewSchedule {
+                var updated = record
+                updated.reviewSchedule = settled
+                updated.modifiedAt = AppCalendar.now()
+                records[id] = updated
+                didChange = true
+            }
+        }
+        return didChange
     }
 
     /// Returns whether any lesson has earned star 2 (mastered).

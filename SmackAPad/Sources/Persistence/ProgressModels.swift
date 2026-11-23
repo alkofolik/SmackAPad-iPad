@@ -68,14 +68,20 @@ public struct LessonProgress: Codable, Equatable, Hashable, Sendable {
 
     public var reviewSchedule: ReviewScheduler.ScheduleState {
         get {
-            ReviewScheduler.ScheduleState(reviewStep: reviewStep, reviewDueDay: reviewDueDay, settled: settled,
-                                          lastReviewedDay: lastReviewedDay)
+            ReviewScheduler.ScheduleState(
+                reviewStep: reviewStep,
+                reviewDueDay: reviewDueDay,
+                settled: settled,
+                lastReviewedDay: lastReviewedDay,
+                lastReviewFailDay: lastReviewFailDay
+            )
         }
         set {
             self.reviewStep = newValue.reviewStep
             self.reviewDueDay = newValue.reviewDueDay
             self.settled = newValue.settled
             self.lastReviewedDay = newValue.lastReviewedDay
+            self.lastReviewFailDay = newValue.lastReviewFailDay
         }
     }
 

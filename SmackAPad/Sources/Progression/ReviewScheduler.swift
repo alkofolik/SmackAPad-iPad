@@ -23,17 +23,20 @@ public struct ReviewScheduler: Sendable {
         public var reviewDueDay: String?
         public var settled: Bool?
         public var lastReviewedDay: String?
+        public var lastReviewFailDay: String?
 
         public init(
             reviewStep: Int? = nil,
             reviewDueDay: String? = nil,
             settled: Bool? = nil,
-            lastReviewedDay: String? = nil
+            lastReviewedDay: String? = nil,
+            lastReviewFailDay: String? = nil
         ) {
             self.reviewStep = reviewStep
             self.reviewDueDay = reviewDueDay
             self.settled = settled
             self.lastReviewedDay = lastReviewedDay
+            self.lastReviewFailDay = lastReviewFailDay
         }
 
         public var isSettled: Bool {
@@ -41,11 +44,13 @@ public struct ReviewScheduler: Sendable {
         }
 
         public func isDue(on today: String) -> Bool {
-            guard !isSettled, let reviewDueDay else { return false }
+            guard !isSettled else { return false }
+            if lastReviewFailDay == today { return true }
+            guard let reviewDueDay else { return false }
             return today >= reviewDueDay
         }
 
-        func isDueReview(on today: String) -> Bool {
+        public func isDueReview(on today: String) -> Bool {
             isDue(on: today) && lastReviewedDay != today
         }
     }
@@ -56,6 +61,13 @@ public struct ReviewScheduler: Sendable {
         case settled
         case failed(newStep: Int)
         case doesNotCount(goalBpm: Int)
+
+        public var isPassing: Bool {
+            switch self {
+            case .passed, .settled: return true
+            case .failed, .doesNotCount: return false
+            }
+        }
 
         /// Formats the feedback message in the specified app language.
         public func message(language: AppLanguage) -> String {
@@ -190,21 +202,40 @@ public struct ReviewScheduler: Sendable {
 
         if passed {
             if currentStep >= LearningRules.lastReviewStep {
-                let newSched = ScheduleState(reviewStep: LearningRules.lastReviewStep, reviewDueDay: nil, settled: true, lastReviewedDay: today)
+                let newSched = ScheduleState(reviewStep: LearningRules.lastReviewStep, reviewDueDay: nil, settled: true, lastReviewedDay: today, lastReviewFailDay: nil)
                 return Outcome(newSchedule: newSched, feedback: .settled)
             } else {
                 let nextStep = currentStep + 1
                 let gapDays = gaps[nextStep]
                 let nextDueDay = AppCalendar.addingDays(gapDays, to: today) ?? today
-                let newSched = ScheduleState(reviewStep: nextStep, reviewDueDay: nextDueDay, settled: false, lastReviewedDay: today)
+                let newSched = ScheduleState(reviewStep: nextStep, reviewDueDay: nextDueDay, settled: false, lastReviewedDay: today, lastReviewFailDay: nil)
                 return Outcome(newSchedule: newSched, feedback: .passed(nextStep: nextStep, gapDays: gapDays))
             }
         } else {
-            let newStep = max(0, currentStep - 1)
-            let tomorrow = AppCalendar.addingDays(LearningRules.nextDayReviewDelay, to: today) ?? today
-            let newSched = ScheduleState(reviewStep: newStep, reviewDueDay: tomorrow, settled: false, lastReviewedDay: today)
-            return Outcome(newSchedule: newSched, feedback: .failed(newStep: newStep))
+            var newSched = schedule
+            newSched.lastReviewFailDay = today
+            return Outcome(newSchedule: newSched, feedback: .failed(newStep: currentStep))
         }
+    }
+
+    /// Pure function settling an open review failure from an earlier day if it was not resolved.
+    /// Result matches the legacy immediate failure rule:
+    /// step -1 (minimum 0), reviewDueDay = lastReviewFailDay + 1 day, lastReviewedDay = lastReviewFailDay.
+    public static func settleOpenFailure(_ schedule: ScheduleState, today: String) -> ScheduleState {
+        guard let failDay = schedule.lastReviewFailDay, failDay < today else {
+            return schedule
+        }
+        if let lastReviewed = schedule.lastReviewedDay, lastReviewed >= failDay {
+            return schedule
+        }
+        let currentStep = schedule.reviewStep ?? 0
+        let newStep = max(0, currentStep - 1)
+        let nextDue = AppCalendar.addingDays(LearningRules.nextDayReviewDelay, to: failDay) ?? failDay
+        var settled = schedule
+        settled.reviewStep = newStep
+        settled.reviewDueDay = nextDue
+        settled.lastReviewedDay = failDay
+        return settled
     }
 
     /// Defers an unplayed due review without changing its progress.
@@ -231,6 +262,10 @@ public struct ReviewScheduler: Sendable {
     public static func merge(_ a: ScheduleState, _ b: ScheduleState) -> ScheduleState {
         var result = mergedSchedule(a, b)
         result.lastReviewedDay = [a.lastReviewedDay, b.lastReviewedDay].compactMap { $0 }.max()
+        result.lastReviewFailDay = [a.lastReviewFailDay, b.lastReviewFailDay].compactMap { $0 }.max()
+        if let failDay = result.lastReviewFailDay, let reviewed = result.lastReviewedDay, reviewed >= failDay {
+            result.lastReviewFailDay = nil
+        }
         return result
     }
 

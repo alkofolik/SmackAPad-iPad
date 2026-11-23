@@ -73,6 +73,13 @@ public enum ProgressMerge {
 
         // Review schedule: taken as an indivisible group from the record reviewed more recently
         result.reviewSchedule = mergeReviewSchedule(local: local, incoming: incoming)
+        if let failDay = result.lastReviewFailDay {
+            if let lastReviewed = result.lastReviewedDay, lastReviewed >= failDay {
+                result.lastReviewFailDay = nil
+            } else {
+                result.lastReviewFailDay = failDay
+            }
+        }
 
         // modifiedAt: max of non-nil dates
         if let m1 = local.modifiedAt, let m2 = incoming.modifiedAt {
