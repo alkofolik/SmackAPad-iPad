@@ -1,6 +1,6 @@
 # 220 — Library: filters in one pop-up, search as a magnifier
 
-Status: open. From the checklist (2026-11-20, "Library: filters, Play next and overall progress"): Jakub wants the filters designed more economically, e.g. under a pop-up; search only as a magnifier; the filter bar does not fit completely in any orientation or language. Mockup approved on 2026-11-22 ("může být"): design canvas "Smack-a-Pad – návrhy (kolo 22. 11.)", artboard F. **The mockup shows illustrative filters (a "state" row and an "instruments" row) that do not exist in the app; implement only the filters the app already has, listed below.**
+Status: resolved (implemented in code; awaiting Jakub's iPad check). From the checklist (2026-11-20, "Library: filters, Play next and overall progress"): Jakub wants the filters designed more economically, e.g. under a pop-up; search only as a magnifier; the filter bar does not fit completely in any orientation or language. Mockup approved on 2026-11-22 ("může být"): design canvas "Smack-a-Pad – návrhy (kolo 22. 11.)", artboard F. **The mockup shows illustrative filters (a "state" row and an "instruments" row) that do not exist in the app; implement only the filters the app already has, listed below.**
 
 ## Goal
 

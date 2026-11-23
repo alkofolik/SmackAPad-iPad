@@ -1,6 +1,6 @@
 # 214 — Help for the practice modes does not match the app
 
-Status: open. Reported by Jakub on 2026-11-20 (checklist "Help: topic list and short cards"): the help for the modes does not match reality, neither the text nor the icon.
+Status: resolved (implemented in code; awaiting Jakub's iPad check). Reported by Jakub on 2026-11-20 (checklist "Help: topic list and short cards"): the help for the modes does not match reality, neither the text nor the icon.
 
 ## What is known
 
