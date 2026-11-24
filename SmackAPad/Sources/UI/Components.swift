@@ -1035,6 +1035,90 @@ private struct AppFormStyle: ViewModifier {
 
 extension View {
     func appFormStyle() -> some View { modifier(AppFormStyle()) }
+
+    func appFormRowStyle() -> some View {
+        listRowBackground(Theme.surface)
+            .listRowInsets(EdgeInsets(top: Theme.Space.small, leading: Theme.Space.regular,
+                                     bottom: Theme.Space.small, trailing: Theme.Space.regular))
+    }
+}
+
+/// Shared pad background surface with optional active state, bevel, border, and shadow.
+struct PadSurface: View {
+    var isActive: Bool = false
+    var activeStrength: Double = 0
+    var hasBorder: Bool = true
+    var hasShadow: Bool = true
+
+    var body: some View {
+        RoundedRectangle(cornerRadius: Theme.Skin.Pad.radius)
+            .fill(isActive ? Theme.activeFill : Theme.Skin.Pad.fill)
+            .overlay {
+                if activeStrength > 0 {
+                    RoundedRectangle(cornerRadius: Theme.Skin.Pad.radius)
+                        .fill(Theme.orange.opacity(activeStrength * 0.85))
+                }
+            }
+            .overlay {
+                SkinBevel(
+                    radius: Theme.Skin.Pad.radius,
+                    highlight: Theme.Skin.Pad.highlight,
+                    shade: Theme.Skin.Pad.shade,
+                    top: Theme.Skin.Pad.topBevel,
+                    bottom: Theme.Skin.Pad.bottomBevel
+                )
+            }
+            .overlay {
+                if hasBorder {
+                    RoundedRectangle(cornerRadius: Theme.Skin.Pad.radius)
+                        .strokeBorder(isActive ? Theme.orange : Theme.hairline,
+                                      lineWidth: isActive ? Theme.Size.border : 1)
+                }
+            }
+            .shadow(color: hasShadow ? Theme.black.opacity(0.08) : .clear,
+                    radius: hasShadow ? 2 : 0,
+                    y: hasShadow ? 2 : 0)
+    }
+}
+
+/// Shared grid layout for physical pad profiles and MIDI learn.
+struct PadProfileGrid<Cell: View>: View {
+    let columns: Int
+    let slots: [Int]
+    @ViewBuilder let cell: (Int) -> Cell
+
+    init(grid: PhysicalPadGrid, @ViewBuilder cell: @escaping (Int) -> Cell) {
+        self.columns = grid.columns
+        self.slots = grid.displaySlots
+        self.cell = cell
+    }
+
+    init(profile: ControllerProfile, @ViewBuilder cell: @escaping (Int) -> Cell) {
+        self.columns = profile.columns
+        self.slots = profile.grid.displaySlots
+        self.cell = cell
+    }
+
+    var body: some View {
+        LazyVGrid(
+            columns: Array(repeating: GridItem(.flexible(minimum: Theme.Size.touch), spacing: Theme.Space.small),
+                           count: columns),
+            spacing: Theme.Space.small
+        ) {
+            ForEach(slots, id: \.self) { slot in
+                cell(slot)
+            }
+        }
+    }
+}
+
+extension MIDIInput {
+    var connectedControllerName: String? {
+        if let selectedID = selectedSourceID {
+            return sources.first(where: { $0.id == selectedID })?.name ?? sources.first?.name
+        }
+        return sources.first?.name
+    }
 }
 
 /// Retains an opening lock long enough to read it before it fades away.

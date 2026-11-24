@@ -58,41 +58,24 @@ struct MIDILearnView: View {
                                     .font(Theme.meta)
                             }
 
-                            LazyVGrid(columns: Array(repeating: GridItem(.flexible(minimum: Theme.Size.touch), spacing: Theme.Space.small), count: grid.columns), spacing: Theme.Space.small) {
-                                ForEach(grid.displaySlots, id: \.self) { slot in
-                                    VStack(spacing: Theme.Space.small) {
-                                        Text(settings.localized("Pad %lld", slot + 1))
-                                            .font(Theme.control)
-                                        if midi.learnedNotes.indices.contains(slot) {
-                                            Text(midi.learnedNotes[slot].formatted())
-                                                .font(Theme.meta)
-                                                .monospacedDigit()
-                                        } else {
-                                            Text("—")
-                                                .font(Theme.meta)
-                                        }
+                            PadProfileGrid(grid: grid) { slot in
+                                VStack(spacing: Theme.Space.small) {
+                                    Text(settings.localized("Pad %lld", slot + 1))
+                                        .font(Theme.control)
+                                    if midi.learnedNotes.indices.contains(slot) {
+                                        Text(midi.learnedNotes[slot].formatted())
+                                            .font(Theme.meta)
+                                            .monospacedDigit()
+                                    } else {
+                                        Text("—")
+                                            .font(Theme.meta)
                                     }
-                                    .frame(maxWidth: .infinity, minHeight: 64)
-                                    .background {
-                                        RoundedRectangle(cornerRadius: Theme.Skin.Pad.radius)
-                                            .fill(slot == midi.learnedNotes.count ? Theme.activeFill : Theme.Skin.Pad.fill)
-                                            .overlay {
-                                                SkinBevel(
-                                                    radius: Theme.Skin.Pad.radius,
-                                                    highlight: Theme.Skin.Pad.highlight,
-                                                    shade: Theme.Skin.Pad.shade,
-                                                    top: Theme.Skin.Pad.topBevel,
-                                                    bottom: Theme.Skin.Pad.bottomBevel
-                                                )
-                                            }
-                                            .overlay {
-                                                RoundedRectangle(cornerRadius: Theme.Skin.Pad.radius)
-                                                    .strokeBorder(slot == midi.learnedNotes.count ? Theme.orange : Theme.hairline,
-                                                                  lineWidth: slot == midi.learnedNotes.count ? Theme.Size.border : 1)
-                                            }
-                                    }
-                                    .accessibilityAddTraits(slot == midi.learnedNotes.count ? .isSelected : [])
                                 }
+                                .frame(maxWidth: .infinity, minHeight: 64)
+                                .background {
+                                    PadSurface(isActive: slot == midi.learnedNotes.count, hasShadow: false)
+                                }
+                                .accessibilityAddTraits(slot == midi.learnedNotes.count ? .isSelected : [])
                             }
 
                             if midi.learningNotice == "duplicateNote" {
@@ -134,9 +117,7 @@ struct MIDILearnView: View {
                             .foregroundStyle(Theme.secondary)
                     }
                 }
-                .listRowBackground(Theme.surface)
-                .listRowInsets(EdgeInsets(top: Theme.Space.small, leading: Theme.Space.regular,
-                                         bottom: Theme.Space.small, trailing: Theme.Space.regular))
+                .appFormRowStyle()
             }
             .appFormStyle()
             .motion(value: padCount)
@@ -188,25 +169,7 @@ struct TouchPad: View {
                 .foregroundStyle(isActive ? Theme.orange : Theme.ink)
         }
         .frame(maxWidth: .infinity, minHeight: 72)
-        .background {
-            RoundedRectangle(cornerRadius: Theme.Skin.Pad.radius)
-                .fill(isActive ? Theme.activeFill : Theme.Skin.Pad.fill)
-                .overlay {
-                    SkinBevel(
-                        radius: Theme.Skin.Pad.radius,
-                        highlight: Theme.Skin.Pad.highlight,
-                        shade: Theme.Skin.Pad.shade,
-                        top: Theme.Skin.Pad.topBevel,
-                        bottom: Theme.Skin.Pad.bottomBevel
-                    )
-                }
-                .overlay {
-                    RoundedRectangle(cornerRadius: Theme.Skin.Pad.radius)
-                        .strokeBorder(isActive ? Theme.orange : Theme.hairline,
-                                      lineWidth: isActive ? Theme.Size.border : 1)
-                }
-                .shadow(color: Theme.black.opacity(0.08), radius: 2, y: 2)
-        }
+        .background { PadSurface(isActive: isActive) }
         .contentShape(RoundedRectangle(cornerRadius: Theme.Skin.Pad.radius))
         .overlay { PadPressSurface(onPress: onPress).accessibilityHidden(true) }
         .accessibilityElement(children: .combine)

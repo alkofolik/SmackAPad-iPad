@@ -29,13 +29,7 @@ public struct SettingsView: View {
     @AppStorage("smackapad.practice.visibleBars") private var visibleBars = 4
 
     private var controllerStatus: String {
-        let name: String? = {
-            if let selectedID = midi.selectedSourceID {
-                return midi.sources.first(where: { $0.id == selectedID })?.name ?? midi.sources.first?.name
-            }
-            return midi.sources.first?.name
-        }()
-        return name ?? settings.localized("Not connected")
+        midi.connectedControllerName ?? settings.localized("Not connected")
     }
 
     private var selectedKitTitle: String {
@@ -359,18 +353,16 @@ public struct SettingsView: View {
                     Section {
                         if let pads = midi.padIndices {
                             let profile = midi.activeProfile
-                            LazyVGrid(columns: Array(repeating: GridItem(.flexible(minimum: Theme.Size.touch), spacing: Theme.Space.small), count: profile.columns), spacing: Theme.Space.small) {
-                                ForEach(profile.grid.displaySlots, id: \.self) { slot in
-                                    let padIndex = pads[profile.target(forSlot: slot)]
-                                    TouchPad(
-                                        number: slot + 1,
-                                        sound: PadNames.name(for: padIndex),
-                                        isActive: midi.pressedPadIndices.contains(padIndex)
-                                    ) { pressed in
-                                        midi.touch(padIndex: padIndex, isPressed: pressed)
-                                    }
-                                    .id("\(settings.activeProfileName)/\(slot)/\(padIndex)")
+                            PadProfileGrid(profile: profile) { slot in
+                                let padIndex = pads[profile.target(forSlot: slot)]
+                                TouchPad(
+                                    number: slot + 1,
+                                    sound: PadNames.name(for: padIndex),
+                                    isActive: midi.pressedPadIndices.contains(padIndex)
+                                ) { pressed in
+                                    midi.touch(padIndex: padIndex, isPressed: pressed)
                                 }
+                                .id("\(settings.activeProfileName)/\(slot)/\(padIndex)")
                             }
                             .padding(.vertical, Theme.Space.small)
                         } else {
@@ -420,9 +412,7 @@ public struct SettingsView: View {
                         SectionHeader(title: settings.localized("About"))
                     }
                 }
-                .listRowBackground(Theme.surface)
-                .listRowInsets(EdgeInsets(top: Theme.Space.small, leading: Theme.Space.regular,
-                                         bottom: Theme.Space.small, trailing: Theme.Space.regular))
+                .appFormRowStyle()
             }
             .appFormStyle()
             .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { windowWidth = $0 }

@@ -47,25 +47,7 @@ struct CalibrationView: View {
                         Text(settings.localized("Tap with the click"))
                             .font(Theme.rowTitle)
                             .frame(maxWidth: .infinity, minHeight: 140)
-                            .background {
-                                RoundedRectangle(cornerRadius: Theme.Skin.Pad.radius)
-                                    .fill(touching ? Theme.activeFill : Theme.Skin.Pad.fill)
-                                    .overlay {
-                                        SkinBevel(
-                                            radius: Theme.Skin.Pad.radius,
-                                            highlight: Theme.Skin.Pad.highlight,
-                                            shade: Theme.Skin.Pad.shade,
-                                            top: Theme.Skin.Pad.topBevel,
-                                            bottom: Theme.Skin.Pad.bottomBevel
-                                        )
-                                    }
-                                    .overlay {
-                                        RoundedRectangle(cornerRadius: Theme.Skin.Pad.radius)
-                                            .strokeBorder(touching ? Theme.orange : Theme.hairline,
-                                                          lineWidth: touching ? Theme.Size.border : 1)
-                                    }
-                                    .shadow(color: Theme.black.opacity(0.08), radius: 2, y: 2)
-                            }
+                            .background { PadSurface(isActive: touching) }
                             .contentShape(RoundedRectangle(cornerRadius: Theme.Skin.Pad.radius))
                             .gesture(DragGesture(minimumDistance: 0)
                                 .onChanged { _ in
@@ -80,24 +62,7 @@ struct CalibrationView: View {
                         Text(settings.localized("Press any mapped key with the click"))
                             .font(Theme.rowTitle)
                             .frame(maxWidth: .infinity, minHeight: 80)
-                            .background {
-                                RoundedRectangle(cornerRadius: Theme.Skin.Pad.radius)
-                                    .fill(Theme.Skin.Pad.fill)
-                                    .overlay {
-                                        SkinBevel(
-                                            radius: Theme.Skin.Pad.radius,
-                                            highlight: Theme.Skin.Pad.highlight,
-                                            shade: Theme.Skin.Pad.shade,
-                                            top: Theme.Skin.Pad.topBevel,
-                                            bottom: Theme.Skin.Pad.bottomBevel
-                                        )
-                                    }
-                                    .overlay {
-                                        RoundedRectangle(cornerRadius: Theme.Skin.Pad.radius)
-                                            .strokeBorder(Theme.hairline, lineWidth: 1)
-                                    }
-                                    .shadow(color: Theme.black.opacity(0.08), radius: 2, y: 2)
-                            }
+                            .background { PadSurface() }
                     }
                     if let result = session.result {
                         LabeledContent(settings.localized("Saved offset"), value: signed(session.savedOffset))
@@ -124,9 +89,7 @@ struct CalibrationView: View {
                     }
                 } header: { SectionHeader(title: settings.localized("Calibration progress")) }
             }
-            .listRowBackground(Theme.surface)
-            .listRowInsets(EdgeInsets(top: Theme.Space.small, leading: Theme.Space.regular,
-                                     bottom: Theme.Space.small, trailing: Theme.Space.regular))
+            .appFormRowStyle()
         }
         .appFormStyle()
         .navigationTitle(settings.localized("Timing calibration"))

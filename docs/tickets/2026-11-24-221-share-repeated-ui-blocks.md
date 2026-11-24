@@ -1,6 +1,6 @@
 # 221 — Share repeated blocks between Calibration, Content, ControllerSetup and Settings views
 
-Status: open. Follow-up A1 from ticket 210 (Desloppify baseline 92.6 / 100 on 2026-11-24).
+Status: done (2026-11-24). Follow-up A1 from ticket 210 (Desloppify baseline 92.6 / 100 -> 92.9 / 100 on 2026-11-24; boilerplate clusters 25 -> 19).
 
 ## Goal
 
@@ -24,10 +24,10 @@ Build only (pure UI refactor with no logic change), plus any existing tests for 
 
 ## Acceptance criteria
 
-- [ ] Repeated boilerplate blocks across the four views are replaced by shared components/modifiers.
-- [ ] Visible UI and behaviour are unchanged.
-- [ ] App builds cleanly without warnings or errors.
-- [ ] Desloppify objective scan re-run and new score noted.
+- [x] Repeated boilerplate blocks across the four views are replaced by shared components/modifiers.
+- [x] Visible UI and behaviour are unchanged.
+- [x] App builds cleanly without warnings or errors.
+- [x] Desloppify objective scan re-run and new score noted (92.9 / 100).
 
 ### Manual iPad checks for Jakub
 

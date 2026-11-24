@@ -27,15 +27,8 @@ public struct ControllerSetupView: View {
         self.onDismiss = onDismiss
     }
 
-    private var connectedControllerName: String? {
-        if let selectedID = midi.selectedSourceID {
-            return midi.sources.first(where: { $0.id == selectedID })?.name ?? midi.sources.first?.name
-        }
-        return midi.sources.first?.name
-    }
-
     private var statusTitle: String {
-        connectedControllerName ?? settings.localized("Connect a controller")
+        midi.connectedControllerName ?? settings.localized("Connect a controller")
     }
 
     private var savedLatencyText: String {
@@ -68,7 +61,7 @@ public struct ControllerSetupView: View {
                     HStack {
                         Text(statusTitle)
                             .font(Theme.rowTitle)
-                            .foregroundStyle(connectedControllerName != nil ? Theme.ink : Theme.secondary)
+                            .foregroundStyle(midi.connectedControllerName != nil ? Theme.ink : Theme.secondary)
                         Spacer()
                     }
                     .frame(minHeight: Theme.Size.touch)
@@ -216,9 +209,7 @@ public struct ControllerSetupView: View {
                     SectionHeader(title: settings.localized("Input monitor"))
                 }
             }
-            .listRowBackground(Theme.surface)
-            .listRowInsets(EdgeInsets(top: Theme.Space.small, leading: Theme.Space.regular,
-                                     bottom: Theme.Space.small, trailing: Theme.Space.regular))
+            .appFormRowStyle()
         }
         .appFormStyle()
         .navigationTitle(settings.localized("Controller"))
@@ -293,23 +284,20 @@ private struct ControllerLivePadGrid: View {
 
     var body: some View {
         let profile = midi.activeProfile
-        LazyVGrid(columns: Array(repeating: GridItem(.flexible(minimum: Theme.Size.touch), spacing: Theme.Space.small),
-                                 count: profile.columns), spacing: Theme.Space.small) {
-            ForEach(profile.grid.displaySlots, id: \.self) { slot in
-                let target = profile.target(forSlot: slot)
-                let note = profile.midiNote(forTarget: target)
-                let control = MIDIPracticeAction.allCases.first { action in
-                    guard let signal = settings.midiControls.buttons[action.rawValue]?.signal else { return false }
-                    return signal.kind == .note && signal.number == note
-                }
-                let pad = midi.padIndices.flatMap { $0.indices.contains(target) ? $0[target] : nil }
-                let velocity = pad.map { midi.pressedPadVelocities[$0] ?? 0 } ?? 0
-                let strength = pad.map { midi.pressedPadIndices.contains($0) ? Double(velocity) / 127 : 0 } ?? 0
-                let signal = control.flatMap { settings.midiControls.buttons[$0.rawValue]?.signal }
-                let controlStrength = signal.map { Double(midi.pressedControlVelocities[$0] ?? 0) / 127 } ?? 0
-                ControllerLivePad(label: control.map { settings.localized($0.title) } ?? note.map { $0.formatted() } ?? "—",
-                                  strength: control == nil ? strength : controlStrength)
+        PadProfileGrid(profile: profile) { slot in
+            let target = profile.target(forSlot: slot)
+            let note = profile.midiNote(forTarget: target)
+            let control = MIDIPracticeAction.allCases.first { action in
+                guard let signal = settings.midiControls.buttons[action.rawValue]?.signal else { return false }
+                return signal.kind == .note && signal.number == note
             }
+            let pad = midi.padIndices.flatMap { $0.indices.contains(target) ? $0[target] : nil }
+            let velocity = pad.map { midi.pressedPadVelocities[$0] ?? 0 } ?? 0
+            let strength = pad.map { midi.pressedPadIndices.contains($0) ? Double(velocity) / 127 : 0 } ?? 0
+            let signal = control.flatMap { settings.midiControls.buttons[$0.rawValue]?.signal }
+            let controlStrength = signal.map { Double(midi.pressedControlVelocities[$0] ?? 0) / 127 } ?? 0
+            ControllerLivePad(label: control.map { settings.localized($0.title) } ?? note.map { $0.formatted() } ?? "—",
+                              strength: control == nil ? strength : controlStrength)
         }
         .padding(Theme.Space.small)
         .background(Theme.cavity, in: RoundedRectangle(cornerRadius: Theme.Radius.pad))
@@ -333,17 +321,7 @@ private struct ControllerLivePad: View {
             .aspectRatio(1, contentMode: .fit)
             .foregroundStyle(Theme.ink)
             .background {
-                RoundedRectangle(cornerRadius: Theme.Skin.Pad.radius)
-                    .fill(Theme.Skin.Pad.fill)
-                    .overlay {
-                        RoundedRectangle(cornerRadius: Theme.Skin.Pad.radius)
-                            .fill(Theme.orange.opacity(strength * 0.85))
-                    }
-                    .overlay {
-                        SkinBevel(radius: Theme.Skin.Pad.radius,
-                                  highlight: Theme.Skin.Pad.highlight, shade: Theme.Skin.Pad.shade,
-                                  top: Theme.Skin.Pad.topBevel, bottom: Theme.Skin.Pad.bottomBevel)
-                    }
+                PadSurface(activeStrength: strength, hasBorder: false, hasShadow: false)
             }
             .animation(strength == 0 ? Theme.Motion.padFlash : nil, value: strength)
     }
