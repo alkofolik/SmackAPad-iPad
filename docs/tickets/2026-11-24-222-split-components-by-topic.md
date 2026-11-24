@@ -1,6 +1,6 @@
 # 222 — Split `Components.swift` by topic
 
-Status: open. Follow-up A2 from ticket 210 (Desloppify baseline 92.6 / 100 on 2026-11-24).
+Status: done (2026-11-24). Follow-up A2 from ticket 210 (Desloppify baseline 92.6 / 100 on 2026-11-24).
 
 ## Goal
 
