@@ -109,7 +109,7 @@ struct HomeMidiActivityLed: View {
                         .frame(width: 14, height: 14)
                 }
             Text("MIDI")
-                .font(Theme.canvasDisplay(9).monospaced())
+                .font(Theme.canvasDisplay(9))
                 .tracking(0.5)
                 .foregroundStyle(Theme.secondary)
         }
