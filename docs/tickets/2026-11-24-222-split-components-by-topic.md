@@ -24,10 +24,10 @@ Build only (pure structural split with no behaviour change). No new tests.
 
 ## Acceptance criteria
 
-- [ ] `Components.swift` is split into focused topic files.
-- [ ] All new files are registered in `SmackAPad.xcodeproj`.
-- [ ] App builds cleanly without errors.
-- [ ] Desloppify objective scan re-run and new score noted.
+- [x] `Components.swift` is split into focused topic files (`HardwareSurfaces.swift`, `PadButtons.swift`, `PlexSegmentedPicker.swift`, `ScreenChrome.swift`, `StarsAndProgress.swift`).
+- [x] All new files are registered in `SmackAPad.xcodeproj` (automatic via `PBXFileSystemSynchronizedRootGroup`).
+- [x] App builds cleanly without errors.
+- [x] Desloppify objective scan re-run and new score noted: **93.3 / 100** (File health 87.1%, Code quality 84.2%, Duplication 98.9%, Security 100.0%).
 
 ### Manual iPad checks for Jakub
 
