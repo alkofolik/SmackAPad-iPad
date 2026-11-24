@@ -1,6 +1,6 @@
 # 210 — Desloppify baseline scan and clean-up plan
 
-Status: open (planning ticket). Created 2026-11-21 after Jakub installed Desloppify, Code Simplifier and vibeclean.
+Status: done (2026-11-24). Created 2026-11-21 after Jakub installed Desloppify, Code Simplifier and vibeclean; re-scanned on 2026-11-24 after tickets 211–229 and created follow-up tickets 221–225.
 
 ## Tools
 
@@ -30,6 +30,16 @@ Do not run `desloppify autofix` and do not use its `plan resolve` loop; changes 
 | **Objective total** | **92.8 / 100** | 56 |
 
 The "overall 23/100" Desloppify prints is not a real result: 75 % of it is a subjective review that was not run (scored as 0). Ignore it.
+
+## Re-scan after tickets 211–229 (2026-11-24, mechanical detectors only)
+
+| Dimension | Score | Issues |
+|---|---|---|
+| File health (large files) | 85.7 % | 26 |
+| Code quality (mixed responsibilities, flat folders) | 82.5 % | 8 (2 flat dirs, 6 responsibility cohesion) |
+| Duplication | 98.7 % | 26 (25 boilerplate clusters, 1 duplicate cluster) |
+| Security | 100 % | 0 |
+| **Objective total** | **92.6 / 100** | 59 (61 open incl. info) |
 
 ## Findings, sorted by risk
 
@@ -69,7 +79,7 @@ Each follow-up: run Code Simplifier on the listed files only, build, run area te
 ## Acceptance criteria
 
 - [x] Baseline scan run and recorded above.
-- [ ] Jakub picks which follow-up tickets to create.
+- [x] Jakub picks which follow-up tickets to create (re-scanned 2026-11-24; created tickets 221–225).
 
 ## Agent assignment
 

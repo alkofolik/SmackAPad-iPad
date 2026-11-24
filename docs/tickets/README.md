@@ -216,7 +216,7 @@ Source: Jakub, retention and memory discussion; legacy "Trénink" concept 2026-1
 | 206 | Home as a real controller: display, language knob, appearance switch, no "How it works" | Codex GPT-6.1 Sol, high (fallback Gemini 3.8 Flash, high) | any time, not in parallel with 207 |
 | 207 | Home reacts to the MIDI controller (sound, display, LED; no navigation) | Gemini 3.8 Flash, high (fallback Codex GPT-6.1 Sol, high) | after 206 |
 | 208 | Playhead: sample each frame at its display time, no catch-up jumps; DEBUG timing readout for a slow-motion sync check | Codex GPT-6.1 Sol, high (fallback Gemini 3.8 Pro, high) | any time, not in parallel with 203 (both touch PracticeScreen) |
-| 210 | Desloppify baseline scan and clean-up plan (planning only, no code; follow-up tickets 211+ are created one at a time after Jakub picks) | Gemini 3.8 Flash, low (fallback Codex GPT-6.1 Sol) | any time |
+| 210 | Desloppify baseline scan and clean-up plan (done; re-scanned 2026-11-24, follow-up tickets 221–225 created) | Gemini 3.8 Flash, low (fallback Codex GPT-6.1 Sol) | done |
 | 211 | Long-press hint on the top toolbar is cut off at the right edge | Gemini 3.8 Flash, medium (fallback Codex GPT-6.1 Sol, medium) | any time |
 | 212 | Orange band jumps down while the badge banner is shown | Gemini 3.8 Flash, medium (fallback Codex GPT-6.1 Sol, medium) | any time, not in parallel with 215 (both touch PracticeScreen) |
 | 213 | In English a lesson does not stop by itself when the requirement is met (reproduce first) | Gemini 3.8 Flash, high (fallback Codex GPT-6.1 Sol, high) | any time |
@@ -229,3 +229,8 @@ Source: Jakub, retention and memory discussion; legacy "Trénink" concept 2026-1
 | 219 | Result card: symmetric three-zone layout, no icon beside the buttons, detail via the summary row | Gemini 3.8 Flash, high (fallback Codex GPT-6.1 Sol, high) | after 212, 215, 216 and 218 |
 | 220 | Library: filters in one pop-up, search as a magnifier | Gemini 3.8 Flash, high (fallback Codex GPT-6.1 Sol, high) | any time, parallel with the practice-screen tickets |
 | 228 | Review queue: one collapsible section per step (easiest first) plus an "All lessons" section, chips and "Show all" removed | Gemini 3.8 Flash, high (fallback Codex GPT-6.1 Sol, high) | any time, not in parallel with 220 (both touch TrainingScreen) |
+| 221 | Share repeated UI blocks across CalibrationView, ContentView, ControllerSetupView, SettingsView | Gemini 3.8 Flash, low (fallback Codex GPT-6.1 Sol, low) | any time (Group A1) |
+| 222 | Split `Components.swift` by topic | Gemini 3.8 Flash, low (fallback Codex GPT-6.1 Sol, low) | any time (Group A2) |
+| 223 | Group `UI/` into subfolders (`Home`, `Practice`, `Library`, `Settings`, `Shared`) | Gemini 3.8 Flash, low (fallback Codex GPT-6.1 Sol, low) | after 221 and 222, or first (Group A3) |
+| 224 | Split `SettingsManager.swift` by area (persistence → full test suite) | Gemini 3.8 Flash, medium (fallback Codex GPT-6.1 Sol, medium) | any time (Group B4) |
+| 225 | Split `HomeScreen.swift` into sub-views | Gemini 3.8 Flash, medium (fallback Codex GPT-6.1 Sol, medium) | after 223 (Group B5) |
