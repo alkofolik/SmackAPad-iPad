@@ -170,7 +170,10 @@ struct PracticeScreen: View {
             let portraitPads = isPortrait && touchPadsInPortrait && midi.padIndices?.count == 16
             let availableWidth = max(0, geometry.size.width - 2 * Theme.Space.page)
             let defaultS: CGFloat = 2 * Theme.Size.control + Theme.Space.small
-            let s = min(defaultS, max(44, (availableWidth - 2 * Theme.Space.small - 64) / 3))
+            let deckTarget: CGFloat = portraitPads
+                ? defaultS
+                : min(212, max(defaultS, geometry.size.height * 0.25))
+            let s = min(deckTarget, max(44, (availableWidth - 2 * Theme.Space.small - 64) / 3))
 
             VStack(spacing: Theme.Space.regular) {
                 topZone(isPortrait: isPortrait, width: geometry.size.width, screenHeight: geometry.size.height)
@@ -1014,53 +1017,110 @@ struct PracticeScreen: View {
 
     private func bottomZoneRow(s: CGFloat, availableWidth: CGFloat, spaceAbove: CGFloat) -> some View {
         let showingResult = isShowingResult && !session.isMix
-        let deckPadding: CGFloat = 8
+        let deckPadding: CGFloat = 10
         let deckInnerHeight = max(44, s - deckPadding * 2)
-        let padSide = max(36, deckInnerHeight - 8)
-        let transportWidth = min(210, max(124, availableWidth * 0.24))
+        let padWellPadding: CGFloat = 6
+        let padSide = max(36, deckInnerHeight - padWellPadding * 2)
+        let transportPadding: CGFloat = 6
+        let transportInnerHeight = max(36, deckInnerHeight - transportPadding * 2)
+        let transportWidth = min(236, max(136, availableWidth * 0.24))
 
-        return HStack(spacing: 12) {
+        return HStack(spacing: 14) {
             padLayoutSquare(s: padSide)
-                .padding(4)
+                .padding(padWellPadding)
                 .frame(width: deckInnerHeight, height: deckInnerHeight)
                 .background {
                     RoundedRectangle(cornerRadius: Theme.Radius.panel, style: .continuous)
                         .fill(
-                            Color(uiColor: UIColor(red: 0x0F / 255, green: 0x0E / 255, blue: 0x0C / 255, alpha: 1))
-                                .shadow(.inner(color: Theme.black.opacity(0.85), radius: 3, y: 2))
+                            LinearGradient(
+                                colors: [
+                                    Color(red: 0.05, green: 0.045, blue: 0.04),
+                                    Color(red: 0.08, green: 0.075, blue: 0.068)
+                                ],
+                                startPoint: .top,
+                                endPoint: .bottom
+                            )
+                            .shadow(.inner(color: Theme.black.opacity(0.92), radius: 5, y: 3))
                         )
                         .overlay {
                             RoundedRectangle(cornerRadius: Theme.Radius.panel, style: .continuous)
-                                .strokeBorder(Theme.white.opacity(0.06), lineWidth: 1)
+                                .strokeBorder(
+                                    LinearGradient(
+                                        colors: [Theme.black.opacity(0.85), Theme.white.opacity(0.08)],
+                                        startPoint: .top,
+                                        endPoint: .bottom
+                                    ),
+                                    lineWidth: 1.25
+                                )
                         }
                 }
 
-            Rectangle()
-                .fill(Theme.white.opacity(0.08))
-                .frame(width: 1, height: max(20, deckInnerHeight - 8))
-                .accessibilityHidden(true)
+            HStack(spacing: 0) {
+                Rectangle().fill(Theme.black.opacity(0.65)).frame(width: 1)
+                Rectangle().fill(Theme.white.opacity(0.07)).frame(width: 1)
+            }
+            .frame(height: max(24, deckInnerHeight - 10))
+            .accessibilityHidden(true)
 
             tempoSquare(s: deckInnerHeight, spaceAbove: spaceAbove, expanded: true)
 
-            Rectangle()
-                .fill(Theme.white.opacity(0.08))
-                .frame(width: 1, height: max(20, deckInnerHeight - 8))
-                .accessibilityHidden(true)
+            HStack(spacing: 0) {
+                Rectangle().fill(Theme.black.opacity(0.65)).frame(width: 1)
+                Rectangle().fill(Theme.white.opacity(0.07)).frame(width: 1)
+            }
+            .frame(height: max(24, deckInnerHeight - 10))
+            .accessibilityHidden(true)
 
-            transportSquare(s: deckInnerHeight, width: transportWidth)
+            transportSquare(s: transportInnerHeight, width: transportWidth - transportPadding * 2)
+                .padding(transportPadding)
+                .frame(width: transportWidth, height: deckInnerHeight)
+                .background {
+                    RoundedRectangle(cornerRadius: Theme.Radius.panel, style: .continuous)
+                        .fill(
+                            Color(red: 0.06, green: 0.055, blue: 0.05)
+                                .shadow(.inner(color: Theme.black.opacity(0.88), radius: 4, y: 2))
+                        )
+                        .overlay {
+                            RoundedRectangle(cornerRadius: Theme.Radius.panel, style: .continuous)
+                                .strokeBorder(
+                                    LinearGradient(
+                                        colors: [Theme.black.opacity(0.8), Theme.white.opacity(0.08)],
+                                        startPoint: .top,
+                                        endPoint: .bottom
+                                    ),
+                                    lineWidth: 1.25
+                                )
+                        }
+                }
         }
         .padding(deckPadding)
         .frame(maxWidth: .infinity)
         .frame(height: s)
         .background {
-            RoundedRectangle(cornerRadius: Theme.Radius.panel + 2, style: .continuous)
-                .fill(Color(uiColor: UIColor(red: 0x1C / 255, green: 0x1A / 255, blue: 0x17 / 255, alpha: 1)))
+            RoundedRectangle(cornerRadius: Theme.Radius.panel + 4, style: .continuous)
+                .fill(
+                    LinearGradient(
+                        colors: [
+                            Color(red: 0.135, green: 0.125, blue: 0.112),
+                            Color(red: 0.085, green: 0.078, blue: 0.070)
+                        ],
+                        startPoint: .top,
+                        endPoint: .bottom
+                    )
+                )
                 .overlay {
-                    RoundedRectangle(cornerRadius: Theme.Radius.panel + 2, style: .continuous)
-                        .strokeBorder(Theme.white.opacity(0.08), lineWidth: 1)
+                    RoundedRectangle(cornerRadius: Theme.Radius.panel + 4, style: .continuous)
+                        .strokeBorder(
+                            LinearGradient(
+                                colors: [Theme.white.opacity(0.14), Theme.black.opacity(0.75)],
+                                startPoint: .top,
+                                endPoint: .bottom
+                            ),
+                            lineWidth: 1.5
+                        )
                 }
         }
-        .shadow(color: Theme.black.opacity(0.18), radius: 6, y: 3)
+        .shadow(color: Theme.black.opacity(0.32), radius: 10, y: 5)
         .opacity(showingResult ? 0 : 1)
         .allowsHitTesting(!showingResult)
         .accessibilityHidden(showingResult)
@@ -1391,6 +1451,7 @@ struct PracticeScreen: View {
     private func tempoSquare(s: CGFloat, spaceAbove: CGFloat, expanded: Bool = false) -> some View {
         TempoTile(
             bpm: session.bpm,
+            startBpm: session.lesson.startBpm,
             targetBpm: session.lesson.targetBpm,
             editable: !session.running && session.ready && session.available,
             status: !session.available ? settings.localized("This lesson requires 16 pads.")
@@ -1399,6 +1460,9 @@ struct PracticeScreen: View {
             expanded: expanded,
             onStepTempo: { delta in
                 session.setTempo(session.bpm + delta)
+            },
+            onSetTempo: { newBpm in
+                session.setTempo(newBpm)
             },
             action: {
                 showingDetails = false

@@ -65,7 +65,7 @@ enum PracticeBandStyle {
 
     static func bandMarginWidth(rowHeight: CGFloat) -> CGFloat {
         let icon = bandMarginIconSize(rowHeight: rowHeight)
-        return ceil(icon + 30)
+        return ceil(icon + 38)
     }
 
     static func bandMarginIconSize(rowHeight: CGFloat) -> CGFloat {
@@ -322,119 +322,315 @@ struct TempoTile<CueContent: View>: View {
     @Environment(\.accessibilityReduceMotion) private var reduced
     private var motion: Theme.Motion.Policy { .init(reduced: reduced) }
     let bpm: Int
+    let startBpm: Int
     let targetBpm: Int
     let editable: Bool
     let status: String?
     let side: CGFloat
     var expanded: Bool = false
     var onStepTempo: ((Int) -> Void)? = nil
+    var onSetTempo: ((Int) -> Void)? = nil
     let action: () -> Void
     @ViewBuilder var timingCue: () -> CueContent
 
     init(
         bpm: Int,
+        startBpm: Int = 60,
         targetBpm: Int,
         editable: Bool,
         status: String?,
         side: CGFloat,
         expanded: Bool = false,
         onStepTempo: ((Int) -> Void)? = nil,
+        onSetTempo: ((Int) -> Void)? = nil,
         action: @escaping () -> Void,
         @ViewBuilder timingCue: @escaping () -> CueContent = { EmptyView() }
     ) {
         self.bpm = bpm
+        self.startBpm = startBpm
         self.targetBpm = targetBpm
         self.editable = editable
         self.status = status
         self.side = side
         self.expanded = expanded
         self.onStepTempo = onStepTempo
+        self.onSetTempo = onSetTempo
         self.action = action
         self.timingCue = timingCue
     }
+
+    private var sliderMinBpm: Int { min(40, min(startBpm, bpm)) }
+    private var sliderMaxBpm: Int { max(180, max(targetBpm + 20, bpm)) }
 
     var body: some View {
         Group {
             if let status {
                 Text(status)
                     .font(Theme.meta)
+                    .foregroundStyle(Theme.Skin.Display.secondary)
                     .multilineTextAlignment(.center)
                     .minimumScaleFactor(0.7)
                     .padding(Theme.Space.small)
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
+            } else if expanded {
+                expandedBody
             } else {
-                HStack(spacing: Theme.Space.regular) {
-                    if expanded, let onStepTempo {
-                        stepButton(delta: -1, symbol: "minus", label: settings.localized("Decrease tempo")) {
-                            onStepTempo(-1)
-                        }
-                        .opacity(editable ? 1 : 0.28)
-                        .disabled(!editable)
-                    }
-
-                    Button(action: action) {
-                        HStack(spacing: expanded ? Theme.Space.regular : 0) {
-                            VStack(spacing: 2) {
-                                HStack(alignment: .firstTextBaseline, spacing: 5) {
-                                    Text("\(bpm)")
-                                        .font(Theme.display(min(48, side * 0.44)))
-                                        .fontWeight(.bold)
-                                        .monospacedDigit()
-                                        .lineLimit(1)
-                                        .minimumScaleFactor(0.7)
-                                        .contentTransition(motion.numeric)
-                                        .motion(value: bpm)
-                                    Text("BPM")
-                                        .font(Theme.strong(12))
-                                        .foregroundStyle(Theme.Skin.Display.secondary)
-                                }
-                                HStack(spacing: 4) {
-                                    Text("\(settings.localized("Goal")) \(targetBpm)")
-                                        .font(Theme.meta)
-                                        .monospacedDigit()
-                                        .foregroundStyle(bpm >= targetBpm ? Theme.orange : Theme.Skin.Display.secondary)
-                                    Image(systemName: "chevron.down")
-                                        .font(.system(size: 10, weight: .semibold))
-                                        .foregroundStyle(Theme.Skin.Display.secondary)
-                                        .opacity(editable ? 1 : 0)
-                                }
-                            }
-                            .frame(maxWidth: .infinity)
-                        }
-                        .contentShape(Rectangle())
-                    }
-                    .buttonStyle(.plain)
-                    .disabled(!editable)
-                    .accessibilityLabel(settings.localized("Tempo %lld BPM, goal %lld", bpm, targetBpm))
-
-                    if expanded, let onStepTempo {
-                        stepButton(delta: 1, symbol: "plus", label: settings.localized("Increase tempo")) {
-                            onStepTempo(1)
-                        }
-                        .opacity(editable ? 1 : 0.28)
-                        .disabled(!editable)
-                    }
-
-                    timingCue()
-                }
-                .padding(.horizontal, expanded ? Theme.Space.regular : 6)
+                compactBody
             }
         }
         .frame(maxWidth: expanded ? .infinity : side, minHeight: side, maxHeight: side)
-        .insetDisplay()
-        .contentShape(RoundedRectangle(cornerRadius: Theme.Skin.Pad.radius))
+        .background {
+            RoundedRectangle(cornerRadius: Theme.Radius.panel, style: .continuous)
+                .fill(
+                    LinearGradient(
+                        colors: [
+                            Color(red: 0.055, green: 0.05, blue: 0.045),
+                            Color(red: 0.085, green: 0.078, blue: 0.07)
+                        ],
+                        startPoint: .top,
+                        endPoint: .bottom
+                    )
+                    .shadow(.inner(color: Theme.black.opacity(0.92), radius: 6, y: 3))
+                )
+                .overlay {
+                    RoundedRectangle(cornerRadius: Theme.Radius.panel, style: .continuous)
+                        .fill(
+                            LinearGradient(
+                                colors: [Theme.white.opacity(0.05), .clear],
+                                startPoint: .top,
+                                endPoint: .center
+                            )
+                        )
+                        .allowsHitTesting(false)
+                }
+                .overlay {
+                    RoundedRectangle(cornerRadius: Theme.Radius.panel, style: .continuous)
+                        .strokeBorder(
+                            LinearGradient(
+                                colors: [Theme.black.opacity(0.85), Theme.white.opacity(0.09)],
+                                startPoint: .top,
+                                endPoint: .bottom
+                            ),
+                            lineWidth: 1.25
+                        )
+                }
+        }
+        .contentShape(RoundedRectangle(cornerRadius: Theme.Radius.panel))
     }
 
-    private func stepButton(delta: Int, symbol: String, label: String, onTap: @escaping () -> Void) -> some View {
+    private var expandedBody: some View {
+        VStack(spacing: 6) {
+            HStack(spacing: 8) {
+                Button(action: action) {
+                    HStack(spacing: 5) {
+                        Circle()
+                            .fill(editable ? Theme.orange : Theme.Skin.Display.secondary.opacity(0.4))
+                            .frame(width: 6, height: 6)
+                            .shadow(color: editable ? Theme.orange.opacity(0.7) : .clear, radius: 3)
+                        Text("TEMPO")
+                            .font(Theme.strong(11))
+                            .tracking(0.8)
+                            .foregroundStyle(Theme.Skin.Display.ink.opacity(editable ? 0.9 : 0.45))
+                        if editable {
+                            Image(systemName: "chevron.down")
+                                .font(.system(size: 9, weight: .bold))
+                                .foregroundStyle(Theme.Skin.Display.secondary)
+                        }
+                    }
+                    .padding(.horizontal, 9)
+                    .padding(.vertical, 4)
+                    .background(Theme.white.opacity(0.06), in: Capsule())
+                    .overlay {
+                        Capsule().strokeBorder(Theme.white.opacity(0.10), lineWidth: 1)
+                    }
+                }
+                .buttonStyle(.plain)
+                .disabled(!editable)
+                .accessibilityLabel(settings.localized("Tempo"))
+
+                Spacer(minLength: 4)
+
+                HStack(spacing: 5) {
+                    Text(settings.localized("Goal").uppercased())
+                        .font(Theme.strong(10))
+                        .tracking(0.6)
+                        .foregroundStyle(Theme.Skin.Display.secondary)
+                    Text("\(targetBpm)")
+                        .font(Theme.strong(13))
+                        .monospacedDigit()
+                        .foregroundStyle(bpm >= targetBpm ? Theme.orange : Theme.Skin.Display.ink)
+                }
+                .padding(.horizontal, 9)
+                .padding(.vertical, 4)
+                .background(
+                    (bpm >= targetBpm ? Theme.orange.opacity(0.16) : Theme.white.opacity(0.05)),
+                    in: Capsule()
+                )
+                .overlay {
+                    Capsule().strokeBorder(
+                        bpm >= targetBpm ? Theme.orange.opacity(0.45) : Theme.white.opacity(0.09),
+                        lineWidth: 1
+                    )
+                }
+            }
+
+            HStack(spacing: Theme.Space.regular) {
+                if let onStepTempo {
+                    stepButton(symbol: "minus", label: settings.localized("Decrease tempo")) {
+                        onStepTempo(-1)
+                    }
+                    .opacity(editable ? 1 : 0.32)
+                    .disabled(!editable)
+                }
+
+                Button(action: action) {
+                    HStack(alignment: .firstTextBaseline, spacing: 6) {
+                        Text("\(bpm)")
+                            .font(Theme.boldDisplay(min(54, max(34, side * 0.36))))
+                            .monospacedDigit()
+                            .foregroundStyle(Theme.Skin.Display.ink)
+                            .shadow(color: Theme.orange.opacity(0.55), radius: 10)
+                            .shadow(color: Theme.orange.opacity(0.25), radius: 2)
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.65)
+                            .contentTransition(motion.numeric)
+                            .motion(value: bpm)
+                        Text("BPM")
+                            .font(Theme.strong(13))
+                            .tracking(0.6)
+                            .foregroundStyle(Theme.orange.opacity(0.9))
+                    }
+                    .frame(maxWidth: .infinity)
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .disabled(!editable)
+                .accessibilityLabel(settings.localized("Tempo %lld BPM, goal %lld", bpm, targetBpm))
+
+                if let onStepTempo {
+                    stepButton(symbol: "plus", label: settings.localized("Increase tempo")) {
+                        onStepTempo(1)
+                    }
+                    .opacity(editable ? 1 : 0.32)
+                    .disabled(!editable)
+                }
+            }
+
+            ZStack {
+                tempoBarSlider
+                    .opacity(editable ? 1 : 0.45)
+                timingCue()
+            }
+            .frame(height: 26)
+        }
+        .padding(.horizontal, 14)
+        .padding(.vertical, 10)
+    }
+
+    private var compactBody: some View {
+        Button(action: action) {
+            VStack(spacing: 3) {
+                HStack(alignment: .firstTextBaseline, spacing: 4) {
+                    Text("\(bpm)")
+                        .font(Theme.boldDisplay(min(44, side * 0.42)))
+                        .monospacedDigit()
+                        .foregroundStyle(Theme.Skin.Display.ink)
+                        .shadow(color: Theme.orange.opacity(0.45), radius: 8)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.7)
+                        .contentTransition(motion.numeric)
+                        .motion(value: bpm)
+                    Text("BPM")
+                        .font(Theme.strong(11))
+                        .foregroundStyle(Theme.orange.opacity(0.9))
+                }
+                Text("\(settings.localized("Goal")) \(targetBpm)")
+                    .font(Theme.meta)
+                    .monospacedDigit()
+                    .foregroundStyle(bpm >= targetBpm ? Theme.orange : Theme.Skin.Display.secondary)
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .disabled(!editable)
+        .accessibilityLabel(settings.localized("Tempo %lld BPM, goal %lld", bpm, targetBpm))
+    }
+
+    private var tempoBarSlider: some View {
+        GeometryReader { geo in
+            let width = max(1, geo.size.width)
+            let span = Double(max(1, sliderMaxBpm - sliderMinBpm))
+            let fraction = min(1, max(0, Double(bpm - sliderMinBpm) / span))
+            let goalFraction = min(1, max(0, Double(targetBpm - sliderMinBpm) / span))
+            let segmentCount = 24
+            let gap: CGFloat = 2
+            let segWidth = max(1, (width - CGFloat(segmentCount - 1) * gap) / CGFloat(segmentCount))
+
+            ZStack(alignment: .leading) {
+                HStack(spacing: gap) {
+                    ForEach(0..<segmentCount, id: \.self) { index in
+                        let threshold = Double(index) / Double(segmentCount)
+                        let lit = threshold <= fraction
+                        RoundedRectangle(cornerRadius: 1.5)
+                            .fill(lit ? Theme.orange : Theme.white.opacity(0.10))
+                            .frame(width: segWidth, height: lit ? 10 : 7)
+                            .shadow(color: lit ? Theme.orange.opacity(0.45) : .clear, radius: 2.5)
+                    }
+                }
+                .frame(maxHeight: .infinity)
+
+                // Goal marker tick
+                Rectangle()
+                    .fill(Theme.white.opacity(0.85))
+                    .frame(width: 2, height: 16)
+                    .offset(x: max(0, min(width - 2, width * goalFraction - 1)))
+            }
+            .contentShape(Rectangle())
+            .gesture(
+                DragGesture(minimumDistance: 0)
+                    .onChanged { value in
+                        guard editable, let onSetTempo else { return }
+                        let ratio = min(1, max(0, value.location.x / width))
+                        let newBpm = Int((Double(sliderMinBpm) + ratio * span).rounded())
+                        onSetTempo(newBpm)
+                    }
+            )
+        }
+        .frame(height: 18)
+        .accessibilityHidden(true)
+    }
+
+    private func stepButton(symbol: String, label: String, onTap: @escaping () -> Void) -> some View {
         Button(action: onTap) {
             Image(systemName: symbol)
-                .font(.system(size: 15, weight: .bold))
+                .font(.system(size: 16, weight: .bold))
                 .foregroundStyle(Theme.Skin.Display.ink)
-                .frame(width: 36, height: 36)
-                .background(Theme.white.opacity(0.10), in: RoundedRectangle(cornerRadius: Theme.Radius.button))
-                .overlay {
-                    RoundedRectangle(cornerRadius: Theme.Radius.button)
-                        .strokeBorder(Theme.white.opacity(0.14), lineWidth: 1)
+                .frame(width: 44, height: 42)
+                .background {
+                    RoundedRectangle(cornerRadius: Theme.Radius.button, style: .continuous)
+                        .fill(
+                            LinearGradient(
+                                colors: [
+                                    Color(red: 0.22, green: 0.20, blue: 0.18),
+                                    Color(red: 0.13, green: 0.12, blue: 0.10)
+                                ],
+                                startPoint: .top,
+                                endPoint: .bottom
+                            )
+                        )
+                        .overlay {
+                            RoundedRectangle(cornerRadius: Theme.Radius.button, style: .continuous)
+                                .strokeBorder(
+                                    LinearGradient(
+                                        colors: [Theme.white.opacity(0.20), Theme.black.opacity(0.65)],
+                                        startPoint: .top,
+                                        endPoint: .bottom
+                                    ),
+                                    lineWidth: 1
+                                )
+                        }
+                        .shadow(color: Theme.black.opacity(0.45), radius: 3, y: 2)
                 }
         }
         .buttonStyle(.plain)

@@ -169,11 +169,20 @@ struct PatternField: View {
                         session: session
                     )
                     .frame(width: gutter, height: geometry.size.height)
-                    .background(Theme.Skin.Display.fill)
+                    .background {
+                        LinearGradient(
+                            colors: [
+                                Color(red: 0.09, green: 0.085, blue: 0.075),
+                                Color(red: 0.06, green: 0.055, blue: 0.05)
+                            ],
+                            startPoint: .top,
+                            endPoint: .bottom
+                        )
+                    }
                     .overlay(alignment: .trailing) {
                         Rectangle()
-                            .fill(Theme.black.opacity(0.55))
-                            .frame(width: 1)
+                            .fill(Theme.black.opacity(0.85))
+                            .frame(width: 2)
                     }
                 }
 
@@ -224,32 +233,48 @@ struct PatternField: View {
                         band
                         LinearGradient(
                             colors: [
-                                Theme.white.opacity(0.10),
+                                Theme.white.opacity(0.12),
                                 .clear,
-                                Theme.black.opacity(0.10)
+                                Theme.black.opacity(0.16)
                             ],
                             startPoint: .top,
                             endPoint: .bottom
                         )
-                        Theme.black.opacity(0.10).frame(height: layout.headerTintHeight)
+                        Theme.black.opacity(0.18).frame(height: layout.headerTintHeight)
                     }
                     .animation(reduceMotion ? nil : .easeInOut(duration: 1.2), value: band)
                 }
                 .overlay {
                     ZStack {
                         VStack(spacing: 0) {
-                            LinearGradient(colors: [Theme.black.opacity(0.24), .clear], startPoint: .top, endPoint: .bottom)
-                                .frame(height: 8)
+                            LinearGradient(
+                                colors: [Theme.black.opacity(0.42), Theme.black.opacity(0.14), .clear],
+                                startPoint: .top,
+                                endPoint: .bottom
+                            )
+                            .frame(height: 18)
                             Spacer(minLength: 0)
-                            LinearGradient(colors: [.clear, Theme.black.opacity(0.16)], startPoint: .top, endPoint: .bottom)
-                                .frame(height: 6)
+                            LinearGradient(
+                                colors: [.clear, Theme.black.opacity(0.10), Theme.black.opacity(0.32)],
+                                startPoint: .top,
+                                endPoint: .bottom
+                            )
+                            .frame(height: 14)
                         }
                         HStack(spacing: 0) {
-                            LinearGradient(colors: [Theme.black.opacity(0.18), .clear], startPoint: .leading, endPoint: .trailing)
-                                .frame(width: 6)
+                            LinearGradient(
+                                colors: [Theme.black.opacity(0.30), .clear],
+                                startPoint: .leading,
+                                endPoint: .trailing
+                            )
+                            .frame(width: 12)
                             Spacer(minLength: 0)
-                            LinearGradient(colors: [.clear, Theme.black.opacity(0.18)], startPoint: .leading, endPoint: .trailing)
-                                .frame(width: 6)
+                            LinearGradient(
+                                colors: [.clear, Theme.black.opacity(0.24)],
+                                startPoint: .leading,
+                                endPoint: .trailing
+                            )
+                            .frame(width: 10)
                         }
                     }
                     .allowsHitTesting(false)
@@ -267,21 +292,38 @@ struct PatternField: View {
                 }
             }
         }
-        .clipShape(RoundedRectangle(cornerRadius: 7, style: .continuous))
-        .padding(4)
+        .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+        .overlay {
+            RoundedRectangle(cornerRadius: 8, style: .continuous)
+                .strokeBorder(Theme.black.opacity(0.65), lineWidth: 1)
+        }
+        .padding(8)
         .background {
-            RoundedRectangle(cornerRadius: 10, style: .continuous)
+            RoundedRectangle(cornerRadius: 14, style: .continuous)
                 .fill(
-                    Theme.Skin.Display.fill.shadow(
-                        .inner(color: Theme.black.opacity(0.75), radius: 4, y: 2)
+                    LinearGradient(
+                        colors: [
+                            Color(red: 0.11, green: 0.10, blue: 0.09),
+                            Color(red: 0.06, green: 0.055, blue: 0.05)
+                        ],
+                        startPoint: .top,
+                        endPoint: .bottom
                     )
+                    .shadow(.inner(color: Theme.black.opacity(0.9), radius: 6, y: 3))
                 )
                 .overlay {
-                    RoundedRectangle(cornerRadius: 10, style: .continuous)
-                        .strokeBorder(Theme.white.opacity(0.08), lineWidth: 1)
+                    RoundedRectangle(cornerRadius: 14, style: .continuous)
+                        .strokeBorder(
+                            LinearGradient(
+                                colors: [Theme.white.opacity(0.12), Theme.black.opacity(0.6)],
+                                startPoint: .top,
+                                endPoint: .bottom
+                            ),
+                            lineWidth: 1.5
+                        )
                 }
         }
-        .shadow(color: Theme.black.opacity(0.16), radius: 4, y: 2)
+        .shadow(color: Theme.black.opacity(0.32), radius: 8, y: 4)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(settings.localized("Rhythm pattern"))
         .accessibilityValue(
@@ -402,14 +444,19 @@ private func drawBeat(
         var path = Path()
         path.move(to: CGPoint(x: x, y: lanes.beatLineTop))
         path.addLine(to: CGPoint(x: x, y: lanes.bottom))
-        context.stroke(path, with: .color(Theme.black.opacity(bar ? 0.58 : 0.32)), lineWidth: bar ? 1.75 : 1.1)
+        context.stroke(path, with: .color(Theme.black.opacity(bar ? 0.68 : 0.38)), lineWidth: bar ? 2.0 : 1.25)
         if bar {
+            var highlight = Path()
+            highlight.move(to: CGPoint(x: x + 1.25, y: lanes.beatLineTop))
+            highlight.addLine(to: CGPoint(x: x + 1.25, y: lanes.bottom))
+            context.stroke(highlight, with: .color(Theme.white.opacity(0.12)), lineWidth: 0.75)
+
             let tickRect = CGRect(x: x - lanes.tickWidth / 2, y: lanes.tickY, width: lanes.tickWidth, height: lanes.tickHeight)
             context.fill(Path(roundedRect: tickRect, cornerRadius: 1),
-                         with: .color(Theme.black.opacity(0.78)))
+                         with: .color(Theme.black.opacity(0.85)))
             if beatOnePulse > 0 {
                 context.fill(Path(roundedRect: tickRect, cornerRadius: 1),
-                             with: .color(Theme.white.opacity((reduceMotion ? 0.70 : 0.92) * beatOnePulse)))
+                             with: .color(Theme.white.opacity((reduceMotion ? 0.70 : 0.95) * beatOnePulse)))
             }
         }
     } else {
@@ -417,7 +464,7 @@ private func drawBeat(
         var subPath = Path()
         subPath.move(to: CGPoint(x: x, y: lanes.top))
         subPath.addLine(to: CGPoint(x: x, y: lanes.bottom))
-        context.stroke(subPath, with: .color(Theme.black.opacity(isEighth ? 0.12 : 0.055)), lineWidth: isEighth ? 0.75 : 0.5)
+        context.stroke(subPath, with: .color(Theme.black.opacity(isEighth ? 0.16 : 0.07)), lineWidth: isEighth ? 0.85 : 0.55)
         let dotRadius: CGFloat = isEighth ? 2.2 : 1.7
         context.fill(Path(ellipseIn: CGRect(x: x - dotRadius, y: lanes.countY - dotRadius, width: dotRadius * 2, height: dotRadius * 2)),
                      with: .color(Theme.black.opacity(isEighth ? 0.58 : 0.36)))
@@ -894,15 +941,17 @@ private func drawMarker(x: CGFloat, top: CGFloat, bottom: CGFloat, context: inou
     var path = Path()
     path.move(to: CGPoint(x: x, y: top))
     path.addLine(to: CGPoint(x: x, y: bottom))
-    context.stroke(path, with: .color(Theme.black.opacity(0.26)), style: StrokeStyle(lineWidth: 7.5, lineCap: .round))
-    context.stroke(path, with: .color(Theme.black.opacity(0.78)), style: StrokeStyle(lineWidth: 4.2, lineCap: .round))
-    context.stroke(path, with: .color(Theme.white), style: StrokeStyle(lineWidth: 2.0, lineCap: .round))
+    context.stroke(path, with: .color(Theme.orange.opacity(0.42)), style: StrokeStyle(lineWidth: 14, lineCap: .round))
+    context.stroke(path, with: .color(Color(red: 1, green: 0.82, blue: 0.55).opacity(0.72)), style: StrokeStyle(lineWidth: 6.5, lineCap: .round))
+    context.stroke(path, with: .color(Theme.black.opacity(0.35)), style: StrokeStyle(lineWidth: 4.0, lineCap: .round))
+    context.stroke(path, with: .color(Theme.white), style: StrokeStyle(lineWidth: 2.4, lineCap: .round))
     var cap = Path()
-    cap.move(to: CGPoint(x: x - 5.5, y: top - 3.5))
-    cap.addLines([CGPoint(x: x + 5.5, y: top - 3.5), CGPoint(x: x, y: top + 3.5)])
+    cap.move(to: CGPoint(x: x - 6.0, y: top - 4.0))
+    cap.addLines([CGPoint(x: x + 6.0, y: top - 4.0), CGPoint(x: x, y: top + 4.0)])
     cap.closeSubpath()
+    context.stroke(cap, with: .color(Theme.orange.opacity(0.55)), style: StrokeStyle(lineWidth: 4.0, lineJoin: .round))
     context.fill(cap, with: .color(Theme.white))
-    context.stroke(cap, with: .color(Theme.black.opacity(0.85)), style: StrokeStyle(lineWidth: 1.5, lineJoin: .round))
+    context.stroke(cap, with: .color(Theme.black.opacity(0.7)), style: StrokeStyle(lineWidth: 1.2, lineJoin: .round))
 }
 
 /// A thin ruler (8 pt high) along the top edge of the orange band, spanning the band width.
@@ -1178,23 +1227,26 @@ private struct BandVelocityMeter: View {
     private let segmentCount = 4
 
     var body: some View {
-        VStack(spacing: 1.5) {
+        VStack(spacing: 2) {
             ForEach((0..<segmentCount).reversed(), id: \.self) { index in
                 let threshold = Double(index) / Double(segmentCount)
                 let fill = max(0, min(1, (level - threshold) * Double(segmentCount)))
                 let activeColor = index == segmentCount - 1
-                    ? Color(red: 1, green: 0.78, blue: 0.35)
+                    ? Color(red: 1, green: 0.85, blue: 0.42)
                     : Theme.orange
-                RoundedRectangle(cornerRadius: 1)
-                    .fill(Theme.white.opacity(0.16))
+                RoundedRectangle(cornerRadius: 1.5)
+                    .fill(Theme.white.opacity(0.14))
                     .overlay {
-                        RoundedRectangle(cornerRadius: 1)
+                        RoundedRectangle(cornerRadius: 1.5)
                             .fill(activeColor)
                             .opacity(fill)
+                            .shadow(color: activeColor.opacity(fill * 0.7), radius: 2.5)
                     }
             }
         }
-        .frame(width: 7, height: max(14, height))
+        .padding(1.5)
+        .background(Color.black.opacity(0.45), in: RoundedRectangle(cornerRadius: 3))
+        .frame(width: 11, height: max(18, height))
         .accessibilityHidden(true)
     }
 }
@@ -1205,6 +1257,7 @@ private struct BandMarginRowIndicator: View {
     let session: PracticeSession?
     let padIndex: Int
     let iconSize: CGFloat
+    let rowHeight: CGFloat
     let name: String
     let onTap: () -> Void
 
@@ -1220,20 +1273,31 @@ private struct BandMarginRowIndicator: View {
                 return reduceMotion ? peak : peak * (1 - phase)
             }()
             let press = isStriking ? (phase < 0.22 ? phase / 0.22 : (1 - phase) / 0.78) : 0
-            let glyphScale: CGFloat = (!reduceMotion && isStriking) ? (1.0 - 0.14 * CGFloat(press)) : 1.0
+            let glyphScale: CGFloat = (!reduceMotion && isStriking) ? (1.0 - 0.12 * CGFloat(press)) : 1.0
+            let badgeSize = max(iconSize + 6, min(rowHeight - 6, iconSize + 10))
+            let meterHeight = min(rowHeight - 6, max(18, iconSize * 1.15))
 
             HStack(spacing: 6) {
                 Button(action: onTap) {
                     DrumGlyph(kind: DrumKind.forPad(padIndex))
                         .frame(width: iconSize, height: iconSize)
                         .scaleEffect(glyphScale)
-                        .foregroundStyle(isStriking ? Theme.white : Theme.white.opacity(0.88))
+                        .foregroundStyle(isStriking ? Theme.white : Theme.white.opacity(0.92))
+                        .frame(width: badgeSize, height: badgeSize)
+                        .background(
+                            RoundedRectangle(cornerRadius: 6, style: .continuous)
+                                .fill(isStriking ? Theme.orange.opacity(0.24) : Theme.white.opacity(0.06))
+                        )
+                        .overlay {
+                            RoundedRectangle(cornerRadius: 6, style: .continuous)
+                                .strokeBorder(isStriking ? Theme.orange.opacity(0.85) : Theme.white.opacity(0.12), lineWidth: 1)
+                        }
                         .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
                 .accessibilityLabel(name)
 
-                BandVelocityMeter(level: velocityLevel, height: iconSize * 0.9)
+                BandVelocityMeter(level: velocityLevel, height: meterHeight)
             }
         }
     }
@@ -1267,6 +1331,7 @@ private struct BandMarginView: View {
                             session: session,
                             padIndex: pad,
                             iconSize: iconSize,
+                            rowHeight: layout.rowHeight,
                             name: name
                         ) {
                             withAnimation(Theme.Motion.fast) {
