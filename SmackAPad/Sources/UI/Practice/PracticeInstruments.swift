@@ -5,7 +5,7 @@ enum PracticeHardware {
     static let chassis = color(0x0C0C0E)
     static let panel = color(0x141417)
     static let border = color(0x26262B)
-    static let orange = color(0xFF6B00)
+    static var orange: Color { Theme.orange }
     static let displayBottom = color(0xE04E00)
     static let playheadGlow = color(0xFF9E44)
     static let strikeGlow = color(0xFFD1A6)
@@ -63,7 +63,7 @@ struct PracticeTransportPadStyle: ButtonStyle {
 enum PracticeBandStyle {
     static let showPadLabels = true
     static let rowGap: CGFloat = 8
-    static let orange = PracticeHardware.orange
+    static var orange: Color { PracticeHardware.orange }
 
     static let minRowHeight: CGFloat = 36
     static let maxRowHeight: CGFloat = 74

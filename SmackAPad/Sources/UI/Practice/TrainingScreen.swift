@@ -54,6 +54,7 @@ public struct TrainingScreen: View {
     @State private var selectedNodeId: Int?
     @State private var showingStudioRig = false
     @State private var studioRigHighlightedKitId: String?
+    @State private var selectedBonusTrack: BonusJamTrack?
 
     @AppStorage(TodayPlan.storageKey) private var savedTodayPlan = ""
     @AppStorage("smackapad.training.dailyMixes") private var dailyMixes = "{}"
@@ -117,7 +118,7 @@ public struct TrainingScreen: View {
 
     private var hasActiveCover: Bool {
         selectedLesson != nil || selectedAfterMeLesson != nil || mixPresentation != nil
-            || todayPractice != nil || daySummary != nil
+            || todayPractice != nil || daySummary != nil || selectedBonusTrack != nil
     }
 
     private var continueTarget: TodayContinueTarget? {
@@ -148,64 +149,24 @@ public struct TrainingScreen: View {
     public var body: some View {
         NavigationStack {
             GeometryReader { geometry in
-                let isLandscape = geometry.size.width >= 768 && geometry.size.width > geometry.size.height
-
-                Group {
-                    if isLandscape {
-                        VStack(alignment: .leading, spacing: Theme.Space.controlGap) {
-                            header
-                            if let data {
-                                drummerTopBar(data: data, isCompact: false)
-                                HStack(alignment: .top, spacing: Theme.Space.regular) {
-                                    pathMapPanel(data: data)
-                                        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-
-                                    rightSummaryPanel(data: data)
-                                        .frame(width: min(390, max(310, geometry.size.width * 0.36)), alignment: .topLeading)
-                                }
-                                .frame(maxHeight: .infinity, alignment: .top)
-                            } else {
-                                ProgressView()
-                                    .frame(maxWidth: .infinity, maxHeight: .infinity)
-                                    .accessibilityLabel(settings.localized("Training"))
-                            }
-                        }
-                        .padding(.horizontal, Theme.Space.page)
-                        .padding(.vertical, Theme.Space.regular)
-                        .frame(maxWidth: 1240, maxHeight: .infinity, alignment: .topLeading)
-                        .frame(maxWidth: .infinity, maxHeight: .infinity)
-                    } else {
-                        ScrollView {
-                            VStack(alignment: .leading, spacing: Theme.Space.controlGap) {
-                                header
-                                if let data {
-                                    drummerTopBar(data: data, isCompact: true)
-                                    pathMapPanel(data: data)
-                                    rightSummaryPanel(data: data)
-                                } else {
-                                    ProgressView()
-                                        .frame(maxWidth: .infinity, minHeight: 160)
-                                        .accessibilityLabel(settings.localized("Training"))
-                                }
-                                Spacer(minLength: Theme.Space.regular)
-                            }
-                            .padding(Theme.Space.regular)
-                            .frame(maxWidth: 920, alignment: .leading)
-                            .frame(maxWidth: .infinity)
-                        }
-                    }
-                }
+                trainingContent(in: geometry.size)
             }
             .calmChassisBackground()
             .navigationBarBackButtonHidden(true)
             .toolbar(.hidden, for: .navigationBar)
             .sheet(isPresented: $showingStudioRig) {
-                StudioRigQuickSheet(
-                    highlightedKitId: studioRigHighlightedKitId,
-                    onOpenLibrary: {
-                        onHome()
-                        AppNavigation.shared.openLibrary(.none)
-                    }
+                studioRigSheet
+            }
+            .calmCover(item: $selectedBonusTrack, onDismiss: {
+                isVisible = true
+                refreshTrainingData()
+            }) { track in
+                PracticeScreen(
+                    lesson: track.asLesson(),
+                    settings: settings,
+                    progress: progress,
+                    midi: midi,
+                    unscored: true
                 )
             }
             .navigationDestination(isPresented: $showingQueue) {
@@ -337,6 +298,76 @@ public struct TrainingScreen: View {
 
     // MARK: - Drummer's Path Panels
 
+    @ViewBuilder
+    private func trainingContent(in size: CGSize) -> some View {
+        let isLandscape = size.width >= 768 && size.width > size.height
+        let summaryWidth: CGFloat = min(370, max(300, size.width * 0.31))
+
+        if isLandscape {
+            VStack(alignment: .leading, spacing: Theme.Space.controlGap) {
+                header
+                if let data {
+                    drummerTopBar(data: data, isCompact: false)
+                    HStack(alignment: .top, spacing: Theme.Space.regular) {
+                        pathMapPanel(data: data)
+                            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+
+                        rightSummaryPanel(data: data)
+                            .frame(maxHeight: .infinity, alignment: .topLeading)
+                            .frame(width: summaryWidth)
+                    }
+                    .frame(maxHeight: .infinity, alignment: .top)
+                } else {
+                    ProgressView()
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                        .accessibilityLabel(settings.localized("Training"))
+                }
+            }
+            .padding(.horizontal, Theme.Space.page)
+            .padding(.vertical, Theme.Space.regular)
+            .frame(maxWidth: 1280, maxHeight: .infinity, alignment: .topLeading)
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+        } else {
+            ScrollView {
+                VStack(alignment: .leading, spacing: Theme.Space.controlGap) {
+                    header
+                    if let data {
+                        drummerTopBar(data: data, isCompact: true)
+                        pathMapPanel(data: data)
+                        rightSummaryPanel(data: data)
+                    } else {
+                        ProgressView()
+                            .frame(maxWidth: .infinity, minHeight: 160)
+                            .accessibilityLabel(settings.localized("Training"))
+                    }
+                    Spacer(minLength: Theme.Space.regular)
+                }
+                .padding(Theme.Space.regular)
+                .frame(maxWidth: 920, alignment: .leading)
+                .frame(maxWidth: .infinity)
+            }
+        }
+    }
+
+    private var studioRigSheet: some View {
+        StudioRigQuickSheet(
+            highlightedKitId: studioRigHighlightedKitId,
+            onOpenKitLessons: { kit in
+                refreshTrainingData()
+                onHome()
+                AppNavigation.shared.openLibrary(.kit(kit.kitId))
+            },
+            onPlayBonusTrack: { track in
+                guard !hasActiveCover else { return }
+                selectedBonusTrack = track
+            },
+            onOpenLibrary: {
+                onHome()
+                AppNavigation.shared.openLibrary(.none)
+            }
+        )
+    }
+
     private func drummerTopBar(data: TrainingData, isCompact: Bool) -> some View {
         DrummerBarView(
             card: data.drummerCard,
@@ -380,6 +411,7 @@ public struct TrainingScreen: View {
             WeeklyRhythmStrip(day: today, practiceDays: progress.trainingLog.practiceDays)
             compactAuxModesBlock
             compactToolsFooter
+            Spacer(minLength: 0)
         }
     }
 

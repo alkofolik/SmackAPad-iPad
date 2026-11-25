@@ -14,7 +14,31 @@ enum Theme {
     private static let plateCreamBottom = UIColor(hex: 0xDDD5C8)
     private static let cavityBlack = UIColor(hex: 0x0C0B0A)
 
-    static let orange = Color(red: 1, green: 107.0 / 255, blue: 0)
+    private static let skinLock = NSLock()
+    private nonisolated(unsafe) static var _activeSkinId: String =
+        UserDefaults.standard.string(forKey: SettingsKey.selectedInstrumentSkinId.rawValue) ?? StudioRigCatalog.defaultSkinId
+
+    static func setActiveSkinId(_ id: String) {
+        skinLock.lock()
+        _activeSkinId = id
+        skinLock.unlock()
+    }
+
+    static var activeSkin: InstrumentSkin {
+        skinLock.lock()
+        let id = _activeSkinId
+        skinLock.unlock()
+        return StudioRigCatalog.skin(forId: id) ?? StudioRigCatalog.skins[0]
+    }
+
+    static var orange: Color {
+        let hex = activeSkin.accentHex
+        return Color(
+            red: Double((hex >> 16) & 0xFF) / 255.0,
+            green: Double((hex >> 8) & 0xFF) / 255.0,
+            blue: Double(hex & 0xFF) / 255.0
+        )
+    }
     static let cavity = Color(uiColor: cavityBlack)
     static let black = Color(uiColor: softBlack)
     static let white = Color(uiColor: creamWhite)
@@ -34,7 +58,7 @@ enum Theme {
         dark: softBlack.withAlphaComponent(0.45)
     )
     /// One fill for an active or selected control.
-    static let activeFill = orange.opacity(0.24)
+    static var activeFill: Color { orange.opacity(0.24) }
     /// Unified warm brick red / terracotta for destructive actions (ticket 133).
     static let destructive = adaptive(
         light: UIColor(hex: 0xC0392B),
@@ -48,22 +72,22 @@ enum Theme {
         dark: UIColor(hex: 0x201E1B)
     )
     /// Inactive LED / off segment colour.
-    static let ledOff = starColor(for: 0)
+    static let ledOff = adaptive(
+        light: UIColor(hex: 0xD6D0C4),
+        dark: UIColor(hex: 0x3E3B36)
+    )
 
-    /// Star progression colours: not done grey, earned star full orange.
+    /// Star progression colours: not done grey, earned star full accent.
     static func starColor(for stars: Int) -> Color {
         switch stars {
         case 1, 2, 3:
             return orange
         default:
-            return adaptive(
-                light: UIColor(hex: 0xD6D0C4),
-                dark: UIColor(hex: 0x3E3B36)
-            )
+            return ledOff
         }
     }
 
-    /// Three-step progress bar segment colours: 3★ full orange, 2★ medium orange, 1★ light orange.
+    /// Three-step progress bar segment colours: 3★ full accent, 2★ medium, 1★ light.
     static func progressSegmentColor(for stars: Int) -> Color {
         switch stars {
         case 3:
@@ -73,7 +97,7 @@ enum Theme {
         case 1:
             return orange.opacity(0.38)
         default:
-            return starColor(for: 0)
+            return ledOff
         }
     }
 
@@ -214,7 +238,7 @@ enum Theme {
         enum LightBar {
             static let height: CGFloat = 2
             static let glowRadius: CGFloat = 3
-            static let glow = orange.opacity(0.8)
+            static var glow: Color { orange.opacity(0.8) }
         }
 
         /// CSS angles: 0° points up, 90° points right, 180° points down.

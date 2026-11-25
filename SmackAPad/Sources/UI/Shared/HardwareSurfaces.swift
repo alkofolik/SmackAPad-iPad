@@ -3,10 +3,46 @@ import SwiftUI
 /// Static and isolated from control state; the ribbing is rasterised with the chassis.
 private struct CalmChassisSurface: View, Equatable {
     let darkAppearance: Bool
+    let skinId: String
+
+    private var skin: InstrumentSkin {
+        StudioRigCatalog.skin(forId: skinId) ?? StudioRigCatalog.skins[0]
+    }
+
+    private var accentColor: Color {
+        Color(
+            red: Double((skin.accentHex >> 16) & 0xFF) / 255.0,
+            green: Double((skin.accentHex >> 8) & 0xFF) / 255.0,
+            blue: Double(skin.accentHex & 0xFF) / 255.0
+        )
+    }
+
+    private var chassisTint: Color {
+        Color(
+            red: Double((skin.chassisHex >> 16) & 0xFF) / 255.0,
+            green: Double((skin.chassisHex >> 8) & 0xFF) / 255.0,
+            blue: Double(skin.chassisHex & 0xFF) / 255.0
+        )
+    }
 
     var body: some View {
         Theme.Skin.gradient([Theme.Skin.Chassis.top, Theme.Skin.Chassis.bottom],
                             degrees: Theme.Skin.Chassis.angle)
+            .overlay {
+                if !skin.isDefault {
+                    chassisTint.opacity(darkAppearance ? 0.55 : 0.25)
+                }
+            }
+            .overlay(alignment: .top) {
+                if !skin.isDefault {
+                    LinearGradient(
+                        colors: [accentColor.opacity(darkAppearance ? 0.14 : 0.10), .clear],
+                        startPoint: .top,
+                        endPoint: .bottom
+                    )
+                    .frame(height: 180)
+                }
+            }
             .overlay {
                 Canvas { context, size in
                     for y in stride(from: CGFloat.zero, to: size.height, by: Theme.Skin.Chassis.ribPitch) {
@@ -26,10 +62,11 @@ private struct CalmChassisSurface: View, Equatable {
 
 private struct CalmChassisBackground: ViewModifier {
     @Environment(\.colorScheme) private var colorScheme
+    @Environment(SettingsManager.self) private var settings
 
     func body(content: Content) -> some View {
         content.background {
-            CalmChassisSurface(darkAppearance: colorScheme == .dark)
+            CalmChassisSurface(darkAppearance: colorScheme == .dark, skinId: settings.selectedInstrumentSkinId)
                 .equatable()
                 .ignoresSafeArea()
         }

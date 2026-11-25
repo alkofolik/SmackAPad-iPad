@@ -5,6 +5,7 @@ public enum LibraryLaunchTarget: Equatable, Sendable {
     case none
     case intro
     case lesson(Lesson)
+    case kit(String)
 }
 
 /// Three projections of the same catalogue, sharing stage access and saved progress.
@@ -43,6 +44,7 @@ struct LibraryScreen: View {
     @State private var pendingCategoryToHide: PendingHideTarget?
     @State private var isHiddenExpanded = false
     @State private var previewPlayer = LibraryPatternPreviewPlayer()
+    @State private var pendingKitId: String?
 
     private var isSearchVisible: Bool {
         isSearchOpen || !query.isEmpty
@@ -89,6 +91,11 @@ struct LibraryScreen: View {
             _selectedLesson = State(initialValue: .library(lesson, progress: initialProgress, today: AppCalendar.today()))
         } else {
             _selectedLesson = State(initialValue: nil)
+        }
+        if case .kit(let kitId) = launchTarget {
+            _pendingKitId = State(initialValue: kitId)
+        } else {
+            _pendingKitId = State(initialValue: nil)
         }
     }
 
@@ -237,6 +244,9 @@ struct LibraryScreen: View {
         .practiceLessonPresentation(launch: $selectedLesson, namespace: lessonNamespace)
         .onChange(of: selectedLesson?.id, initial: true) {
             if case .review(let lesson) = selectedLesson { onReviewOpen(lesson.id) }
+        }
+        .onAppear {
+            applyPendingKitSelectionIfNeeded()
         }
         .onChange(of: selectedLesson?.id) { _, id in
             if let id {
@@ -1172,6 +1182,29 @@ struct LibraryScreen: View {
         selections[LibraryViewMode.path.id] = stage.id
         expandedLevels.insert(stage.level)
         bannerPulse += 1
+    }
+
+    private func applyPendingKitSelectionIfNeeded() {
+        guard let kitId = pendingKitId else { return }
+        pendingKitId = nil
+        let genreGroups = catalog.groups(in: .genre)
+        if let match = genreGroups.first(where: { group in
+            group.lessons.contains { DrumKitCatalog.requiredKitId(for: $0) == kitId }
+        }) {
+            settings.libraryView = LibraryViewMode.genre.id
+            selections[LibraryViewMode.genre.id] = match.id
+            showingIntro = false
+            return
+        }
+        let pathGroups = catalog.groups(in: .path)
+        if let match = pathGroups.first(where: { group in
+            group.lessons.contains { DrumKitCatalog.requiredKitId(for: $0) == kitId }
+        }) {
+            settings.libraryView = LibraryViewMode.path.id
+            selections[LibraryViewMode.path.id] = match.id
+            if let lvl = match.stage?.level { expandedLevels.insert(lvl) }
+            showingIntro = false
+        }
     }
 }
 

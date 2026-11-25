@@ -1,6 +1,7 @@
+import AVFoundation
 import SwiftUI
 
-/// Compact top hardware strip showing Drummer Level, Rank, XP bar, 4 attributes, and Keys -> Studio Rig.
+/// Bold studio hardware card showing Drummer Level, Rank, thick XP bar, 4 attribute gauges, and Keys -> Studio Rig.
 @MainActor
 struct DrummerBarView: View {
     @Environment(SettingsManager.self) private var settings
@@ -15,8 +16,8 @@ struct DrummerBarView: View {
     var body: some View {
         Group {
             if isCompact {
-                VStack(alignment: .leading, spacing: Theme.Space.small) {
-                    HStack(spacing: Theme.Space.controlGap) {
+                VStack(alignment: .leading, spacing: Theme.Space.controlGap) {
+                    HStack(alignment: .center, spacing: Theme.Space.controlGap) {
                         levelAndRankBlock
                         Spacer(minLength: 8)
                         keysButton
@@ -26,7 +27,7 @@ struct DrummerBarView: View {
             } else {
                 HStack(spacing: Theme.Space.regular) {
                     levelAndRankBlock
-                        .frame(minWidth: 210, maxWidth: 260, alignment: .leading)
+                        .frame(minWidth: 250, maxWidth: 290, alignment: .leading)
 
                     hardwareDivider
 
@@ -40,87 +41,107 @@ struct DrummerBarView: View {
             }
         }
         .padding(.horizontal, Theme.Space.regular)
-        .padding(.vertical, 10)
-        .background(Theme.black, in: RoundedRectangle(cornerRadius: Theme.Radius.panel))
+        .padding(.vertical, 14)
+        .background(Color(red: 0.078, green: 0.078, blue: 0.090), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
         .overlay {
-            RoundedRectangle(cornerRadius: Theme.Radius.panel)
-                .strokeBorder(Theme.white.opacity(0.12), lineWidth: 1)
+            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                .strokeBorder(Color(red: 0.149, green: 0.149, blue: 0.169), lineWidth: 1.5)
         }
+        .shadow(color: Color.black.opacity(0.35), radius: 8, y: 3)
     }
 
     private var hardwareDivider: some View {
         Rectangle()
-            .fill(Theme.white.opacity(0.12))
-            .frame(width: 1, height: 32)
+            .fill(Color(red: 0.149, green: 0.149, blue: 0.169))
+            .frame(width: 1, height: 52)
             .accessibilityHidden(true)
     }
 
     private var levelAndRankBlock: some View {
-        VStack(alignment: .leading, spacing: 5) {
-            HStack(spacing: 6) {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack(spacing: 10) {
                 Text("LVL \(card.level)")
-                    .font(Theme.strong(13).monospacedDigit())
-                    .foregroundStyle(Theme.black)
-                    .padding(.horizontal, 7)
-                    .padding(.vertical, 2)
-                    .background(Theme.orange, in: RoundedRectangle(cornerRadius: 4))
+                    .font(.system(size: 16, weight: .black, design: .monospaced))
+                    .foregroundStyle(Color.black)
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 5)
+                    .background(Theme.orange, in: RoundedRectangle(cornerRadius: 6, style: .continuous))
+                    .shadow(color: Theme.orange.opacity(0.45), radius: 6, y: 1)
 
-                Text(card.rank.title)
-                    .font(Theme.strong(15))
-                    .foregroundStyle(Theme.white)
-                    .lineLimit(1)
-            }
-
-            HStack(spacing: 8) {
-                GeometryReader { geo in
-                    ZStack(alignment: .leading) {
-                        Capsule()
-                            .fill(Theme.white.opacity(0.14))
-                        Capsule()
-                            .fill(Theme.orange)
-                            .frame(width: max(4, geo.size.width * card.levelProgress))
-                    }
+                VStack(alignment: .leading, spacing: 1) {
+                    Text(card.rank.title)
+                        .font(Theme.boldDisplay(19))
+                        .foregroundStyle(Color.white)
+                        .lineLimit(1)
+                    Text("\(card.xp) / \(card.nextLevelXP) XP")
+                        .font(.system(size: 11, weight: .semibold, design: .monospaced))
+                        .foregroundStyle(Color.white.opacity(0.62))
+                        .lineLimit(1)
                 }
-                .frame(height: 4)
-
-                Text("\(card.xp)/\(card.nextLevelXP) XP")
-                    .font(Theme.caption.monospacedDigit())
-                    .foregroundStyle(Theme.white.opacity(0.62))
-                    .lineLimit(1)
-                    .fixedSize(horizontal: true, vertical: false)
             }
+
+            GeometryReader { geo in
+                ZStack(alignment: .leading) {
+                    Capsule()
+                        .fill(Color(red: 0.047, green: 0.047, blue: 0.055))
+                        .overlay {
+                            Capsule().strokeBorder(Color.white.opacity(0.10), lineWidth: 1)
+                        }
+                    Capsule()
+                        .fill(
+                            LinearGradient(
+                                colors: [Theme.orange, Theme.orange.opacity(0.82)],
+                                startPoint: .leading,
+                                endPoint: .trailing
+                            )
+                        )
+                        .frame(width: max(8, geo.size.width * card.levelProgress))
+                        .shadow(color: Theme.orange.opacity(0.55), radius: 5)
+                }
+            }
+            .frame(height: 8)
         }
         .accessibilityElement(children: .ignore)
         .accessibilityLabel("Level \(card.level), \(card.rank.title), \(card.xp) / \(card.nextLevelXP) XP")
     }
 
     private var attributesRow: some View {
-        HStack(spacing: Theme.Space.controlGap) {
+        HStack(spacing: Theme.Space.small) {
             ForEach(DrummerAttribute.allCases) { attr in
                 let value = card.attributes[attr]
-                VStack(alignment: .leading, spacing: 3) {
-                    HStack(spacing: 4) {
+                VStack(alignment: .leading, spacing: 4) {
+                    HStack(alignment: .firstTextBaseline, spacing: 4) {
                         Text(attr.code)
-                            .font(.system(size: 10, weight: .semibold, design: .monospaced))
-                            .foregroundStyle(Theme.white.opacity(0.58))
+                            .font(.system(size: 10, weight: .bold, design: .monospaced))
+                            .foregroundStyle(Color.white.opacity(0.58))
                             .lineLimit(1)
+                            .minimumScaleFactor(0.75)
                         Spacer(minLength: 2)
                         Text("\(value)")
-                            .font(.system(size: 12, weight: .bold, design: .monospaced))
-                            .foregroundStyle(Theme.white)
+                            .font(.system(size: 20, weight: .bold, design: .monospaced))
+                            .foregroundStyle(Color.white)
+                            .shadow(color: value > 0 ? Theme.orange.opacity(0.45) : .clear, radius: 5)
                     }
                     GeometryReader { geo in
                         ZStack(alignment: .leading) {
                             RoundedRectangle(cornerRadius: 2)
-                                .fill(Theme.white.opacity(0.12))
+                                .fill(Color.white.opacity(0.10))
                             RoundedRectangle(cornerRadius: 2)
-                                .fill(value > 0 ? Theme.orange.opacity(0.88) : Color.clear)
+                                .fill(value > 0 ? Theme.orange : Color.clear)
                                 .frame(width: geo.size.width * CGFloat(value) / 100.0)
+                                .shadow(color: value > 0 ? Theme.orange.opacity(0.5) : .clear, radius: 3)
                         }
                     }
-                    .frame(height: 3)
+                    .frame(height: 4)
                 }
+                .padding(.horizontal, 10)
+                .padding(.vertical, 8)
                 .frame(maxWidth: .infinity)
+                .background(Color(red: 0.047, green: 0.047, blue: 0.055), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+                .overlay {
+                    RoundedRectangle(cornerRadius: 8, style: .continuous)
+                        .strokeBorder(Color(red: 0.149, green: 0.149, blue: 0.169), lineWidth: 1)
+                }
                 .accessibilityElement(children: .ignore)
                 .accessibilityLabel("\(attr.title(language: language)) \(value)")
             }
@@ -129,32 +150,40 @@ struct DrummerBarView: View {
 
     private var keysButton: some View {
         Button(action: onOpenStudioRig) {
-            HStack(spacing: 8) {
-                Image(systemName: "key.fill")
-                    .font(.system(size: 13, weight: .semibold))
-                    .foregroundStyle(availableKeys > 0 ? Theme.orange : Theme.white.opacity(0.55))
+            HStack(spacing: 10) {
+                ZStack {
+                    RoundedRectangle(cornerRadius: 6, style: .continuous)
+                        .fill(availableKeys > 0 ? Theme.orange.opacity(0.22) : Color.white.opacity(0.06))
+                        .frame(width: 34, height: 34)
+                    Image(systemName: "key.fill")
+                        .font(.system(size: 16, weight: .bold))
+                        .foregroundStyle(availableKeys > 0 ? Theme.orange : Color.white.opacity(0.6))
+                        .shadow(color: availableKeys > 0 ? Theme.orange.opacity(0.7) : .clear, radius: 4)
+                }
 
-                VStack(alignment: .leading, spacing: 1) {
+                VStack(alignment: .leading, spacing: 2) {
                     Text("\(availableKeys) \(keysUnit(availableKeys))")
-                        .font(Theme.strong(14).monospacedDigit())
-                        .foregroundStyle(Theme.white)
-                    Text("Studio Rig")
-                        .font(.system(size: 11, weight: .medium))
-                        .foregroundStyle(Theme.white.opacity(0.6))
+                        .font(Theme.strong(15).monospacedDigit())
+                        .foregroundStyle(Color.white)
+                    Text("STUDIO RIG")
+                        .font(.system(size: 10, weight: .bold, design: .monospaced))
+                        .tracking(0.6)
+                        .foregroundStyle(availableKeys > 0 ? Theme.orange : Color.white.opacity(0.62))
                 }
 
                 Image(systemName: "chevron.right")
-                    .font(.system(size: 11, weight: .semibold))
-                    .foregroundStyle(Theme.white.opacity(0.45))
+                    .font(.system(size: 12, weight: .bold))
+                    .foregroundStyle(Color.white.opacity(0.5))
             }
             .padding(.horizontal, 12)
-            .padding(.vertical, 6)
-            .frame(minHeight: 40)
-            .background(Theme.white.opacity(0.07), in: RoundedRectangle(cornerRadius: Theme.Radius.button))
+            .padding(.vertical, 8)
+            .frame(minHeight: 54)
+            .background(Color(red: 0.118, green: 0.118, blue: 0.141), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
             .overlay {
-                RoundedRectangle(cornerRadius: Theme.Radius.button)
-                    .strokeBorder(availableKeys > 0 ? Theme.orange.opacity(0.55) : Theme.white.opacity(0.16), lineWidth: 1)
+                RoundedRectangle(cornerRadius: 8, style: .continuous)
+                    .strokeBorder(availableKeys > 0 ? Theme.orange : Color(red: 0.204, green: 0.204, blue: 0.239), lineWidth: 1.5)
             }
+            .shadow(color: availableKeys > 0 ? Theme.orange.opacity(0.32) : .clear, radius: 8, y: 2)
         }
         .buttonStyle(.plain)
         .accessibilityLabel("\(availableKeys) \(keysUnit(availableKeys)), Studio Rig")
@@ -172,74 +201,239 @@ struct DrummerBarView: View {
     }
 }
 
-/// Quick Studio Rig sheet opened from the Drummer Bar keys button or a locked-kit banner.
+/// Lightweight preview player for auditioning drum kits and bonus jam tracks inside Studio Rig.
+@MainActor
+@Observable
+final class StudioRigAudioPreview {
+    private(set) var playingItemId: String?
+
+    @ObservationIgnored private var playbackTask: Task<Void, Never>?
+    @ObservationIgnored private var ownsAudio = false
+
+    func toggleKitPreview(_ kitId: String, settings: SettingsManager) {
+        let itemId = "kit:\(kitId)"
+        if playingItemId == itemId {
+            stop(releaseAudio: false)
+            return
+        }
+        let demoHits: [LessonHit] = [
+            LessonHit(step: 0, padIndex: 12, hand: "L", velocity: 118),
+            LessonHit(step: 0, padIndex: 2, hand: "R", velocity: 102),
+            LessonHit(step: 2, padIndex: 11, hand: "R", velocity: 84),
+            LessonHit(step: 4, padIndex: 13, hand: "L", velocity: 114),
+            LessonHit(step: 4, padIndex: 11, hand: "R", velocity: 92),
+            LessonHit(step: 6, padIndex: 12, hand: "L", velocity: 96),
+            LessonHit(step: 8, padIndex: 12, hand: "L", velocity: 112),
+            LessonHit(step: 10, padIndex: 11, hand: "R", velocity: 86),
+            LessonHit(step: 12, padIndex: 13, hand: "L", velocity: 118),
+            LessonHit(step: 14, padIndex: 7, hand: "R", velocity: 98)
+        ]
+        playOnce(itemId: itemId, kitId: kitId, hits: demoHits, bpm: 108, bars: 1, settings: settings)
+    }
+
+    func toggleTrackPreview(_ track: BonusJamTrack, settings: SettingsManager) {
+        let itemId = "track:\(track.id)"
+        if playingItemId == itemId {
+            stop(releaseAudio: false)
+            return
+        }
+        playOnce(itemId: itemId, kitId: track.kitId, hits: track.hits, bpm: track.bpm, bars: track.bars, settings: settings)
+    }
+
+    func stop(releaseAudio: Bool) {
+        playbackTask?.cancel()
+        playbackTask = nil
+        playingItemId = nil
+        let audio = AudioEngine.practice
+        audio.stopPatternPlayback()
+        if releaseAudio, ownsAudio {
+            ownsAudio = false
+            audio.stop()
+        }
+    }
+
+    private func playOnce(
+        itemId: String,
+        kitId: String,
+        hits: [LessonHit],
+        bpm: Int,
+        bars: Int,
+        settings: SettingsManager
+    ) {
+        stop(releaseAudio: false)
+        playingItemId = itemId
+
+        let patternVolume = Float(settings.patternVolume) / 100
+        let trims = settings.instrumentTrims
+        let stepSeconds = 15.0 / Double(max(40, bpm))
+        let sortedHits = hits.sorted { $0.step < $1.step }
+        let barDuration = Double(max(1, bars) * 16) * stepSeconds
+
+        playbackTask = Task { @MainActor [weak self] in
+            guard let self else { return }
+            let audio = AudioEngine.practice
+            do {
+                _ = try await audio.prepare()
+                try Task.checkCancellation()
+                let kit = try await audio.loadKit(kitId)
+                try Task.checkCancellation()
+                guard self.playingItemId == itemId else { return }
+
+                audio.selectKit(kit)
+                audio.setPatternVolume(patternVolume)
+                audio.setInstrumentTrims(trims)
+                if !audio.isRunning {
+                    try audio.start()
+                    self.ownsAudio = true
+                }
+
+                let startSeconds = AVAudioTime.seconds(forHostTime: mach_absolute_time()) + 0.08
+                var sounds: [AudioEngine.ScheduledSound] = []
+                for loop in 0..<2 {
+                    let loopOffset = Double(loop) * barDuration
+                    for hit in sortedHits {
+                        let time = startSeconds + loopOffset + Double(max(0, hit.step)) * stepSeconds
+                        sounds.append(
+                            AudioEngine.ScheduledSound(
+                                audibleHostTime: AVAudioTime.hostTime(forSeconds: time),
+                                padIndex: hit.padIndex,
+                                velocity: hit.velocity
+                            )
+                        )
+                    }
+                }
+                audio.schedule(sounds) { _ in }
+                let totalSeconds = barDuration * 2 + 0.25
+                try await Task.sleep(for: .seconds(totalSeconds))
+                guard !Task.isCancelled, self.playingItemId == itemId else { return }
+                self.playingItemId = nil
+            } catch {
+                self.playingItemId = nil
+            }
+        }
+    }
+}
+
+/// Complete Studio Rig screen: 8 drum kits (unlock for 1 key + Test preview + open lessons),
+/// instrument skin switcher, and bonus jam tracks.
 @MainActor
 struct StudioRigQuickSheet: View {
     @Environment(SettingsManager.self) private var settings
     @Environment(ProgressStore.self) private var progress
+    @Environment(ProgressionManager.self) private var progression
     @Environment(\.dismiss) private var dismiss
 
     let highlightedKitId: String?
+    let onOpenKitLessons: (DrumKitDescriptor) -> Void
+    let onPlayBonusTrack: (BonusJamTrack) -> Void
     let onOpenLibrary: () -> Void
+
+    @State private var preview = StudioRigAudioPreview()
 
     private var language: AppLanguage { settings.languagePreference }
     private var availableKeys: Int { progress.drummerPath.availableKeys }
+    private var card: DrummerCardSnapshot { progress.drummerCard(catalog: progression.catalog) }
 
     var body: some View {
         NavigationStack {
             ScrollView {
-                VStack(alignment: .leading, spacing: Theme.Space.regular) {
-                    HStack {
-                        VStack(alignment: .leading, spacing: 4) {
-                            Text("Studio Rig")
-                                .font(Theme.screenTitle)
-                                .foregroundStyle(Theme.ink)
-                            Text(language == .czech
-                                 ? "Odemkni další sady bicích pomocí klíčů ze zkoušek etap a milníků."
-                                 : "Unlock drum kits using keys earned from stage exams and milestones.")
-                            .font(Theme.meta)
-                            .foregroundStyle(Theme.secondary)
-                        }
-                        Spacer()
-                        HStack(spacing: 6) {
-                            Image(systemName: "key.fill")
-                                .foregroundStyle(Theme.orange)
-                            Text("\(availableKeys)")
-                                .font(Theme.strong(18).monospacedDigit())
-                                .foregroundStyle(Theme.ink)
-                        }
-                        .padding(.horizontal, 12)
-                        .padding(.vertical, 8)
-                        .background(Theme.surface, in: RoundedRectangle(cornerRadius: Theme.Radius.button))
-                    }
+                VStack(alignment: .leading, spacing: Theme.Space.wide) {
+                    headerBanner
 
-                    LazyVGrid(columns: [GridItem(.adaptive(minimum: 220), spacing: Theme.Space.small)], spacing: Theme.Space.small) {
-                        ForEach(DrumKitCatalog.allKits) { kit in
-                            kitCard(kit)
-                        }
-                    }
+                    kitsSection
+
+                    skinsSection
+
+                    bonusTracksSection
 
                     Button {
+                        preview.stop(releaseAudio: true)
                         dismiss()
                         onOpenLibrary()
                     } label: {
                         HStack {
-                            Text(language == .czech ? "Otevřít knihovnu lekcí" : "Open Lesson Library")
+                            Text(language == .czech ? "Otevřít celou knihovnu lekcí" : "Open Full Lesson Library")
                                 .font(Theme.action)
                             Spacer()
                             Image(systemName: "arrow.up.right")
                         }
                         .padding(.horizontal, Theme.Space.regular)
-                        .frame(maxWidth: .infinity, minHeight: 48)
+                        .frame(maxWidth: .infinity, minHeight: 50)
                     }
                     .buttonStyle(PadSecondaryButtonStyle())
                 }
                 .padding(Theme.Space.page)
+                .frame(maxWidth: 980)
+                .frame(maxWidth: .infinity)
             }
-            .calmChassisBackground()
+            .background(Color(red: 0.047, green: 0.047, blue: 0.055).ignoresSafeArea())
+            .environment(\.colorScheme, .dark)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button(language == .czech ? "Hotovo" : "Done") { dismiss() }
+                    Button(language == .czech ? "Hotovo" : "Done") {
+                        preview.stop(releaseAudio: true)
+                        dismiss()
+                    }
+                    .foregroundStyle(Theme.orange)
+                }
+            }
+            .onDisappear {
+                preview.stop(releaseAudio: true)
+            }
+        }
+    }
+
+    private var headerBanner: some View {
+        HStack(spacing: Theme.Space.regular) {
+            VStack(alignment: .leading, spacing: 4) {
+                Text("STUDIO RIG")
+                    .font(Theme.boldDisplay(28))
+                    .foregroundStyle(Color.white)
+                Text(language == .czech
+                     ? "Odemykej sady bicích za klíče, testuj zvuk a přepínej vzhled přístroje."
+                     : "Unlock drum kits with keys, test each sound set, and customize your deck.")
+                .font(Theme.meta)
+                .foregroundStyle(Color.white.opacity(0.68))
+            }
+            Spacer(minLength: 12)
+            HStack(spacing: 8) {
+                Image(systemName: "key.fill")
+                    .font(.system(size: 16, weight: .bold))
+                    .foregroundStyle(Theme.orange)
+                    .shadow(color: Theme.orange.opacity(0.6), radius: 5)
+                Text("\(availableKeys)")
+                    .font(Theme.boldDisplay(22).monospacedDigit())
+                    .foregroundStyle(Color.white)
+                Text(keysLabel(availableKeys).uppercased())
+                    .font(.system(size: 11, weight: .bold, design: .monospaced))
+                    .foregroundStyle(Color.white.opacity(0.65))
+            }
+            .padding(.horizontal, 14)
+            .padding(.vertical, 10)
+            .background(Color(red: 0.078, green: 0.078, blue: 0.090), in: RoundedRectangle(cornerRadius: 10))
+            .overlay {
+                RoundedRectangle(cornerRadius: 10)
+                    .strokeBorder(availableKeys > 0 ? Theme.orange : Color(red: 0.149, green: 0.149, blue: 0.169), lineWidth: 1.5)
+            }
+        }
+    }
+
+    // MARK: - 1. 8 Drum Kits Grid
+
+    private var kitsSection: some View {
+        let unlockedCount = DrumKitCatalog.allKits.filter { progress.drummerPath.isKitUnlocked($0.kitId) }.count
+        return VStack(alignment: .leading, spacing: Theme.Space.controlGap) {
+            HStack {
+                sectionHeader(language == .czech ? "SADY BICÍCH (8)" : "DRUM KITS (8)")
+                Spacer()
+                Text("\(unlockedCount)/\(DrumKitCatalog.allKits.count)")
+                    .font(.system(size: 12, weight: .bold, design: .monospaced))
+                    .foregroundStyle(Theme.orange)
+            }
+
+            LazyVGrid(columns: [GridItem(.adaptive(minimum: 210), spacing: Theme.Space.controlGap)], spacing: Theme.Space.controlGap) {
+                ForEach(DrumKitCatalog.allKits) { kit in
+                    kitCard(kit)
                 }
             }
         }
@@ -247,48 +441,314 @@ struct StudioRigQuickSheet: View {
 
     private func kitCard(_ kit: DrumKitDescriptor) -> some View {
         let unlocked = progress.drummerPath.isKitUnlocked(kit.kitId)
+        let canUnlock = availableKeys >= kit.unlockCost
         let isHighlighted = kit.kitId == highlightedKitId
-        return VStack(alignment: .leading, spacing: 8) {
-            HStack {
-                Text(kit.name)
-                    .font(Theme.rowTitle)
-                    .foregroundStyle(Theme.ink)
-                Spacer()
+        let isTesting = preview.playingItemId == "kit:\(kit.kitId)"
+        let genres = kit.boundGenres.prefix(3).joined(separator: " · ")
+
+        return VStack(alignment: .leading, spacing: 10) {
+            HStack(alignment: .top, spacing: 8) {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(kit.name)
+                        .font(Theme.strong(17))
+                        .foregroundStyle(Color.white)
+                    Text(kit.studioTitle)
+                        .font(.system(size: 11, weight: .medium))
+                        .foregroundStyle(Color.white.opacity(0.6))
+                        .lineLimit(1)
+                }
+                Spacer(minLength: 4)
                 if unlocked {
                     Image(systemName: "checkmark.circle.fill")
+                        .font(.system(size: 16))
                         .foregroundStyle(Theme.orange)
                 } else {
-                    Image(systemName: "lock.fill")
-                        .foregroundStyle(Theme.secondary)
+                    HStack(spacing: 3) {
+                        Image(systemName: "key.fill")
+                            .font(.system(size: 10, weight: .bold))
+                        Text("\(kit.unlockCost)")
+                            .font(.system(size: 11, weight: .bold, design: .monospaced))
+                    }
+                    .foregroundStyle(canUnlock ? Theme.orange : Color.white.opacity(0.45))
+                    .padding(.horizontal, 7)
+                    .padding(.vertical, 3)
+                    .background(Color.white.opacity(0.06), in: Capsule())
                 }
             }
 
-            Text(kit.studioTitle)
-                .font(Theme.caption)
-                .foregroundStyle(Theme.secondary)
+            Text(genres)
+                .font(.system(size: 11))
+                .foregroundStyle(Color.white.opacity(0.5))
                 .lineLimit(1)
 
-            if unlocked {
-                Text(language == .czech ? "Odemčeno" : "Unlocked")
-                    .font(Theme.caption.weight(.semibold))
-                    .foregroundStyle(Theme.orange)
-            } else {
+            HStack(spacing: 8) {
                 Button {
-                    _ = progress.unlockKit(kit.kitId)
+                    preview.toggleKitPreview(kit.kitId, settings: settings)
                 } label: {
-                    Text(language == .czech ? "Odemknout (1 klíč)" : "Unlock (1 key)")
-                        .font(Theme.caption.weight(.semibold))
-                        .frame(maxWidth: .infinity, minHeight: 36)
+                    HStack(spacing: 4) {
+                        Image(systemName: isTesting ? "stop.fill" : "speaker.wave.2.fill")
+                            .font(.system(size: 11, weight: .bold))
+                        Text(isTesting ? (language == .czech ? "Stop" : "Stop") : "Test")
+                            .font(.system(size: 12, weight: .bold))
+                    }
+                    .foregroundStyle(isTesting ? Color.black : Color.white)
+                    .padding(.horizontal, 10)
+                    .frame(height: 36)
+                    .background(
+                        isTesting ? Theme.orange : Color(red: 0.118, green: 0.118, blue: 0.141),
+                        in: RoundedRectangle(cornerRadius: 6)
+                    )
+                    .overlay {
+                        RoundedRectangle(cornerRadius: 6)
+                            .strokeBorder(isTesting ? Theme.orange : Color(red: 0.204, green: 0.204, blue: 0.239), lineWidth: 1)
+                    }
                 }
-                .buttonStyle(PadPrimaryButtonStyle())
-                .disabled(availableKeys < kit.unlockCost)
+                .buttonStyle(.plain)
+
+                if unlocked {
+                    Button {
+                        preview.stop(releaseAudio: true)
+                        dismiss()
+                        onOpenKitLessons(kit)
+                    } label: {
+                        Text(language == .czech ? "Lekce" : "Lessons")
+                            .font(.system(size: 12, weight: .bold))
+                            .foregroundStyle(Color.white)
+                            .frame(maxWidth: .infinity, minHeight: 36)
+                            .background(Color(red: 0.118, green: 0.118, blue: 0.141), in: RoundedRectangle(cornerRadius: 6))
+                            .overlay {
+                                RoundedRectangle(cornerRadius: 6)
+                                    .strokeBorder(Theme.orange.opacity(0.65), lineWidth: 1)
+                            }
+                    }
+                    .buttonStyle(.plain)
+                } else {
+                    Button {
+                        let result = progress.unlockKit(kit.kitId)
+                        if case .unlocked = result {
+                            preview.stop(releaseAudio: true)
+                            dismiss()
+                            onOpenKitLessons(kit)
+                        }
+                    } label: {
+                        Text(language == .czech ? "Odemknout" : "Unlock")
+                            .font(.system(size: 12, weight: .bold))
+                            .foregroundStyle(canUnlock ? Color.black : Color.white.opacity(0.45))
+                            .frame(maxWidth: .infinity, minHeight: 36)
+                            .background(
+                                canUnlock ? Theme.orange : Color.white.opacity(0.06),
+                                in: RoundedRectangle(cornerRadius: 6)
+                            )
+                    }
+                    .buttonStyle(.plain)
+                    .disabled(!canUnlock)
+                }
             }
         }
-        .padding(Theme.Space.controlGap)
-        .background(Theme.surface, in: RoundedRectangle(cornerRadius: Theme.Radius.panel))
+        .padding(12)
+        .background(Color(red: 0.078, green: 0.078, blue: 0.090), in: RoundedRectangle(cornerRadius: 10, style: .continuous))
         .overlay {
-            RoundedRectangle(cornerRadius: Theme.Radius.panel)
-                .strokeBorder(isHighlighted ? Theme.orange : Theme.hairline, lineWidth: isHighlighted ? 1.5 : 1)
+            RoundedRectangle(cornerRadius: 10, style: .continuous)
+                .strokeBorder(
+                    isHighlighted ? Theme.orange : (unlocked ? Theme.orange.opacity(0.45) : Color(red: 0.149, green: 0.149, blue: 0.169)),
+                    lineWidth: isHighlighted ? 2 : 1.25
+                )
+        }
+        .contentShape(RoundedRectangle(cornerRadius: 10))
+        .onTapGesture {
+            if unlocked {
+                preview.stop(releaseAudio: true)
+                dismiss()
+                onOpenKitLessons(kit)
+            } else if canUnlock {
+                let result = progress.unlockKit(kit.kitId)
+                if case .unlocked = result {
+                    preview.stop(releaseAudio: true)
+                    dismiss()
+                    onOpenKitLessons(kit)
+                }
+            }
+        }
+    }
+
+    // MARK: - 2. Instrument Skin Switcher
+
+    private var skinsSection: some View {
+        VStack(alignment: .leading, spacing: Theme.Space.controlGap) {
+            sectionHeader(language == .czech ? "VZHLED PŘÍSTROJE" : "INSTRUMENT APPEARANCE")
+
+            LazyVGrid(columns: [GridItem(.adaptive(minimum: 210), spacing: Theme.Space.controlGap)], spacing: Theme.Space.controlGap) {
+                ForEach(StudioRigCatalog.skins) { skin in
+                    skinCard(skin)
+                }
+            }
+        }
+    }
+
+    private func skinCard(_ skin: InstrumentSkin) -> some View {
+        let unlocked = progress.drummerPath.isSkinUnlocked(skin.id)
+        let isSelected = settings.selectedInstrumentSkinId == skin.id
+        let accent = hexColor(skin.accentHex)
+        let chassis = hexColor(skin.chassisHex)
+        let pad = hexColor(skin.padSurfaceHex)
+
+        return Button {
+            guard unlocked else { return }
+            settings.selectedInstrumentSkinId = skin.id
+        } label: {
+            HStack(spacing: 12) {
+                HStack(spacing: 3) {
+                    RoundedRectangle(cornerRadius: 4).fill(chassis).frame(width: 14, height: 34)
+                    RoundedRectangle(cornerRadius: 4).fill(pad).frame(width: 14, height: 34)
+                    RoundedRectangle(cornerRadius: 4).fill(accent).frame(width: 14, height: 34)
+                        .shadow(color: accent.opacity(0.6), radius: 4)
+                }
+                .padding(4)
+                .background(Color.black.opacity(0.5), in: RoundedRectangle(cornerRadius: 6))
+
+                VStack(alignment: .leading, spacing: 2) {
+                    HStack(spacing: 6) {
+                        Text(skin.name)
+                            .font(Theme.strong(14))
+                            .foregroundStyle(Color.white)
+                            .lineLimit(1)
+                        if isSelected {
+                            Image(systemName: "checkmark.circle.fill")
+                                .font(.system(size: 13))
+                                .foregroundStyle(accent)
+                        } else if !unlocked {
+                            Image(systemName: "lock.fill")
+                                .font(.system(size: 11))
+                                .foregroundStyle(Color.white.opacity(0.45))
+                        }
+                    }
+                    Text(unlocked ? skin.subtitle : skin.unlockRequirement.description(language: language))
+                        .font(.system(size: 11))
+                        .foregroundStyle(Color.white.opacity(0.58))
+                        .lineLimit(2)
+                        .multilineTextAlignment(.leading)
+                }
+                Spacer(minLength: 0)
+            }
+            .padding(12)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(Color(red: 0.078, green: 0.078, blue: 0.090), in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+            .overlay {
+                RoundedRectangle(cornerRadius: 10, style: .continuous)
+                    .strokeBorder(isSelected ? accent : Color(red: 0.149, green: 0.149, blue: 0.169), lineWidth: isSelected ? 2 : 1)
+            }
+            .opacity(unlocked ? 1 : 0.65)
+        }
+        .buttonStyle(.plain)
+        .disabled(!unlocked)
+    }
+
+    // MARK: - 3. Bonus Jam Tracks
+
+    private var bonusTracksSection: some View {
+        VStack(alignment: .leading, spacing: Theme.Space.controlGap) {
+            sectionHeader(language == .czech ? "BONUSOVÉ JAM TRACKY" : "BONUS JAM TRACKS")
+
+            VStack(spacing: 8) {
+                ForEach(StudioRigCatalog.bonusTracks) { track in
+                    bonusTrackRow(track)
+                }
+            }
+        }
+    }
+
+    private func bonusTrackRow(_ track: BonusJamTrack) -> some View {
+        let unlocked = progress.drummerPath.isBonusTrackUnlocked(track.id)
+            || track.unlockRequirement.isSatisfied(by: progress.drummerPath, card: card)
+        let isPlaying = preview.playingItemId == "track:\(track.id)"
+
+        return HStack(spacing: 12) {
+            Image(systemName: unlocked ? "waveform" : "lock.fill")
+                .font(.system(size: 15, weight: .bold))
+                .foregroundStyle(unlocked ? Theme.orange : Color.white.opacity(0.42))
+                .frame(width: 36, height: 36)
+                .background(Color.white.opacity(0.06), in: RoundedRectangle(cornerRadius: 8))
+
+            VStack(alignment: .leading, spacing: 2) {
+                Text(track.title)
+                    .font(Theme.strong(15))
+                    .foregroundStyle(Color.white)
+                Text(unlocked
+                     ? "\(track.genre) · \(track.bpm) BPM · \(track.subtitle)"
+                     : track.unlockRequirement.description(language: language))
+                .font(.system(size: 12))
+                .foregroundStyle(Color.white.opacity(0.6))
+                .lineLimit(1)
+            }
+
+            Spacer(minLength: 8)
+
+            if unlocked {
+                Button {
+                    preview.toggleTrackPreview(track, settings: settings)
+                } label: {
+                    Image(systemName: isPlaying ? "stop.fill" : "speaker.wave.2.fill")
+                        .font(.system(size: 13, weight: .bold))
+                        .foregroundStyle(isPlaying ? Color.black : Color.white)
+                        .frame(width: 38, height: 36)
+                        .background(
+                            isPlaying ? Theme.orange : Color(red: 0.118, green: 0.118, blue: 0.141),
+                            in: RoundedRectangle(cornerRadius: 6)
+                        )
+                        .overlay {
+                            RoundedRectangle(cornerRadius: 6)
+                                .strokeBorder(Color(red: 0.204, green: 0.204, blue: 0.239), lineWidth: 1)
+                        }
+                }
+                .buttonStyle(.plain)
+
+                Button {
+                    preview.stop(releaseAudio: true)
+                    dismiss()
+                    onPlayBonusTrack(track)
+                } label: {
+                    Text(language == .czech ? "Hrát" : "Jam")
+                        .font(.system(size: 13, weight: .bold))
+                        .foregroundStyle(Color.black)
+                        .padding(.horizontal, 14)
+                        .frame(height: 36)
+                        .background(Theme.orange, in: RoundedRectangle(cornerRadius: 6))
+                }
+                .buttonStyle(.plain)
+            }
+        }
+        .padding(12)
+        .background(Color(red: 0.078, green: 0.078, blue: 0.090), in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+        .overlay {
+            RoundedRectangle(cornerRadius: 10, style: .continuous)
+                .strokeBorder(Color(red: 0.149, green: 0.149, blue: 0.169), lineWidth: 1)
+        }
+        .opacity(unlocked ? 1 : 0.72)
+    }
+
+    private func sectionHeader(_ title: String) -> some View {
+        Text(title)
+            .font(.system(size: 12, weight: .bold, design: .monospaced))
+            .tracking(0.8)
+            .foregroundStyle(Color.white.opacity(0.68))
+    }
+
+    private func hexColor(_ hex: UInt32) -> Color {
+        Color(
+            red: Double((hex >> 16) & 0xFF) / 255.0,
+            green: Double((hex >> 8) & 0xFF) / 255.0,
+            blue: Double(hex & 0xFF) / 255.0
+        )
+    }
+
+    private func keysLabel(_ count: Int) -> String {
+        switch language {
+        case .czech:
+            if count == 1 { return "klíč" }
+            if (2...4).contains(count) { return "klíče" }
+            return "klíčů"
+        case .english:
+            return count == 1 ? "key" : "keys"
         }
     }
 }

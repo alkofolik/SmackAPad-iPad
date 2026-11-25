@@ -39,16 +39,18 @@ struct DrummerPathMapView: View {
                 }
 
                 signalMapChassis(stage: stage)
+                    .frame(maxHeight: .infinity)
 
                 selectedNodeFooter(stage: stage)
             }
         }
         .padding(Theme.Space.regular)
-        .background(Theme.surface, in: RoundedRectangle(cornerRadius: Theme.Radius.panel))
+        .background(Color(red: 0.078, green: 0.078, blue: 0.090), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
         .overlay {
-            RoundedRectangle(cornerRadius: Theme.Radius.panel)
-                .strokeBorder(Theme.hairline, lineWidth: 1)
+            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                .strokeBorder(Color(red: 0.149, green: 0.149, blue: 0.169), lineWidth: 1.5)
         }
+        .shadow(color: Color.black.opacity(0.32), radius: 8, y: 3)
     }
 
     // MARK: - Stage Switcher
@@ -83,17 +85,18 @@ struct DrummerPathMapView: View {
                                 .font(.system(size: 11, weight: .medium, design: .monospaced))
                                 .opacity(0.72)
                         }
-                        .foregroundStyle(isSelected ? Theme.black : Theme.ink)
+                        .foregroundStyle(isSelected ? Color.black : Color.white)
                         .padding(.horizontal, 12)
-                        .frame(height: 36)
+                        .frame(height: 38)
                         .background(
-                            isSelected ? accent : Theme.background,
+                            isSelected ? accent : Color(red: 0.047, green: 0.047, blue: 0.055),
                             in: RoundedRectangle(cornerRadius: Theme.Radius.button)
                         )
                         .overlay {
                             RoundedRectangle(cornerRadius: Theme.Radius.button)
-                                .strokeBorder(isSelected ? accent : Theme.hairline, lineWidth: 1)
+                                .strokeBorder(isSelected ? accent : Color(red: 0.149, green: 0.149, blue: 0.169), lineWidth: 1.2)
                         }
+                        .shadow(color: isSelected ? accent.opacity(0.35) : .clear, radius: 5)
                     }
                     .buttonStyle(.plain)
                 }
@@ -157,29 +160,38 @@ struct DrummerPathMapView: View {
     private func signalMapChassis(stage: DrummerPathStageModel) -> some View {
         let accent = kitAccentColor(for: stage.primaryKit.kitId)
 
-        return VStack(alignment: .leading, spacing: 10) {
+        return VStack(alignment: .leading, spacing: 12) {
             HStack(spacing: 8) {
                 Circle()
                     .fill(accent)
-                    .frame(width: 7, height: 7)
+                    .frame(width: 8, height: 8)
+                    .shadow(color: accent.opacity(0.8), radius: 4)
                 Text(stage.topology.title(language: language).uppercased())
-                    .font(.system(size: 11, weight: .semibold, design: .monospaced))
-                    .foregroundStyle(Theme.white.opacity(0.68))
+                    .font(.system(size: 11, weight: .bold, design: .monospaced))
+                    .foregroundStyle(Color.white.opacity(0.75))
 
                 Text("·")
-                    .foregroundStyle(Theme.white.opacity(0.35))
+                    .foregroundStyle(Color.white.opacity(0.35))
 
-                Text(stage.primaryKit.name)
-                    .font(.system(size: 11, weight: .medium, design: .monospaced))
+                Text(stage.primaryKit.name.uppercased())
+                    .font(.system(size: 11, weight: .bold, design: .monospaced))
                     .foregroundStyle(accent)
 
                 Spacer()
 
-                Text(stage.isExamCompleted
-                     ? (language == .czech ? "Zkouška splněna" : "Exam passed")
-                     : (language == .czech ? "Zkouška etapy = +1 klíč" : "Stage exam = +1 key"))
-                .font(.system(size: 11, weight: .medium))
-                .foregroundStyle(stage.isExamCompleted ? Theme.orange : Theme.white.opacity(0.55))
+                HStack(spacing: 5) {
+                    Image(systemName: stage.isExamCompleted ? "checkmark.seal.fill" : "key.fill")
+                        .font(.system(size: 11, weight: .bold))
+                        .foregroundStyle(Theme.orange)
+                    Text(stage.isExamCompleted
+                         ? (language == .czech ? "Zkouška splněna" : "Exam passed")
+                         : (language == .czech ? "Zkouška etapy = +1 KEY" : "Stage exam = +1 KEY"))
+                    .font(.system(size: 11, weight: .bold, design: .monospaced))
+                    .foregroundStyle(stage.isExamCompleted ? Theme.orange : Color.white.opacity(0.78))
+                }
+                .padding(.horizontal, 9)
+                .padding(.vertical, 4)
+                .background(Color.white.opacity(0.06), in: Capsule())
             }
 
             GeometryReader { geo in
@@ -191,24 +203,39 @@ struct DrummerPathMapView: View {
                 )
 
                 ZStack {
+                    rackGridBackground
+
                     patchCableLayer(nodes: displayNodes, points: points, topology: stage.topology, accent: accent)
 
                     ForEach(Array(displayNodes.enumerated()), id: \.element.id) { idx, node in
                         if idx < points.count {
-                            nodeButton(node: node, accent: accent)
+                            nodeButton(node: node, stage: stage, accent: accent)
                                 .position(points[idx])
                         }
                     }
                 }
             }
-            .frame(height: 224)
+            .frame(minHeight: 270, maxHeight: .infinity)
         }
-        .padding(Theme.Space.controlGap)
-        .background(Color(red: 21/255, green: 20/255, blue: 18/255), in: RoundedRectangle(cornerRadius: Theme.Radius.panel))
+        .padding(Theme.Space.regular)
+        .background(Color(red: 0.047, green: 0.047, blue: 0.055), in: RoundedRectangle(cornerRadius: 10, style: .continuous))
         .overlay {
-            RoundedRectangle(cornerRadius: Theme.Radius.panel)
-                .strokeBorder(Theme.white.opacity(0.10), lineWidth: 1)
+            RoundedRectangle(cornerRadius: 10, style: .continuous)
+                .strokeBorder(Color(red: 0.149, green: 0.149, blue: 0.169), lineWidth: 1.25)
         }
+    }
+
+    private var rackGridBackground: some View {
+        Canvas { context, size in
+            let spacing: CGFloat = 24
+            for x in stride(from: spacing, to: size.width, by: spacing) {
+                for y in stride(from: spacing, to: size.height, by: spacing) {
+                    let dot = CGRect(x: x - 1, y: y - 1, width: 2, height: 2)
+                    context.fill(Path(ellipseIn: dot), with: .color(Color.white.opacity(0.06)))
+                }
+            }
+        }
+        .allowsHitTesting(false)
     }
 
     private func patchCableLayer(
@@ -238,25 +265,61 @@ struct DrummerPathMapView: View {
                     path.addLine(to: end)
                 }
 
+                // Dark outer cable sleeve
+                context.stroke(
+                    path,
+                    with: .color(Color.black.opacity(0.8)),
+                    style: StrokeStyle(lineWidth: 7, lineCap: .round)
+                )
+
                 let strokeColor: Color = if isActiveLink {
                     Theme.orange
                 } else if isLit {
-                    accent.opacity(0.85)
+                    accent
                 } else {
-                    Theme.white.opacity(0.16)
+                    Color(red: 0.20, green: 0.20, blue: 0.24)
                 }
 
-                context.stroke(
-                    path,
-                    with: .color(strokeColor),
-                    style: StrokeStyle(lineWidth: isLit ? 2.5 : 1.5, lineCap: .round)
-                )
+                if isActiveLink || isLit {
+                    var glowContext = context
+                    glowContext.addFilter(.shadow(color: strokeColor.opacity(0.75), radius: 6, x: 0, y: 0))
+                    glowContext.stroke(
+                        path,
+                        with: .color(strokeColor),
+                        style: StrokeStyle(lineWidth: isActiveLink ? 4.5 : 3.5, lineCap: .round)
+                    )
+                } else {
+                    context.stroke(
+                        path,
+                        with: .color(strokeColor),
+                        style: StrokeStyle(lineWidth: 2.5, lineCap: .round, dash: [6, 5])
+                    )
+                }
+
+                // Jack sockets at endpoints
+                for endpoint in [start, end] {
+                    let socket = CGRect(x: endpoint.x - 4, y: endpoint.y - 4, width: 8, height: 8)
+                    context.fill(Path(ellipseIn: socket), with: .color(strokeColor))
+                }
             }
         }
         .allowsHitTesting(false)
     }
 
-    private func nodeButton(node: DrummerPathNode, accent: Color) -> some View {
+    private func bossRewardTitle(for stage: DrummerPathStageModel) -> String {
+        if let lockedKit = stage.lockedKit {
+            return lockedKit.name
+        }
+        if let track = StudioRigCatalog.bonusTracks.first(where: {
+            if case .anyStageExamInLevel(let lvl) = $0.unlockRequirement { return lvl == stage.level }
+            return false
+        }) {
+            return track.title
+        }
+        return stage.primaryKit.name
+    }
+
+    private func nodeButton(node: DrummerPathNode, stage: DrummerPathStageModel, accent: Color) -> some View {
         let isFocused = focusedNode?.id == node.id
         let isCompleted = node.state == .completed
         let isActive = node.state == .active
@@ -264,64 +327,103 @@ struct DrummerPathMapView: View {
 
         let borderColor: Color = if isFocused || isActive {
             Theme.orange
+        } else if node.isBoss {
+            Theme.orange.opacity(isLocked ? 0.45 : 0.9)
         } else if isCompleted {
-            accent.opacity(0.85)
+            accent.opacity(0.9)
         } else {
-            Theme.white.opacity(0.18)
+            Color(red: 0.204, green: 0.204, blue: 0.239)
         }
 
         let fillColor: Color = if isActive {
-            Theme.orange.opacity(0.18)
+            Color(red: 0.16, green: 0.10, blue: 0.06)
+        } else if node.isBoss {
+            Color(red: 0.13, green: 0.11, blue: 0.09)
         } else if isCompleted {
-            Color(red: 34/255, green: 32/255, blue: 28/255)
+            Color(red: 0.118, green: 0.118, blue: 0.141)
         } else {
-            Color(red: 26/255, green: 25/255, blue: 22/255)
+            Color(red: 0.078, green: 0.078, blue: 0.090)
         }
+
+        let nodeWidth: CGFloat = node.isBoss ? 128 : 104
+        let nodeHeight: CGFloat = node.isBoss ? 88 : 74
+        let titleText = settings.localized(node.lesson.title)
 
         return Button {
             selectedNodeId = node.id
         } label: {
-            VStack(spacing: 3) {
-                HStack(spacing: 3) {
+            VStack(spacing: 4) {
+                HStack(spacing: 4) {
                     if node.isBoss {
                         Image(systemName: "key.fill")
                             .font(.system(size: 10, weight: .bold))
-                            .foregroundStyle(isCompleted || isActive ? Theme.orange : Theme.white.opacity(0.45))
+                            .foregroundStyle(Theme.orange)
                     } else if node.isSideQuest {
                         Image(systemName: "sparkles")
                             .font(.system(size: 10, weight: .bold))
                             .foregroundStyle(accent)
+                    } else if isCompleted {
+                        Image(systemName: "checkmark.circle.fill")
+                            .font(.system(size: 10, weight: .bold))
+                            .foregroundStyle(accent)
+                    } else if isLocked {
+                        Image(systemName: "lock.fill")
+                            .font(.system(size: 9, weight: .semibold))
+                            .foregroundStyle(Color.white.opacity(0.38))
+                    } else {
+                        Circle()
+                            .fill(Theme.orange)
+                            .frame(width: 6, height: 6)
                     }
 
-                    Text(node.isBoss ? "BOSS" : (node.isSideQuest ? "SIDE" : "\(node.orderIndex + 1)"))
-                        .font(.system(size: 11, weight: .bold, design: .monospaced))
-                        .foregroundStyle(isLocked ? Theme.white.opacity(0.42) : Theme.white)
-                }
+                    Text(node.isBoss ? "BOSS" : (node.isSideQuest ? "SIDE" : String(format: "%02d", node.orderIndex + 1)))
+                        .font(.system(size: 10, weight: .bold, design: .monospaced))
+                        .foregroundStyle(node.isBoss ? Theme.orange : (isLocked ? Color.white.opacity(0.45) : Color.white.opacity(0.75)))
 
-                if isCompleted {
-                    HStack(spacing: 2) {
+                    Spacer(minLength: 2)
+
+                    HStack(spacing: 1.5) {
                         ForEach(0..<3, id: \.self) { starIdx in
                             Image(systemName: starIdx < node.stars ? "star.fill" : "star")
                                 .font(.system(size: 8))
-                                .foregroundStyle(starIdx < node.stars ? Theme.orange : Theme.white.opacity(0.25))
+                                .foregroundStyle(starIdx < node.stars ? Theme.orange : Color.white.opacity(0.22))
                         }
                     }
-                } else if isLocked {
-                    Image(systemName: "lock.fill")
-                        .font(.system(size: 10))
-                        .foregroundStyle(Theme.white.opacity(0.35))
-                } else {
-                    Circle()
-                        .fill(Theme.orange)
-                        .frame(width: 6, height: 6)
+                }
+
+                Text(titleText)
+                    .font(.system(size: 11, weight: .semibold))
+                    .foregroundStyle(isLocked ? Color.white.opacity(0.48) : Color.white)
+                    .multilineTextAlignment(.leading)
+                    .lineLimit(2)
+                    .minimumScaleFactor(0.85)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
+
+                if node.isBoss {
+                    HStack(spacing: 4) {
+                        Text("+1 KEY")
+                            .font(.system(size: 9, weight: .black, design: .monospaced))
+                            .foregroundStyle(Color.black)
+                            .padding(.horizontal, 5)
+                            .padding(.vertical, 1.5)
+                            .background(Theme.orange, in: RoundedRectangle(cornerRadius: 3))
+                        Text(bossRewardTitle(for: stage))
+                            .font(.system(size: 9, weight: .semibold))
+                            .foregroundStyle(Color.white.opacity(0.85))
+                            .lineLimit(1)
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
                 }
             }
-            .frame(width: node.isBoss ? 68 : 58, height: 48)
-            .background(fillColor, in: RoundedRectangle(cornerRadius: 8))
+            .padding(.horizontal, 8)
+            .padding(.vertical, 6)
+            .frame(width: nodeWidth, height: nodeHeight)
+            .background(fillColor, in: RoundedRectangle(cornerRadius: 10, style: .continuous))
             .overlay {
-                RoundedRectangle(cornerRadius: 8)
-                    .strokeBorder(borderColor, lineWidth: isFocused ? 2 : 1.2)
+                RoundedRectangle(cornerRadius: 10, style: .continuous)
+                    .strokeBorder(borderColor, lineWidth: isFocused || isActive ? 2 : 1.25)
             }
+            .shadow(color: (isActive || isFocused) ? Theme.orange.opacity(0.35) : Color.black.opacity(0.45), radius: isActive || isFocused ? 8 : 4, y: 2)
         }
         .buttonStyle(.plain)
         .accessibilityLabel(nodeAccessibilityLabel(node))
@@ -338,10 +440,10 @@ struct DrummerPathMapView: View {
                     : (language == .czech ? "Hrát" : "Play")
 
                 HStack(spacing: Theme.Space.controlGap) {
-                    VStack(alignment: .leading, spacing: 2) {
+                    VStack(alignment: .leading, spacing: 3) {
                         HStack(spacing: 6) {
                             if node.isBoss {
-                                Text(language == .czech ? "ZKOUŠKA ETAPY · +1 KLÍČ" : "STAGE EXAM · +1 KEY")
+                                Text(language == .czech ? "ZKOUŠKA ETAPY · +1 KEY" : "STAGE EXAM · +1 KEY")
                                     .font(.system(size: 10, weight: .bold, design: .monospaced))
                                     .foregroundStyle(Theme.orange)
                             } else if node.isSideQuest {
@@ -351,13 +453,13 @@ struct DrummerPathMapView: View {
                             }
                             Text(settings.localized(node.lesson.title))
                                 .font(Theme.rowTitle)
-                                .foregroundStyle(Theme.ink)
+                                .foregroundStyle(Color.white)
                                 .lineLimit(1)
                         }
 
                         Text("\(node.lesson.targetBpm) BPM · \(node.requiredKit.name) · \(node.stars)/3 ★")
                             .font(Theme.caption.monospacedDigit())
-                            .foregroundStyle(Theme.secondary)
+                            .foregroundStyle(Color.white.opacity(0.65))
                     }
 
                     Spacer(minLength: 8)
@@ -373,6 +475,13 @@ struct DrummerPathMapView: View {
                     .buttonStyle(PadPrimaryButtonStyle())
                     .disabled(!canPlay)
                 }
+                .padding(.horizontal, 14)
+                .padding(.vertical, 10)
+                .background(Color(red: 0.047, green: 0.047, blue: 0.055), in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+                .overlay {
+                    RoundedRectangle(cornerRadius: 10, style: .continuous)
+                        .strokeBorder(Color(red: 0.149, green: 0.149, blue: 0.169), lineWidth: 1)
+                }
             }
         }
     }
@@ -381,12 +490,12 @@ struct DrummerPathMapView: View {
 
     private func windowedNodes(for stage: DrummerPathStageModel) -> [DrummerPathNode] {
         let all = stage.nodes
-        let maxNodes = 6
+        let maxNodes = 5
         guard all.count > maxNodes else { return all }
 
-        // Keep first nodes + active window + boss node so every topology fits cleanly without scroll.
+        // Keep first nodes + active window + boss node so every topology fits cleanly with roomy nodes.
         let activeIdx = all.firstIndex(where: { $0.state == .active }) ?? 0
-        let start = max(0, min(activeIdx - 2, all.count - maxNodes))
+        let start = max(0, min(activeIdx - 1, all.count - maxNodes))
         var slice = Array(all[start..<min(start + maxNodes - 1, all.count - 1)])
         if let boss = all.last {
             slice.append(boss)
@@ -401,50 +510,51 @@ struct DrummerPathMapView: View {
     ) -> [CGPoint] {
         let count = nodes.count
         guard count > 0 else { return [] }
-        let padX: CGFloat = 44
-        let usableW = max(120, size.width - padX * 2)
+        let padLeading: CGFloat = 58
+        let padTrailing: CGFloat = 70
+        let usableW = max(120, size.width - padLeading - padTrailing)
         let midY = size.height * 0.5
 
         switch topology {
         case .straightLine:
             return (0..<count).map { i in
                 let t = count == 1 ? 0.5 : CGFloat(i) / CGFloat(count - 1)
-                return CGPoint(x: padX + t * usableW, y: midY)
+                return CGPoint(x: padLeading + t * usableW, y: midY)
             }
 
         case .splitFork:
             guard count >= 5 else {
                 return nodeCoordinates(nodes: nodes, topology: .straightLine, in: size)
             }
-            let topY = size.height * 0.28
-            let botY = size.height * 0.72
+            let topY = size.height * 0.25
+            let botY = size.height * 0.75
             return (0..<count).map { i in
                 if i == 0 {
-                    return CGPoint(x: padX, y: midY)
+                    return CGPoint(x: padLeading, y: midY)
                 } else if i == 1 {
-                    return CGPoint(x: padX + usableW * 0.22, y: midY)
+                    return CGPoint(x: padLeading + usableW * 0.24, y: midY)
                 } else if i == count - 1 {
-                    return CGPoint(x: padX + usableW, y: midY)
+                    return CGPoint(x: padLeading + usableW, y: midY)
                 } else {
                     let branch = nodes[i].branchTrack ?? 0
                     let middleTotal = max(1, (count - 3 + 1) / 2)
                     let col = (i - 2) / 2
-                    let step = usableW * 0.46 / CGFloat(max(1, middleTotal))
-                    let x = padX + usableW * 0.44 + CGFloat(col) * step
+                    let step = usableW * 0.44 / CGFloat(max(1, middleTotal))
+                    let x = padLeading + usableW * 0.48 + CGFloat(col) * step
                     return CGPoint(x: x, y: branch == 0 ? topY : botY)
                 }
             }
 
         case .stepSequencer:
             let cols = 3
-            let row0Y = size.height * 0.30
-            let row1Y = size.height * 0.72
+            let row0Y = size.height * 0.27
+            let row1Y = size.height * 0.73
             return (0..<count).map { i in
                 let row = i / cols
                 let rawCol = i % cols
                 // Snake order: row 0 goes left->right, row 1 goes right->left.
                 let col = (row % 2 == 0) ? rawCol : (cols - 1 - rawCol)
-                let x = padX + (CGFloat(col) / CGFloat(max(1, cols - 1))) * usableW
+                let x = padLeading + (CGFloat(col) / CGFloat(max(1, cols - 1))) * usableW
                 let y = row == 0 ? row0Y : row1Y
                 return CGPoint(x: x, y: y)
             }
@@ -456,15 +566,15 @@ struct DrummerPathMapView: View {
             for (mIdx, node) in mainNodes.enumerated() {
                 mainIndexById[node.id] = mIdx
             }
-            let mainY = size.height * 0.36
+            let mainY = size.height * 0.30
             let sideY = size.height * 0.76
             return nodes.map { node in
                 if node.isSideQuest {
-                    return CGPoint(x: padX + usableW * 0.60, y: sideY)
+                    return CGPoint(x: padLeading + usableW * 0.62, y: sideY)
                 }
                 let mIdx = mainIndexById[node.id] ?? 0
                 let t = mainCount <= 1 ? 0.5 : CGFloat(mIdx) / CGFloat(mainCount - 1)
-                return CGPoint(x: padX + t * usableW, y: mainY)
+                return CGPoint(x: padLeading + t * usableW, y: mainY)
             }
         }
     }
