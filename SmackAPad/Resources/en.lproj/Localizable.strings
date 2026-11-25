@@ -3361,6 +3361,11 @@
 "Mix · optional" = "Mix · optional";
 "daySummary.title" = "DONE FOR\nTODAY";
 "training.doneForToday" = "Done for today";
+"home.today.done" = "Done for today";
+"%lld step · %lld min" = "%lld step · %lld min";
+"%lld steps · %lld min" = "%lld steps · %lld min";
+"Already know the basics? Skip to Path" = "Already know the basics? Skip to Path";
+"Basics skipped · Resume Intro" = "Basics skipped · Resume Intro";
 "training.now" = "now";
 "training.fromMemoryGoalTempo" = "from memory · goal tempo";
 "training.noReviews" = "No reviews";

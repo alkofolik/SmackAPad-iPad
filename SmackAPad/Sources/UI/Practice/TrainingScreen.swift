@@ -72,6 +72,7 @@ public struct TrainingScreen: View {
     private struct TrainingData {
         let dueLessons: [Lesson]
         let nextLesson: Lesson?
+        let followUpLesson: Lesson?
         var currentPlan: TodayPlan?
         let mixCandidates: [Lesson]
         let openLessonIDs: Set<Int>
@@ -1591,11 +1592,10 @@ public struct TrainingScreen: View {
             return cmp != .orderedSame ? cmp == .orderedAscending : $0.id < $1.id
         }
 
-        let source = NextLessonSource(rawValue: settings.nextLessonSource) ?? .path
-        let next = progression.nextLesson(after: lessonStore.lesson(for: settings.lastLessonID), source: source)
-            ?? progression.catalog.path.first
+        let dailyLessons = progression.dailyLessons(isAvailable: store.isUnlocked)
         let plan = TodayPlan.decode(savedTodayPlan, today: today) ?? TodayPlan.make(
-            day: today, dueLessonIDs: due.map(\.id), nextLessonID: next?.id, mixLessonIDs: mix.map(\.id))
+            day: today, dueLessonIDs: due.map(\.id), nextLessonID: dailyLessons.next?.id,
+            followUpLessonID: dailyLessons.followUp?.id, mixLessonIDs: mix.map(\.id))
         let afterMe = playableLessons.sorted {
             let leftMemory = records[$0.id]?.memory == true
             let rightMemory = records[$1.id]?.memory == true
@@ -1618,7 +1618,8 @@ public struct TrainingScreen: View {
 
         return TrainingData(
             dueLessons: due,
-            nextLesson: next,
+            nextLesson: dailyLessons.next,
+            followUpLesson: dailyLessons.followUp,
             currentPlan: plan?.reconcilingReviews(with: records),
             mixCandidates: candidates,
             openLessonIDs: openIDs,
@@ -1642,7 +1643,8 @@ public struct TrainingScreen: View {
         snapshot.mixLessons = ids.compactMap { byID[$0] }
         snapshot.currentPlan = TodayPlan.decode(savedTodayPlan, today: today)?.reconcilingReviews(with: progress.records)
             ?? TodayPlan.make(day: today, dueLessonIDs: snapshot.dueLessons.map(\.id),
-                              nextLessonID: snapshot.nextLesson?.id, mixLessonIDs: ids)
+                              nextLessonID: snapshot.nextLesson?.id, followUpLessonID: snapshot.followUpLesson?.id,
+                              mixLessonIDs: snapshot.mixLessons.map(\.id))
         data = snapshot
     }
 

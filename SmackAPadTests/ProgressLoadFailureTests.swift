@@ -20,21 +20,6 @@ final class ProgressLoadFailureTests: XCTestCase {
             .sorted { $0.lastPathComponent < $1.lastPathComponent }
     }
 
-    func testIntroPadPulseWaitsForSuccessfulProgressLoad() throws {
-        let url = try progressFile()
-        let store = ProgressStore(fileURL: url, autoLoad: false)
-        func pulses() -> Bool {
-            shouldPulseIntroPad(loadSucceeded: store.loadedSuccessfully, records: store.records, animationFinished: true)
-        }
-
-        XCTAssertFalse(pulses())
-        store.load()
-        XCTAssertTrue(pulses())
-        try Data("not json".utf8).write(to: url)
-        store.load()
-        XCTAssertFalse(pulses())
-    }
-
     func testCorruptFileLoadsEmptyAndKeepsOriginalBytesInOneBackup() throws {
         let original = Data("not json".utf8)
         let url = try progressFile(original)

@@ -159,15 +159,8 @@ enum TodayContinueTarget: Equatable {
             }
             return .step(plan)
         }
-        var steps: [TodayPlan.Step] = []
-        if let nextLessonID {
-            steps.append(.init(kind: .newLesson, lessonIDs: [nextLessonID]))
-        }
-        if mixLessonIDs.count >= LearningRules.minimumMixLessons {
-            steps.append(.init(kind: .mix, lessonIDs: mixLessonIDs))
-        }
-        guard !steps.isEmpty else { return nil }
-        return .step(TodayPlan(day: today, steps: steps))
+        return TodayPlan.make(day: today, dueLessonIDs: [], nextLessonID: nextLessonID, mixLessonIDs: mixLessonIDs)
+            .map { .step($0) }
     }
 }
 

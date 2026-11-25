@@ -1,17 +1,5 @@
 import SwiftUI
 
-func hasAnyLessonProgress(_ records: [Int: LessonProgress]) -> Bool {
-    records.values.contains { $0.hasPlayed || $0.passed || $0.mastery || $0.memory }
-}
-
-func shouldPulseIntroPad(
-    loadSucceeded: Bool,
-    records: [Int: LessonProgress],
-    animationFinished: Bool
-) -> Bool {
-    loadSucceeded && animationFinished && !hasAnyLessonProgress(records)
-}
-
 /// 3×3 pad grid (8 outer navigation pads + centre About logo pad) on Home.
 struct HomePadGrid: View {
     let cellSize: CGFloat
@@ -19,11 +7,9 @@ struct HomePadGrid: View {
     let plateVisible: Bool
     let padVisible: [Bool]
     let animationFinished: Bool
-    let introPadShouldPulse: Bool
     let todayPlan: TodayPlan?
     let lessonStore: LessonStore
     let homeNamespace: Namespace.ID
-    @AccessibilityFocusState.Binding var introFocused: Bool
     let onSelectToday: () -> Void
     let onOpenDestination: (HomePadDestination) -> Void
     let onNavigateToLibrary: (LibraryLaunchTarget) -> Void
@@ -150,7 +136,6 @@ struct HomePadGrid: View {
         HomePadView(
             title: localizedTitle("Intro"),
             subtitle: HomePadSubtitles.intro(),
-            isLit: introPadShouldPulse,
             padNumber: 4,
             cellSize: cellSize,
             isHero: false
@@ -159,7 +144,6 @@ struct HomePadGrid: View {
             onNavigateToLibrary(.intro)
             AppNavigation.shared.openLibrary(.intro)
         }
-        .accessibilityFocused($introFocused)
     }
 
     private var pad5: some View {

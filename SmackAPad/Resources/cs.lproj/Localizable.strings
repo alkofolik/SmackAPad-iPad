@@ -3366,6 +3366,11 @@
 "Mix · optional" = "Mix · nepovinný";
 "daySummary.title" = "HOTOVO\nNA DNEŠEK";
 "training.doneForToday" = "Hotovo na dnešek";
+"home.today.done" = "Hotovo pro dnešek";
+"%lld step · %lld min" = "%lld krok · %lld min";
+"%lld steps · %lld min" = "%lld kroky · %lld min";
+"Already know the basics? Skip to Path" = "Už základy umím · přejít na Cestu";
+"Basics skipped · Resume Intro" = "Základy přeskočeny · Vrátit se k Úvodu";
 "training.now" = "teď";
 "training.fromMemoryGoalTempo" = "zpaměti · cílové tempo";
 "training.noReviews" = "Žádné opakování";

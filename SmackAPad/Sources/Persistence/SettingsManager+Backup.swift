@@ -46,6 +46,7 @@ extension SettingsManager {
             userDefaults.removeObject(forKey: "smackapad.training.dueStepFilter")
             userDefaults.removeObject(forKey: "smackapad.library.hideCompleted")
             self.hideCompletedLessons = true
+            self.introSkipped = false
             for mode in ["path", "genre", "technique"] {
                 userDefaults.removeObject(forKey: "smackapad.library.hiddenCategories.\(mode)")
             }
@@ -88,6 +89,7 @@ extension SettingsManager {
                 reviewReminderEnabled: reviewReminderEnabled,
                 reviewReminderTime: reviewReminderTime,
                 hideCompletedLessons: hideCompletedLessons,
+                introSkipped: introSkipped,
                 hiddenCategoryIDsByMode: hiddenCategoryIDsByMode,
                 libraryView: libraryView,
                 libraryStarFilters: libraryStarFilters,
@@ -135,6 +137,7 @@ extension SettingsManager {
                 self.reviewReminderTime = time
             }
             self.hideCompletedLessons = settings.hideCompletedLessons
+            self.introSkipped = settings.introSkipped
             self.hiddenCategoryIDsByMode = settings.hiddenCategoryIDsByMode
             self.libraryView = settings.libraryView
             self.libraryStarFilters = settings.libraryStarFilters

@@ -91,6 +91,21 @@ public struct IntroScreen: View {
     public var body: some View {
         List {
             Section {
+                if !isAllIntroCompleted || settings.introSkipped {
+                    Button {
+                        settings.introSkipped.toggle()
+                    } label: {
+                        Text(settings.localized(settings.introSkipped
+                            ? "Basics skipped · Resume Intro"
+                            : "Already know the basics? Skip to Path"))
+                            .font(Theme.control)
+                            .multilineTextAlignment(.leading)
+                            .frame(minHeight: Theme.Size.touch)
+                    }
+                    .buttonStyle(PadSecondaryButtonStyle())
+                    .listRowSeparator(.hidden)
+                    .listRowBackground(Color.clear)
+                }
                 Button { showingRules = true } label: {
                     Label(settings.localized("Rules"), systemImage: "info.circle")
                         .font(Theme.control)

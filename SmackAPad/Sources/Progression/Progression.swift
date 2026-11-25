@@ -564,16 +564,54 @@ public final class ProgressionManager: @unchecked Sendable {
         return isStageOpen(stage)
     }
 
-    func nextLesson(after anchor: Lesson?, source: NextLessonSource) -> Lesson? {
-        let eligible: (Lesson) -> Bool = { self.isLessonOpen($0) && !self.progressStore.isPassed(lessonId: $0.id) }
-        if let anchor, eligible(anchor) { return lessonStore.lesson(for: anchor.id) ?? anchor }
+    func nextLesson(
+        after anchor: Lesson?, source: NextLessonSource, excludingAnchor: Bool = false,
+        isAvailable: (Lesson) -> Bool = { _ in true }
+    ) -> Lesson? {
+        let eightPads = settingsManager.activeProfile().isEightPad
+        func isPassed(_ lesson: Lesson) -> Bool { progressStore.isPassed(lessonId: lesson.id) }
+        func eligible(_ lesson: Lesson) -> Bool {
+            !(excludingAnchor && lesson.id == anchor?.id)
+                && !isPassed(lesson) && isAvailable(lesson)
+                && (!eightPads || EightPadLayout.slots(for: lesson) != nil)
+                && isLessonOpen(lesson)
+        }
+        if source == .path, !settingsManager.introSkipped {
+            // Some Intro exercises are also listed in the first library stage.
+            let path = catalog.path.lazy.filter { $0.cat != "intro" }
+            let useIntro: Bool
+            if anchor == nil || anchor?.cat == "intro" {
+                useIntro = true
+            } else if path.contains(where: { $0.id == anchor?.id }) {
+                useIntro = path.allSatisfy(isPassed)
+            } else {
+                useIntro = !path.contains(where: isPassed)
+            }
+            if useIntro, let intro = catalog.introLessons.first(where: eligible) { return intro }
+        }
+        if let anchor, source != .path || anchor.cat != "intro", eligible(anchor) {
+            return lessonStore.lesson(for: anchor.id) ?? anchor
+        }
         let candidates = catalog.candidates(after: anchor, source: source)
         let ordered: [Lesson]
         if let anchor, let index = candidates.firstIndex(where: { $0.id == anchor.id }) {
             ordered = Array(candidates.dropFirst(index + 1)) + Array(candidates.prefix(index + 1))
         } else { ordered = candidates }
-        return ordered.first(where: eligible)
-            ?? ([NextLessonSource.genre, .technique].contains(source) ? nextLesson(after: anchor, source: .path) : nil)
+        if let next = ordered.first(where: { (source != .path || $0.cat != "intro") && eligible($0) }) {
+            return next
+        }
+        guard source == .genre || source == .technique else { return nil }
+        return nextLesson(after: anchor, source: .path, excludingAnchor: excludingAnchor, isAvailable: isAvailable)
+    }
+
+    func dailyLessons(isAvailable: (Lesson) -> Bool) -> (next: Lesson?, followUp: Lesson?) {
+        let source = NextLessonSource(rawValue: settingsManager.nextLessonSource) ?? .path
+        let anchor = lessonStore.lesson(for: settingsManager.lastLessonID)
+        let next = nextLesson(after: anchor, source: source, isAvailable: isAvailable)
+        let followUp = next.flatMap {
+            nextLesson(after: $0, source: source, excludingAnchor: true, isAvailable: isAvailable)
+        }
+        return (next, followUp)
     }
 
     private func loadAndMigrateStages() {

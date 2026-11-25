@@ -196,6 +196,10 @@ public final class SettingsManager: @unchecked Sendable {
         didSet { userDefaults.set(hideCompletedLessons, forKey: "smackapad.library.hideCompleted") }
     }
 
+    public var introSkipped: Bool {
+        didSet { userDefaults.set(introSkipped, forKey: Self.introSkippedKey) }
+    }
+
     public var hiddenCategoryIDsByMode: [String: Set<String>] {
         didSet { persistHiddenCategories() }
     }
@@ -292,6 +296,7 @@ public final class SettingsManager: @unchecked Sendable {
             self.reviewReminderTime = Self.defaultReminderTime()
         }
         self.hideCompletedLessons = userDefaults.object(forKey: "smackapad.library.hideCompleted") as? Bool ?? true
+        self.introSkipped = userDefaults.bool(forKey: Self.introSkippedKey)
 
         var loadedHidden: [String: Set<String>] = [:]
         for mode in ["path", "genre", "technique"] {

@@ -40,6 +40,7 @@ public struct BackupSettings: Codable, Equatable, Sendable {
     public var reviewReminderEnabled: Bool
     public var reviewReminderTime: Date?
     public var hideCompletedLessons: Bool
+    public var introSkipped: Bool
     public var hiddenCategoryIDsByMode: [String: Set<String>]
     public var libraryView: String
     public var libraryStarFilters: [String]
@@ -74,6 +75,7 @@ public struct BackupSettings: Codable, Equatable, Sendable {
         reviewReminderEnabled: Bool = false,
         reviewReminderTime: Date? = nil,
         hideCompletedLessons: Bool = false,
+        introSkipped: Bool = false,
         hiddenCategoryIDsByMode: [String: Set<String>] = [:],
         libraryView: String = "categories",
         libraryStarFilters: [String] = [],
@@ -107,6 +109,7 @@ public struct BackupSettings: Codable, Equatable, Sendable {
         self.reviewReminderEnabled = reviewReminderEnabled
         self.reviewReminderTime = reviewReminderTime
         self.hideCompletedLessons = hideCompletedLessons
+        self.introSkipped = introSkipped
         self.hiddenCategoryIDsByMode = hiddenCategoryIDsByMode
         self.libraryView = libraryView
         self.libraryStarFilters = libraryStarFilters
@@ -126,6 +129,7 @@ public struct BackupSettings: Codable, Equatable, Sendable {
         case activeProfileName, customProfiles, languagePreference, appearance, metronomeVolume, padsVolume, patternVolume, instrumentTrims
         case playPadsWithKeyboard, fadeMemoryNotes, reviewReminderEnabled, reviewReminderTime, hideCompletedLessons
         case autoPeekMemory
+        case introSkipped
         case hiddenCategoryIDsByMode, libraryView, libraryStarFilters, nextLessonSource, lastLessonID
         case showPads, visibleBars, touchPadsInPortrait, scrolling, practiceAppearance
         case legendShownOnce, memoryHintShownLessonIds
@@ -154,6 +158,7 @@ public struct BackupSettings: Codable, Equatable, Sendable {
         self.reviewReminderEnabled = try c.decodeIfPresent(Bool.self, forKey: .reviewReminderEnabled) ?? false
         self.reviewReminderTime = try c.decodeIfPresent(Date.self, forKey: .reviewReminderTime)
         self.hideCompletedLessons = try c.decodeIfPresent(Bool.self, forKey: .hideCompletedLessons) ?? false
+        self.introSkipped = try c.decodeIfPresent(Bool.self, forKey: .introSkipped) ?? false
         self.hiddenCategoryIDsByMode = try c.decodeIfPresent([String: Set<String>].self, forKey: .hiddenCategoryIDsByMode) ?? [:]
         self.libraryView = try c.decodeIfPresent(String.self, forKey: .libraryView) ?? "categories"
         self.libraryStarFilters = try c.decodeIfPresent([String].self, forKey: .libraryStarFilters) ?? []

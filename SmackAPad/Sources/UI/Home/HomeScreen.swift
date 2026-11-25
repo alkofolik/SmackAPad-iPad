@@ -20,8 +20,6 @@ public struct HomeScreen: View {
     @AppStorage(TodayPlan.storageKey) private var savedTodayPlan = ""
     @AppStorage("smackapad.training.dailyMixes") private var dailyMixes = "{}"
     @State private var helpPresentation: HelpPresentation?
-    @State private var didFocusIntro = false
-    @AccessibilityFocusState private var introFocused: Bool
     @AccessibilityFocusState private var helpFocused: Bool
     @State private var calendarDay = AppCalendar.today()
     @State private var activeDestination: HomePadDestination?
@@ -114,11 +112,9 @@ public struct HomeScreen: View {
                     plateVisible: plateVisible,
                     padVisible: padVisible,
                     animationFinished: animationFinished,
-                    introPadShouldPulse: introPadShouldPulse,
                     todayPlan: todayPlan,
                     lessonStore: lessonStore,
                     homeNamespace: homeNamespace,
-                    introFocused: $introFocused,
                     onSelectToday: openToday,
                     onOpenDestination: { activeDestination = $0 },
                     onNavigateToLibrary: onNavigateToLibrary
@@ -158,12 +154,6 @@ public struct HomeScreen: View {
                 Task { await startHomeAudioIfNeeded() }
             } else {
                 stopHomeAudio()
-            }
-        }
-        .onChange(of: introFocusEligible, initial: true) { _, eligible in
-            if eligible {
-                didFocusIntro = true
-                introFocused = true
             }
         }
         #if DEBUG
@@ -405,18 +395,6 @@ public struct HomeScreen: View {
         AppNavigation.shared.route == .home && activeDestination == nil && helpPresentation == nil
     }
 
-    private var introPadShouldPulse: Bool {
-        shouldPulseIntroPad(
-            loadSucceeded: progress.loadedSuccessfully,
-            records: progress.records,
-            animationFinished: animationFinished
-        )
-    }
-
-    private var introFocusEligible: Bool {
-        introPadShouldPulse && homeIsIdle && scenePhase == .active && !didFocusIntro
-    }
-
     private func syncWithNavigationRoute(_ route: AppRoute) {
         switch route {
         case .home:
@@ -440,10 +418,9 @@ public struct HomeScreen: View {
 
     private var todayPlan: TodayPlan? {
         if let saved = TodayPlan.decode(savedTodayPlan, today: calendarDay) {
-            return saved.finished ? nil : saved
+            return saved.reconcilingReviews(with: progress.records)
         }
-        let source = NextLessonSource(rawValue: settings.nextLessonSource) ?? .path
-        let next = progression.nextLesson(after: lessonStore.lesson(for: settings.lastLessonID), source: source)
+        let lessons = progression.dailyLessons(isAvailable: store.isUnlocked)
         let openIDs = Set(progression.catalog.lessons.filter {
             store.isUnlocked($0) && progression.isLessonOpen($0)
         }.map(\.id))
@@ -457,7 +434,7 @@ public struct HomeScreen: View {
         let due = ReviewQueue.order(dueCandidates, records: progress.records, today: calendarDay)
         return TodayPlan.make(day: calendarDay,
             dueLessonIDs: due.map(\.id),
-            nextLessonID: next?.id, mixLessonIDs: mix.map(\.id))
+            nextLessonID: lessons.next?.id, followUpLessonID: lessons.followUp?.id, mixLessonIDs: mix.map(\.id))
     }
 
     private func preserveTodayPlan(for lessonID: Int) {

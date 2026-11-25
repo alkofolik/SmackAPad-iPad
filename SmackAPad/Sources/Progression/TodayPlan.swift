@@ -42,13 +42,21 @@ struct TodayPlan: Codable, Equatable {
     var reviewCount: Int { steps.filter { $0.kind == .review }.count }
     var hasNewLesson: Bool { steps.contains { $0.kind == .newLesson } }
 
-    var isFinished: Bool {
-        if finished || steps.isEmpty || index >= steps.count { return true }
-        return !steps.dropFirst(index).contains { step in
-            if step.kind == .review, step.outcome?.hasDecidedReview == true { return false }
-            if step.outcome?.played == true { return false }
-            return true
+    private var remainingSteps: [Step] {
+        guard !finished else { return [] }
+        return steps.dropFirst(index).filter { $0.outcome?.played != true }
+    }
+
+    var remainingStepCount: Int { remainingSteps.count }
+    var isFinished: Bool { remainingStepCount == 0 }
+
+    var estimatedMinutes: Int {
+        let remaining = remainingSteps
+        guard !remaining.isEmpty else { return 0 }
+        let minutes = remaining.reduce(0.0) { total, step in
+            total + (step.kind == .review ? 1.5 : 2.0)
         }
+        return max(2, Int(minutes.rounded()))
     }
 
     struct ReviewSummary: Equatable {
@@ -109,11 +117,19 @@ struct TodayPlan: Codable, Equatable {
     }
 
     /// `dueLessonIDs` comes from `ReviewQueue.order`, already ordered by fragility (lowest reviewStep first, then most days late, then earlier masteryDay, then lesson id).
-    static func make(day: String, dueLessonIDs: [Int], nextLessonID: Int?, mixLessonIDs: [Int]) -> TodayPlan? {
-        guard !dueLessonIDs.isEmpty else { return nil }
+    static func make(
+        day: String, dueLessonIDs: [Int], nextLessonID: Int?, followUpLessonID: Int? = nil, mixLessonIDs: [Int]
+    ) -> TodayPlan? {
         var steps = dueLessonIDs.prefix(LearningRules.dailyReviewLimit).map { Step(kind: .review, lessonIDs: [$0]) }
-        if let nextLessonID { steps.append(Step(kind: .newLesson, lessonIDs: [nextLessonID])) }
-        if mixLessonIDs.count >= LearningRules.minimumMixLessons { steps.append(Step(kind: .mix, lessonIDs: mixLessonIDs)) }
+        let hasMix = mixLessonIDs.count >= LearningRules.minimumMixLessons
+        if let nextLessonID {
+            steps.append(Step(kind: .newLesson, lessonIDs: [nextLessonID]))
+            if dueLessonIDs.isEmpty, !hasMix, let followUpLessonID, followUpLessonID != nextLessonID {
+                steps.append(Step(kind: .newLesson, lessonIDs: [followUpLessonID]))
+            }
+        }
+        if hasMix { steps.append(Step(kind: .mix, lessonIDs: mixLessonIDs)) }
+        guard !steps.isEmpty else { return nil }
         return TodayPlan(day: day, steps: steps)
     }
 

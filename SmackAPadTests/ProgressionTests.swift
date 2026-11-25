@@ -322,6 +322,73 @@ final class ProgressionTests: XCTestCase {
 
     // MARK: - Task 6: Intro Section Always Accessible
 
+    func testGuidedPathStartsAtIntroOneAndContinuesToPathAfterIntro() throws {
+        let (progression, progress, _) = makeIsolatedEnvironment()
+        let intro = progression.catalog.introLessons
+        let firstPathLesson = try XCTUnwrap(progression.catalog.path.first { $0.cat != "intro" })
+        XCTAssertEqual(intro.count, 25)
+        XCTAssertEqual(progression.nextLesson(after: nil, source: .path)?.id, 10001)
+        let daily = progression.dailyLessons { _ in true }
+        XCTAssertEqual(daily.next?.id, 10001)
+        XCTAssertEqual(daily.followUp?.id, 10002)
+
+        var anchor: Lesson?
+        for lesson in intro {
+            XCTAssertEqual(progression.nextLesson(after: anchor, source: .path)?.id, lesson.id)
+            progress.recordPass(lessonId: lesson.id)
+            anchor = lesson
+        }
+        XCTAssertEqual(progression.nextLesson(after: anchor, source: .path)?.id, firstPathLesson.id)
+    }
+
+    func testSkippingIntroStartsAtPathAndCanBeReversed() throws {
+        let (progression, _, _) = makeIsolatedEnvironment()
+        let intro = try XCTUnwrap(progression.catalog.introLessons.first)
+        let startOfPath = try XCTUnwrap(progression.catalog.path.first { $0.cat != "intro" })
+        XCTAssertFalse(progression.settingsManager.introSkipped)
+        progression.settingsManager.introSkipped = true
+        XCTAssertEqual(progression.nextLesson(after: intro, source: .path)?.id, startOfPath.id)
+        progression.settingsManager.introSkipped = false
+        XCTAssertEqual(progression.nextLesson(after: intro, source: .path)?.id, intro.id)
+    }
+
+    func testGuidedPathContinuesFromExistingPathAnchor() throws {
+        let (progression, progress, _) = makeIsolatedEnvironment()
+        let path = progression.catalog.path.filter { $0.cat != "intro" }
+        let anchor = try XCTUnwrap(path.first)
+        progress.recordPass(lessonId: anchor.id)
+        XCTAssertEqual(progression.nextLesson(after: anchor, source: .path)?.id, path.dropFirst().first?.id)
+
+        for lesson in path.dropFirst() { progress.recordPass(lessonId: lesson.id) }
+        XCTAssertEqual(progression.nextLesson(after: anchor, source: .path)?.id,
+                       progression.catalog.introLessons.first?.id)
+    }
+
+    func testGuidedAndDailyLessonsSkipSixteenPadOnlyIntroAndPathExercises() {
+        func lesson(_ id: Int, category: String, pads: Int) -> Lesson {
+            Lesson(id: id, cat: category, title: "Fixture \(id)", genre: "Rock", tags: [], text: "",
+                   division: 16, bars: 1, startBpm: 60, targetBpm: 80, level: 1, src: "Test",
+                   hits: (0..<pads).map { LessonHit(step: $0, padIndex: $0, hand: "R", velocity: 100) },
+                   access: "free")
+        }
+        let intro16 = lesson(10001, category: "intro", pads: 9)
+        let intro8 = lesson(10002, category: "intro", pads: 1)
+        let path16 = lesson(1, category: "eighth", pads: 9)
+        let path8 = lesson(2, category: "eighth", pads: 1)
+        let progress = ProgressStore(fileURL: tempDirectory.appendingPathComponent("progress.json"), autoLoad: false)
+        let settings = SettingsManager(userDefaults: testUserDefaults)
+        settings.activeProfileName = ControllerProfile.standard8.profileName
+        let store = LessonStore(sources: [FixtureSource(lessons: [intro16, intro8, path16, path8])])
+        let progression = ProgressionManager(lessonStore: store, progressStore: progress,
+                                             settingsManager: settings, userDefaults: testUserDefaults)
+
+        XCTAssertEqual(progression.nextLesson(after: intro16, source: .path)?.id, intro8.id)
+        XCTAssertEqual(progression.nextLesson(after: path16, source: .path)?.id, path8.id)
+        let daily = progression.dailyLessons { _ in true }
+        XCTAssertEqual(daily.next?.id, intro8.id)
+        XCTAssertEqual(daily.followUp?.id, path8.id)
+    }
+
     func testIntroSectionAlwaysAccessible() {
         let (progression, progressStore, lessonStore) = makeIsolatedEnvironment()
 

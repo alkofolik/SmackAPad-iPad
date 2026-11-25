@@ -232,9 +232,40 @@ final class TodayPlanTests: XCTestCase {
         }
     }
 
-    func testNoDueReviewsMeansNoTodayPlan() {
-        XCTAssertNil(TodayPlan.make(day: "2026-11-05", dueLessonIDs: [],
-                                   nextLessonID: 40, mixLessonIDs: [50, 60]))
+    func testFirstDayWithoutReviewsOrMixOffersTwoNewLessons() throws {
+        var plan = try XCTUnwrap(TodayPlan.make(day: "2026-11-05", dueLessonIDs: [], nextLessonID: 40,
+                                               followUpLessonID: 41, mixLessonIDs: []))
+        XCTAssertEqual(plan.steps.map(\.kind), [.newLesson, .newLesson])
+        XCTAssertEqual(plan.steps.map(\.lessonIDs), [[40], [41]])
+        XCTAssertEqual(plan.estimatedMinutes, 4)
+
+        plan.steps[0].outcome = .init(bestScore: 0.8)
+        XCTAssertEqual(plan.estimatedMinutes, 2)
+        plan.steps[1].outcome = .init(bestScore: 0.7)
+        XCTAssertEqual(plan.estimatedMinutes, 0)
+        XCTAssertTrue(plan.isFinished)
+    }
+
+    func testNoReviewsUsesMixWhenAvailableAndOmitsDuplicateFollowUp() {
+        let day = "2026-11-05"
+        let withMix = TodayPlan.make(day: day, dueLessonIDs: [], nextLessonID: 40,
+                                     followUpLessonID: 41, mixLessonIDs: [50, 60])
+        XCTAssertEqual(withMix?.steps.map(\.kind), [.newLesson, .mix])
+        XCTAssertEqual(withMix?.estimatedMinutes, 4)
+        let withoutMix = TodayPlan.make(day: day, dueLessonIDs: [], nextLessonID: 40,
+                                        followUpLessonID: 40, mixLessonIDs: [50])
+        XCTAssertEqual(withoutMix?.steps.map(\.lessonIDs), [[40]])
+        XCTAssertNil(TodayPlan.make(day: day, dueLessonIDs: [], nextLessonID: nil, mixLessonIDs: [50]))
+    }
+
+    func testEstimateUsesRemainingReviewsAndRoundsToWholeMinutes() throws {
+        var plan = try XCTUnwrap(TodayPlan.make(day: "2026-11-05", dueLessonIDs: [30, 31],
+                                               nextLessonID: 40, mixLessonIDs: []))
+        XCTAssertEqual(plan.estimatedMinutes, 5)
+        plan.index = 1
+        XCTAssertEqual(plan.estimatedMinutes, 4)
+        plan.finished = true
+        XCTAssertEqual(plan.estimatedMinutes, 0)
     }
 
     func testPostponeMovesDueDayToTomorrowAndPreservesStep() {

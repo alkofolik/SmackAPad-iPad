@@ -34,44 +34,6 @@ struct TactilePadButtonStyle: ButtonStyle {
     }
 }
 
-/// The breathing light bar along the top edge of a lit pad (Training with reviews due, ticket 112).
-struct PadLightBar: View {
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
-    @State private var breathing = false
-
-    var body: some View {
-        GeometryReader { geo in
-            let inset = geo.size.width * 0.22
-            VStack(spacing: 0) {
-                Capsule()
-                    .fill(Theme.orange)
-                    .frame(height: 2)
-                    .shadow(color: Theme.orange.opacity(0.8), radius: 3)
-                    .padding(.horizontal, inset)
-                    .padding(.top, 7)
-                    .opacity(Theme.Motion.Policy(reduced: reduceMotion).breathingOpacity(animating: breathing))
-                Spacer(minLength: 0)
-            }
-        }
-        .allowsHitTesting(false)
-        .onAppear {
-            guard !Theme.Motion.Policy(reduced: reduceMotion).reduced else { return }
-            withAnimation(Theme.Motion.ledBreath) {
-                breathing = true
-            }
-        }
-        .onChange(of: reduceMotion) { _, isReduced in
-            if isReduced {
-                breathing = false
-            } else {
-                withAnimation(Theme.Motion.ledBreath) {
-                    breathing = true
-                }
-            }
-        }
-    }
-}
-
 /// Pure subtitle and target helpers for the 8 Home pads so logic stays testable without views.
 enum HomePadSubtitles {
     static func singleLine(_ text: String) -> String {
@@ -83,10 +45,17 @@ enum HomePadSubtitles {
     }
 
     static func today(plan: TodayPlan?, language: AppLanguage) -> String? {
-        guard let plan, !plan.finished else { return nil }
-        let remaining = max(0, plan.steps.count - plan.index)
-        guard remaining > 0 else { return nil }
-        return singleLine(language.localizedLessonCount(remaining))
+        guard let plan else { return nil }
+        let remaining = plan.remainingStepCount
+        guard remaining > 0 else { return language.localized("home.today.done") }
+        let format = if remaining == 1 {
+            language.localized("%lld step · %lld min")
+        } else if language == .czech && remaining >= 5 {
+            "%lld kroků · %lld min"
+        } else {
+            language.localized("%lld steps · %lld min")
+        }
+        return String(format: format, locale: Locale(identifier: language.rawValue), remaining, plan.estimatedMinutes)
     }
 
     static func library() -> String? {
@@ -186,7 +155,6 @@ struct HomePadView: View {
     var numericTransitionValue: Int? = nil
     var accessibilityText: String? = nil
     var accessibilityValue: String? = nil
-    var isLit: Bool = false
     var padNumber: Int? = nil
     var cellSize: CGFloat = 146
     let isHero: Bool
@@ -221,10 +189,10 @@ struct HomePadView: View {
                 RoundedRectangle(cornerRadius: Theme.Radius.pad)
                     .fill(isHero ? Theme.orange : Theme.surface)
                     .shadow(
-                        color: isLit ? Theme.orange.opacity(0.4) : (isHero ? Theme.orange.opacity(0.25) : Theme.black.opacity(0.08)),
-                        radius: isLit ? 7 : (isHero ? 3 : 2),
+                        color: isHero ? Theme.orange.opacity(0.25) : Theme.black.opacity(0.08),
+                        radius: isHero ? 3 : 2,
                         x: 0,
-                        y: isLit ? 0 : (isHero ? 3 : 2)
+                        y: isHero ? 3 : 2
                     )
             )
             .overlay {
@@ -240,25 +208,9 @@ struct HomePadView: View {
                 .allowsHitTesting(false)
             }
             .overlay {
-                // Outline: 2 pt orange for lit state, 1 pt hairline (or black opacity for hero) otherwise
-                if isLit {
-                    RoundedRectangle(cornerRadius: Theme.Radius.pad)
-                        .strokeBorder(Theme.orange, lineWidth: 2)
-                        .allowsHitTesting(false)
-                } else if isHero {
-                    RoundedRectangle(cornerRadius: Theme.Radius.pad)
-                        .strokeBorder(Theme.black.opacity(0.12), lineWidth: 1)
-                        .allowsHitTesting(false)
-                } else {
-                    RoundedRectangle(cornerRadius: Theme.Radius.pad)
-                        .strokeBorder(Theme.hairline, lineWidth: 1)
-                        .allowsHitTesting(false)
-                }
-            }
-            .overlay {
-                if isLit {
-                    PadLightBar()
-                }
+                RoundedRectangle(cornerRadius: Theme.Radius.pad)
+                    .strokeBorder(isHero ? Theme.black.opacity(0.12) : Theme.hairline, lineWidth: 1)
+                    .allowsHitTesting(false)
             }
             .overlay(alignment: .topLeading) {
                 if let padNumber {
