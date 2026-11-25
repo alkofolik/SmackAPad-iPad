@@ -156,7 +156,7 @@ private struct PracticeToolbarButtonStyle: ButtonStyle {
     var size: CGSize = CGSize(width: 48, height: 48)
 
     private var cornerRadius: CGFloat {
-        appearance == .solidDark ? 14 : 12
+        Theme.Radius.panel
     }
 
     private var backgroundColor: Color {
@@ -554,7 +554,7 @@ struct PracticeIconButton: View {
     }
 
     private var buttonSize: CGSize {
-        let base: CGFloat = appearance == .solidDark ? 56 : 48
+        let base: CGFloat = 44
         return CGSize(width: width ?? base, height: base)
     }
 
@@ -631,6 +631,8 @@ struct TransportControls: View {
     var nextHint: String? = nil
     var nextAction: (() -> Void)? = nil
     var squareSize: CGFloat
+    var buttonWidth: CGFloat? = nil
+    var onDark: Bool = false
     var resultSize: CGSize? = nil
     var horizontalResultButtons: Bool = false
     let start: () -> Void
@@ -701,6 +703,7 @@ struct TransportControls: View {
     }
 
     private var runningOrIdleBody: some View {
+        let resolvedWidth = buttonWidth ?? squareSize
         let buttonHeight = max(0, (squareSize - Theme.Space.controlGap) / 2)
         return VStack(spacing: Theme.Space.controlGap) {
             Button(action: running ? stop : start) {
@@ -718,7 +721,7 @@ struct TransportControls: View {
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
             .buttonStyle(PadPrimaryButtonStyle())
-            .frame(width: squareSize, height: buttonHeight)
+            .frame(width: resolvedWidth, height: buttonHeight)
             .disabled(!running && !enabled)
             .opacity(running || enabled ? 1 : 0.5)
 
@@ -730,8 +733,8 @@ struct TransportControls: View {
                         .minimumScaleFactor(0.8)
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
                 }
-                .buttonStyle(PadSecondaryButtonStyle())
-                .frame(width: squareSize, height: buttonHeight)
+                .buttonStyle(PadSecondaryButtonStyle(onDark: onDark))
+                .frame(width: resolvedWidth, height: buttonHeight)
                 .disabled(!enabled)
                 .opacity(enabled ? 1 : 0.5)
             } else {
@@ -745,13 +748,13 @@ struct TransportControls: View {
                     }
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
                 }
-                .buttonStyle(PadSecondaryButtonStyle())
-                .frame(width: squareSize, height: buttonHeight)
+                .buttonStyle(PadSecondaryButtonStyle(onDark: onDark))
+                .frame(width: resolvedWidth, height: buttonHeight)
                 .disabled(!enabled)
                 .opacity(enabled ? 1 : 0.5)
             }
         }
-        .frame(width: squareSize, height: squareSize)
+        .frame(width: resolvedWidth, height: squareSize)
         .motion(Theme.Motion.standard, value: running)
         .transaction { if Theme.Motion.Policy(reduced: reduced).opacityOnly { $0.animation = nil } }
     }

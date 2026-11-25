@@ -161,6 +161,12 @@ struct PatternField: View {
                         session: session
                     )
                     .frame(width: gutter, height: geometry.size.height)
+                    .background(Theme.Skin.Display.fill)
+                    .overlay(alignment: .trailing) {
+                        Rectangle()
+                            .fill(Theme.black.opacity(0.55))
+                            .frame(width: 1)
+                    }
                 }
 
                 ZStack(alignment: .topLeading) {
@@ -208,9 +214,37 @@ struct PatternField: View {
                 .background {
                     ZStack(alignment: .top) {
                         band
+                        LinearGradient(
+                            colors: [
+                                Theme.white.opacity(0.10),
+                                .clear,
+                                Theme.black.opacity(0.10)
+                            ],
+                            startPoint: .top,
+                            endPoint: .bottom
+                        )
                         Theme.black.opacity(0.10).frame(height: layout.headerTintHeight)
                     }
                     .animation(reduceMotion ? nil : .easeInOut(duration: 1.2), value: band)
+                }
+                .overlay {
+                    ZStack {
+                        VStack(spacing: 0) {
+                            LinearGradient(colors: [Theme.black.opacity(0.24), .clear], startPoint: .top, endPoint: .bottom)
+                                .frame(height: 8)
+                            Spacer(minLength: 0)
+                            LinearGradient(colors: [.clear, Theme.black.opacity(0.16)], startPoint: .top, endPoint: .bottom)
+                                .frame(height: 6)
+                        }
+                        HStack(spacing: 0) {
+                            LinearGradient(colors: [Theme.black.opacity(0.18), .clear], startPoint: .leading, endPoint: .trailing)
+                                .frame(width: 6)
+                            Spacer(minLength: 0)
+                            LinearGradient(colors: [.clear, Theme.black.opacity(0.18)], startPoint: .leading, endPoint: .trailing)
+                                .frame(width: 6)
+                        }
+                    }
+                    .allowsHitTesting(false)
                 }
                 .clipShape(Rectangle())
             }
@@ -225,7 +259,21 @@ struct PatternField: View {
                 }
             }
         }
-        .clipShape(Rectangle())
+        .clipShape(RoundedRectangle(cornerRadius: 7, style: .continuous))
+        .padding(4)
+        .background {
+            RoundedRectangle(cornerRadius: 10, style: .continuous)
+                .fill(
+                    Theme.Skin.Display.fill.shadow(
+                        .inner(color: Theme.black.opacity(0.75), radius: 4, y: 2)
+                    )
+                )
+                .overlay {
+                    RoundedRectangle(cornerRadius: 10, style: .continuous)
+                        .strokeBorder(Theme.white.opacity(0.08), lineWidth: 1)
+                }
+        }
+        .shadow(color: Theme.black.opacity(0.16), radius: 4, y: 2)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(settings.localized("Rhythm pattern"))
         .accessibilityValue(
@@ -323,14 +371,20 @@ private func drawBeat(step: Int, x: CGFloat, lanes: PatternLanes, context: inout
         var path = Path()
         path.move(to: CGPoint(x: x, y: lanes.beatLineTop))
         path.addLine(to: CGPoint(x: x, y: lanes.bottom))
-        context.stroke(path, with: .color(Theme.black.opacity(bar ? 0.38 : 0.18)), lineWidth: bar ? 1.2 : 0.65)
+        context.stroke(path, with: .color(Theme.black.opacity(bar ? 0.58 : 0.32)), lineWidth: bar ? 1.75 : 1.1)
         if bar {
             context.fill(Path(roundedRect: CGRect(x: x - lanes.tickWidth / 2, y: lanes.tickY, width: lanes.tickWidth, height: lanes.tickHeight), cornerRadius: 1),
-                         with: .color(Theme.black.opacity(0.7)))
+                         with: .color(Theme.black.opacity(0.78)))
         }
     } else {
-        context.fill(Path(ellipseIn: CGRect(x: x - 2.1, y: lanes.countY - 2.1, width: 4.2, height: 4.2)),
-                     with: .color(Theme.black.opacity(0.5)))
+        let isEighth = step.isMultiple(of: 2)
+        var subPath = Path()
+        subPath.move(to: CGPoint(x: x, y: lanes.top))
+        subPath.addLine(to: CGPoint(x: x, y: lanes.bottom))
+        context.stroke(subPath, with: .color(Theme.black.opacity(isEighth ? 0.12 : 0.055)), lineWidth: isEighth ? 0.75 : 0.5)
+        let dotRadius: CGFloat = isEighth ? 2.2 : 1.7
+        context.fill(Path(ellipseIn: CGRect(x: x - dotRadius, y: lanes.countY - dotRadius, width: dotRadius * 2, height: dotRadius * 2)),
+                     with: .color(Theme.black.opacity(isEighth ? 0.58 : 0.36)))
     }
 }
 
@@ -668,9 +722,33 @@ func drawHit(_ hit: LessonHit, in rect: CGRect, mark: HitMark?, strength: Double
         return
     }
 
+    let shadowPath = tilePath.offsetBy(dx: 0, dy: 1.5)
+    context.fill(shadowPath, with: .color(Theme.black.opacity(0.28)))
+
     context.fill(tilePath, with: .color(baseColor))
-    if isLeft {
-        context.stroke(tilePath, with: .color(Theme.white), lineWidth: 1)
+
+    var bevelContext = context
+    bevelContext.clip(to: tilePath)
+    var topEdge = Path()
+    topEdge.move(to: CGPoint(x: drawRect.minX + 1.5, y: drawRect.minY + 0.75))
+    topEdge.addLine(to: CGPoint(x: drawRect.maxX - 1.5, y: drawRect.minY + 0.75))
+    bevelContext.stroke(
+        topEdge,
+        with: .color(Theme.white.opacity(isLeft ? 0.28 : 0.95)),
+        style: StrokeStyle(lineWidth: 1.25, lineCap: .round)
+    )
+    if !isLeft {
+        var bottomEdge = Path()
+        bottomEdge.move(to: CGPoint(x: drawRect.minX + 1.5, y: drawRect.maxY - 0.75))
+        bottomEdge.addLine(to: CGPoint(x: drawRect.maxX - 1.5, y: drawRect.maxY - 0.75))
+        bevelContext.stroke(
+            bottomEdge,
+            with: .color(Theme.black.opacity(0.14)),
+            style: StrokeStyle(lineWidth: 1, lineCap: .round)
+        )
+        context.stroke(tilePath, with: .color(Theme.black.opacity(0.16)), lineWidth: 0.75)
+    } else {
+        context.stroke(tilePath, with: .color(Theme.white.opacity(0.85)), lineWidth: 1)
     }
 
     var labelRect = drawRect
@@ -724,14 +802,17 @@ func drawHit(_ hit: LessonHit, in rect: CGRect, mark: HitMark?, strength: Double
 
 private func drawMarker(x: CGFloat, top: CGFloat, bottom: CGFloat, context: inout GraphicsContext) {
     var path = Path()
-    path.move(to: CGPoint(x: x, y: top)); path.addLine(to: CGPoint(x: x, y: bottom))
-    context.stroke(path, with: .color(Theme.white), lineWidth: 5)
-    context.stroke(path, with: .color(Theme.black), lineWidth: 1.7)
+    path.move(to: CGPoint(x: x, y: top))
+    path.addLine(to: CGPoint(x: x, y: bottom))
+    context.stroke(path, with: .color(Theme.black.opacity(0.26)), style: StrokeStyle(lineWidth: 7.5, lineCap: .round))
+    context.stroke(path, with: .color(Theme.black.opacity(0.78)), style: StrokeStyle(lineWidth: 4.2, lineCap: .round))
+    context.stroke(path, with: .color(Theme.white), style: StrokeStyle(lineWidth: 2.0, lineCap: .round))
     var cap = Path()
-    cap.move(to: CGPoint(x: x - 5, y: top - 3))
-    cap.addLines([CGPoint(x: x + 5, y: top - 3), CGPoint(x: x, y: top + 3)])
+    cap.move(to: CGPoint(x: x - 5.5, y: top - 3.5))
+    cap.addLines([CGPoint(x: x + 5.5, y: top - 3.5), CGPoint(x: x, y: top + 3.5)])
     cap.closeSubpath()
-    context.fill(cap, with: .color(Theme.black))
+    context.fill(cap, with: .color(Theme.white))
+    context.stroke(cap, with: .color(Theme.black.opacity(0.85)), style: StrokeStyle(lineWidth: 1.5, lineJoin: .round))
 }
 
 /// A thin ruler (8 pt high) along the top edge of the orange band, spanning the band width.
@@ -1040,13 +1121,13 @@ private struct BandMarginRowIndicator: View {
                     DrumGlyph(kind: DrumKind.forPad(padIndex))
                         .frame(width: iconSize, height: iconSize)
                         .scaleEffect(glyphScale)
-                        .foregroundStyle(Theme.ink)
+                        .foregroundStyle(Theme.white.opacity(0.92))
                         .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
                 .accessibilityLabel(name)
 
-                BandRowDot(strike: strike, isStriking: isStriking, color: isStriking ? Theme.orange : Theme.ink)
+                BandRowDot(strike: strike, isStriking: isStriking, color: isStriking ? Theme.orange : Theme.white.opacity(0.5))
             }
         }
     }

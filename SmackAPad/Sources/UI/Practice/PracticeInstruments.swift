@@ -316,8 +316,8 @@ struct TimingCue: View {
     }
 }
 
-/// Large tappable tempo readout. Opens the tempo controls while stopped.
-struct TempoTile: View {
+/// Large tappable OLED tempo readout. Opens the tempo controls while stopped.
+struct TempoTile<CueContent: View>: View {
     @Environment(SettingsManager.self) private var settings
     @Environment(\.accessibilityReduceMotion) private var reduced
     private var motion: Theme.Motion.Policy { .init(reduced: reduced) }
@@ -326,48 +326,119 @@ struct TempoTile: View {
     let editable: Bool
     let status: String?
     let side: CGFloat
+    var expanded: Bool = false
+    var onStepTempo: ((Int) -> Void)? = nil
     let action: () -> Void
+    @ViewBuilder var timingCue: () -> CueContent
+
+    init(
+        bpm: Int,
+        targetBpm: Int,
+        editable: Bool,
+        status: String?,
+        side: CGFloat,
+        expanded: Bool = false,
+        onStepTempo: ((Int) -> Void)? = nil,
+        action: @escaping () -> Void,
+        @ViewBuilder timingCue: @escaping () -> CueContent = { EmptyView() }
+    ) {
+        self.bpm = bpm
+        self.targetBpm = targetBpm
+        self.editable = editable
+        self.status = status
+        self.side = side
+        self.expanded = expanded
+        self.onStepTempo = onStepTempo
+        self.action = action
+        self.timingCue = timingCue
+    }
 
     var body: some View {
-        Button(action: action) {
-            Group {
-                if let status {
-                    Text(status)
-                        .font(Theme.meta)
-                        .multilineTextAlignment(.center)
-                        .minimumScaleFactor(0.7)
-                        .padding(Theme.Space.small)
-                } else {
-                    VStack(spacing: 2) {
-                        Text("\(bpm)")
-                            .font(Theme.display(min(56, side * 0.36)))
-                            .fontWeight(.bold)
-                            .monospacedDigit()
-                            .lineLimit(1)
-                            .minimumScaleFactor(0.7)
-                            .contentTransition(motion.numeric)
-                            .motion(value: bpm)
-                        Text("BPM")
-                            .font(Theme.meta)
-                        HStack(spacing: 4) {
-                            Text("→ \(targetBpm)")
-                                .font(Theme.meta)
-                                .monospacedDigit()
-                            Image(systemName: "chevron.down")
-                                .font(.system(size: 11, weight: .semibold))
-                                .opacity(editable ? 1 : 0)
+        Group {
+            if let status {
+                Text(status)
+                    .font(Theme.meta)
+                    .multilineTextAlignment(.center)
+                    .minimumScaleFactor(0.7)
+                    .padding(Theme.Space.small)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+            } else {
+                HStack(spacing: Theme.Space.regular) {
+                    if expanded, let onStepTempo {
+                        stepButton(delta: -1, symbol: "minus", label: settings.localized("Decrease tempo")) {
+                            onStepTempo(-1)
                         }
-                        .foregroundStyle(Theme.Skin.Display.secondary)
+                        .opacity(editable ? 1 : 0.28)
+                        .disabled(!editable)
                     }
+
+                    Button(action: action) {
+                        HStack(spacing: expanded ? Theme.Space.regular : 0) {
+                            VStack(spacing: 2) {
+                                HStack(alignment: .firstTextBaseline, spacing: 5) {
+                                    Text("\(bpm)")
+                                        .font(Theme.display(min(48, side * 0.44)))
+                                        .fontWeight(.bold)
+                                        .monospacedDigit()
+                                        .lineLimit(1)
+                                        .minimumScaleFactor(0.7)
+                                        .contentTransition(motion.numeric)
+                                        .motion(value: bpm)
+                                    Text("BPM")
+                                        .font(Theme.strong(12))
+                                        .foregroundStyle(Theme.Skin.Display.secondary)
+                                }
+                                HStack(spacing: 4) {
+                                    Text("\(settings.localized("Goal")) \(targetBpm)")
+                                        .font(Theme.meta)
+                                        .monospacedDigit()
+                                        .foregroundStyle(bpm >= targetBpm ? Theme.orange : Theme.Skin.Display.secondary)
+                                    Image(systemName: "chevron.down")
+                                        .font(.system(size: 10, weight: .semibold))
+                                        .foregroundStyle(Theme.Skin.Display.secondary)
+                                        .opacity(editable ? 1 : 0)
+                                }
+                            }
+                            .frame(maxWidth: .infinity)
+                        }
+                        .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                    .disabled(!editable)
+                    .accessibilityLabel(settings.localized("Tempo %lld BPM, goal %lld", bpm, targetBpm))
+
+                    if expanded, let onStepTempo {
+                        stepButton(delta: 1, symbol: "plus", label: settings.localized("Increase tempo")) {
+                            onStepTempo(1)
+                        }
+                        .opacity(editable ? 1 : 0.28)
+                        .disabled(!editable)
+                    }
+
+                    timingCue()
                 }
+                .padding(.horizontal, expanded ? Theme.Space.regular : 6)
             }
-            .frame(width: side, height: side)
-            .insetDisplay()
-            .contentShape(RoundedRectangle(cornerRadius: Theme.Skin.Pad.radius))
+        }
+        .frame(maxWidth: expanded ? .infinity : side, minHeight: side, maxHeight: side)
+        .insetDisplay()
+        .contentShape(RoundedRectangle(cornerRadius: Theme.Skin.Pad.radius))
+    }
+
+    private func stepButton(delta: Int, symbol: String, label: String, onTap: @escaping () -> Void) -> some View {
+        Button(action: onTap) {
+            Image(systemName: symbol)
+                .font(.system(size: 15, weight: .bold))
+                .foregroundStyle(Theme.Skin.Display.ink)
+                .frame(width: 36, height: 36)
+                .background(Theme.white.opacity(0.10), in: RoundedRectangle(cornerRadius: Theme.Radius.button))
+                .overlay {
+                    RoundedRectangle(cornerRadius: Theme.Radius.button)
+                        .strokeBorder(Theme.white.opacity(0.14), lineWidth: 1)
+                }
         }
         .buttonStyle(.plain)
-        .disabled(!editable)
-        .accessibilityLabel(status ?? settings.localized("Tempo %lld BPM, goal %lld", bpm, targetBpm))
+        .accessibilityLabel(label)
     }
 }
 
