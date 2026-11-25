@@ -1,6 +1,6 @@
 # 136 — Buttons: room around the text, no second outline underneath, no wrapped labels
 
-Status: ready-for-human. Type: implementation. Depends on: 133 (same files; do right after 133, or in the same session). Source: Jakub, 2026-11-07, 13 screenshots: "All buttons are ugly, text is tight, and there is some outline under them."
+Status: done (2026-11-25). Previous: ready-for-human. Type: implementation. Depends on: 133 (same files; do right after 133, or in the same session). Source: Jakub, 2026-11-07, 13 screenshots: "All buttons are ugly, text is tight, and there is some outline under them."
 
 ## What is wrong (seen on the iPad)
 

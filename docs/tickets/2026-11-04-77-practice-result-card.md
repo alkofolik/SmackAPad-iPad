@@ -1,6 +1,6 @@
 # 77 — Practice: one clear result card, last run only while playing, run log on tap
 
-Status: ready. Blocked by: 76. Source: Jakub, 2026-11-04 (photos 5, 10): "I can't see the run results at that place while playing. Don't show them all one by one, only the last run, and then a result I can tap open with everything listed. Put the stars and the detail elsewhere with a better, modern icon. Remove the gap. Make the overall result modern instead of hidden at the side." Replaces the run log row of ticket 68 (keep its data).
+Status: done (2026-11-25). Previous: ready. Blocked by: 76. Source: Jakub, 2026-11-04 (photos 5, 10): "I can't see the run results at that place while playing. Don't show them all one by one, only the last run, and then a result I can tap open with everything listed. Put the stars and the detail elsewhere with a better, modern icon. Remove the gap. Make the overall result modern instead of hidden at the side." Replaces the run log row of ticket 68 (keep its data).
 
 ## Rule
 

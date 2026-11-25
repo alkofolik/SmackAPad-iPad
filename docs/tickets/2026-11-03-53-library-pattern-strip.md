@@ -1,6 +1,6 @@
 # 53 — Library: a small step strip of each lesson's real pattern
 
-Status: ready-for-agent. Source: unslop audit (the product's signature detail), approved by Jakub 2026-11-03.
+Status: done (2026-11-25). Previous: ready-for-agent. Source: unslop audit (the product's signature detail), approved by Jakub 2026-11-03.
 Blocked by: 49, 50, 52.
 
 ## Why

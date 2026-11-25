@@ -1,6 +1,6 @@
 # 30 — Lesson instructions panel
 
-Status: ready. Source: legacy comparison 2026-11-02 (legacy manual §4.1, "Teaching"). The lesson data already contain instructions, but the iPad app never shows them.
+Status: done (2026-11-25). Previous: ready. Source: legacy comparison 2026-11-02 (legacy manual §4.1, "Teaching"). The lesson data already contain instructions, but the iPad app never shows them.
 
 ## Goal
 

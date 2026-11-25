@@ -1,6 +1,6 @@
 # 139 — Practice: fix the back button, quieter result card, no arrow on "Další lekce"
 
-Status: ready-for-human. Type: implementation. Depends on: 136 (button padding). Source: Jakub, 2026-11-07 (Practice screenshots, Rock 1).
+Status: done (2026-11-25). Previous: ready-for-human. Type: implementation. Depends on: 136 (button padding). Source: Jakub, 2026-11-07 (Practice screenshots, Rock 1).
 
 ## Problems and rules
 

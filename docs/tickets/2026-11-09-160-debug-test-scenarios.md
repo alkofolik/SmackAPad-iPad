@@ -1,6 +1,6 @@
 # 160 — Debug test scenarios: jump into any progress state, keep Jakub's real profile safe, shift the day
 
-Status: approved by Jakub 2026-11-09 ("připrav mi to, nechám to na tobě"). Ready for the agent. Independent of 158/159 (may run in parallel only if the agent does not touch `TodaySessionScreen.swift` / `TrainingScreen.swift`; otherwise run after 158 is tested).
+Status: done (2026-11-25). Previous: approved by Jakub 2026-11-09 ("připrav mi to, nechám to na tobě"). Ready for the agent. Independent of 158/159 (may run in parallel only if the agent does not touch `TodaySessionScreen.swift` / `TrainingScreen.swift`; otherwise run after 158 is tested).
 Recommended agent: **Codex GPT-6.1 Sol, reasoning high** (touches progress persistence; a mistake could wipe Jakub's real progress). Fallback: Gemini 3.8 Flash, high.
 
 ## Why

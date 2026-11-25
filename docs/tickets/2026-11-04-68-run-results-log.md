@@ -1,6 +1,6 @@
 # 68 — Practice: show the result of every run, passed or not
 
-Status: ready. Source: Jakub, 2026-11-04: "I never see the results of each run, even a failed one. Or is it hidden somewhere?" Run after ticket 67 (both touch `PracticeSession.swift`).
+Status: done (2026-11-25). Previous: ready. Source: Jakub, 2026-11-04: "I never see the results of each run, even a failed one. Or is it hidden somewhere?" Run after ticket 67 (both touch `PracticeSession.swift`).
 
 ## Today
 

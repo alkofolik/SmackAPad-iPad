@@ -1,6 +1,6 @@
 # 108 — Fix three failing unit tests (found 2026-11-06)
 
-Status: ready-for-human. Source: Jakub, 2026-11-06 (Xcode: 166 tests, 3 failing; run at 06:27 on main, commit 3c25498).
+Status: done (2026-11-25). Previous: ready-for-human. Source: Jakub, 2026-11-06 (Xcode: 166 tests, 3 failing; run at 06:27 on main, commit 3c25498).
 
 ## Goal
 

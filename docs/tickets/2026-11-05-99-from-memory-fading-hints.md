@@ -1,6 +1,6 @@
 # 99 — From memory: the notes fade out over the first passes
 
-Status: ready-for-agent. Source: Jakub, 2026-11-05 (bridge from reading to playing from memory; legacy concept 2026-10-06 §6.6b "fading help").
+Status: done (2026-11-25). Previous: ready-for-agent. Source: Jakub, 2026-11-05 (bridge from reading to playing from memory; legacy concept 2026-10-06 §6.6b "fading help").
 
 ## Goal
 

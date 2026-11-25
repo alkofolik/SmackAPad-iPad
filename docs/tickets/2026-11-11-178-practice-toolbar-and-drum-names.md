@@ -1,6 +1,6 @@
 # 178 — Practice screen: grouped icon toolbar, back arrow, title on two lines, full drum names in the band
 
-Status: ready-for-agent (after Jakub has checked ticket 171 on the iPad and ticket 172 is committed — same files). Approved by Jakub on 2026-11-11 (points 1, 6, 13 and canvas comments).
+Status: done (2026-11-25). Previous: ready-for-agent (after Jakub has checked ticket 171 on the iPad and ticket 172 is committed — same files). Approved by Jakub on 2026-11-11 (points 1, 6, 13 and canvas comments).
 
 Design reference: `docs/design/2026-11-11-screen-redesign/Main.dc.html` (artboard 1) and `MixNext.dc.html` (artboard 5). These are HTML mockups with inline sizes; open them in a text editor, they are not runnable on their own. Sizes are for an 11" iPad in landscape (1194 × 834 pt).
 

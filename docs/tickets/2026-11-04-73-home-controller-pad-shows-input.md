@@ -1,6 +1,6 @@
 # 73 — Home: Controller pad shows the selected input device (bug, follows 70)
 
-Status: ready. Source: Jakub, 2026-11-04 (photos 1–2): in the controller setup the Input is "JP-Mini Bluetooth", but the home Controller pad says "Standard 16-Pad · Automatic". He expects to see the controller he set.
+Status: done (2026-11-25). Previous: ready. Source: Jakub, 2026-11-04 (photos 1–2): in the controller setup the Input is "JP-Mini Bluetooth", but the home Controller pad says "Standard 16-Pad · Automatic". He expects to see the controller he set.
 
 ## Cause
 

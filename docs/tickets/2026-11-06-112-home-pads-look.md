@@ -1,6 +1,6 @@
 # 112 — Home pads: new look (proposal A + light bar from proposal B)
 
-Status: ready-for-agent. Source: Jakub, 2026-11-06, after ticket 111: "I like proposal A, but instead of the orange dot in the corner I want the orange line from proposal B." Radius: pads slightly rounded (exception to ticket 94, Home pads only).
+Status: done (2026-11-25). Previous: ready-for-agent. Source: Jakub, 2026-11-06, after ticket 111: "I like proposal A, but instead of the orange dot in the corner I want the orange line from proposal B." Radius: pads slightly rounded (exception to ticket 94, Home pads only).
 
 Spec = the preview `docs/design/2026-11-06-home-pads-and-motion/proposal-a.html` (open it in a browser) and the README in the same folder. Take everything from A **except** the lit-state corner dot.
 

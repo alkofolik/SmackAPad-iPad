@@ -1,6 +1,6 @@
 # 74 — Library: hide the completed Intro row; remove the eye button from the library toolbar
 
-Status: ready. Source: Jakub, 2026-11-04 (photos 3–4). Follows tickets 71 and 72 (all touch `LibraryScreen.swift`).
+Status: done (2026-11-25). Previous: ready. Source: Jakub, 2026-11-04 (photos 3–4). Follows tickets 71 and 72 (all touch `LibraryScreen.swift`).
 
 ## Problems
 

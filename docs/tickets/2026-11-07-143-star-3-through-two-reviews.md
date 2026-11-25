@@ -1,6 +1,6 @@
 # 143 — Star 3 is earned by two passed reviews in Training
 
-Status: ready-for-human. Blocked by: 142. Source: Jakub, 2026-11-07, chose option B in `docs/2026-11-07-training-stop-star-list-badges-proposal.md` §2.
+Status: done (2026-11-25). Previous: ready-for-human. Blocked by: 142. Source: Jakub, 2026-11-07, chose option B in `docs/2026-11-07-training-stop-star-list-badges-proposal.md` §2.
 
 ## Goal
 

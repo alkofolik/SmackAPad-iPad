@@ -1,6 +1,6 @@
 # 141 — Today session screen redesign (Variant 1 — Studio Console Plate)
 
-Status: ready-for-agent. Type: implementation. Depends on: 137 (proposal & chosen variant), 133 (button system). Source: Jakub, 2026-11-07: selected **Variant 1** (Satinová řídící konzole / Studio Console Plate) from ticket 137 preview ("líbí se mi 1").
+Status: done (2026-11-25). Previous: ready-for-agent. Type: implementation. Depends on: 137 (proposal & chosen variant), 133 (button system). Source: Jakub, 2026-11-07: selected **Variant 1** (Satinová řídící konzole / Studio Console Plate) from ticket 137 preview ("líbí se mi 1").
 
 Spec = preview `docs/previews/137-today-session.html` (Variant 1).
 

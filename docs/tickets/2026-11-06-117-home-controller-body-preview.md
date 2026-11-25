@@ -1,6 +1,6 @@
 # 117 — Home background v2: a real-looking controller body (one design, preview only, no app code)
 
-Status: preview-ready (2026-11-06). Source: Jakub, 2026-11-06, after the proposals of ticket 114 ("none of them is great, at most a bit of C, except its two horizontal lines"). Follow-up: implementation ticket after Jakub approves.
+Status: done (2026-11-25). Previous: preview-ready (2026-11-06). Source: Jakub, 2026-11-06, after the proposals of ticket 114 ("none of them is great, at most a bit of C, except its two horizontal lines"). Follow-up: implementation ticket after Jakub approves.
 
 ## What Jakub wants (his words, condensed)
 

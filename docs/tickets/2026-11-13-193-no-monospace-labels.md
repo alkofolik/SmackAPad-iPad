@@ -1,6 +1,6 @@
 # 193 — No monospaced ("typewriter") text anywhere in the app
 
-Status: ready-for-agent. Asked by Jakub on 2026-11-13 (taste audit findings 3, 29, 48, 49).
+Status: done (2026-11-25). Previous: ready-for-agent. Asked by Jakub on 2026-11-13 (taste audit findings 3, 29, 48, 49).
 
 ## Goal
 

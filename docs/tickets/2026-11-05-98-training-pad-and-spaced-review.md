@@ -1,6 +1,6 @@
 # 98 — Home pad "Training" and spaced review ("Due")
 
-Status: ready-for-agent. Blocked by: 97 (`masteryDay`, injectable "today"). Source: Jakub, 2026-11-05; legacy "Trénink" concept 2026-10-06 §5–6.1 and the legacy lesson from 2026-10-09 (the player could not find how to start a review nor tell whether it counted).
+Status: done (2026-11-25). Previous: ready-for-agent. Blocked by: 97 (`masteryDay`, injectable "today"). Source: Jakub, 2026-11-05; legacy "Trénink" concept 2026-10-06 §5–6.1 and the legacy lesson from 2026-10-09 (the player could not find how to start a review nor tell whether it counted).
 
 ## Goal
 

@@ -1,6 +1,6 @@
 # 86 — Practice: star rules and session results open squashed below the result card
 
-Status: ready. Source: Jakub, 2026-11-05 (photos 2, 3): "Under the result something can be scrolled, but I can't see what."
+Status: done (2026-11-25). Previous: ready. Source: Jakub, 2026-11-05 (photos 2, 3): "Under the result something can be scrolled, but I can't see what."
 
 ## Problem
 

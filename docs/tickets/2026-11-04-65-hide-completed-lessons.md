@@ -1,6 +1,6 @@
 # 65 — Library: hide completed lessons (setting, on by default)
 
-Status: ready. Source: Jakub, 2026-11-04. Run after ticket 62 (both touch `SettingsView.swift`).
+Status: done (2026-11-25). Previous: ready. Source: Jakub, 2026-11-04. Run after ticket 62 (both touch `SettingsView.swift`).
 
 ## Problem
 

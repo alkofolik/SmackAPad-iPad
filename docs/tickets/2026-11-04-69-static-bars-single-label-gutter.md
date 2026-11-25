@@ -1,6 +1,6 @@
 # 69 — Practice: static multi-bar view, pad labels only once and even beat spacing
 
-Status: ready. Source: Jakub, 2026-11-04.
+Status: done (2026-11-25). Previous: ready. Source: Jakub, 2026-11-04.
 
 ## Problem
 

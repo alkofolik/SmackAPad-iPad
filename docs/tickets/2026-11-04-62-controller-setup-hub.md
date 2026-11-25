@@ -1,6 +1,6 @@
 # 62 — One "Controller" place: choose, connect, map and calibrate the controller
 
-Status: ready. Source: Jakub, 2026-11-04. Run after ticket 61 (done).
+Status: done (2026-11-25). Previous: ready. Source: Jakub, 2026-11-04. Run after ticket 61 (done).
 
 ## Problem
 

@@ -1,6 +1,6 @@
 # 111 — Home pads and app motion: design proposals (no app code)
 
-Status: proposals-ready (2026-11-06). Source: Jakub, 2026-11-06: "the Home pads look ordinary; could they be more modern and better looking? I also miss modern animations and transitions overall." Follow-up: an implementation ticket is written after Jakub chooses.
+Status: done (2026-11-25, implemented in follow-up). Previous: proposals-ready (2026-11-06). Source: Jakub, 2026-11-06: "the Home pads look ordinary; could they be more modern and better looking? I also miss modern animations and transitions overall." Follow-up: an implementation ticket is written after Jakub chooses.
 
 ## Problem
 

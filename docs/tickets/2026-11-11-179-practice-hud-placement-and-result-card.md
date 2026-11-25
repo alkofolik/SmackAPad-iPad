@@ -1,6 +1,6 @@
 # 179 — Practice: HUD in fixed places, pass line under the band, new end-of-run card, help legend
 
-Status: ready-for-agent (after 178). Approved by Jakub on 2026-11-11 (points 1, 7, 8, 11, 14, 15 and canvas comments).
+Status: done (2026-11-25). Previous: ready-for-agent (after 178). Approved by Jakub on 2026-11-11 (points 1, 7, 8, 11, 14, 15 and canvas comments).
 
 Design reference: `docs/design/2026-11-11-screen-redesign/PracticeRunning.dc.html` (artboard 2), `PracticeResult.dc.html` (artboard 3), `HelpLegend.dc.html` (artboard 10). HTML mockups with inline sizes, 1194 × 834 pt.
 

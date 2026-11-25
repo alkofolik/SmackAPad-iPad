@@ -1,6 +1,6 @@
 # 64 — Practice: run countdown, per-run result and star moment — design proposals (no app code)
 
-Status: ready. Source: Jakub, 2026-11-04. Follow-up: an implementation ticket after Jakub chooses.
+Status: done (2026-11-25, implemented in follow-up). Previous: ready. Source: Jakub, 2026-11-04. Follow-up: an implementation ticket after Jakub chooses.
 
 ## Problem
 

@@ -1,6 +1,6 @@
 # 67 — Practice: tempo step lands one run late (bug)
 
-Status: ready. Source: Jakub, 2026-11-04 (iPad test of ticket 66). Use the tdd skill (timing code).
+Status: done (2026-11-25). Previous: ready. Source: Jakub, 2026-11-04 (iPad test of ticket 66). Use the tdd skill (timing code).
 
 ## Problem
 

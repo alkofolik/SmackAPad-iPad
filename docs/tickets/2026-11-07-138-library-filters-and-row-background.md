@@ -1,6 +1,6 @@
 # 138 — Library and Intro: all filters visible, no grey band behind lesson rows
 
-Status: ready-for-agent. Type: implementation. Depends on: 133 (chip style). Source: Jakub, 2026-11-07 (Library and Intro screenshots).
+Status: done (2026-11-25). Previous: ready-for-agent. Type: implementation. Depends on: 133 (chip style). Source: Jakub, 2026-11-07 (Library and Intro screenshots).
 
 ## Problems
 

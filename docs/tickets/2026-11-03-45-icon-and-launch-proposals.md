@@ -1,6 +1,6 @@
 # 45 — App icon and launch animation: design proposals (no app code)
 
-Status: ready. Source: Jakub, 2026-11-03 (approved). The product name for display is **Smack-a-Pad**.
+Status: done (2026-11-25, implemented in follow-up). Previous: ready. Source: Jakub, 2026-11-03 (approved). The product name for display is **Smack-a-Pad**.
 
 ## Problem
 

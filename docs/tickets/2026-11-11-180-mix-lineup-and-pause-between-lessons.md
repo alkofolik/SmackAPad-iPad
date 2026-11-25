@@ -1,6 +1,6 @@
 # 180 — Mix: line-up before the start and a pause before every next lesson
 
-Status: ready-for-agent (after 178 and 179; builds on ticket 168). Approved by Jakub on 2026-11-11 (points 1, 8, 9 and canvas comments).
+Status: done (2026-11-25). Previous: ready-for-agent (after 178 and 179; builds on ticket 168). Approved by Jakub on 2026-11-11 (points 1, 8, 9 and canvas comments).
 
 Design reference: `docs/design/2026-11-11-screen-redesign/MixLineup.dc.html` (artboard 4) and `MixNext.dc.html` (artboard 5).
 

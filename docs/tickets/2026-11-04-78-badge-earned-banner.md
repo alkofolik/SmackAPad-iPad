@@ -1,6 +1,6 @@
 # 78 — Practice: short banner when a badge is earned
 
-Status: ready. Blocked by: none (independent of 76, 77; if 77 is already done, use the result card area only for nothing — the banner floats above the layout). Source: Jakub, 2026-11-04: "How does the app announce a new badge? Prepare a ticket: a banner that is shown somewhere for a moment."
+Status: done (2026-11-25). Previous: ready. Blocked by: none (independent of 76, 77; if 77 is already done, use the result card area only for nothing — the banner floats above the layout). Source: Jakub, 2026-11-04: "How does the app announce a new badge? Prepare a ticket: a banner that is shown somewhere for a moment."
 
 ## Problem
 

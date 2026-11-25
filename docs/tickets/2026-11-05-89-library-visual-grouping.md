@@ -1,6 +1,6 @@
 # 89 — Library: separate levels, categories and lessons visually
 
-Status: ready. Source: Jakub, 2026-11-05 (photo 6): "The library needs the lessons, categories and courses separated more — for example with a frame. So it's not just a pile of text on top of each other."
+Status: done (2026-11-25). Previous: ready. Source: Jakub, 2026-11-05 (photo 6): "The library needs the lessons, categories and courses separated more — for example with a frame. So it's not just a pile of text on top of each other."
 
 ## Rule
 

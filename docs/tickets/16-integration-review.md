@@ -1,6 +1,6 @@
 # 16 — Milestone Code Review
 
-Status: ready-for-agent
+Status: done (2026-11-25). Previous: ready-for-agent
 
 ## Goal
 

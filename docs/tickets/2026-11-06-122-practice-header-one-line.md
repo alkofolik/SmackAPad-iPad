@@ -1,6 +1,6 @@
 # 122 — Practice header: subtitle on one line
 
-Status: ready-for-agent. Source: Jakub, 2026-11-06, screenshot of Practice in Play mode, Czech.
+Status: done (2026-11-25). Previous: ready-for-agent. Source: Jakub, 2026-11-06, screenshot of Practice in Play mode, Czech.
 
 ## Problem
 

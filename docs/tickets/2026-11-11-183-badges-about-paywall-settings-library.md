@@ -1,6 +1,6 @@
 # 183 — Redesign Badges, About and Full version; collapse instrument volumes; Library "Play next" alignment
 
-Status: ready-for-agent (after 181 — uses its back arrow). Approved by Jakub on 2026-11-11 (points 2, 16, 17, 19, 20).
+Status: done (2026-11-25). Previous: ready-for-agent (after 181 — uses its back arrow). Approved by Jakub on 2026-11-11 (points 2, 16, 17, 19, 20).
 
 Design reference: `docs/design/2026-11-11-screen-redesign/Badges.dc.html` (9), `SettingsSound.dc.html` (11), `About.dc.html` (12), `Paywall.dc.html` (13; its "purchased" prop shows the bought state).
 

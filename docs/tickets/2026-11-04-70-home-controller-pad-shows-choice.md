@@ -1,6 +1,6 @@
 # 70 — Home: Controller pad shows the current choice (bug)
 
-Status: ready. Source: Jakub, 2026-11-04: after choosing another controller or instrument in the controller setup and going back, the home Controller pad does not show the new choice.
+Status: done (2026-11-25). Previous: ready. Source: Jakub, 2026-11-04: after choosing another controller or instrument in the controller setup and going back, the home Controller pad does not show the new choice.
 
 ## Cause
 

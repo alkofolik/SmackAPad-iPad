@@ -1,6 +1,6 @@
 # 110 — Today session screen: match the mockup (frame 3)
 
-Status: ready-for-human. Source: Jakub, 2026-11-06: "the Today screen looks terrible, nothing like the design". Depends on: 109 (same file; do 109 first).
+Status: done (2026-11-25). Previous: ready-for-human. Source: Jakub, 2026-11-06: "the Today screen looks terrible, nothing like the design". Depends on: 109 (same file; do 109 first).
 
 Mockup: `docs/design/2026-11-05-training-page/training-page.html`, frame **3 · Přechod mezi kroky dnešního tréninku** (`.handoff` block, CSS lines ~107–108). Open it in a browser and compare side by side with the app.
 

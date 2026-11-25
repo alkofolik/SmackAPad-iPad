@@ -1,6 +1,6 @@
 # 158 — Reviews started from Library/Home set themselves up; mark for played-but-uncounted review
 
-Status: approved by Jakub 2026-11-09; amended same day with A6 after the agent's A5 stop (approved option 2). Ready for the agent. Blocked by: 157 (tested 2026-11-09, done). Source: Jakub's iPad check 2026-11-08 (`docs/2026-11-08-ai-panel-action-plan.md`, section "Nové z kontroly na iPadu"). Related: ticket 150 (review summary states).
+Status: done (2026-11-25). Previous: approved by Jakub 2026-11-09; amended same day with A6 after the agent's A5 stop (approved option 2). Ready for the agent. Blocked by: 157 (tested 2026-11-09, done). Source: Jakub's iPad check 2026-11-08 (`docs/2026-11-08-ai-panel-action-plan.md`, section "Nové z kontroly na iPadu"). Related: ticket 150 (review summary states).
 
 ## Hard constraint
 

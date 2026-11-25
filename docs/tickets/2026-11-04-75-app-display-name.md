@@ -1,6 +1,6 @@
 # 75 — App name shows "SmackAPad" instead of "Smack-a-Pad"
 
-Status: ready. Source: Jakub, 2026-11-04 (photo 4): the iPadOS status bar / app switcher and the home screen icon label read "SmackAPad".
+Status: done (2026-11-25). Previous: ready. Source: Jakub, 2026-11-04 (photo 4): the iPadOS status bar / app switcher and the home screen icon label read "SmackAPad".
 
 ## Cause
 

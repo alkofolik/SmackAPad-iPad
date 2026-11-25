@@ -1,6 +1,6 @@
 # 177 — From memory: notes hide only after two successful warm-up passes
 
-Status: ready-for-agent. Approved by Jakub on 2026-11-11 (point 5; he chose "two").
+Status: done (2026-11-25). Previous: ready-for-agent. Approved by Jakub on 2026-11-11 (point 5; he chose "two").
 
 ## Goal
 

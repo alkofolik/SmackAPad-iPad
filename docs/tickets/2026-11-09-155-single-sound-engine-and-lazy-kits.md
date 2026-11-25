@@ -1,6 +1,6 @@
 # 155 — One sound engine, load only the selected kit
 
-Status: approved by Jakub 2026-11-09, ready for the agent. Source: AI panel finding #13 (plan: `docs/2026-11-08-ai-panel-action-plan.md`, batch 3). Related: ticket 121 (slow Training open), review item R09 in `docs/reviews/2026-11-02-fresh-review.md`.
+Status: done (2026-11-25). Previous: approved by Jakub 2026-11-09, ready for the agent. Source: AI panel finding #13 (plan: `docs/2026-11-08-ai-panel-action-plan.md`, batch 3). Related: ticket 121 (slow Training open), review item R09 in `docs/reviews/2026-11-02-fresh-review.md`.
 
 ## Problem (read from the code, 2026-11-09)
 

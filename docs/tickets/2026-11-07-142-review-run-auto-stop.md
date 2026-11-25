@@ -1,6 +1,6 @@
 # 142 — A review is decided by 2 of 3 hidden passes and stops only on success
 
-Status: ready-for-human. Source: Jakub, 2026-11-07. Proposal: `docs/2026-11-07-training-stop-star-list-badges-proposal.md` §1.
+Status: done (2026-11-25). Previous: ready-for-human. Source: Jakub, 2026-11-07. Proposal: `docs/2026-11-07-training-stop-star-list-badges-proposal.md` §1.
 
 ## Problem
 

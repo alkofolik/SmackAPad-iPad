@@ -1,6 +1,6 @@
 # 113 — Transitions: pad zooms into its screen, Today steps in
 
-Status: ready-for-agent. Depends on: 112 (same Home files; do 112 first). Source: Jakub, 2026-11-06 (missing modern animations and transitions), proposal A of ticket 111.
+Status: done (2026-11-25). Previous: ready-for-agent. Depends on: 112 (same Home files; do 112 first). Source: Jakub, 2026-11-06 (missing modern animations and transitions), proposal A of ticket 111.
 
 Spec = `docs/design/2026-11-06-home-pads-and-motion/proposal-a.html` (zoom demo and Today demo) and the table "Mapování animací na Theme tokeny" in the README of that folder.
 

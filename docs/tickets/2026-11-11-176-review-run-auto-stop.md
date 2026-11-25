@@ -1,6 +1,6 @@
 # 176 — Bug: a review run does not stop after the review is met
 
-Status: ready-for-agent. Approved by Jakub on 2026-11-11 (feedback round of 20 screenshots, point 15).
+Status: done (2026-11-25). Previous: ready-for-agent. Approved by Jakub on 2026-11-11 (feedback round of 20 screenshots, point 15).
 
 ## Goal
 

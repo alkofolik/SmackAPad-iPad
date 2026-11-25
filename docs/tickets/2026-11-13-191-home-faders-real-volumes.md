@@ -1,6 +1,6 @@
 # 191 — Home faders set the real sound volumes
 
-Status: ready-for-agent. Decided by Jakub on 2026-11-13 (taste audit, finding 6, corrected).
+Status: done (2026-11-25). Previous: ready-for-agent. Decided by Jakub on 2026-11-13 (taste audit, finding 6, corrected).
 
 ## Goal
 

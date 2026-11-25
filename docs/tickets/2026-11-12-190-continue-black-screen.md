@@ -1,6 +1,6 @@
 # 190 — Bug: Home → Today → Continue turns the screen black
 
-Status: ready-for-agent. Reported by Jakub on 2026-11-12.
+Status: done (2026-11-25). Previous: ready-for-agent. Reported by Jakub on 2026-11-12.
 
 ## What Jakub saw
 

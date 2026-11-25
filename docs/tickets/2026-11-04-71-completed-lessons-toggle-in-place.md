@@ -1,6 +1,6 @@
 # 71 — Library and Intro: hide completed lessons again without going to Settings
 
-Status: ready. Source: Jakub, 2026-11-04: "On Intro I used Show completed, they appeared, but I don't know how to hide them again." Follows ticket 65.
+Status: done (2026-11-25). Previous: ready. Source: Jakub, 2026-11-04: "On Intro I used Show completed, they appeared, but I don't know how to hide them again." Follows ticket 65.
 
 ## Today
 

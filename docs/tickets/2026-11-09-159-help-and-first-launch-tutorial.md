@@ -1,6 +1,6 @@
 # 159 — "How it works" help and first-launch tutorial (design phase first)
 
-Status: complete. Jakub approved the Phase 1 design on 2026-11-10 and delegated the remaining design choices. T158 passed its iPad check on 2026-11-10. The [approved design](../design/2026-11-09-help-and-tutorial.md) selects option A and a four-card tutorial. Implementation is tracked in [T162](2026-11-10-162-implement-help-and-first-launch-tutorial.md).
+Status: done (2026-11-25). Previous: complete. Jakub approved the Phase 1 design on 2026-11-10 and delegated the remaining design choices. T158 passed its iPad check on 2026-11-10. The [approved design](../design/2026-11-09-help-and-tutorial.md) selects option A and a four-card tutorial. Implementation is tracked in [T162](2026-11-10-162-implement-help-and-first-launch-tutorial.md).
 
 Source: Jakub's 2026-11-08 iPad check and the AI panel findings. See the [action plan](../2026-11-08-ai-panel-action-plan.md) and related T150, T157 and T158.
 

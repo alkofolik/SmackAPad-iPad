@@ -1,6 +1,6 @@
 # 91 — Practice: the two transport buttons look equal (same size and same square corners); Czech "Restart" shortened
 
-Status: ready. Source: Jakub, 2026-11-05 (iPad, photo 2): "Align the buttons to the same size. The Czech button for a new attempt probably just shorten to ZNOVU."
+Status: done (2026-11-25). Previous: ready. Source: Jakub, 2026-11-05 (iPad, photo 2): "Align the buttons to the same size. The Czech button for a new attempt probably just shorten to ZNOVU."
 
 ## Problem
 

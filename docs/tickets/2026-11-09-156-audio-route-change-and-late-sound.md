@@ -1,6 +1,6 @@
 # 156 — Audio route change stops the run cleanly; one late sound does not end the run
 
-Status: approved by Jakub 2026-11-09 (Option 1 chosen in section B), ready for the agent. Blocked by: 155 (tested 2026-11-09, done). Source: AI panel findings #12 and #21 (`docs/reviews/ai-panel/results/synthesis.md`; `round1-claude.md` R1-06, R1-07; plan: `docs/2026-11-08-ai-panel-action-plan.md`, batch 3). Next: ticket 157.
+Status: done (2026-11-25). Previous: approved by Jakub 2026-11-09 (Option 1 chosen in section B), ready for the agent. Blocked by: 155 (tested 2026-11-09, done). Source: AI panel findings #12 and #21 (`docs/reviews/ai-panel/results/synthesis.md`; `round1-claude.md` R1-06, R1-07; plan: `docs/2026-11-08-ai-panel-action-plan.md`, batch 3). Next: ticket 157.
 
 ## Problem (read from the code, 2026-11-09)
 

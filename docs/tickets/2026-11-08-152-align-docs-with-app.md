@@ -1,6 +1,6 @@
 # 152 — Align the documents with the app
 
-Status: ready-for-human. Blocked by: none. Source: AI panel round 1 (`docs/reviews/ai-panel/results/round1-claude.md` R2-04; `synthesis.md` item 7); `docs/2026-11-08-ai-panel-action-plan.md`, Batch 1.
+Status: done (2026-11-25). Previous: ready-for-human. Blocked by: none. Source: AI panel round 1 (`docs/reviews/ai-panel/results/round1-claude.md` R2-04; `synthesis.md` item 7); `docs/2026-11-08-ai-panel-action-plan.md`, Batch 1.
 
 ## Goal
 

@@ -1,6 +1,6 @@
 # 66 — Practice: run ruler on the band, lap vault and star moment (proposal B of ticket 64)
 
-Status: ready. Source: Jakub, 2026-11-04, chose proposal B from `docs/design/2026-11-04-practice-run-feedback/` (open `proposal-b.html` and the README sections on B). Run after ticket 63 (both touch the result area of the practice screen). The previews are the visual reference; this ticket is the rule.
+Status: done (2026-11-25). Previous: ready. Source: Jakub, 2026-11-04, chose proposal B from `docs/design/2026-11-04-practice-run-feedback/` (open `proposal-b.html` and the README sections on B). Run after ticket 63 (both touch the result area of the practice screen). The previews are the visual reference; this ticket is the rule.
 
 ## Goal
 

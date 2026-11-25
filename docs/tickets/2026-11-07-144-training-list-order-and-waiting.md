@@ -1,6 +1,6 @@
 # 144 — Training: order the Due list, step filter, waiting lessons behind tappable boxes
 
-Status: ready-for-agent. Source: Jakub, 2026-11-07, approved `docs/2026-11-07-training-stop-star-list-badges-proposal.md` §3 ("first 5 + show all" and step chips: yes).
+Status: done (2026-11-25). Previous: ready-for-agent. Source: Jakub, 2026-11-07, approved `docs/2026-11-07-training-stop-star-list-badges-proposal.md` §3 ("first 5 + show all" and step chips: yes).
 
 ## Goal
 

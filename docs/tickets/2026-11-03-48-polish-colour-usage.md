@@ -1,6 +1,6 @@
 # 48 — Polish: one hairline, one active fill, orange only where it means something
 
-Status: ready-for-agent. Source: unslop audit, approved by Jakub 2026-11-03.
+Status: done (2026-11-25). Previous: ready-for-agent. Source: unslop audit, approved by Jakub 2026-11-03.
 Blocked by: 47.
 
 ## Why

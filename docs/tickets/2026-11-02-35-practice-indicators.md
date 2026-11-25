@@ -1,6 +1,6 @@
 # 35 — Practice screen: progress line, accuracy, hit timing
 
-Status: ready-for-human. Source: Jakub's test 2026-11-02 (feedback round 5). Run after ticket 34.
+Status: done (2026-11-25). Previous: ready-for-human. Source: Jakub's test 2026-11-02 (feedback round 5). Run after ticket 34.
 
 ## Goal
 

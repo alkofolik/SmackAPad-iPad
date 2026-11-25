@@ -1,6 +1,6 @@
 # 181 — One back arrow across the app; Home pads all the same size with short text
 
-Status: ready-for-agent (can run in parallel with 176/177; touches no practice code except the back target already set in 178). Approved by Jakub on 2026-11-11 (points 3, 4, 13; freed pad: "Continue").
+Status: done (2026-11-25). Previous: ready-for-agent (can run in parallel with 176/177; touches no practice code except the back target already set in 178). Approved by Jakub on 2026-11-11 (points 3, 4, 13; freed pad: "Continue").
 
 Design reference: `docs/design/2026-11-11-screen-redesign/Home.dc.html` (artboard 8); back button style in every artboard.
 

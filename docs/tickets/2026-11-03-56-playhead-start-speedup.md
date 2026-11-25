@@ -1,6 +1,6 @@
 # 56 — Playhead briefly speeds up at the start of a run
 
-Status: ready-for-agent. Source: Jakub's iPad test, 2026-11-03.
+Status: done (2026-11-25). Previous: ready-for-agent. Source: Jakub's iPad test, 2026-11-03.
 Agent: Gemini 3.8 Pro, medium thinking.
 
 ## Symptom

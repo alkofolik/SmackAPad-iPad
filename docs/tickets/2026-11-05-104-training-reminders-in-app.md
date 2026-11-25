@@ -1,6 +1,6 @@
 # 104 — Training reminders inside the app: lit Training pad, result line, Library due mark
 
-Status: ready-for-human. Depends on: 98. Source: Jakub, 2026-11-05, `docs/2026-11-05-training-push-proposal.md` §3.3 (option A). Mockup: `docs/design/2026-11-05-training-page/training-page.html` (frame 2).
+Status: done (2026-11-25). Previous: ready-for-human. Depends on: 98. Source: Jakub, 2026-11-05, `docs/2026-11-05-training-push-proposal.md` §3.3 (option A). Mockup: `docs/design/2026-11-05-training-page/training-page.html` (frame 2).
 
 ## Goal
 

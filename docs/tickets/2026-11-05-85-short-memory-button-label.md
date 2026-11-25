@@ -1,6 +1,6 @@
 # 85 — Practice: shorter label on the "From memory for ★3" button
 
-Status: ready. Source: Jakub, 2026-11-05 (photo 2): the button text is cut off ("From memory fo…").
+Status: done (2026-11-25). Previous: ready. Source: Jakub, 2026-11-05 (photo 2): the button text is cut off ("From memory fo…").
 
 ## Rule
 

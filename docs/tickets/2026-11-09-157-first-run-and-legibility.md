@@ -1,6 +1,6 @@
 # 157 — First run guidance and legibility fixes
 
-Status: approved by Jakub 2026-11-09 (both open questions answered: pulsing Intro pad without text; legend opens once on its own), ready for the agent. Blocked by: 156 (tested 2026-11-09, done). Source: AI panel findings #15–#19 (`docs/reviews/ai-panel/results/synthesis.md`; `round1-gemini.md` R1-01, R1-02, R1-03, R1-05, R2-01, R2-02; plan: `docs/2026-11-08-ai-panel-action-plan.md`, batch 4).
+Status: done (2026-11-25). Previous: approved by Jakub 2026-11-09 (both open questions answered: pulsing Intro pad without text; legend opens once on its own), ready for the agent. Blocked by: 156 (tested 2026-11-09, done). Source: AI panel findings #15–#19 (`docs/reviews/ai-panel/results/synthesis.md`; `round1-gemini.md` R1-01, R1-02, R1-03, R1-05, R2-01, R2-02; plan: `docs/2026-11-08-ai-panel-action-plan.md`, batch 4).
 
 ## Hard constraint
 

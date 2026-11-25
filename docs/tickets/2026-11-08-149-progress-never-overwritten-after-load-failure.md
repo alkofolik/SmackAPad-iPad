@@ -1,6 +1,6 @@
 # 149 — Progress is never overwritten after a load failure
 
-Status: ready-for-human. Blocked by: none. Source: AI panel round 1 (`docs/reviews/ai-panel/results/synthesis.md`, item 1), verified in code; `docs/2026-11-08-ai-panel-action-plan.md`, Batch 1.
+Status: done (2026-11-25). Previous: ready-for-human. Blocked by: none. Source: AI panel round 1 (`docs/reviews/ai-panel/results/synthesis.md`, item 1), verified in code; `docs/2026-11-08-ai-panel-action-plan.md`, Batch 1.
 
 ## Goal
 

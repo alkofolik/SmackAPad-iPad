@@ -1,6 +1,6 @@
 # 21 — Unlocking counts lessons with 2 stars
 
-Status: ready-for-human (2026-11-01). Ticket 19 prerequisite verified at commit `342f9d3`.
+Status: done (2026-11-25). Previous: ready-for-human (2026-11-01). Ticket 19 prerequisite verified at commit `342f9d3`.
 
 ## Goal
 

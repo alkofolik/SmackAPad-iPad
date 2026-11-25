@@ -1,6 +1,6 @@
 # 07 — Audio Engine + Sample Kits
 
-Status: ready-for-human
+Status: done (2026-11-25). Previous: ready-for-human
 
 ## Goal
 

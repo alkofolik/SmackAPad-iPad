@@ -1,6 +1,6 @@
 # 182 — One Training screen (Today + Training merged) and a new day summary
 
-Status: ready-for-agent (after 181; before or after 180, but not in parallel — both touch TrainingScreen). Approved by Jakub on 2026-11-11 (points 10, 12, 18 and canvas comment).
+Status: done (2026-11-25). Previous: ready-for-agent (after 181; before or after 180, but not in parallel — both touch TrainingScreen). Approved by Jakub on 2026-11-11 (points 10, 12, 18 and canvas comment).
 
 Design reference: `docs/design/2026-11-11-screen-redesign/Training.dc.html` (artboard 7) and `DaySummary.dc.html` (artboard 6).
 

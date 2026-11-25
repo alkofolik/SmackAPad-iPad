@@ -1,6 +1,6 @@
 # 87 — Practice: tapping the static-view button again cycles the number of bars shown
 
-Status: ready. Blocked by: 84 (same file `PatternField.swift`). Source: Jakub, 2026-11-05 (photo 4): "The static pattern button could also work as a switch for how many bars are shown when tapped repeatedly — 1, 2, 3 or all — adapted to each lesson's number of bars."
+Status: done (2026-11-25). Previous: ready. Blocked by: 84 (same file `PatternField.swift`). Source: Jakub, 2026-11-05 (photo 4): "The static pattern button could also work as a switch for how many bars are shown when tapped repeatedly — 1, 2, 3 or all — adapted to each lesson's number of bars."
 
 ## Rule
 

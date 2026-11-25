@@ -1,6 +1,6 @@
 # 31 — Separate volume for metronome, pads and pattern sound
 
-Status: ready. Source: legacy comparison 2026-11-02 (legacy manual §4.9, Click / Pads sliders). Today the metronome and pattern sound can only be switched on or off.
+Status: done (2026-11-25). Previous: ready. Source: legacy comparison 2026-11-02 (legacy manual §4.9, Click / Pads sliders). Today the metronome and pattern sound can only be switched on or off.
 
 ## Goal
 

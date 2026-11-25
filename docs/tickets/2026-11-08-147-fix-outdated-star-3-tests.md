@@ -1,6 +1,6 @@
 # 147 — Fix 5 outdated tests after the star 3 rule change
 
-Status: ready-for-human. Blocked by: none. Source: Xcode test run 2026-11-08 01:25 (177 tests, 5 failing, 0 build errors).
+Status: done (2026-11-25). Previous: ready-for-human. Blocked by: none. Source: Xcode test run 2026-11-08 01:25 (177 tests, 5 failing, 0 build errors).
 
 ## Goal
 

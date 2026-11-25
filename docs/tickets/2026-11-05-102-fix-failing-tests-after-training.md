@@ -1,6 +1,6 @@
 # 102 — Fix three unit tests that fail after tickets 97–100
 
-Status: ready-for-agent. Source: Jakub, 2026-11-05 (Xcode reported failed tests). Checked on commit `49bda07` (before ticket 93–96 follow-ups and the pad-key/one-bar fix): the same three tests fail there, so the cause is tickets 97–100, not the UI work.
+Status: done (2026-11-25). Previous: ready-for-agent. Source: Jakub, 2026-11-05 (Xcode reported failed tests). Checked on commit `49bda07` (before ticket 93–96 follow-ups and the pad-key/one-bar fix): the same three tests fail there, so the cause is tickets 97–100, not the UI work.
 
 ## Goal
 

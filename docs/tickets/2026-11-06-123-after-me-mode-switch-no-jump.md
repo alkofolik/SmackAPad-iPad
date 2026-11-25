@@ -1,6 +1,6 @@
 # 123 — Mode switch to and from "After me": no jump, smooth like the others
 
-Status: ready-for-agent. Depends on: 122 (same header). Source: Jakub, 2026-11-06, screenshots of Play and After me modes.
+Status: done (2026-11-25). Previous: ready-for-agent. Depends on: 122 (same header). Source: Jakub, 2026-11-06, screenshots of Play and After me modes.
 
 ## Problem
 

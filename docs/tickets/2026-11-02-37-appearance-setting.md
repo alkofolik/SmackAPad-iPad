@@ -1,6 +1,6 @@
 # 37 — Light / dark mode in the main Settings
 
-Status: ready. Source: Jakub's test 2026-11-02 (feedback round 5).
+Status: done (2026-11-25). Previous: ready. Source: Jakub's test 2026-11-02 (feedback round 5).
 
 ## Problem
 

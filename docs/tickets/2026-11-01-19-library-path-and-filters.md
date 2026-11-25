@@ -1,6 +1,6 @@
 # 19 — Library: Path / Genres / Techniques views, filters and stage unlocking
 
-Status: ready-for-human (2026-11-01). Ticket 15 prerequisite verified at commit `b3a2f9c`; working tree was clean before this task.
+Status: done (2026-11-25). Previous: ready-for-human (2026-11-01). Ticket 15 prerequisite verified at commit `b3a2f9c`; working tree was clean before this task.
 
 ## Goal
 

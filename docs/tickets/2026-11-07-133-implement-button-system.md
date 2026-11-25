@@ -1,6 +1,6 @@
 # 133 — Implement unified button system (Variant B style + full toolbar pads + flash)
 
-Status: ready-for-human. Type: implementation. Depends on: 130, 131. Source: Jakub, 2026-11-07: selected **Variant B** (studio precision, 6 pt radius, clean 1px hairline) with **full tactile pads in toolbar** and **pad flash feedback (Variant A press)** from ticket 131.
+Status: done (2026-11-25). Previous: ready-for-human. Type: implementation. Depends on: 130, 131. Source: Jakub, 2026-11-07: selected **Variant B** (studio precision, 6 pt radius, clean 1px hairline) with **full tactile pads in toolbar** and **pad flash feedback (Variant A press)** from ticket 131.
 
 ## Goal
 

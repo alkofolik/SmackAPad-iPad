@@ -1,6 +1,6 @@
 # 11 — Theme.swift + Shared Components + Play Screen
 
-Status: ready-for-agent
+Status: done (2026-11-25). Previous: ready-for-agent
 
 ## Goal
 

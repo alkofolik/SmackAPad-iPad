@@ -1,6 +1,6 @@
 # 72 — Library: hide and show whole categories in the sidebar
 
-Status: ready. Source: Jakub, 2026-11-04: "I'd like to hide and show whole categories in the left column of the library, e.g. by a gesture and confirmation, or hold and confirm." Run after ticket 71 (both touch `LibraryScreen.swift`).
+Status: done (2026-11-25). Previous: ready. Source: Jakub, 2026-11-04: "I'd like to hide and show whole categories in the left column of the library, e.g. by a gesture and confirmation, or hold and confirm." Run after ticket 71 (both touch `LibraryScreen.swift`).
 
 ## Rule
 

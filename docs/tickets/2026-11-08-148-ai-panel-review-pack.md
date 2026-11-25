@@ -1,6 +1,6 @@
 # 148 — Review pack for the AI panel
 
-Status: ready-for-agent. Blocked by: none. Source: Jakub, 2026-11-08 (AI panel, `docs/reviews/ai-panel/README.md`).
+Status: done (2026-11-25). Previous: ready-for-agent. Blocked by: none. Source: Jakub, 2026-11-08 (AI panel, `docs/reviews/ai-panel/README.md`).
 
 ## Goal
 

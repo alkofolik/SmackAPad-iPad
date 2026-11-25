@@ -1,6 +1,6 @@
 # 20 — Remove First steps lessons that duplicate the Intro
 
-Status: ready-for-human (2026-11-01). Prerequisites verified: ticket 19 at `342f9d3`, ticket 21 at `8116fc1`. Stage unlocking is unchanged.
+Status: done (2026-11-25). Previous: ready-for-human (2026-11-01). Prerequisites verified: ticket 19 at `342f9d3`, ticket 21 at `8116fc1`. Stage unlocking is unchanged.
 
 ## Goal
 

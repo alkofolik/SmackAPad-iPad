@@ -1,6 +1,6 @@
 # 200 — Invisible chips, even mix cards, aligned day summary
 
-Status: ready-for-agent. Decided by Jakub on 2026-11-13 (iPad review, photos 1, 5, 7).
+Status: done (2026-11-25). Previous: ready-for-agent. Decided by Jakub on 2026-11-13 (iPad review, photos 1, 5, 7).
 
 ## Goal
 

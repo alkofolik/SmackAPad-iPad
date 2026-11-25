@@ -1,6 +1,6 @@
 # 88 — Appearance change (Light / Dark / System) applies at once
 
-Status: ready. Source: Jakub, 2026-11-05 (photo 5): "Sometimes I change the appearance, but it doesn't change even after closing the settings. It switches only when I tap another category."
+Status: done (2026-11-25). Previous: ready. Source: Jakub, 2026-11-05 (photo 5): "Sometimes I change the appearance, but it doesn't change even after closing the settings. It switches only when I tap another category."
 
 ## Problem
 

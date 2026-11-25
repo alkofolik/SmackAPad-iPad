@@ -1,6 +1,6 @@
 # 205 — Drum rows in the band ordered bottom-up like the pad layout
 
-Status: ready-for-agent. Decided by Jakub on 2026-11-13 (iPad review, photo 10).
+Status: done (2026-11-25). Previous: ready-for-agent. Decided by Jakub on 2026-11-13 (iPad review, photo 10).
 
 ## Goal
 

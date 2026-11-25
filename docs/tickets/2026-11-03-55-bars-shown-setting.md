@@ -1,6 +1,6 @@
 # 55 — "Bars shown" setting is ignored in static pattern view
 
-Status: ready-for-agent. Source: Jakub's iPad test, 2026-11-03.
+Status: done (2026-11-25). Previous: ready-for-agent. Source: Jakub's iPad test, 2026-11-03.
 Agent: Gemini 3.8 Flash, high thinking.
 
 ## Symptom

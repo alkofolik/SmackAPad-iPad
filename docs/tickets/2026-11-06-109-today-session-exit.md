@@ -1,6 +1,6 @@
 # 109 — Today session: a way out to Home (and so to the Library)
 
-Status: ready-for-human. Source: Jakub, 2026-11-06 (iPad test of ticket 103/107). Depends on: 103.
+Status: done (2026-11-25). Previous: ready-for-human. Source: Jakub, 2026-11-06 (iPad test of ticket 103/107). Depends on: 103.
 
 ## Problem
 

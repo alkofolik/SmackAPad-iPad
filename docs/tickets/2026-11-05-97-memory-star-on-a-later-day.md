@@ -1,6 +1,6 @@
 # 97 — The memory star can only be earned on a later day than the goal-tempo star
 
-Status: ready-for-agent. Source: Jakub, 2026-11-05 (retention discussion; legacy "Trénink" concept 2026-10-06, §4: practice performance overstates what is retained, sleep consolidates motor sequences).
+Status: done (2026-11-25). Previous: ready-for-agent. Source: Jakub, 2026-11-05 (retention discussion; legacy "Trénink" concept 2026-10-06, §4: practice performance overstates what is retained, sleep consolidates motor sequences).
 
 ## Goal
 

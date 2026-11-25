@@ -1,6 +1,6 @@
 # 202 — A review that did not count shows the reason, not "100 %"
 
-Status: ready-for-agent. Reported by Jakub on 2026-11-13 (iPad review, photos 4 and 9).
+Status: done (2026-11-25). Previous: ready-for-agent. Reported by Jakub on 2026-11-13 (iPad review, photos 4 and 9).
 
 ## Goal
 

@@ -1,6 +1,6 @@
 # 44 — Import progress from the legacy tool's backup (debug builds only)
 
-Status: ready. Source: Jakub, 2026-11-03 (approved). Stage unlock "L1-ghost" is explicitly **out of scope**.
+Status: done (2026-11-25). Previous: ready. Source: Jakub, 2026-11-03 (approved). Stage unlock "L1-ghost" is explicitly **out of scope**.
 
 ## Problem
 

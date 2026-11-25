@@ -1,6 +1,6 @@
 # 51 — Polish: copy fixed at the source (sentence case, short labels, no stray periods)
 
-Status: ready-for-agent. Source: unslop audit, approved by Jakub 2026-11-03.
+Status: done (2026-11-25). Previous: ready-for-agent. Source: unslop audit, approved by Jakub 2026-11-03.
 Blocked by: 48 (48 still searches for `localized("ACTIVE")`).
 
 ## Why

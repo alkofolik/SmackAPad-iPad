@@ -1,6 +1,6 @@
 # 154 — Controller presets without brand claims, no-controller hint, review notes
 
-Status: ready. Blocked by: none. Source: AI panel round 1 (`docs/reviews/ai-panel/results/synthesis.md`, items 11 and 14; `round1-chatgpt.md` R3-01, R3-04, R3-06); `docs/2026-11-08-ai-panel-action-plan.md`, Batch 2. Approved by Jakub 2026-11-09.
+Status: done (2026-11-25). Previous: ready. Blocked by: none. Source: AI panel round 1 (`docs/reviews/ai-panel/results/synthesis.md`, items 11 and 14; `round1-chatgpt.md` R3-01, R3-04, R3-06); `docs/2026-11-08-ai-panel-action-plan.md`, Batch 2. Approved by Jakub 2026-11-09.
 
 ## Goal
 

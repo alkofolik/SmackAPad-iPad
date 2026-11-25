@@ -1,6 +1,6 @@
 # 41 — Play pads on a hardware keyboard
 
-Status: ready (2026-11-03). Source: Jakub 2026-11-03 (widen the audience: iPad owners with a Magic Keyboard / Bluetooth keyboard but no pad controller).
+Status: done (2026-11-25). Previous: ready (2026-11-03). Source: Jakub 2026-11-03 (widen the audience: iPad owners with a Magic Keyboard / Bluetooth keyboard but no pad controller).
 
 ## Goal
 

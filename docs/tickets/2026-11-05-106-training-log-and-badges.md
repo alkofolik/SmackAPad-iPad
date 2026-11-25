@@ -1,6 +1,6 @@
 # 106 — Training log and Training badges
 
-Status: ready-for-agent. Depends on: 98, 100, 101. Source: Jakub, 2026-11-05 ("badges are enough for now"), `docs/2026-11-05-training-push-proposal.md` §3.4 and §4.
+Status: done (2026-11-25). Previous: ready-for-agent. Depends on: 98, 100, 101. Source: Jakub, 2026-11-05 ("badges are enough for now"), `docs/2026-11-05-training-push-proposal.md` §3.4 and §4.
 
 ## Goal
 

@@ -1,6 +1,6 @@
 # 105 — Review reminder notification (opt-in)
 
-Status: ready-for-agent. Depends on: 98. Source: Jakub, 2026-11-05 ("notification: yes"), `docs/2026-11-05-training-push-proposal.md` §3.3.
+Status: done (2026-11-25). Previous: ready-for-agent. Depends on: 98. Source: Jakub, 2026-11-05 ("notification: yes"), `docs/2026-11-05-training-push-proposal.md` §3.3.
 
 ## Goal
 

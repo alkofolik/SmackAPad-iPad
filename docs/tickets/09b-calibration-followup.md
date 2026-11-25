@@ -1,6 +1,6 @@
 # 09b — Calibration follow-up
 
-Status: ready
+Status: done (2026-11-25). Previous: ready
 
 ## Goal
 

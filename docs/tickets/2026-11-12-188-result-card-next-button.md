@@ -1,6 +1,6 @@
 # 188 — Result card: the empty black "Next" box after a finished review
 
-Status: ready-for-agent. Reported by Jakub on 2026-11-12 (screenshot of the result card after a passed review, landscape, black rectangle above Restart).
+Status: done (2026-11-25). Previous: ready-for-agent. Reported by Jakub on 2026-11-12 (screenshot of the result card after a passed review, landscape, black rectangle above Restart).
 
 ## Problem
 

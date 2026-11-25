@@ -1,6 +1,6 @@
 # 132 — Announce in advance that the third star unlocks the next day
 
-Status: ready-for-human. Source: Jakub, 2026-11-07. He thought the third star was broken at 100 %; it was the ticket 97 rule (star 3 only on a day after star 2). Not a bug; the player must be told earlier.
+Status: done (2026-11-25). Previous: ready-for-human. Source: Jakub, 2026-11-07. He thought the third star was broken at 100 %; it was the ticket 97 rule (star 3 only on a day after star 2). Not a bug; the player must be told earlier.
 
 ## Problem
 

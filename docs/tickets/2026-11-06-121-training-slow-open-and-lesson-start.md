@@ -1,6 +1,6 @@
 # 121 — Training: pad opens after ~5 s, lessons do not start from Training
 
-Status: ready-for-human. Implementation built and post-change simulator timings recorded; original iPad symptoms remain unverified. Source: Jakub, 2026-11-06 (iPad).
+Status: done (2026-11-25). Previous: ready-for-human. Implementation built and post-change simulator timings recorded; original iPad symptoms remain unverified. Source: Jakub, 2026-11-06 (iPad).
 
 ## Problem
 

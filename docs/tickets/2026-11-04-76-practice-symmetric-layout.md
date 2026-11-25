@@ -1,6 +1,6 @@
 # 76 — Practice: symmetric three-zone layout (landscape and portrait)
 
-Status: ready. Source: Jakub, 2026-11-04 (photos 5–9): "Tidy the practice page up so it is symmetric: the band dominant in the middle, empty space above and below it, everything else either fully at the top or fully at the bottom, fields aligned, nothing sticking out." Run before ticket 77 (both touch `PracticeScreen.swift`). Read the rules of `design-taste-frontend` only; do not run its scripts.
+Status: done (2026-11-25). Previous: ready. Source: Jakub, 2026-11-04 (photos 5–9): "Tidy the practice page up so it is symmetric: the band dominant in the middle, empty space above and below it, everything else either fully at the top or fully at the bottom, fields aligned, nothing sticking out." Run before ticket 77 (both touch `PracticeScreen.swift`). Read the rules of `design-taste-frontend` only; do not run its scripts.
 
 ## Target layout
 

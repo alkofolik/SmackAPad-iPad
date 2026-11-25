@@ -1,6 +1,6 @@
 # 164 — Practice screen: timing cue, run progress and focus mode (design phase)
 
-Status: designed, awaiting Jakub's choice. Approved by Jakub on 2026-11-10. Design only: no Swift changes until Jakub picks a variant. Implementation follows as T165.
+Status: done (2026-11-25, implemented in follow-up). Previous: designed, awaiting Jakub's choice. Approved by Jakub on 2026-11-10. Design only: no Swift changes until Jakub picks a variant. Implementation follows as T165.
 
 ## Problems Jakub reported
 

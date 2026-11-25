@@ -1,6 +1,6 @@
 # 134 — Shorter Czech labels: "Intro", "Systém"
 
-Status: ready-for-agent. Type: implementation. Source: Jakub, 2026-11-07 (screenshots Home and Settings).
+Status: done (2026-11-25). Previous: ready-for-agent. Type: implementation. Source: Jakub, 2026-11-07 (screenshots Home and Settings).
 
 ## Changes (Czech only, English stays)
 

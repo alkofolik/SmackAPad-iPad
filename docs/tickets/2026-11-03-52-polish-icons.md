@@ -1,6 +1,6 @@
 # 52 — Polish: one icon style (outline) and one icon size
 
-Status: ready-for-agent. Source: unslop audit, approved by Jakub 2026-11-03.
+Status: done (2026-11-25). Previous: ready-for-agent. Source: unslop audit, approved by Jakub 2026-11-03.
 Blocked by: 48, 51.
 
 ## Why

@@ -1,6 +1,6 @@
 # 54 — Hit timing is chaotic over Bluetooth MIDI
 
-Status: ready-for-agent. Source: Jakub's iPad test, 2026-11-03.
+Status: done (2026-11-25). Previous: ready-for-agent. Source: Jakub's iPad test, 2026-11-03.
 Agent: Gemini 3.8 Pro, high thinking (fallback: Codex GPT-6.1 Sol, high).
 Two phases: A (diagnostic build), then B (fix) after Jakub sends a log.
 

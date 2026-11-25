@@ -1,6 +1,6 @@
 # 114 — Home background like a pad-controller surface: design proposals (no app code)
 
-Status: proposals-ready (2026-11-06). Source: Jakub, 2026-11-06: "I'd like the Home screen to have some structure in the background, so it looks like the surface of a pad MIDI controller." Follows tickets 111 (chosen proposal A), 112 (pad look). Follow-up: an implementation ticket after Jakub chooses.
+Status: done (2026-11-25, implemented in follow-up). Previous: proposals-ready (2026-11-06). Source: Jakub, 2026-11-06: "I'd like the Home screen to have some structure in the background, so it looks like the surface of a pad MIDI controller." Follows tickets 111 (chosen proposal A), 112 (pad look). Follow-up: an implementation ticket after Jakub chooses.
 
 ## Goal
 

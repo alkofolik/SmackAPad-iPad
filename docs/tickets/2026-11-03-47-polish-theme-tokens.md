@@ -1,6 +1,6 @@
 # 47 — Polish: new Theme tokens (lines, active fill, radii, control heights, motion)
 
-Status: ready-for-agent. Source: unslop audit by Claude, direction approved by Jakub on 2026-11-03.
+Status: done (2026-11-25). Previous: ready-for-agent. Source: unslop audit by Claude, direction approved by Jakub on 2026-11-03.
 Blocked by: the uncommitted work of tickets 38, 39 and 42 must be committed first (Jakub decides).
 
 ## Why

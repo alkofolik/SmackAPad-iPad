@@ -1,6 +1,6 @@
 # 162 — Implement “How it works” help and first-launch tutorial
 
-Status: ready-for-agent. The Phase 1 design was approved by Jakub on 2026-11-10. [T159](2026-11-09-159-help-and-first-launch-tutorial.md) is complete. T157 and T158 passed their iPad checks.
+Status: done (2026-11-25). Previous: ready-for-agent. The Phase 1 design was approved by Jakub on 2026-11-10. [T159](2026-11-09-159-help-and-first-launch-tutorial.md) is complete. T157 and T158 passed their iPad checks.
 
 ## Goal
 

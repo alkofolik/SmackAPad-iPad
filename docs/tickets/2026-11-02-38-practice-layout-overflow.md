@@ -1,6 +1,6 @@
 # 38 — Practice screen: bottom must never leave the display
 
-Status: ready. Source: Jakub's iPad test 2026-11-02 (after ticket 34/35 band work).
+Status: done (2026-11-25). Previous: ready. Source: Jakub's iPad test 2026-11-02 (after ticket 34/35 band work).
 
 ## Problem
 

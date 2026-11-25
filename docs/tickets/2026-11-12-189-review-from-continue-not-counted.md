@@ -1,6 +1,6 @@
 # 189 — Bug: review opened from Continue does not stop and stays in the review queue
 
-Status: ready-for-agent. Reported by Jakub on 2026-11-12 (3 screenshots, 14:38–14:40). Ticket 176 fixed the auto-stop from the Library; this is the same symptom on another path.
+Status: done (2026-11-25). Previous: ready-for-agent. Reported by Jakub on 2026-11-12 (3 screenshots, 14:38–14:40). Ticket 176 fixed the auto-stop from the Library; this is the same symptom on another path.
 
 ## What Jakub saw
 

@@ -1,6 +1,6 @@
 # 194 — Home pad lines: one line, shorter text (no "…")
 
-Status: ready-for-agent. Reported by Jakub on 2026-11-13 with an iPad screenshot (English).
+Status: done (2026-11-25). Previous: ready-for-agent. Reported by Jakub on 2026-11-13 with an iPad screenshot (English).
 
 ## What Jakub saw
 

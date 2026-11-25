@@ -1,6 +1,6 @@
 # 131 — Proposal: one button system for the whole app (HTML previews, no code)
 
-Status: ready-for-human. Type: design proposal, **no Swift code**. Source: Jakub, 2026-11-07: "go through all the buttons; after the last graphic change most are misaligned and do not look good; this needs to be designed."
+Status: done (2026-11-25). Previous: ready-for-human. Type: design proposal, **no Swift code**. Source: Jakub, 2026-11-07: "go through all the buttons; after the last graphic change most are misaligned and do not look good; this needs to be designed."
 
 ## Goal
 

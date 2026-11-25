@@ -1,6 +1,6 @@
 # 118 — Controller body preview: swap textures, fix the layout (preview only, no app code)
 
-Status: ready-for-agent. Depends on: 117 (same folder, same file). Source: Jakub, 2026-11-06, after looking at `docs/design/2026-11-06-home-controller-body/index.html` (two screenshots, landscape and portrait).
+Status: done (2026-11-25). Previous: ready-for-agent. Depends on: 117 (same folder, same file). Source: Jakub, 2026-11-06, after looking at `docs/design/2026-11-06-home-controller-body/index.html` (two screenshots, landscape and portrait).
 
 ## What is wrong (seen on the screenshots)
 

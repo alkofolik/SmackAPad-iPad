@@ -1,6 +1,6 @@
 # 84 — Practice: smooth bar transition in the static view; downbeat mark must not cover the "1"
 
-Status: ready. Source: Jakub, 2026-11-05 (photo 1): "The transition between bars is wild and jumpy, not smooth. The first beat of the first bar in the static pattern is covered by the downbeat mark."
+Status: done (2026-11-25). Previous: ready. Source: Jakub, 2026-11-05 (photo 1): "The transition between bars is wild and jumpy, not smooth. The first beat of the first bar in the static pattern is covered by the downbeat mark."
 
 ## Problem
 
