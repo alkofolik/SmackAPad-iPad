@@ -1,6 +1,6 @@
 # 223 — Group `UI/` into subfolders
 
-Status: open. Follow-up A3 from ticket 210 (Desloppify baseline 92.6 / 100 on 2026-11-24).
+Status: done (2026-11-25). Follow-up A3 from ticket 210 (Desloppify baseline 92.6 / 100 on 2026-11-24). New objective score after this ticket: **93.5 / 100** (`flat_dirs` for `UI` resolved; File health 87.1%, Code quality 88.3%, Duplication 98.9%, Security 100.0%).
 
 ## Goal
 
@@ -24,9 +24,9 @@ Build only (pure file move with no code changes). No new tests.
 
 ## Acceptance criteria
 
-- [ ] `SmackAPad/Sources/UI/` files are organized into `Home/`, `Practice/`, `Library/`, `Settings/`, and `Shared/`.
-- [ ] `SmackAPad.xcodeproj` builds cleanly with all moved files.
-- [ ] Desloppify objective scan re-run (`flat_dirs` for `UI` resolved) and new score noted.
+- [x] `SmackAPad/Sources/UI/` files are organized into `Home/`, `Practice/`, `Library/`, `Settings/`, and `Shared/`.
+- [x] `SmackAPad.xcodeproj` builds cleanly with all moved files.
+- [x] Desloppify objective scan re-run (`flat_dirs` for `UI` resolved) and new score noted.
 
 ### Manual iPad checks for Jakub
 
