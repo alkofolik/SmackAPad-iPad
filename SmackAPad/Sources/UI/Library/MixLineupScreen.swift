@@ -60,6 +60,7 @@ struct MixLineupScreen: View {
     @Environment(ProgressStore.self) private var progress
     @Environment(MIDIInput.self) private var midi
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.dismissLesson) private var dismissLesson
     @Environment(\.horizontalSizeClass) private var sizeClass
     @Environment(\.dynamicTypeSize) private var dynamicType
 
@@ -67,6 +68,7 @@ struct MixLineupScreen: View {
     @State private var previewLessonID: Int?
     @State private var previewTask: Task<Void, Never>?
     @State private var tryLesson: Lesson?
+    @Namespace private var tryNamespace
     @State private var maxTitleHeight: CGFloat = 0
     @State private var maxPatternHeight: CGFloat = 0
 
@@ -98,7 +100,7 @@ struct MixLineupScreen: View {
             maxTitleHeight = 0
             maxPatternHeight = 0
         }
-        .fullScreenCover(item: $tryLesson) { lesson in
+        .lessonPresentation(lesson: $tryLesson, namespace: tryNamespace) { lesson in
             PracticeScreen(
                 lesson: lesson,
                 settings: settings,
@@ -113,7 +115,7 @@ struct MixLineupScreen: View {
         HStack(alignment: .center, spacing: Theme.Space.regular) {
             BackButton {
                 stopPreview()
-                dismiss()
+                if let dismissLesson { dismissLesson() } else { dismiss() }
             }
 
             VStack(alignment: .leading, spacing: 2) {
@@ -203,6 +205,7 @@ struct MixLineupScreen: View {
                 tryLesson = lesson
             }
         )
+        .padSource(lesson.id, in: tryNamespace)
     }
 
     @ViewBuilder

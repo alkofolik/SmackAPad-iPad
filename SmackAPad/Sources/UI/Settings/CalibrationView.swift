@@ -26,10 +26,12 @@ struct CalibrationView: View {
                         if midi.isKeyboardConnected {
                             Text(settings.localized("Hardware keyboard")).tag("keyboard")
                         }
-                        ForEach(midi.sources) { source in Text(source.name).font(Theme.rowTitle).tag(source.id) }
+                        ForEach(midi.sources) { source in Text(source.name).font(Theme.meta).tag(source.id) }
                     }
                     .disabled(session.busy)
-                    LabeledContent(settings.localized("Saved offset"), value: signed(session.savedOffset))
+                    LabeledContent(settings.localized("Saved offset")) {
+                        SettingsValue(signed(session.savedOffset))
+                    }
                     Text(settings.localized("Calibrate touch separately; it differs from a controller."))
                         .font(Theme.meta).foregroundStyle(Theme.secondary)
                     Text(settings.localized("Listen to four clicks, then tap with each of the next ten. Follow the sound, not the screen."))
@@ -37,15 +39,18 @@ struct CalibrationView: View {
                 } header: { SectionHeader(title: settings.localized("Calibration input")) }
 
                 Section {
-                    Text(status).font(Theme.control).accessibilityAddTraits(.updatesFrequently)
+                    SettingsValue(status)
+                        .accessibilityAddTraits(.updatesFrequently)
                     if session.busy {
                         ProgressView(value: Double(session.matchedClicks.count), total: 10)
                             .tint(Theme.orange)
-                        LabeledContent(settings.localized("Recorded taps"), value: "\(session.matchedClicks.count) / 10")
+                        LabeledContent(settings.localized("Recorded taps")) {
+                            SettingsValue("\(session.matchedClicks.count) / 10")
+                        }
                     }
                     if session.deviceID == "touch" {
                         Text(settings.localized("Tap with the click"))
-                            .font(Theme.rowTitle)
+                            .font(Theme.control)
                             .frame(maxWidth: .infinity, minHeight: 140)
                             .background { PadSurface(isActive: touching) }
                             .contentShape(RoundedRectangle(cornerRadius: Theme.Skin.Pad.radius))
@@ -60,16 +65,24 @@ struct CalibrationView: View {
                             .accessibilityAction { session.touch() }
                     } else if session.deviceID == "keyboard" {
                         Text(settings.localized("Press any mapped key with the click"))
-                            .font(Theme.rowTitle)
+                            .font(Theme.control)
                             .frame(maxWidth: .infinity, minHeight: 80)
                             .background { PadSurface() }
                     }
                     if let result = session.result {
-                        LabeledContent(settings.localized("Saved offset"), value: signed(session.savedOffset))
-                        LabeledContent(settings.localized("Usable taps"), value: "\(result.usableTaps) / 10")
-                        LabeledContent(settings.localized("Timing spread"), value: "\(Int(result.spreadMilliseconds.rounded())) ms")
-                        if result.discardedTaps > 0 { Text(settings.localized("Outlier taps were ignored")).font(Theme.meta) }
-                        Text(settings.localized("Play a lesson to check the result.")).font(Theme.meta)
+                        LabeledContent(settings.localized("Saved offset")) {
+                            SettingsValue(signed(session.savedOffset))
+                        }
+                        LabeledContent(settings.localized("Usable taps")) {
+                            SettingsValue("\(result.usableTaps) / 10")
+                        }
+                        LabeledContent(settings.localized("Timing spread")) {
+                            SettingsValue("\(Int(result.spreadMilliseconds.rounded())) ms")
+                        }
+                        if result.discardedTaps > 0 {
+                            SettingsValue(settings.localized("Outlier taps were ignored"))
+                        }
+                        SettingsValue(settings.localized("Play a lesson to check the result."))
                     }
                     if let error = session.audioError { Text(error).font(Theme.meta).foregroundStyle(Theme.secondary) }
                     if session.busy {

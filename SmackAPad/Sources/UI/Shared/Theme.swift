@@ -497,22 +497,12 @@ private struct LessonPresentation<Destination: View>: ViewModifier {
     @ViewBuilder func body(content: Content) -> some View {
         if #available(iOS 18, *), !Theme.Motion.Policy(reduced: reduced).opacityOnly {
             content.fullScreenCover(item: $lesson) { item in
-                destination(item).navigationTransition(.zoom(sourceID: item.id, in: namespace))
+                destination(item)
+                    .environment(\.dismissLesson, nil)
+                    .navigationTransition(.zoom(sourceID: item.id, in: namespace))
             }
         } else {
-            let policy = Theme.Motion.Policy(reduced: reduced)
-            content
-                .allowsHitTesting(lesson == nil)
-                .accessibilityHidden(lesson != nil)
-                .overlay {
-                    if let lesson {
-                        destination(lesson)
-                            .environment(\.dismissLesson, { self.lesson = nil })
-                            .transition(policy.navigation)
-                            .zIndex(1)
-                    }
-                }
-                .animation(policy.animation(lesson != nil ? Theme.Motion.padZoom : Theme.Motion.padDismiss), value: lesson != nil)
+            content.calmCover(item: $lesson, destination: destination)
         }
     }
 }
@@ -554,6 +544,36 @@ public struct PadPresentation<Item: Identifiable & Equatable, Destination: View>
     }
 }
 
+/// In-place cover for flows without a single source view and for reduced motion.
+private struct CalmCover<Item, Destination: View>: ViewModifier {
+    @Environment(\.accessibilityReduceMotion) private var reduced
+    @Binding var item: Item?
+    let onDismiss: () -> Void
+    let destination: (Item) -> Destination
+
+    func body(content: Content) -> some View {
+        let policy = Theme.Motion.Policy(reduced: reduced)
+        content
+            .allowsHitTesting(item == nil)
+            .accessibilityHidden(item != nil)
+            .overlay {
+                if let item {
+                    ZStack {
+                        destination(item)
+                    }
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .environment(\.dismissLesson, { self.item = nil })
+                    .onDisappear {
+                        if self.item == nil { onDismiss() }
+                    }
+                    .transition(policy.navigation)
+                    .zIndex(1)
+                }
+            }
+            .animation(policy.animation(item != nil ? Theme.Motion.padZoom : Theme.Motion.padDismiss), value: item != nil)
+    }
+}
+
 private struct DismissLessonKey: EnvironmentKey {
     static let defaultValue: (() -> Void)? = nil
 }
@@ -564,6 +584,14 @@ extension EnvironmentValues {
     }
 }
 extension View {
+    func calmCover<Item, Destination: View>(
+        item: Binding<Item?>,
+        onDismiss: @escaping () -> Void = {},
+        @ViewBuilder destination: @escaping (Item) -> Destination
+    ) -> some View {
+        modifier(CalmCover(item: item, onDismiss: onDismiss, destination: destination))
+    }
+
     func lessonSource(_ id: Int) -> some View { modifier(LessonSource(id: id)) }
     func lessonPresentation<Destination: View>(lesson: Binding<Lesson?>, namespace: Namespace.ID,
                                                @ViewBuilder destination: @escaping (Lesson) -> Destination) -> some View {

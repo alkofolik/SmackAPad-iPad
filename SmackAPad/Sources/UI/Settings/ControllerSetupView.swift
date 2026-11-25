@@ -16,6 +16,7 @@ public struct ControllerSetupView: View {
     @Environment(\.dismiss) private var dismiss
 
     var onDismiss: (() -> Void)? = nil
+    private var isEmbeddedInSettings = false
 
     @State private var showingMIDILearn = false
     @State private var profileToDelete: ControllerProfile?
@@ -25,6 +26,10 @@ public struct ControllerSetupView: View {
 
     public init(onDismiss: (() -> Void)? = nil) {
         self.onDismiss = onDismiss
+    }
+
+    init(isEmbeddedInSettings: Bool) {
+        self.isEmbeddedInSettings = isEmbeddedInSettings
     }
 
     private var statusTitle: String {
@@ -51,6 +56,26 @@ public struct ControllerSetupView: View {
     }
 
     public var body: some View {
+        if isEmbeddedInSettings {
+            controllerForm
+        } else {
+            controllerForm
+                .navigationTitle(settings.localized("Controller"))
+                .navigationBarTitleDisplayMode(.inline)
+                .navigationBarBackButtonHidden(true)
+                .toolbar {
+                    ToolbarItem(placement: .principal) { ScreenHeader(title: settings.localized("Controller")) }
+                    PadToolbarItem(placement: .topBarLeading) {
+                        BackButton {
+                            if let onDismiss { onDismiss() } else { dismiss() }
+                        }
+                    }
+                }
+        }
+    }
+
+    @ViewBuilder
+    private var controllerForm: some View {
         @Bindable var settings = settings
         @Bindable var midi = midi
 
@@ -60,7 +85,7 @@ public struct ControllerSetupView: View {
                 Section {
                     HStack {
                         Text(statusTitle)
-                            .font(Theme.rowTitle)
+                            .font(Theme.control)
                             .foregroundStyle(midi.connectedControllerName != nil ? Theme.ink : Theme.secondary)
                         Spacer()
                     }
@@ -107,6 +132,8 @@ public struct ControllerSetupView: View {
                         }
                         .buttonStyle(PadSecondaryButtonStyle())
                     }
+                } header: {
+                    SectionHeader(title: settings.localized("Controller"))
                 }
 
                 // MARK: 2. Calibration
@@ -153,7 +180,7 @@ public struct ControllerSetupView: View {
                                 .font(Theme.control)
                             Spacer()
                             Text("+")
-                                .font(Theme.rowTitle)
+                                .font(Theme.control)
                         }
                         .frame(minHeight: Theme.Size.touch)
                         .foregroundStyle(Theme.orange)
@@ -212,17 +239,6 @@ public struct ControllerSetupView: View {
             .appFormRowStyle()
         }
         .appFormStyle()
-        .navigationTitle(settings.localized("Controller"))
-        .navigationBarTitleDisplayMode(.inline)
-        .navigationBarBackButtonHidden(true)
-        .toolbar {
-            ToolbarItem(placement: .principal) { ScreenHeader(title: settings.localized("Controller")) }
-            PadToolbarItem(placement: .topBarLeading) {
-                BackButton {
-                    if let onDismiss { onDismiss() } else { dismiss() }
-                }
-            }
-        }
         .sheet(isPresented: $showingMIDILearn) {
             MIDILearnView()
                 .environment(settings)
@@ -339,11 +355,11 @@ private struct ProfileRow: View {
     var body: some View {
         ListRow(symbol: isActive ? "checkmark.circle.fill" : "circle",
                 stateTitle: settings.localized(isActive ? "Active" : "Preset"),
-                title: settings.displayName(for: profile), action: onSelect) {
+                title: settings.displayName(for: profile), titleFont: Theme.control, action: onSelect) {
             Text("\(settings.localized(profile.padCount == 8 ? "8 pads" : "16 pads")) · \(settings.localized(isCustom ? "Custom" : "Preset"))")
         } trailing: {
             if isActive {
-                Text(Theme.sentenceCase(settings.localized("Active"))).font(Theme.meta).foregroundStyle(Theme.ink)
+                Text(Theme.sentenceCase(settings.localized("Active"))).font(Theme.meta).foregroundStyle(Theme.secondary)
             }
             if isCustom {
                 Button(role: .destructive, action: onDelete) {

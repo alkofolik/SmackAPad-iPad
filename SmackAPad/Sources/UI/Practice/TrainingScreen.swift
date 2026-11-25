@@ -53,6 +53,7 @@ public struct TrainingScreen: View {
     @AppStorage(TodayPlan.storageKey) private var savedTodayPlan = ""
     @AppStorage("smackapad.training.dailyMixes") private var dailyMixes = "{}"
     @Namespace private var lessonNamespace
+    @Namespace private var afterMeNamespace
 
     private enum WaitingGroup: String, CaseIterable, Identifiable {
         case tomorrow
@@ -219,13 +220,16 @@ public struct TrainingScreen: View {
             .onReceive(NotificationCenter.default.publisher(for: .NSCalendarDayChanged)) { _ in
                 refreshCalendarDay()
             }
-            .fullScreenCover(item: $selectedAfterMeLesson, onDismiss: {
-                isVisible = true
-                refreshTrainingData()
-            }) { lesson in
+            .lessonPresentation(lesson: $selectedAfterMeLesson, namespace: afterMeNamespace) { lesson in
                 PracticeLessonDestination(launch: .afterMe(lesson))
             }
-            .fullScreenCover(item: $mixPresentation, onDismiss: {
+            .onChange(of: selectedAfterMeLesson?.id) { _, id in
+                if id == nil {
+                    isVisible = true
+                    refreshTrainingData()
+                }
+            }
+            .calmCover(item: $mixPresentation, onDismiss: {
                 isVisible = true
                 refreshTrainingData()
             }) { mix in
@@ -249,19 +253,11 @@ public struct TrainingScreen: View {
                     )
                 }
             }
-            .fullScreenCover(
-                isPresented: Binding(
-                    get: { todayPractice != nil },
-                    set: { if !$0 { todayPractice = nil } }
-                ),
-                onDismiss: dailyPracticeDismissed
-            ) {
-                if let presentation = todayPractice {
-                    todayPracticeCover(for: presentation)
-                        .id(presentation.stepID)
-                }
+            .calmCover(item: $todayPractice, onDismiss: dailyPracticeDismissed) { presentation in
+                todayPracticeCover(for: presentation)
+                    .id(presentation.stepID)
             }
-            .fullScreenCover(item: $daySummary, onDismiss: {
+            .calmCover(item: $daySummary, onDismiss: {
                 isVisible = true
                 refreshTrainingData()
                 if startMixAfterSummary {
@@ -1335,6 +1331,7 @@ public struct TrainingScreen: View {
                 }
                 .buttonStyle(PadPrimaryButtonStyle())
                 .disabled(candidate == nil)
+                .padSource(candidate?.id ?? 0, in: afterMeNamespace)
             }
         }
         .padding(20)

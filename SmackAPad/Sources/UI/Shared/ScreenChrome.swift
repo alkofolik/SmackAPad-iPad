@@ -90,6 +90,7 @@ struct ListRow<Meta: View, Trailing: View>: View {
     var number: Int? = nil
     let title: String
     var dimmed = false
+    var titleFont = Theme.rowTitle
     let action: () -> Void
     @ViewBuilder var meta: Meta
     @ViewBuilder var trailing: Trailing
@@ -122,7 +123,7 @@ struct ListRow<Meta: View, Trailing: View>: View {
                     Text(number.formatted()).font(Theme.meta).frame(minWidth: 24)
                 }
                 VStack(alignment: .leading, spacing: Theme.Space.tight) {
-                    Text(title).font(Theme.rowTitle).fixedSize(horizontal: false, vertical: true)
+                    Text(title).font(titleFont).fixedSize(horizontal: false, vertical: true)
                     meta.font(Theme.meta).foregroundStyle(Theme.secondary)
                         .fixedSize(horizontal: false, vertical: true)
                 }

@@ -31,7 +31,7 @@ struct PurchaseControls: View {
                     Task { await store.purchase(product) }
                 } label: {
                     Text(settings.localized("Unlock for %@", product.displayPrice))
-                        .font(Theme.rowTitle)
+                        .font(Theme.control)
                         .frame(maxWidth: .infinity, minHeight: Theme.Size.control)
                 }
                 .buttonStyle(PadPrimaryButtonStyle())
@@ -54,7 +54,7 @@ struct PurchaseControls: View {
             }
             Button { Task { await store.restore() } } label: {
                 Text(settings.localized("Restore purchase"))
-                    .font(Theme.meta)
+                    .font(Theme.control)
                     .frame(minHeight: Theme.Size.touch)
             }
             .buttonStyle(PadSecondaryButtonStyle())
@@ -75,8 +75,9 @@ struct PurchasesSection: View {
 
     var body: some View {
         Section {
-            LabeledContent(settings.localized("Access"), value: settings.localized(store.hasFullAccess ? "Full" : "Free"))
-                .font(Theme.control)
+            LabeledContent(settings.localized("Access")) {
+                SettingsValue(settings.localized(store.hasFullAccess ? "Full" : "Free"))
+            }
             if !store.hasFullAccess {
                 Button { showingPurchase = true } label: {
                     Text(settings.localized("Full unlock"))
@@ -88,10 +89,12 @@ struct PurchasesSection: View {
             ForEach(store.packIDs, id: \.self) { id in
                 let productID = StoreManager.productPrefix + ".pack." + id
                 if store.ownedProductIDs.contains(productID) || store.ownedProductIDs.contains(StoreManager.bundleID) {
-                    LabeledContent(store.products[productID]?.displayName ?? id, value: settings.localized("Owned"))
+                    LabeledContent(store.products[productID]?.displayName ?? id) {
+                        SettingsValue(settings.localized("Owned"))
+                    }
                 } else {
                     VStack(alignment: .leading, spacing: Theme.Space.small) {
-                        Text(store.products[productID]?.displayName ?? id).font(Theme.rowTitle)
+                        Text(store.products[productID]?.displayName ?? id).font(Theme.control)
                         PurchaseControls(access: "pack:" + id)
                     }
                 }
@@ -194,7 +197,7 @@ struct PurchaseSheet: View {
                 }
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
-            .background(Theme.background.ignoresSafeArea())
+            .calmChassisBackground()
         }
         .foregroundStyle(Theme.ink)
         .tint(Theme.ink)
@@ -223,8 +226,7 @@ struct PurchaseSheet: View {
                 .frame(width: compact ? 96 : 120, height: compact ? 96 : 120)
 
             Text(headlineText)
-                .font(Theme.padTitle(size: compact ? 64 : 76))
-                .lineSpacing(compact ? -4 : -6)
+                .font(Theme.boldDisplay(32))
                 .foregroundStyle(Theme.white)
                 .padding(.top, compact ? 24 : 32)
 
@@ -240,9 +242,9 @@ struct PurchaseSheet: View {
         }
         .padding(compact ? 28 : 40)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Theme.black, in: RoundedRectangle(cornerRadius: 24))
+        .background(Theme.black, in: RoundedRectangle(cornerRadius: Theme.Radius.panel))
         .overlay {
-            RoundedRectangle(cornerRadius: 24)
+            RoundedRectangle(cornerRadius: Theme.Radius.panel)
                 .strokeBorder(Theme.white.opacity(0.10), lineWidth: 1)
         }
     }
@@ -303,9 +305,9 @@ struct PurchaseSheet: View {
                 }
                 .frame(maxWidth: .infinity)
                 .frame(height: 80)
-                .background(Theme.black, in: RoundedRectangle(cornerRadius: 16))
+                .background(Theme.black, in: RoundedRectangle(cornerRadius: Theme.Radius.panel))
                 .overlay {
-                    RoundedRectangle(cornerRadius: 16)
+                    RoundedRectangle(cornerRadius: Theme.Radius.panel)
                         .strokeBorder(Theme.white.opacity(0.12), lineWidth: 1)
                 }
             } else {
@@ -318,7 +320,7 @@ struct PurchaseSheet: View {
                             .foregroundStyle(Theme.black)
                             .frame(maxWidth: .infinity)
                             .frame(height: 80)
-                            .background(Theme.orange, in: RoundedRectangle(cornerRadius: 16))
+                            .background(Theme.orange, in: RoundedRectangle(cornerRadius: Theme.Radius.panel))
                     }
                     .buttonStyle(BadgeTileButtonStyle())
                     .disabled(store.busy || !store.entitlementsLoaded)

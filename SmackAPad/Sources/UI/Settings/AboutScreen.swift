@@ -42,7 +42,7 @@ public struct AboutDetailView: View {
                     PadLogoGrid(neutralColor: Theme.ink, gap: 10, padRadius: 5)
                         .padding(24)
                         .frame(width: 132, height: 132)
-                        .background(Theme.surface, in: RoundedRectangle(cornerRadius: 30))
+                        .instrumentPanel()
                         .shadow(color: Theme.black.opacity(0.12), radius: 6, y: 2)
 
                     Text("SMACK-A-PAD")
@@ -78,7 +78,7 @@ public struct AboutDetailView: View {
             .padding(.leading, Theme.Space.page)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .background(Theme.background.ignoresSafeArea())
+        .calmChassisBackground()
         .navigationBarBackButtonHidden(true)
         .toolbar(.hidden, for: .navigationBar)
     }
@@ -110,12 +110,7 @@ public struct AboutDetailView: View {
 
             fontLicencesRow(showTopDivider: hasSupport || hasPrivacy)
         }
-        .background(Theme.surface, in: RoundedRectangle(cornerRadius: 16))
-        .overlay {
-            RoundedRectangle(cornerRadius: 16)
-                .strokeBorder(Theme.ink.opacity(0.10), lineWidth: 1)
-        }
-        .clipShape(RoundedRectangle(cornerRadius: 16))
+        .instrumentPanel()
     }
 
     private func linkRow(icon: String, title: String, showTopDivider: Bool, action: @escaping () -> Void) -> some View {

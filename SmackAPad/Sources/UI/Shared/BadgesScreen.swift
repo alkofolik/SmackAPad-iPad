@@ -91,7 +91,7 @@ struct BadgesView: View {
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .background(Theme.background.ignoresSafeArea())
+        .calmChassisBackground()
         .navigationBarBackButtonHidden(true)
         .toolbar(.hidden, for: .navigationBar)
     }
@@ -150,23 +150,25 @@ struct BadgesView: View {
                     .foregroundStyle(Theme.secondary)
             }
 
-            ScrollView(.horizontal, showsIndicators: false) {
-                HStack(alignment: .top, spacing: 10) {
-                    ForEach(badges) { badge in
-                        BadgeTile(
-                            badge: badge,
-                            stats: stats,
-                            earnedDate: badgeStore.earnedDate(for: badge.id)
-                        )
-                    }
+            LazyVGrid(
+                columns: [GridItem(.adaptive(minimum: 124, maximum: 156), spacing: 16)],
+                alignment: .leading,
+                spacing: 18
+            ) {
+                ForEach(badges) { badge in
+                    BadgeTile(
+                        badge: badge,
+                        stats: stats,
+                        earnedDate: badgeStore.earnedDate(for: badge.id),
+                        compact: true
+                    )
                 }
             }
-            .scrollBounceBehavior(.basedOnSize)
         }
         .padding(.top, 18)
         .padding(.horizontal, 20)
         .padding(.bottom, 14)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Theme.surface, in: RoundedRectangle(cornerRadius: 20))
+        .instrumentPanel()
     }
 }

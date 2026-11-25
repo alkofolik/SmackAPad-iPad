@@ -12,6 +12,39 @@ import UserNotifications
 import UniformTypeIdentifiers
 #endif
 
+struct SettingsValue: View {
+    private let text: String
+
+    init(_ text: String) { self.text = text }
+
+    var body: some View {
+        Text(text).font(Theme.meta).foregroundStyle(Theme.secondary)
+    }
+}
+
+enum SettingsArea: String, CaseIterable, Identifiable {
+    case sound, practice, controller, purchasesAndBackup, about
+    #if DEBUG
+    case developer
+    #endif
+
+    var id: Self { self }
+
+    @MainActor
+    func title(in settings: SettingsManager) -> String {
+        switch self {
+        case .sound: settings.localized("Sound")
+        case .practice: settings.localized("Practice")
+        case .controller: settings.localized("Controller")
+        case .purchasesAndBackup: "\(settings.localized("Purchases")) / \(settings.localized("Progress"))"
+        case .about: settings.localized("About")
+        #if DEBUG
+        case .developer: settings.localized("Developer")
+        #endif
+        }
+    }
+}
+
 @MainActor
 public struct SettingsView: View {
     @Environment(SettingsManager.self) private var settings
@@ -22,7 +55,7 @@ public struct SettingsView: View {
     @State private var isInstrumentVolumeExpanded = false
     @State private var notificationsDenied = false
     @State private var helpPresentation: HelpPresentation?
-    @State private var windowWidth: CGFloat = 0
+    @State private var selectedArea: SettingsArea = .sound
     @AccessibilityFocusState private var helpFocused: Bool
     @AppStorage("smackapad.practice.showPads") private var showPads = true
     @AppStorage("smackapad.practice.touchPadsInPortrait") private var touchPadsInPortrait = true
@@ -46,391 +79,476 @@ public struct SettingsView: View {
     }
 
     public var body: some View {
-        @Bindable var settings = settings
-        @Bindable var midi = midi
-
-        NavigationStack {
-            Form {
+        GeometryReader { geometry in
+            let width = geometry.size.width
+            NavigationStack {
                 Group {
-                    Section {
-                        NavigationLink {
-                            ControllerSetupView()
-                        } label: {
-                            HStack {
-                                Text(settings.localized("Controller and calibration"))
-                                    .font(Theme.control)
-                                Spacer()
-                                Text(controllerStatus)
-                                    .font(Theme.meta)
-                                    .foregroundStyle(Theme.secondary)
+                    if width >= 740 {
+                        HStack(spacing: 0) {
+                            sidebar
+                            Rectangle().fill(Theme.hairline).frame(width: 1)
+                            areaForm(selectedArea)
+                                .id(selectedArea)
+                                .frame(maxWidth: 700)
+                                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+                        }
+                    } else {
+                        Form {
+                            ForEach(SettingsArea.allCases) { area in
+                                NavigationLink {
+                                    areaForm(area)
+                                        .navigationTitle(area.title(in: settings))
+                                        .navigationBarTitleDisplayMode(.inline)
+                                } label: {
+                                    areaLabel(area)
+                                }
                             }
-                            .frame(minHeight: Theme.Size.touch)
+                            .appFormRowStyle()
                         }
+                        .appFormStyle()
+                    }
+                }
+                .calmChassisBackground()
+                .navigationTitle(settings.localized("Settings"))
+                .navigationBarTitleDisplayMode(.inline)
+                .navigationBarBackButtonHidden(true)
+                .toolbar {
+                    ToolbarItem(placement: .principal) { ScreenHeader(title: settings.localized("Settings")) }
+                    PadToolbarItem(placement: .topBarLeading) {
+                        BackButton {
+                            if let onDismiss { onDismiss() } else { dismiss() }
+                        }
+                    }
+                    ToolbarItem(placement: .topBarTrailing) {
                         Button {
-                            helpPresentation = HelpPresentation(windowWidth: windowWidth)
+                            helpPresentation = HelpPresentation(windowWidth: width)
                         } label: {
-                            HelpEntryLabel()
+                            Text(settings.localized("help.title"))
+                                .font(Theme.control)
+                                .foregroundStyle(Theme.ink)
+                                .frame(minHeight: Theme.Size.touch)
                         }
-                        .buttonStyle(.plain)
                         .accessibilityFocused($helpFocused)
                         .helpDeck(presentation: $helpPresentation) { helpFocused = true }
                     }
+                }
+            }
+        }
+        .task {
+            loadKits()
+            await refreshNotificationStatus()
+        }
+    }
 
-                    PurchasesSection()
-                    ProgressBackupSection()
-                    #if DEBUG
-                    LegacyProgressImportSection()
-                    DebugDeveloperSection()
-                    #endif
-
-                    // MARK: 1. Sound
-                    Section {
-                        NavigationLink {
-                            SoundKitSelectionView(kits: kits)
-                        } label: {
-                            HStack {
-                                Text(settings.localized("Sound set"))
-                                    .font(Theme.display(16))
-                                    .foregroundStyle(Theme.ink)
-                                Spacer()
-                                Text(selectedKitTitle)
-                                    .font(Theme.display(16))
-                                    .foregroundStyle(Theme.secondary)
-                            }
-                            .frame(minHeight: Theme.Size.touch)
-                        }
-                        SoundSliderRow(
-                            title: settings.localized("Metronome"),
-                            value: $settings.metronomeVolume
-                        )
-                        SoundSliderRow(
-                            title: settings.localized("Pads"),
-                            value: $settings.padsVolume
-                        )
-                        SoundSliderRow(
-                            title: settings.localized("settings.sound.pattern"),
-                            value: $settings.patternVolume
-                        )
-                        Button {
-                            withAnimation(.easeOut(duration: 0.2)) {
-                                isInstrumentVolumeExpanded.toggle()
-                            }
-                        } label: {
-                            HStack(spacing: 12) {
-                                Text(settings.localized("Instrument volume"))
-                                    .font(Theme.strong(16))
-                                    .foregroundStyle(Theme.ink)
-                                Spacer()
-                                let changedCount = settings.changedInstrumentTrimCount
-                                if changedCount > 0 {
-                                    Text(settings.localized("changed %lld", changedCount))
-                                        .font(Theme.strong(13).monospacedDigit())
-                                        .foregroundStyle(Theme.background)
-                                        .padding(.horizontal, 10)
-                                        .frame(height: 26)
-                                        .background(Theme.ink, in: Capsule())
+    private var sidebar: some View {
+        ScrollView {
+            VStack(spacing: Theme.Space.tight) {
+                ForEach(SettingsArea.allCases) { area in
+                    let isSelected = area == selectedArea
+                    Button { selectedArea = area } label: {
+                        areaLabel(area)
+                            .padding(.horizontal, Theme.Space.regular)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .background(isSelected ? Theme.surface : .clear, in: Capsule())
+                            .overlay(alignment: .leading) {
+                                if isSelected {
+                                    Capsule()
+                                        .fill(Theme.orange)
+                                        .frame(width: 3)
+                                        .padding(.vertical, 10)
                                 }
-                                Image(systemName: isInstrumentVolumeExpanded ? "chevron.up" : "chevron.down")
-                                    .font(.system(size: 14, weight: .semibold))
-                                    .foregroundStyle(Theme.ink)
                             }
-                            .frame(minHeight: Theme.Size.touch)
                             .contentShape(Rectangle())
-                        }
-                        .buttonStyle(.plain)
-                        .accessibilityValue(settings.localized(isInstrumentVolumeExpanded ? "Expanded" : "Collapsed"))
-
-                        if isInstrumentVolumeExpanded {
-                            VStack(alignment: .leading, spacing: 12) {
-                                LazyVGrid(
-                                    columns: [
-                                        GridItem(.flexible(), spacing: 8),
-                                        GridItem(.flexible(), spacing: 8)
-                                    ],
-                                    spacing: 8
-                                ) {
-                                    ForEach(InstrumentTrimCell.roles, id: \.self) { voice in
-                                        InstrumentTrimCell(voice: voice)
-                                    }
-                                }
-
-                                Button {
-                                    settings.resetInstrumentTrims()
-                                } label: {
-                                    Text(settings.localized("Reset all to 0 dB"))
-                                        .font(Theme.strong(15))
-                                        .foregroundStyle(settings.instrumentTrims.isEmpty ? Theme.secondary : Theme.ink)
-                                        .padding(.horizontal, 16)
-                                        .frame(height: 44)
-                                        .background(Theme.background, in: RoundedRectangle(cornerRadius: 12))
-                                        .overlay {
-                                            RoundedRectangle(cornerRadius: 12)
-                                                .strokeBorder(Theme.ink.opacity(settings.instrumentTrims.isEmpty ? 0.12 : 0.28), lineWidth: 1.5)
-                                        }
-                                }
-                                .buttonStyle(.plain)
-                                .disabled(settings.instrumentTrims.isEmpty)
-                            }
-                            .padding(.top, 4)
-                            .padding(.bottom, 6)
-                            .listRowSeparator(.hidden)
-                        }
-                    } header: {
-                        SectionHeader(title: settings.localized("Sound"))
-                    } footer: {
-                        Text(settings.localized("All 8 kits are bundled with the app for practice and playback."))
-                            .font(Theme.meta)
-                            .foregroundStyle(Theme.secondary)
                     }
+                    .buttonStyle(.plain)
+                    .accessibilityAddTraits(isSelected ? .isSelected : [])
+                }
+            }
+            .padding(Theme.Space.small)
+        }
+        .frame(width: 250)
+        .scrollBounceBehavior(.basedOnSize)
+    }
 
-                    // MARK: 2. BPM Step
-                    Section {
-                        PlexSegmentedPicker(title: settings.localized("Tempo step"), selection: $settings.bpmStep,
-                            options: BpmStep.allCases.map { ($0.rawValue, "+\($0.rawValue) BPM") })
-                    } header: {
-                        SectionHeader(title: settings.localized("Tempo auto-step (BPM)"))
-                    } footer: {
-                        Text(settings.localized("Tempo automatically increases by this step after each clean pass until target tempo."))
-                            .font(Theme.meta)
-                            .foregroundStyle(Theme.secondary)
-                    }
+    private func areaLabel(_ area: SettingsArea) -> some View {
+        VStack(alignment: .leading, spacing: Theme.Space.tight) {
+            Text(area.title(in: settings))
+                .font(Theme.control)
+                .foregroundStyle(Theme.ink)
+            if area == .controller {
+                Text(controllerStatus)
+                    .font(Theme.meta)
+                    .foregroundStyle(Theme.secondary)
+            }
+        }
+        .padding(.vertical, Theme.Space.tight)
+        .frame(minHeight: Theme.Size.touch)
+    }
 
-                    Section {
-                        Picker(settings.localized("Practice mode"), selection: $settings.practiceMode) {
-                            ForEach(PracticeMode.allCases, id: \.self) { mode in
-                                Text(settings.localized(mode.title)).tag(mode)
-                            }
-                        }
-                        .pickerStyle(.menu)
-                        .frame(minHeight: Theme.Size.touch)
-                    } header: {
-                        SectionHeader(title: settings.localized("Practice mode"))
-                    } footer: {
-                        Text(settings.localized(settings.practiceMode.explanation))
-                            .font(Theme.meta)
-                            .foregroundStyle(Theme.secondary)
-                    }
-
-                    // MARK: 2b. Pad layout on the practice screen
-                    Section {
-                        Picker(settings.localized("Bars shown"), selection: $visibleBars) {
-                            Text(settings.localized("1 bar")).tag(1)
-                            Text(settings.localized("%lld bars", 2)).tag(2)
-                            Text(settings.localized("%lld bars", 3)).tag(3)
-                            Text(settings.localized("All bars")).tag(4)
-                        }
-                        Toggle(settings.localized("Small pad layout"), isOn: $showPads)
-                        Toggle(settings.localized("Touch pads in portrait"), isOn: $touchPadsInPortrait)
-                        Toggle(settings.localized("Fade notes in From memory"), isOn: $settings.fadeMemoryNotes)
-                        Toggle(settings.localized("Automatic peek in From memory"), isOn: $settings.autoPeekMemory)
-                    } header: {
-                        SectionHeader(title: settings.localized("Practice screen"))
-                    } footer: {
-                        VStack(alignment: .leading, spacing: Theme.Space.tight) {
-                            Text(settings.localized("Shows a small pad layout in the lesson that lights up the pads you hit."))
-                            Text(settings.localized("After two missed passes the notes show for one pass. That pass does not count."))
-                        }
-                        .font(Theme.meta)
-                        .foregroundStyle(Theme.secondary)
-                    }
-
-                    // MARK: 2c. Training
-                    Section {
-                        Toggle(
-                            settings.localized("Review reminder"),
-                            isOn: Binding(
-                                get: { settings.reviewReminderEnabled },
-                                set: { handleReminderToggle($0) }
-                            )
-                        )
-                        .frame(minHeight: Theme.Size.touch)
-
-                        if notificationsDenied {
-                            Text(settings.localized("Notifications are turned off in iPad Settings."))
-                                .font(Theme.meta)
-                                .foregroundStyle(Theme.destructive)
-                        }
-
-                        if settings.reviewReminderEnabled {
-                            DatePicker(
-                                settings.localized("Time"),
-                                selection: Binding(
-                                    get: { settings.reviewReminderTime },
-                                    set: { newTime in
-                                        settings.reviewReminderTime = newTime
-                                        ReviewReminderScheduler.shared.reschedule()
-                                    }
-                                ),
-                                displayedComponents: .hourAndMinute
-                            )
-                            .font(Theme.control)
-                            .frame(minHeight: Theme.Size.touch)
-                        }
-                    } header: {
-                        SectionHeader(title: settings.localized("Training"))
-                    }
-
-                    Section {
-                        Toggle(settings.localized("Hide completed lessons"), isOn: $settings.hideCompletedLessons)
-                        Picker(settings.localized("Next lesson from"), selection: $settings.nextLessonSource) {
-                            ForEach(NextLessonSource.allCases) { source in
-                                Text(settings.localized(source.title)).tag(source.id)
-                            }
-                        }
-                        .frame(minHeight: Theme.Size.touch)
-                    } header: {
-                        SectionHeader(title: settings.localized("Library"))
-                    }
-
-                    // MARK: Keyboard
-                    Section {
-                        if midi.isKeyboardConnected {
-                            Toggle(settings.localized("Play pads with keyboard"), isOn: $settings.playPadsWithKeyboard)
-                                .tint(Theme.orange)
-                        } else {
-                            Text(settings.localized("No keyboard connected"))
-                                .font(Theme.meta)
-                                .foregroundStyle(Theme.secondary)
-                        }
-
-                        VStack(alignment: .leading, spacing: Theme.Space.tight) {
-                            ForEach(KeyboardPadMapping.rows, id: \.rowNumber) { row in
-                                if row.rowNumber > 1 {
-                                    Divider()
-                                }
-                                HStack {
-                                    Text(settings.localized(row.label))
-                                        .font(Theme.meta)
-                                        .foregroundStyle(Theme.secondary)
-                                    Spacer()
-                                    HStack(spacing: 6) {
-                                        ForEach(row.keys, id: \.self) { key in
-                                            Text(key)
-                                                .font(Theme.control)
-                                                .foregroundStyle(Theme.ink)
-                                                .frame(width: 28, height: 28)
-                                                .background(Theme.surface, in: RoundedRectangle(cornerRadius: 6))
-                                                .overlay {
-                                                    RoundedRectangle(cornerRadius: 6)
-                                                        .strokeBorder(Theme.hairline, lineWidth: 1)
-                                                }
-                                        }
-                                    }
-                                }
-                                .frame(minHeight: 32)
-                            }
-                        }
-                        .padding(.vertical, Theme.Space.tight)
-                    } header: {
-                        SectionHeader(title: settings.localized("Keyboard"))
-                    }
-
-                    // MARK: 4. Appearance
-                    Section {
-                        PlexSegmentedPicker(title: settings.localized("Appearance"), selection: $settings.appearance,
-                            options: AppAppearance.allCases.map { ($0, settings.localized($0.title)) })
-                    } header: {
-                        SectionHeader(title: settings.localized("Appearance"))
-                    } footer: {
-                        Text(settings.localized("Choose light, dark or follow your system appearance."))
-                            .font(Theme.meta)
-                            .foregroundStyle(Theme.secondary)
-                    }
-
-                    // MARK: 5. Language Switch
-                    Section {
-                        PlexSegmentedPicker(title: settings.localized("App language"), selection: $settings.languagePreference,
-                            options: AppLanguage.allCases.map { ($0, $0.displayName) })
-                    } header: {
-                        SectionHeader(title: settings.localized("Language"))
-                    } footer: {
-                        Text(settings.localized("Choose Czech or English. Your lesson progress and controller mappings remain preserved."))
-                            .font(Theme.meta)
-                            .foregroundStyle(Theme.secondary)
-                    }
-
-                    // MARK: 7. Touch Pads
-                    Section {
-                        if let pads = midi.padIndices {
-                            let profile = midi.activeProfile
-                            PadProfileGrid(profile: profile) { slot in
-                                let padIndex = pads[profile.target(forSlot: slot)]
-                                TouchPad(
-                                    number: slot + 1,
-                                    sound: PadNames.name(for: padIndex),
-                                    isActive: midi.pressedPadIndices.contains(padIndex)
-                                ) { pressed in
-                                    midi.touch(padIndex: padIndex, isPressed: pressed)
-                                }
-                                .id("\(settings.activeProfileName)/\(slot)/\(padIndex)")
-                            }
-                            .padding(.vertical, Theme.Space.small)
-                        } else {
-                            Text(settings.localized("This lesson requires 16 pads."))
-                                .font(Theme.meta)
-                        }
-                    } header: {
-                        SectionHeader(title: settings.localized("Touch pads"))
-                    } footer: {
-                        if midi.activeProfile.isEightPad {
-                            Text(settings.localized("Eight physical slots follow the current lesson. Without a lesson, the base layout is shown."))
-                                .font(Theme.meta)
-                                .foregroundStyle(Theme.secondary)
-                        } else {
-                            Text(settings.localized("Touch pads send the same pad events as MIDI."))
-                                .font(Theme.meta)
-                                .foregroundStyle(Theme.secondary)
-                        }
-                    }
-
-                    Section {
-                        NavigationLink {
-                            FontLicenceView()
-                        } label: {
-                            Text("SIL Open Font License 1.1").font(Theme.navigation)
-                        }
-                    } header: {
-                        SectionHeader(title: "IBM Plex Sans")
-                    }
-
-                    Section {
-                        NavigationLink {
-                            AboutDetailView()
-                        } label: {
-                            HStack {
-                                Text(settings.localized("About"))
-                                    .font(Theme.control)
-                                Spacer()
-                                let version = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.0"
-                                Text("v\(version)")
-                                    .font(Theme.meta)
-                                    .foregroundStyle(Theme.secondary)
-                            }
-                            .frame(minHeight: Theme.Size.touch)
-                        }
-                    } header: {
-                        SectionHeader(title: settings.localized("About"))
+    @ViewBuilder
+    private func areaForm(_ area: SettingsArea) -> some View {
+        if area == .controller {
+            ControllerSetupView(isEmbeddedInSettings: true)
+        } else {
+            Form {
+                Group {
+                    switch area {
+                    case .sound:
+                        soundSections
+                    case .practice:
+                        practiceSections
+                        keyboardAndTouchPadSections
+                    case .controller:
+                        EmptyView()
+                    case .purchasesAndBackup:
+                        PurchasesSection()
+                        ProgressBackupSection()
+                    case .about:
+                        aboutSections
+                    #if DEBUG
+                    case .developer:
+                        LegacyProgressImportSection()
+                        DebugDeveloperSection()
+                    #endif
                     }
                 }
                 .appFormRowStyle()
             }
             .appFormStyle()
-            .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { windowWidth = $0 }
-            .navigationTitle(settings.localized("Settings"))
-            .navigationBarTitleDisplayMode(.inline)
-            .navigationBarBackButtonHidden(true)
-            .toolbar {
-                ToolbarItem(placement: .principal) { ScreenHeader(title: settings.localized("Settings")) }
-                PadToolbarItem(placement: .topBarLeading) {
-                    BackButton {
-                        if let onDismiss { onDismiss() } else { dismiss() }
+        }
+    }
+
+    @ViewBuilder
+    private var soundSections: some View {
+        @Bindable var settings = settings
+        Section {
+            NavigationLink {
+                SoundKitSelectionView(kits: kits)
+            } label: {
+                HStack {
+                    Text(settings.localized("Sound set"))
+                        .font(Theme.control)
+                        .foregroundStyle(Theme.ink)
+                    Spacer()
+                    Text(selectedKitTitle)
+                        .font(Theme.meta)
+                        .foregroundStyle(Theme.secondary)
+                }
+                .frame(minHeight: Theme.Size.touch)
+            }
+            SoundSliderRow(
+                title: settings.localized("Metronome"),
+                value: $settings.metronomeVolume
+            )
+            SoundSliderRow(
+                title: settings.localized("Pads"),
+                value: $settings.padsVolume
+            )
+            SoundSliderRow(
+                title: settings.localized("settings.sound.pattern"),
+                value: $settings.patternVolume
+            )
+            Button {
+                withAnimation(.easeOut(duration: 0.2)) {
+                    isInstrumentVolumeExpanded.toggle()
+                }
+            } label: {
+                HStack(spacing: 12) {
+                    Text(settings.localized("Instrument volume"))
+                        .font(Theme.control)
+                        .foregroundStyle(Theme.ink)
+                    Spacer()
+                    let changedCount = settings.changedInstrumentTrimCount
+                    if changedCount > 0 {
+                        Text(settings.localized("changed %lld", changedCount))
+                            .font(Theme.meta.monospacedDigit())
+                            .foregroundStyle(Theme.secondary)
                     }
+                    Image(systemName: isInstrumentVolumeExpanded ? "chevron.up" : "chevron.down")
+                        .font(.system(size: 14, weight: .semibold))
+                        .foregroundStyle(Theme.ink)
+                }
+                .frame(minHeight: Theme.Size.touch)
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .accessibilityValue(settings.localized(isInstrumentVolumeExpanded ? "Expanded" : "Collapsed"))
+
+            if isInstrumentVolumeExpanded {
+                VStack(alignment: .leading, spacing: 12) {
+                    LazyVGrid(
+                        columns: [
+                            GridItem(.flexible(), spacing: 8),
+                            GridItem(.flexible(), spacing: 8)
+                        ],
+                        spacing: 8
+                    ) {
+                        ForEach(InstrumentTrimCell.roles, id: \.self) { voice in
+                            InstrumentTrimCell(voice: voice)
+                        }
+                    }
+
+                    Button {
+                        settings.resetInstrumentTrims()
+                    } label: {
+                        Text(settings.localized("Reset all to 0 dB"))
+                            .font(Theme.control)
+                            .foregroundStyle(settings.instrumentTrims.isEmpty ? Theme.secondary : Theme.ink)
+                            .padding(.horizontal, 16)
+                            .frame(height: 44)
+                            .background(Theme.background, in: RoundedRectangle(cornerRadius: 12))
+                            .overlay {
+                                RoundedRectangle(cornerRadius: 12)
+                                    .strokeBorder(Theme.ink.opacity(settings.instrumentTrims.isEmpty ? 0.12 : 0.28), lineWidth: 1.5)
+                            }
+                    }
+                    .buttonStyle(.plain)
+                    .disabled(settings.instrumentTrims.isEmpty)
+                }
+                .padding(.top, 4)
+                .padding(.bottom, 6)
+                .listRowSeparator(.hidden)
+            }
+        } header: {
+            SectionHeader(title: settings.localized("Sound"))
+        } footer: {
+            Text(settings.localized("All 8 kits are bundled with the app for practice and playback."))
+                .font(Theme.meta)
+                .foregroundStyle(Theme.secondary)
+        }
+    }
+
+    @ViewBuilder
+    private var practiceSections: some View {
+        @Bindable var settings = settings
+        Section {
+            PlexSegmentedPicker(title: settings.localized("Tempo step"), selection: $settings.bpmStep,
+                options: BpmStep.allCases.map { ($0.rawValue, "+\($0.rawValue) BPM") })
+        } header: {
+            SectionHeader(title: settings.localized("Tempo auto-step (BPM)"))
+        } footer: {
+            Text(settings.localized("Tempo automatically increases by this step after each clean pass until target tempo."))
+                .font(Theme.meta)
+                .foregroundStyle(Theme.secondary)
+        }
+
+        Section {
+            Picker(settings.localized("Practice mode"), selection: $settings.practiceMode) {
+                ForEach(PracticeMode.allCases, id: \.self) { mode in
+                    Text(settings.localized(mode.title)).tag(mode)
                 }
             }
-            .task {
-                loadKits()
-                await refreshNotificationStatus()
+            .pickerStyle(.menu)
+            .frame(minHeight: Theme.Size.touch)
+        } header: {
+            SectionHeader(title: settings.localized("Practice mode"))
+        } footer: {
+            Text(settings.localized(settings.practiceMode.explanation))
+                .font(Theme.meta)
+                .foregroundStyle(Theme.secondary)
+        }
+
+        Section {
+            Picker(settings.localized("Bars shown"), selection: $visibleBars) {
+                Text(settings.localized("1 bar")).tag(1)
+                Text(settings.localized("%lld bars", 2)).tag(2)
+                Text(settings.localized("%lld bars", 3)).tag(3)
+                Text(settings.localized("All bars")).tag(4)
             }
+            Toggle(settings.localized("Small pad layout"), isOn: $showPads)
+            Toggle(settings.localized("Touch pads in portrait"), isOn: $touchPadsInPortrait)
+            Toggle(settings.localized("Fade notes in From memory"), isOn: $settings.fadeMemoryNotes)
+            Toggle(settings.localized("Automatic peek in From memory"), isOn: $settings.autoPeekMemory)
+        } header: {
+            SectionHeader(title: settings.localized("Practice screen"))
+        } footer: {
+            VStack(alignment: .leading, spacing: Theme.Space.tight) {
+                Text(settings.localized("Shows a small pad layout in the lesson that lights up the pads you hit."))
+                Text(settings.localized("After two missed passes the notes show for one pass. That pass does not count."))
+            }
+            .font(Theme.meta)
+            .foregroundStyle(Theme.secondary)
+        }
+
+        Section {
+            Toggle(
+                settings.localized("Review reminder"),
+                isOn: Binding(
+                    get: { settings.reviewReminderEnabled },
+                    set: { handleReminderToggle($0) }
+                )
+            )
+            .frame(minHeight: Theme.Size.touch)
+
+            if notificationsDenied {
+                Text(settings.localized("Notifications are turned off in iPad Settings."))
+                    .font(Theme.meta)
+                    .foregroundStyle(Theme.destructive)
+            }
+
+            if settings.reviewReminderEnabled {
+                DatePicker(
+                    settings.localized("Time"),
+                    selection: Binding(
+                        get: { settings.reviewReminderTime },
+                        set: { newTime in
+                            settings.reviewReminderTime = newTime
+                            ReviewReminderScheduler.shared.reschedule()
+                        }
+                    ),
+                    displayedComponents: .hourAndMinute
+                )
+                .font(Theme.control)
+                .frame(minHeight: Theme.Size.touch)
+            }
+        } header: {
+            SectionHeader(title: settings.localized("Training"))
+        }
+
+        Section {
+            Toggle(settings.localized("Hide completed lessons"), isOn: $settings.hideCompletedLessons)
+            Picker(settings.localized("Next lesson from"), selection: $settings.nextLessonSource) {
+                ForEach(NextLessonSource.allCases) { source in
+                    Text(settings.localized(source.title)).tag(source.id)
+                }
+            }
+            .frame(minHeight: Theme.Size.touch)
+        } header: {
+            SectionHeader(title: settings.localized("Library"))
+        }
+    }
+
+    @ViewBuilder
+    private var keyboardAndTouchPadSections: some View {
+        @Bindable var settings = settings
+        Section {
+            if midi.isKeyboardConnected {
+                Toggle(settings.localized("Play pads with keyboard"), isOn: $settings.playPadsWithKeyboard)
+                    .tint(Theme.orange)
+            } else {
+                Text(settings.localized("No keyboard connected"))
+                    .font(Theme.meta)
+                    .foregroundStyle(Theme.secondary)
+            }
+
+            VStack(alignment: .leading, spacing: Theme.Space.tight) {
+                ForEach(KeyboardPadMapping.rows, id: \.rowNumber) { row in
+                    if row.rowNumber > 1 {
+                        Divider()
+                    }
+                    HStack {
+                        Text(settings.localized(row.label))
+                            .font(Theme.control)
+                            .foregroundStyle(Theme.ink)
+                        Spacer()
+                        HStack(spacing: 6) {
+                            ForEach(row.keys, id: \.self) { key in
+                                Text(key)
+                                    .font(Theme.meta)
+                                    .foregroundStyle(Theme.secondary)
+                                    .frame(width: 28, height: 28)
+                                    .background(Theme.surface, in: RoundedRectangle(cornerRadius: 6))
+                                    .overlay {
+                                        RoundedRectangle(cornerRadius: 6)
+                                            .strokeBorder(Theme.hairline, lineWidth: 1)
+                                    }
+                            }
+                        }
+                    }
+                    .frame(minHeight: 32)
+                }
+            }
+            .padding(.vertical, Theme.Space.tight)
+        } header: {
+            SectionHeader(title: settings.localized("Keyboard"))
+        }
+
+        Section {
+            if let pads = midi.padIndices {
+                let profile = midi.activeProfile
+                PadProfileGrid(profile: profile) { slot in
+                    let padIndex = pads[profile.target(forSlot: slot)]
+                    TouchPad(
+                        number: slot + 1,
+                        sound: PadNames.name(for: padIndex),
+                        isActive: midi.pressedPadIndices.contains(padIndex)
+                    ) { pressed in
+                        midi.touch(padIndex: padIndex, isPressed: pressed)
+                    }
+                    .id("\(settings.activeProfileName)/\(slot)/\(padIndex)")
+                }
+                .padding(.vertical, Theme.Space.small)
+            } else {
+                Text(settings.localized("This lesson requires 16 pads."))
+                    .font(Theme.meta)
+            }
+        } header: {
+            SectionHeader(title: settings.localized("Touch pads"))
+        } footer: {
+            if midi.activeProfile.isEightPad {
+                Text(settings.localized("Eight physical slots follow the current lesson. Without a lesson, the base layout is shown."))
+                    .font(Theme.meta)
+                    .foregroundStyle(Theme.secondary)
+            } else {
+                Text(settings.localized("Touch pads send the same pad events as MIDI."))
+                    .font(Theme.meta)
+                    .foregroundStyle(Theme.secondary)
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var aboutSections: some View {
+        @Bindable var settings = settings
+        Section {
+            PlexSegmentedPicker(title: settings.localized("Appearance"), selection: $settings.appearance,
+                options: AppAppearance.allCases.map { ($0, settings.localized($0.title)) })
+        } header: {
+            SectionHeader(title: settings.localized("Appearance"))
+        } footer: {
+            Text(settings.localized("Choose light, dark or follow your system appearance."))
+                .font(Theme.meta)
+                .foregroundStyle(Theme.secondary)
+        }
+
+        Section {
+            PlexSegmentedPicker(title: settings.localized("App language"), selection: $settings.languagePreference,
+                options: AppLanguage.allCases.map { ($0, $0.displayName) })
+        } header: {
+            SectionHeader(title: settings.localized("Language"))
+        } footer: {
+            Text(settings.localized("Choose Czech or English. Your lesson progress and controller mappings remain preserved."))
+                .font(Theme.meta)
+                .foregroundStyle(Theme.secondary)
+        }
+
+        Section {
+            NavigationLink {
+                FontLicenceView()
+            } label: {
+                Text("SIL Open Font License 1.1").font(Theme.control)
+            }
+        } header: {
+            SectionHeader(title: "IBM Plex Sans")
+        }
+
+        Section {
+            NavigationLink {
+                AboutDetailView()
+            } label: {
+                HStack {
+                    Text(settings.localized("About"))
+                        .font(Theme.control)
+                    Spacer()
+                    let version = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.0"
+                    Text("v\(version)")
+                        .font(Theme.meta)
+                        .foregroundStyle(Theme.secondary)
+                }
+                .frame(minHeight: Theme.Size.touch)
+            }
+        } header: {
+            SectionHeader(title: settings.localized("About"))
         }
     }
 
@@ -726,7 +844,7 @@ struct SoundSliderRow: View {
     var body: some View {
         HStack(spacing: 16) {
             Text(title)
-                .font(Theme.display(16))
+                .font(Theme.control)
                 .foregroundStyle(Theme.ink)
                 .frame(width: 120, alignment: .leading)
                 .lineLimit(1)
@@ -744,7 +862,7 @@ struct SoundSliderRow: View {
             .frame(minHeight: Theme.Size.minimumTouch)
 
             Text(Self.formatDB(fromPercent: value))
-                .font(Theme.display(14).monospacedDigit())
+                .font(Theme.meta.monospacedDigit())
                 .foregroundStyle(Theme.secondary)
                 .frame(width: 56, alignment: .trailing)
                 .lineLimit(1)
@@ -760,7 +878,7 @@ struct SoundSliderRow: View {
     }
 }
 
-/// Compact 2-column cell per instrument role: bold abbreviation + English name, dB value, slider.
+/// Compact cell per instrument role with its name, dB value, and slider.
 private struct InstrumentTrimCell: View {
     @Environment(SettingsManager.self) private var settings
     let voice: String
@@ -787,18 +905,17 @@ private struct InstrumentTrimCell: View {
         VStack(alignment: .leading, spacing: 8) {
             HStack(spacing: 6) {
                 (Text(PadVoice.abbreviation(pad))
-                    .font(Theme.strong(14))
-                + Text(" \(PadVoice.displayName(pad))")
-                    .font(Theme.display(14)))
-                .foregroundColor(Theme.ink)
+                    + Text(" \(PadVoice.displayName(pad))"))
+                .font(Theme.control)
+                .foregroundStyle(Theme.ink)
                 .lineLimit(1)
                 .minimumScaleFactor(0.85)
 
                 Spacer(minLength: 4)
 
                 Text(formattedTrim)
-                    .font(Theme.display(14).monospacedDigit())
-                    .foregroundStyle(trim == 0 ? Theme.secondary : Theme.ink)
+                    .font(Theme.meta.monospacedDigit())
+                    .foregroundStyle(Theme.secondary)
                     .lineLimit(1)
             }
 

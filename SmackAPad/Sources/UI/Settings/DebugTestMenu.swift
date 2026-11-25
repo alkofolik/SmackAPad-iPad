@@ -14,7 +14,7 @@ struct DebugDeveloperSection: View {
                     .frame(minHeight: Theme.Size.touch)
             }
         } header: {
-            Text(verbatim: "Developer")
+            SectionHeader(title: "Developer")
         }
     }
 }

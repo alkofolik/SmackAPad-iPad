@@ -32,7 +32,10 @@ struct MIDILearnView: View {
                         .disabled(midi.isLearning)
                         Picker(settings.localized("Arrangement"), selection: $grid) {
                             ForEach(PhysicalPadGrid.arrangements(padCount: padCount), id: \.self) { arrangement in
-                                Text("\(arrangement.rows) × \(arrangement.columns)").tag(arrangement)
+                                Text("\(arrangement.rows) × \(arrangement.columns)")
+                                    .font(Theme.meta)
+                                    .foregroundStyle(Theme.secondary)
+                                    .tag(arrangement)
                             }
                         }
                         .disabled(midi.isLearning)
@@ -46,16 +49,16 @@ struct MIDILearnView: View {
 
                     Section {
                         if midi.isLearning {
-                            LabeledContent(settings.localized("Learned pads"), value: "\(midi.learnedNotes.count) / \(padCount)")
-                                .font(Theme.control)
+                            LabeledContent(settings.localized("Learned pads")) {
+                                SettingsValue("\(midi.learnedNotes.count) / \(padCount)")
+                            }
 
                             if midi.learningComplete {
                                 Text(settings.localized("All pads learned. Save the profile to use it."))
                                     .font(Theme.meta)
                                     .foregroundStyle(Theme.orange)
                             } else {
-                                Text(settings.localized("Press the highlighted pad on your controller."))
-                                    .font(Theme.meta)
+                                SettingsValue(settings.localized("Press the highlighted pad on your controller."))
                             }
 
                             PadProfileGrid(grid: grid) { slot in

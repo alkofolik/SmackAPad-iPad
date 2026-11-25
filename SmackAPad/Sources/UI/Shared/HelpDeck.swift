@@ -145,7 +145,7 @@ struct HelpDeck: View {
         .frame(maxWidth: 680, maxHeight: .infinity)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .foregroundStyle(Theme.ink)
-        .background(Theme.background)
+        .calmChassisBackground()
         .presentationBackground(Theme.background)
         .interactiveDismissDisabled(tutorialIndex != nil)
         .task(id: currentPage) {
@@ -200,9 +200,13 @@ struct HelpDeck: View {
                     .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
-                Divider().overlay(Theme.hairline)
+                if item != HelpTopic.allCases.last {
+                    Divider().overlay(Theme.hairline)
+                }
             }
         }
+        .padding(.horizontal, Theme.Space.regular)
+        .instrumentPanel()
     }
 
     @ViewBuilder
