@@ -61,6 +61,7 @@ struct MixLineupScreen: View {
     @Environment(MIDIInput.self) private var midi
     @Environment(\.dismiss) private var dismiss
     @Environment(\.horizontalSizeClass) private var sizeClass
+    @Environment(\.dynamicTypeSize) private var dynamicType
 
     @State private var previewSession: PracticeSession?
     @State private var previewLessonID: Int?
@@ -72,7 +73,7 @@ struct MixLineupScreen: View {
     var body: some View {
         GeometryReader { geometry in
             let isLandscape = geometry.size.width >= 760 && sizeClass == .regular
-            let columns = isLandscape ? 3 : 1
+            let columns = isLandscape && !dynamicType.isAccessibilitySize ? 3 : 1
 
             VStack(alignment: .leading, spacing: Theme.Space.regular) {
                 header
@@ -83,7 +84,7 @@ struct MixLineupScreen: View {
                 }
                 .scrollBounceBehavior(.basedOnSize)
 
-                bottomBar(narrow: geometry.size.width < 660)
+                bottomBar(narrow: geometry.size.width < 660 || dynamicType.isAccessibilitySize)
             }
             .padding(Theme.Space.page)
             .frame(width: geometry.size.width, height: geometry.size.height)
@@ -117,7 +118,7 @@ struct MixLineupScreen: View {
 
             VStack(alignment: .leading, spacing: 2) {
                 Text(settings.localized("Daily mix"))
-                    .font(Theme.display(30))
+                    .font(Theme.screenTitle)
                     .foregroundStyle(Theme.ink)
                 Text(mixSubtitle)
                     .font(Theme.display(15))
@@ -209,7 +210,7 @@ struct MixLineupScreen: View {
         let memoryToggle = Toggle(isOn: $fromMemory) {
             Text(settings.localized("From memory"))
                 .font(Theme.control)
-                .foregroundStyle(Theme.white)
+                .foregroundStyle(Theme.ink)
         }
         .tint(Theme.orange)
         .frame(minHeight: Theme.Size.touch)
@@ -220,18 +221,11 @@ struct MixLineupScreen: View {
         } label: {
             Text(settings.localized("Another mix"))
                 .font(Theme.control)
-                .foregroundStyle(Theme.white)
-                .lineLimit(1)
-                .minimumScaleFactor(0.85)
-                .padding(.horizontal, Theme.Space.regular)
+                .fixedSize(horizontal: false, vertical: true)
                 .frame(minHeight: Theme.Size.control)
                 .frame(maxWidth: narrow ? .infinity : nil)
-                .overlay(
-                    RoundedRectangle(cornerRadius: Theme.Radius.button)
-                        .strokeBorder(Theme.white.opacity(0.35), lineWidth: 1.5)
-                )
         }
-        .buttonStyle(.plain)
+        .buttonStyle(PadSecondaryButtonStyle())
         .disabled(lessons.count < LearningRules.minimumMixLessons)
 
         let startButton = Button {
@@ -240,7 +234,7 @@ struct MixLineupScreen: View {
         } label: {
             Text(settings.localized("Start mix"))
                 .font(Theme.action)
-                .lineLimit(1)
+                .fixedSize(horizontal: false, vertical: true)
                 .frame(minWidth: narrow ? nil : 184, minHeight: Theme.Size.control)
                 .frame(maxWidth: narrow ? .infinity : nil)
         }
@@ -251,7 +245,10 @@ struct MixLineupScreen: View {
             if narrow {
                 VStack(alignment: .leading, spacing: Theme.Space.small) {
                     memoryToggle
-                    HStack(spacing: Theme.Space.small) {
+                    let layout = dynamicType.isAccessibilitySize
+                        ? AnyLayout(VStackLayout(spacing: Theme.Space.small))
+                        : AnyLayout(HStackLayout(spacing: Theme.Space.small))
+                    layout {
                         anotherButton
                         startButton
                     }
@@ -271,7 +268,7 @@ struct MixLineupScreen: View {
         .padding(.horizontal, Theme.Space.regular)
         .padding(.vertical, 14)
         .frame(maxWidth: .infinity)
-        .background(Theme.black, in: RoundedRectangle(cornerRadius: 20))
+        .instrumentPanel()
     }
 
     private func togglePreview(for lesson: Lesson) {
@@ -413,11 +410,7 @@ private struct MixLineupCard: View {
         }
         .padding(Theme.Space.regular)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-        .background(Theme.surface, in: RoundedRectangle(cornerRadius: 20))
-        .overlay(
-            RoundedRectangle(cornerRadius: 20)
-                .strokeBorder(Theme.hairline, lineWidth: 1)
-        )
+        .instrumentPanel()
     }
 }
 

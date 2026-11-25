@@ -144,7 +144,7 @@ public struct IntroScreen: View {
                     let visibleStageLessons = stageLessons.filter { !settings.hideCompletedLessons || !progress.isCompleted(lessonId: $0.id) }
                     if !visibleStageLessons.isEmpty {
                         Section {
-                            ForEach(visibleStageLessons) { exerciseRow($0) }
+                            LessonRowsPanel(lessons: visibleStageLessons) { exerciseRow($0) }
                         } header: {
                             SectionHeader(title: stage.title(language: settings.languagePreference),
                                           subtitle: stage.subtitle(language: settings.languagePreference))
@@ -161,7 +161,7 @@ public struct IntroScreen: View {
                 let visibleRemaining = remaining.filter { !settings.hideCompletedLessons || !progress.isCompleted(lessonId: $0.id) }
                 if !visibleRemaining.isEmpty {
                     Section {
-                        ForEach(visibleRemaining) { exerciseRow($0) }
+                        LessonRowsPanel(lessons: visibleRemaining) { exerciseRow($0) }
                     } header: {
                         SectionHeader(title: settings.localized("Other Intro Exercises"))
                             .listRowInsets(EdgeInsets(top: 0, leading: Theme.Space.page, bottom: 0, trailing: Theme.Space.page))
@@ -229,9 +229,6 @@ public struct IntroScreen: View {
                          introGoal: (lesson.intro?.goal).map { settings.localized($0) }) {
             onSelect(lesson)
         }
-        .listRowInsets(EdgeInsets(top: Theme.Space.tight, leading: Theme.Space.page, bottom: Theme.Space.tight, trailing: Theme.Space.page))
-        .listRowSeparator(.hidden)
-        .listRowBackground(Color.clear)
     }
 }
 

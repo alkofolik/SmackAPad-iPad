@@ -41,6 +41,19 @@ struct SectionHeader: View {
     }
 }
 
+extension View {
+    func instrumentPanel(border: Color = Theme.hairline) -> some View {
+        let shape = RoundedRectangle(cornerRadius: Theme.Radius.panel)
+        return self
+            .background(Theme.surface, in: shape)
+            .clipShape(shape)
+            .overlay {
+                shape.strokeBorder(border, lineWidth: 1)
+                    .allowsHitTesting(false)
+            }
+    }
+}
+
 /// SwiftUI owns the text so confirmation copy uses the same scalable family.
 struct AppConfirmation<Actions: View>: View {
     let title: String
