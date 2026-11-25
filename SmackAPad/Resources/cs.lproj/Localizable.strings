@@ -3361,7 +3361,13 @@
 "App plays, you repeat." = "Aplikace zahraje, ty zopakuješ.";
 "each once" = "každá jednou";
 "Mix · optional" = "Mix · nepovinný";
-"daySummary.title" = "HOTOVO\nNA DNEŠEK";
+"daySummary.title" = "Hotovo na dnešek";
+"This week: %lld× · %lld days total" = "Tento týden: %lld× · Celkem %lld dní";
+"Next milestone: %@ · %lld / %lld 2★ lessons" = "Další milník: %@ · %lld / %lld lekcí se 2★";
+"Milestone reached · %@ unlocked" = "Milník splněn · %@ odemčeno";
+"Practiced" = "Odehráno";
+"%lld step · ~%lld min" = "%lld krok · ~%lld min";
+"%lld steps · ~%lld min" = "%lld kroky · ~%lld min";
 "training.doneForToday" = "Hotovo na dnešek";
 "home.today.done" = "Hotovo pro dnešek";
 "%lld step · %lld min" = "%lld krok · %lld min";

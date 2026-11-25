@@ -585,6 +585,7 @@ public final class ProgressStore: @unchecked Sendable {
 
         record.hasPlayed = true
         record.lastPlayedDay = today
+        trainingLog.practiceDays.insert(today)
         record.passed = record.passed || passed
         let wasMastered = record.mastery
         record.mastery = record.mastery || mastery
@@ -634,6 +635,15 @@ public final class ProgressStore: @unchecked Sendable {
         today: String = AppCalendar.today()
     ) {
         recordResult(lessonId: lessonId, passed: true, mastery: mastery, bpm: bpm, score: score, autoSave: autoSave, today: today)
+    }
+
+    /// Tracks a completed full run that does not update lesson results. The session saves it on stop.
+    func recordPracticeDay(_ day: String) {
+        lock.lock()
+        defer { lock.unlock() }
+        if !trainingLog.practiceDays.contains(day) {
+            trainingLog.practiceDays.insert(day)
+        }
     }
 
     /// Directly sets or replaces the progress record for a lesson.
@@ -761,6 +771,7 @@ public final class ProgressStore: @unchecked Sendable {
         lock.lock()
         var record = records[lessonId] ?? LessonProgress()
         trainingLog.trainingDays.insert(today)
+        trainingLog.practiceDays.insert(today)
         if passed {
             trainingLog.reviewsPassed += 1
             if let failDay = record.lastReviewFailDay,
@@ -792,6 +803,7 @@ public final class ProgressStore: @unchecked Sendable {
             trainingLog.mixMemoryRounds += 1
         }
         trainingLog.trainingDays.insert(today)
+        trainingLog.practiceDays.insert(today)
         lock.unlock()
 
         if autoSave {
@@ -808,6 +820,7 @@ public final class ProgressStore: @unchecked Sendable {
     ) {
         lock.lock()
         trainingLog.trainingDays.insert(today)
+        trainingLog.practiceDays.insert(today)
         if score >= Scoring.passMark {
             trainingLog.afterMeLessons.insert(lessonId)
         }

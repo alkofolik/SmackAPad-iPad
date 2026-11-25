@@ -64,6 +64,7 @@ final class ProgressBackupTests: XCTestCase {
         XCTAssertEqual(envelope.progress[10001]?.mastery, true)
         XCTAssertEqual(envelope.progress[10001]?.memory, true)
         XCTAssertEqual(envelope.progress[10001]?.currentBpm, 105)
+        XCTAssertEqual(envelope.trainingLog.practiceDays, ["2026-11-08", "2026-11-09"])
         XCTAssertEqual(envelope.badges["intro-graduate"], earnedDate)
         XCTAssertEqual(envelope.settings.selectedKitId, "808")
         XCTAssertEqual(envelope.settings.bpmStep, 2)
@@ -92,6 +93,8 @@ final class ProgressBackupTests: XCTestCase {
         XCTAssertTrue(restoredLesson.memory)
         XCTAssertEqual(restoredLesson.currentBpm, 105)
         XCTAssertEqual(restoredLesson.bestScore, 0.92)
+        XCTAssertEqual(progressStore.trainingLog.practiceDays, ["2026-11-08", "2026-11-09"])
+        XCTAssertEqual(progressStore.trainingLog.trainingDays, ["2026-11-09"])
 
         XCTAssertTrue(BadgeStore.shared.isEarned(badgeId: "intro-graduate"))
         XCTAssertEqual(BadgeStore.shared.earnedDate(for: "intro-graduate"), earnedDate)
@@ -409,7 +412,8 @@ final class ProgressBackupTests: XCTestCase {
               "memory": false,
               "currentBpm": 100,
               "bestScore": 0.88,
-              "hasPlayed": true
+              "hasPlayed": true,
+              "lastPlayedDay": "2026-11-08"
             }
           },
           "trainingLog": {
@@ -431,6 +435,7 @@ final class ProgressBackupTests: XCTestCase {
         XCTAssertEqual(store1.progress(for: 10001)?.passed, true)
         XCTAssertEqual(store1.progress(for: 10001)?.currentBpm, 100)
         XCTAssertEqual(store1.trainingLog.reviewsPassed, 5)
+        XCTAssertEqual(store1.trainingLog.practiceDays, ["2026-11-08", "2026-11-09"])
 
         // 2. Legacy flat dictionary format
         let flatFormatJSON = """
@@ -439,7 +444,8 @@ final class ProgressBackupTests: XCTestCase {
             "passed": true,
             "mastery": false,
             "currentBpm": 85,
-            "bestScore": 0.76
+            "bestScore": 0.76,
+            "lastPlayedDay": "2026-11-10"
           }
         }
         """.data(using: .utf8)!
@@ -451,6 +457,17 @@ final class ProgressBackupTests: XCTestCase {
         XCTAssertTrue(store2.loadedSuccessfully)
         XCTAssertEqual(store2.progress(for: 10001)?.passed, true)
         XCTAssertEqual(store2.progress(for: 10001)?.currentBpm, 85)
+        XCTAssertEqual(store2.trainingLog.practiceDays, ["2026-11-10"])
+    }
+
+    func testPracticeDaysMergeWithDeduplication() {
+        let local = TrainingLog(trainingDays: ["2026-11-20"], practiceDays: ["2026-11-20", "2026-11-21"])
+        let incoming = TrainingLog(trainingDays: ["2026-11-22"], practiceDays: ["2026-11-21", "2026-11-22"])
+
+        let merged = ProgressMerge.mergeTrainingLog(local: local, incoming: incoming)
+
+        XCTAssertEqual(merged.practiceDays, ["2026-11-20", "2026-11-21", "2026-11-22"])
+        XCTAssertEqual(merged.trainingDays, ["2026-11-20", "2026-11-22"])
     }
 
     // MARK: - Test 8: Unknown higher formatVersion and invalid JSON refused, disk unchanged

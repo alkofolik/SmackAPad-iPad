@@ -64,6 +64,7 @@ private struct PadControlBody<Label: View>: View {
     let label: Label
     let pressed: Bool
     var primary = false
+    var darkFace = false
     var destructive = false
     var onDark = false
     var selected: Bool? = nil
@@ -117,13 +118,13 @@ private struct PadControlBody<Label: View>: View {
 
     private var foregroundColor: Color {
         guard enabled else {
-            let base = destructive ? Theme.destructive : (primary ? Theme.black : (onDark ? Theme.white : Theme.ink))
+            let base = destructive ? Theme.destructive : (primary && !darkFace ? Theme.black : (onDark ? Theme.white : Theme.ink))
             return base.opacity(0.35)
         }
         if destructive {
             return Theme.destructive
         } else if primary {
-            return Theme.black
+            return darkFace ? Theme.white : Theme.black
         } else if onDark {
             return Theme.white
         } else {
@@ -136,7 +137,7 @@ private struct PadControlBody<Label: View>: View {
             return Theme.disabledFill
         }
         if primary {
-            return Theme.orange
+            return darkFace ? Theme.black : Theme.orange
         } else if onDark {
             return Theme.white.opacity(0.10)
         } else {
@@ -161,8 +162,10 @@ private struct PadControlBody<Label: View>: View {
 }
 
 struct PadPrimaryButtonStyle: ButtonStyle {
+    var darkFace = false
+
     func makeBody(configuration: Configuration) -> some View {
-        PadControlBody(label: configuration.label, pressed: configuration.isPressed, primary: true)
+        PadControlBody(label: configuration.label, pressed: configuration.isPressed, primary: true, darkFace: darkFace)
     }
 }
 

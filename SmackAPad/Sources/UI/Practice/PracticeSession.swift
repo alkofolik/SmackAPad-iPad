@@ -1399,6 +1399,9 @@ final class PracticeSession {
             let isHiddenPass = !fromMemory || memoryNotesHidden
             if reviewPendingReason == .peeked { reviewPendingReason = nil }
             if peeked {
+                if !isSectionLoop && !unscored {
+                    progress.recordPracticeDay(currentDay())
+                }
                 runPassed = false
                 lastVerdict = nil
                 reviewPendingReason = .peeked

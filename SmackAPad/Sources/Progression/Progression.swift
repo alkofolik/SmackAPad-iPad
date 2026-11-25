@@ -500,13 +500,17 @@ public final class ProgressionManager: @unchecked Sendable {
 
     // MARK: - Stage progression
 
-    func unlockProgress(for stage: LibraryStage) -> (completed: Int, needed: Int, previous: LibraryStage?) {
+    func unlockProgress(for stage: LibraryStage, excludingMasteriesOn day: String? = nil)
+        -> (completed: Int, needed: Int, previous: LibraryStage?) {
         let stages = catalog.stages
         guard let index = stages.firstIndex(where: { $0.id == stage.id }), index > 0 else { return (0, 0, nil) }
         let previous = stages[index - 1]
         let eightPads = settingsManager.activeProfile().isEightPad
         let completed = previous.lessons.filter {
-            progressStore.isCompleted(lessonId: $0.id) && (!eightPads || EightPadLayout.slots(for: $0) != nil)
+            guard progressStore.isCompleted(lessonId: $0.id),
+                  !eightPads || EightPadLayout.slots(for: $0) != nil else { return false }
+            guard let day else { return true }
+            return progressStore.progress(for: $0.id)?.masteryDay != day
         }.count
         return (completed, ProgressionConstant.requiredStageCompletions(lessonCount: previous.lessons.count), previous)
     }

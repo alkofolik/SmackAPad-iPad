@@ -1,6 +1,6 @@
 import SwiftUI
 
-// MARK: - Shared Formatting & Button Styles
+// MARK: - Date Formatting
 
 enum DayDateFormatter {
     static func format(_ day: String, language: AppLanguage) -> String {
@@ -27,6 +27,8 @@ enum DayDateFormatter {
 
 struct DaySummaryView: View {
     @Environment(SettingsManager.self) private var settings
+    @Environment(ProgressStore.self) private var progress
+    @Environment(ProgressionManager.self) private var progression
     let plan: TodayPlan
     let isLandscape: Bool
     let canStartExtraMix: Bool
@@ -35,242 +37,147 @@ struct DaySummaryView: View {
     let onEndTraining: () -> Void
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 20) {
-            HStack {
-                BackButton(action: onBack)
-                Spacer()
-            }
-            .frame(height: 56)
+        VStack(alignment: .leading, spacing: Theme.Space.regular) {
+            BackButton(action: onBack)
 
-            if isLandscape {
-                let bottomEdgeInset: CGFloat = 36
-                HStack(alignment: .top, spacing: 28) {
-                    heroPanel(padding: bottomEdgeInset)
-                        .frame(maxWidth: 520, maxHeight: .infinity)
-
-                    VStack(alignment: .leading, spacing: 20) {
-                        ScrollView {
-                            timelineList
-                                .padding(.top, 4)
-                                .padding(.trailing, 4)
-                        }
-                        .scrollBounceBehavior(.basedOnSize)
-
-                        bottomButtons(height: 72)
-                            .padding(.bottom, bottomEdgeInset)
-                    }
-                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-                }
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-            } else {
-                ScrollView {
-                    VStack(alignment: .leading, spacing: 24) {
-                        heroPanel(padding: 26)
+            ScrollView {
+                if isLandscape {
+                    HStack(alignment: .top, spacing: Theme.Space.regular) {
+                        summaryContent
                         timelineList
-                        bottomButtons(height: 64)
                     }
-                    .frame(maxWidth: .infinity, alignment: .leading)
+                } else {
+                    VStack(spacing: Theme.Space.regular) {
+                        summaryContent
+                        timelineList
+                    }
                 }
-                .scrollBounceBehavior(.basedOnSize)
             }
+            .scrollBounceBehavior(.basedOnSize)
+
+            bottomButtons(height: Theme.Size.rowLarge)
         }
         .padding(Theme.Space.page)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
     }
 
-    private func heroPanel(padding: CGFloat) -> some View {
-        VStack(alignment: .leading, spacing: 20) {
-            RoundedRectangle(cornerRadius: 20)
-                .fill(Theme.orange)
-                .frame(width: 72, height: 72)
-                .overlay {
-                    Image(systemName: "checkmark")
-                        .font(.system(size: 32, weight: .bold))
-                        .foregroundStyle(Theme.black)
-                }
-                .accessibilityHidden(true)
-
-            VStack(alignment: .leading, spacing: 10) {
+    private var summaryContent: some View {
+        VStack(alignment: .leading, spacing: Theme.Space.controlGap) {
+            VStack(alignment: .leading, spacing: Theme.Space.tight) {
                 Text(settings.localized("daySummary.title"))
-                    .font(Theme.padTitle(size: 64))
-                    .foregroundStyle(Theme.white)
-                    .lineSpacing(-2)
-                    .fixedSize(horizontal: false, vertical: true)
+                    .font(Theme.screenTitle)
+                    .foregroundStyle(Theme.ink)
                     .accessibilityAddTraits(.isHeader)
-
                 Text(DayDateFormatter.format(plan.day, language: settings.languagePreference))
-                    .font(Theme.text(17))
-                    .foregroundStyle(Theme.white.opacity(0.68))
+                    .font(Theme.meta)
+                    .foregroundStyle(Theme.secondary)
             }
 
-            if isLandscape {
-                Spacer(minLength: 16)
+            HStack(spacing: 0) {
+                statColumn(label: settings.localized("Reviews"), value: "\(plan.reviewSummary.passed) / \(plan.reviewCount)")
+                Rectangle().fill(Theme.hairline).frame(width: 1)
+                statColumn(label: settings.localized("New lesson"), value: percentStatText(for: .newLesson, allowDoneFallback: false))
+                Rectangle().fill(Theme.hairline).frame(width: 1)
+                statColumn(label: settings.localized("Mix"), value: percentStatText(for: .mix, allowDoneFallback: true))
             }
+            .fixedSize(horizontal: false, vertical: true)
+            .background(Theme.surface, in: RoundedRectangle(cornerRadius: Theme.Radius.panel))
 
-            HStack(spacing: 12) {
-                heroStatTile(
-                    label: settings.localized("Reviews"),
-                    value: "\(plan.reviewSummary.passed) / \(plan.reviewCount)",
-                    valueColor: Theme.white
-                )
-                heroStatTile(
-                    label: settings.localized("New lesson"),
-                    value: percentStatText(for: .newLesson, allowDoneFallback: false),
-                    valueColor: Theme.orange
-                )
-                heroStatTile(
-                    label: settings.localized("Mix"),
-                    value: percentStatText(for: .mix, allowDoneFallback: true),
-                    valueColor: Theme.white
-                )
+            WeeklyRhythmStrip(day: plan.day, practiceDays: progress.trainingLog.practiceDays)
+
+            if let milestoneText {
+                Text(milestoneText)
+                    .font(Theme.control)
+                    .foregroundStyle(Theme.ink)
+                    .padding(Theme.Space.controlGap)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .background(Theme.surface, in: RoundedRectangle(cornerRadius: Theme.Radius.panel))
             }
         }
-        .padding(padding)
-        .frame(maxWidth: .infinity, maxHeight: isLandscape ? .infinity : nil, alignment: .topLeading)
-        .background(Theme.black, in: RoundedRectangle(cornerRadius: 24))
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 
-    private func heroStatTile(label: String, value: String, valueColor: Color) -> some View {
-        VStack(alignment: .leading, spacing: 4) {
+    private func statColumn(label: String, value: String) -> some View {
+        VStack(alignment: .leading, spacing: Theme.Space.tight) {
             Text(label)
-                .font(Theme.text(13))
-                .foregroundStyle(Theme.white.opacity(0.62))
-                .lineLimit(1)
+                .font(Theme.caption)
+                .foregroundStyle(Theme.secondary)
             Text(value)
-                .font(Theme.boldDisplay(28).monospacedDigit())
-                .foregroundStyle(valueColor)
-                .lineLimit(1)
-                .minimumScaleFactor(0.75)
+                .font(Theme.sectionTitle.monospacedDigit())
+                .foregroundStyle(Theme.ink)
         }
-        .padding(16)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Theme.white.opacity(0.08), in: RoundedRectangle(cornerRadius: 14))
+        .padding(Theme.Space.controlGap)
+        .accessibilityElement(children: .combine)
+    }
+
+    private var milestoneText: String? {
+        let stages = progression.catalog.stages.dropFirst()
+        let nextLocked = stages.first { !progression.isStageOpen($0) }
+        let earnedToday = stages.last { stage in
+            let current = progression.unlockProgress(for: stage)
+            guard current.completed >= current.needed else { return false }
+            let earlier = progression.unlockProgress(for: stage, excludingMasteriesOn: plan.day)
+            return earlier.completed < current.needed
+        }
+        if let unlocked = earnedToday ?? (nextLocked == nil ? stages.last : nil) {
+            return settings.localized("Milestone reached · %@ unlocked", progression.title(for: unlocked.id))
+        }
+        guard let nextLocked else { return nil }
+        let requirement = progression.unlockProgress(for: nextLocked)
+        return settings.localized("Next milestone: %@ · %lld / %lld 2★ lessons",
+                                  progression.title(for: nextLocked.id), requirement.completed, requirement.needed)
     }
 
     private var timelineList: some View {
         VStack(alignment: .leading, spacing: 0) {
-            ForEach(Array(plan.steps.enumerated()), id: \.offset) { index, step in
-                timelineRow(step: step, index: index, isLast: index == plan.steps.count - 1)
+            ForEach(plan.steps.indices, id: \.self) { index in
+                if index > 0 {
+                    Rectangle().fill(Theme.hairline).frame(height: 1)
+                }
+                timelineRow(step: plan.steps[index])
             }
         }
+        .padding(.horizontal, Theme.Space.controlGap)
         .frame(maxWidth: .infinity, alignment: .leading)
+        .background(Theme.surface, in: RoundedRectangle(cornerRadius: Theme.Radius.panel))
     }
 
-    private func timelineRow(step: TodayPlan.Step, index: Int, isLast: Bool) -> some View {
-        let status = step.status
-        let isPassed = status == .passed
-        let isPlayedOnly = status == .played
-        let isTriedNotMet = status == .triedNotMet
+    private func timelineRow(step: TodayPlan.Step) -> some View {
         let failureReason = step.reviewFailureReason(language: settings.languagePreference)
-        let isDidNotCount: Bool = {
-            if step.kind == .review {
-                if isTriedNotMet { return false }
-                return failureReason != nil
-            }
-            if case .inProgress = status { return true }
-            return false
-        }()
+        let marker = step.markerSymbol ?? (step.outcome?.played == true ? "checkmark" : "minus")
+        let score = stepScoreText(for: step)
 
-        return HStack(alignment: .top, spacing: 18) {
-            VStack(spacing: 4) {
-                stepCircle(isPassed: isPassed, isPlayedOnly: isPlayedOnly, isDidNotCount: isDidNotCount, isTriedNotMet: isTriedNotMet)
-                if !isLast {
-                    Rectangle()
-                        .fill(Theme.hairline)
-                        .frame(width: 2)
-                        .frame(minHeight: 24, maxHeight: .infinity)
-                }
-            }
-            .frame(width: 44)
+        return HStack(spacing: Theme.Space.controlGap) {
+            Image(systemName: marker)
+                .font(.system(size: 14, weight: .semibold))
+                .foregroundStyle(step.status == .passed ? Theme.ink : Theme.secondary)
+                .frame(width: 20)
+                .accessibilityLabel(settings.localized(step.status?.titleKey ?? "Not played"))
 
-            HStack(alignment: .center, spacing: 12) {
-                VStack(alignment: .leading, spacing: 5) {
-                    Text(stepTag(for: step))
-                        .font(Theme.strong(12))
-                        .foregroundStyle(Theme.secondary)
-                        .lineLimit(1)
-
-                    Text(stepTitle(for: step))
-                        .font(Theme.boldDisplay(22))
-                        .foregroundStyle(Theme.ink)
-                        .fixedSize(horizontal: false, vertical: true)
-
-                    if let failureReason {
-                        Text(failureReason)
-                            .font(Theme.strong(12))
-                            .foregroundStyle(isTriedNotMet ? Theme.orange : Theme.ink)
-                            .padding(.horizontal, 12)
-                            .frame(height: 28)
-                            .background(Theme.surface, in: Capsule())
-                            .overlay {
-                                Capsule().strokeBorder(isTriedNotMet ? Theme.orange : Theme.hairline, lineWidth: 1)
-                            }
-                            .padding(.top, 2)
-                    }
-                }
-                .frame(maxWidth: .infinity, alignment: .leading)
-
-                let scoreText = stepScoreText(for: step)
-                if !scoreText.isEmpty {
-                    Text(scoreText)
-                        .font(Theme.boldDisplay(24).monospacedDigit())
-                        .foregroundStyle(isPassed ? Theme.ink : Theme.secondary)
-                        .lineLimit(1)
-                }
-            }
-            .padding(.top, 2)
-            .padding(.bottom, isLast ? 0 : 24)
-        }
-    }
-
-    @ViewBuilder
-    private func stepCircle(isPassed: Bool, isPlayedOnly: Bool, isDidNotCount: Bool, isTriedNotMet: Bool = false) -> some View {
-        if isPassed {
-            Circle()
-                .fill(Theme.orange)
-                .frame(width: 44, height: 44)
-                .overlay {
-                    Image(systemName: "checkmark")
-                        .font(.system(size: 18, weight: .bold))
-                        .foregroundStyle(Theme.black)
-                }
-        } else if isTriedNotMet {
-            Circle()
-                .strokeBorder(Theme.orange, lineWidth: 2)
-                .frame(width: 44, height: 44)
-                .overlay {
-                    Image(systemName: "xmark")
-                        .font(.system(size: 16, weight: .bold))
-                        .foregroundStyle(Theme.orange)
-                }
-        } else if isDidNotCount {
-            Circle()
-                .strokeBorder(Theme.ink, lineWidth: 2)
-                .frame(width: 44, height: 44)
-                .overlay {
-                    Text("!")
-                        .font(Theme.boldDisplay(20))
-                        .foregroundStyle(Theme.ink)
-                }
-        } else if isPlayedOnly {
-            Circle()
-                .strokeBorder(Theme.ink, lineWidth: 2)
-                .frame(width: 44, height: 44)
-                .overlay {
-                    Image(systemName: "checkmark")
-                        .font(.system(size: 16, weight: .bold))
-                        .foregroundStyle(Theme.ink)
-                }
-        } else {
-            Circle()
-                .strokeBorder(Theme.hairline, lineWidth: 2)
-                .frame(width: 44, height: 44)
-                .overlay {
-                    Image(systemName: "minus")
-                        .font(.system(size: 15, weight: .bold))
+            VStack(alignment: .leading, spacing: Theme.Space.tight) {
+                Text(stepTag(for: step))
+                    .font(Theme.caption)
+                    .foregroundStyle(Theme.secondary)
+                Text(stepTitle(for: step))
+                    .font(Theme.rowTitle)
+                    .foregroundStyle(Theme.ink)
+                if let failureReason {
+                    Text(failureReason)
+                        .font(Theme.caption)
                         .foregroundStyle(Theme.secondary)
                 }
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+
+            if !score.isEmpty {
+                Text(score)
+                    .font(Theme.sectionTitle.monospacedDigit())
+                    .foregroundStyle(Theme.ink)
+            }
         }
+        .padding(.vertical, Theme.Space.controlGap)
+        .accessibilityElement(children: .combine)
     }
 
     private func bottomButtons(height: CGFloat) -> some View {
@@ -335,5 +242,61 @@ struct DaySummaryView: View {
             return "\(Int((score * 100).rounded())) %"
         }
         return settings.localized("Done")
+    }
+}
+
+// MARK: - Weekly Rhythm Strip
+
+struct WeeklyRhythmStrip: View {
+    @Environment(SettingsManager.self) private var settings
+    let day: String
+    let practiceDays: Set<String>
+
+    var body: some View {
+        let language = settings.languagePreference
+        let locale = Locale(identifier: language.rawValue)
+        let rhythm = WeeklyRhythm(today: day, practiceDays: practiceDays, locale: locale)
+        let cell = RoundedRectangle(cornerRadius: Theme.Radius.button)
+
+        VStack(alignment: .leading, spacing: Theme.Space.small) {
+            HStack(spacing: Theme.Space.tight) {
+                ForEach(rhythm.days) { day in
+                    VStack(spacing: Theme.Space.tight) {
+                        Text(day.shortWeekday.capitalized(with: locale))
+                            .font(day.isToday ? Theme.strong(13) : Theme.caption)
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.75)
+                            .foregroundStyle(Theme.ink)
+                        RoundedRectangle(cornerRadius: 1)
+                            .fill(day.practiced ? Theme.orange : Color.clear)
+                            .frame(width: 14, height: 3)
+                    }
+                    .padding(.vertical, Theme.Space.small)
+                    .frame(maxWidth: .infinity)
+                    .background(Theme.surface, in: cell)
+                    .overlay {
+                        if day.isToday {
+                            cell.strokeBorder(Theme.secondary, lineWidth: 1)
+                        }
+                    }
+                    .accessibilityElement(children: .ignore)
+                    .accessibilityLabel([
+                        DayDateFormatter.format(day.dayString, language: language),
+                        day.isToday ? settings.localized("Today") : "",
+                        day.practiced ? settings.localized("Practiced") : ""
+                    ].filter { !$0.isEmpty }.joined(separator: ", "))
+                }
+            }
+
+            Text(settings.localized("This week: %lld× · %lld days total", rhythm.practicedThisWeek, rhythm.totalPracticedDays))
+                .font(Theme.caption.monospacedDigit())
+                .foregroundStyle(Theme.secondary)
+        }
+        .padding(Theme.Space.controlGap)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(Theme.background, in: RoundedRectangle(cornerRadius: Theme.Radius.panel))
+        .overlay {
+            RoundedRectangle(cornerRadius: Theme.Radius.panel).strokeBorder(Theme.hairline, lineWidth: 1)
+        }
     }
 }

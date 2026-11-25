@@ -142,6 +142,11 @@ final class ProgressLoadFailureTests: XCTestCase {
           },
           "mixMemoryRounds" : 3,
           "mixRounds" : 5,
+          "practiceDays" : [
+            "2026-11-01",
+            "2026-11-04",
+            "2026-11-08"
+          ],
           "reviewsPassed" : 7,
           "trainingDays" : [
             "2026-11-01",
@@ -156,7 +161,8 @@ final class ProgressLoadFailureTests: XCTestCase {
         XCTAssertTrue(lesson.passed && lesson.mastery && lesson.memory)
         XCTAssertEqual(store.trainingLog, TrainingLog(reviewsPassed: 7, bounceBacks: 2, mixRounds: 5,
                                                      mixMemoryRounds: 3, afterMeLessons: [10001],
-                                                     trainingDays: ["2026-11-01", "2026-11-08"]))
+                                                     trainingDays: ["2026-11-01", "2026-11-08"],
+                                                     practiceDays: ["2026-11-01", "2026-11-04", "2026-11-08"]))
         XCTAssertEqual(try Data(contentsOf: url), golden)
         try store.save()
         XCTAssertEqual(try Data(contentsOf: url), golden)

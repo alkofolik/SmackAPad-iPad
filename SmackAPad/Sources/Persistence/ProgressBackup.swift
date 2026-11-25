@@ -227,6 +227,7 @@ public struct ProgressBackupEnvelope: Codable, Equatable, Sendable {
         self.progress = converted
 
         self.trainingLog = try container.decodeIfPresent(TrainingLog.self, forKey: .trainingLog) ?? TrainingLog()
+        self.trainingLog.restorePracticeDays(from: converted)
         self.badges = try container.decodeIfPresent([String: Date].self, forKey: .badges) ?? [:]
         self.settings = try container.decodeIfPresent(BackupSettings.self, forKey: .settings) ?? BackupSettings()
     }

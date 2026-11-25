@@ -4,6 +4,32 @@ import XCTest
 @testable import SmackAPad
 
 final class TrainingLogAndBadgesTests: XCTestCase {
+    func testFirstIntroRunLightsTodayWithoutCountingTowardTrainingBadges() {
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        let store = ProgressStore(fileURL: directory.appendingPathComponent("progress.json"), autoLoad: false)
+        let today = "2026-11-23"
+
+        store.recordResult(lessonId: 10001, passed: false, mastery: false, bpm: 80, score: 0.5, autoSave: false, today: today)
+
+        XCTAssertTrue(store.trainingLog.trainingDays.isEmpty)
+        XCTAssertEqual(store.trainingLog.practiceDays, [today])
+        let rhythm = WeeklyRhythm(today: today, practiceDays: store.trainingLog.practiceDays, locale: Locale(identifier: "en"))
+        XCTAssertEqual(rhythm.days.filter { $0.isToday && $0.practiced }.map(\.dayString), [today])
+    }
+
+    func testReviewMixAndAfterMeEachRecordTheirPracticeDay() {
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        let store = ProgressStore(fileURL: directory.appendingPathComponent("progress.json"), autoLoad: false)
+
+        store.recordReviewRun(lessonId: 10001, passed: false, today: "2026-11-23", autoSave: false)
+        store.recordFinishedMixRound(isMemoryRound: false, today: "2026-11-24", autoSave: false)
+        store.recordAfterMeResponse(lessonId: 10001, score: 0.5, today: "2026-11-25", autoSave: false)
+        store.recordAfterMeResponse(lessonId: 10001, score: 0.5, today: "2026-11-25", autoSave: false)
+
+        XCTAssertEqual(store.trainingLog.practiceDays, ["2026-11-23", "2026-11-24", "2026-11-25"])
+        XCTAssertEqual(store.trainingLog.trainingDays, store.trainingLog.practiceDays)
+    }
+
     func testPassFailPassOnConsecutiveDaysGivesOneBounceBack() throws {
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)

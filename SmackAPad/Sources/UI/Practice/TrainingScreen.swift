@@ -129,7 +129,6 @@ public struct TrainingScreen: View {
         let basePlan = TodayPlan.decode(savedTodayPlan, today: today) ?? data?.currentPlan
         return basePlan?.reconcilingReviews(with: progress.records)
     }
-    private var isPlanFinished: Bool { currentPlan?.isFinished == true }
     private var reviewLoad: TodayPlan.ReviewLoad {
         TodayPlan.ReviewLoad(dueLessonIDs: dueLessons.map(\.id), plan: currentPlan)
     }
@@ -152,42 +151,26 @@ public struct TrainingScreen: View {
                                 .frame(maxWidth: .infinity, minHeight: 160)
                                 .accessibilityLabel(settings.localized("Training"))
                         } else {
-                            todayPanel(isLandscape: isLandscape)
+                            VStack(spacing: Theme.Space.controlGap) {
+                                todayPanel(isLandscape: isLandscape)
+                                WeeklyRhythmStrip(day: today, practiceDays: progress.trainingLog.practiceDays)
+                            }
 
                             if isLandscape {
-                                Grid(alignment: .topLeading, horizontalSpacing: 24, verticalSpacing: 24) {
+                                Grid(alignment: .topLeading, horizontalSpacing: Theme.Space.regular) {
                                     GridRow {
-                                        extraMixCard
-                                            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
                                         afterMeCard
+                                            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+                                        extraMixCard
                                             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
                                     }
                                 }
                             } else {
-                                extraMixCard
                                 afterMeCard
+                                extraMixCard
                             }
 
-                            VStack(spacing: 8) {
-                                reviewQueueRow
-                                memoryAndForecastRow
-                                if isMemoryExpanded {
-                                    if isLandscape {
-                                        HStack(alignment: .top, spacing: Theme.Space.page) {
-                                            memoryMeterPanel
-                                                .frame(maxWidth: .infinity)
-                                            next7DaysPanel
-                                                .frame(maxWidth: .infinity)
-                                        }
-                                        .padding(.top, 8)
-                                    } else {
-                                        memoryMeterPanel
-                                            .padding(.top, 8)
-                                        next7DaysPanel
-                                    }
-                                }
-                                trainingBadgesRow
-                            }
+                            trainingTools(isLandscape: isLandscape)
                         }
 
                         Spacer(minLength: Theme.Space.page)
@@ -318,9 +301,9 @@ public struct TrainingScreen: View {
             BackButton(action: onHome)
 
             Text(settings.localized("Training"))
-                .font(Theme.boldDisplay(28))
+                .font(Theme.screenTitle)
                 .foregroundStyle(Theme.ink)
-                .lineLimit(1)
+                .accessibilityAddTraits(.isHeader)
 
             Spacer(minLength: 16)
 
@@ -333,10 +316,6 @@ public struct TrainingScreen: View {
     }
 
     // MARK: - 1. Today Panel
-
-    private var todaySteps: [TodayPlan.Step] {
-        continueTarget?.plan.steps ?? []
-    }
 
     private func stepTitle(_ step: TodayPlan.Step) -> String {
         if step.kind == .mix { return settings.localized("Daily mix") }
@@ -353,39 +332,43 @@ public struct TrainingScreen: View {
     }
 
     private func todayPanel(isLandscape: Bool) -> some View {
-        VStack(alignment: .leading, spacing: 18) {
-            Text(settings.localized("Today").uppercased(with: Locale(identifier: settings.languagePreference.rawValue)))
-                .font(Theme.padTitle(size: 40))
+        let target = continueTarget
+        let steps = target?.plan.steps ?? []
+        let tiles = ForEach(Array(steps.enumerated()), id: \.offset) { index, step in
+            dailyStepTile(step, index: index, currentIndex: target?.plan.index ?? 0)
+        }
+
+        return VStack(alignment: .leading, spacing: Theme.Space.controlGap) {
+            Text(settings.localized("Today"))
+                .font(Theme.sectionTitle)
                 .foregroundStyle(Theme.black)
                 .accessibilityAddTraits(.isHeader)
 
-            if isLandscape {
-                HStack(spacing: 12) {
-                    ForEach(Array(todaySteps.enumerated()), id: \.offset) { index, step in
-                        dailyStepTile(step, index: index)
-                    }
-                    continueButton.frame(width: 200)
+            if isLandscape && (1...3).contains(steps.count) {
+                HStack(alignment: .top, spacing: Theme.Space.small) {
+                    tiles
+                    continueButton(for: target).frame(width: 192)
                 }
             } else {
-                LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 12) {
-                    ForEach(Array(todaySteps.enumerated()), id: \.offset) { index, step in
-                        dailyStepTile(step, index: index)
+                if !steps.isEmpty {
+                    let columns = Array(repeating: GridItem(.flexible(), spacing: Theme.Space.small),
+                                        count: isLandscape ? 3 : 2)
+                    LazyVGrid(columns: columns, alignment: .leading, spacing: Theme.Space.small) {
+                        tiles
                     }
                 }
-                continueButton
+                continueButton(for: target)
             }
         }
-        .padding(24)
+        .padding(Theme.Space.regular)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Theme.orange, in: RoundedRectangle(cornerRadius: 24))
+        .background(Theme.orange, in: RoundedRectangle(cornerRadius: Theme.Radius.panel))
     }
 
-    private func dailyStepTile(_ step: TodayPlan.Step, index: Int) -> some View {
-        let plan = continueTarget?.plan
-        let isDone = plan?.finished == true || index < (plan?.index ?? 0) || step.outcome?.played == true
-        let isCurrent = !isDone && index == (plan?.index ?? 0)
-        let status = isDone ? settings.localized(step.status?.titleKey ?? "Not played")
-            : settings.localized(isCurrent ? "training.now" : "Waiting")
+    private func dailyStepTile(_ step: TodayPlan.Step, index: Int, currentIndex: Int) -> some View {
+        let isDone = index < currentIndex || step.outcome?.played == true
+        let isCurrent = !isDone && index == currentIndex
+        let status = settings.localized(isDone ? step.status?.titleKey ?? "Not played" : isCurrent ? "training.now" : "Waiting")
         let detail: String = {
             if isDone {
                 if step.kind == .review,
@@ -394,74 +377,87 @@ public struct TrainingScreen: View {
                 return settings.localized("Not played")
             }
             if step.kind == .mix { return settings.languagePreference.localizedLessonCount(step.lessonIDs.count) }
-            return status
+            return isCurrent ? "" : status
         }()
-        let shape = RoundedRectangle(cornerRadius: 14)
+        let shape = RoundedRectangle(cornerRadius: Theme.Radius.panel)
 
-        return VStack(alignment: .leading, spacing: 8) {
-            HStack(spacing: 4) {
-                Text("\(index + 1) · \(stepTag(step))")
-                    .font(Theme.strong(12))
-                    .lineLimit(1)
+        return VStack(alignment: .leading, spacing: Theme.Space.tight) {
+            HStack(spacing: Theme.Space.tight) {
+                Text(stepTag(step))
+                    .font(Theme.caption)
                 Spacer(minLength: 0)
                 if isDone {
                     Image(systemName: step.markerSymbol ?? (step.outcome?.played == true ? "checkmark" : "minus"))
-                        .font(.system(size: 14, weight: .bold))
-                        .foregroundStyle(step.status == .triedNotMet ? Theme.orange : Theme.black.opacity(0.7))
+                        .font(.system(size: 13, weight: .semibold))
                 } else if isCurrent {
-                    Text(settings.localized("training.now"))
+                    Text(status.uppercased(with: Locale(identifier: settings.languagePreference.rawValue)))
                         .font(Theme.strong(12))
-                        .lineLimit(1)
+                        .padding(.horizontal, Theme.Space.tight)
+                        .foregroundStyle(Theme.white)
+                        .background(Theme.black, in: RoundedRectangle(cornerRadius: Theme.Radius.button))
                 }
             }
-            .foregroundStyle(Theme.black.opacity(0.7))
 
             Text(stepTitle(step))
-                .font(Theme.boldDisplay(22))
-                .lineLimit(1)
-                .truncationMode(.tail)
-            Text(detail)
-                .font(Theme.text(13))
-                .foregroundStyle(Theme.black.opacity(0.7))
-                .lineLimit(1)
-                .truncationMode(.tail)
-            Spacer(minLength: 0)
+                .font(Theme.sectionTitle)
+            if !detail.isEmpty {
+                Text(detail)
+                    .font(Theme.caption.monospacedDigit())
+            }
         }
         .foregroundStyle(Theme.black)
-        .padding(16)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .frame(height: 124)
-        .background(isDone || isCurrent ? Theme.white : Theme.white.opacity(0.5), in: shape)
-        .overlay { if isCurrent { shape.strokeBorder(Theme.black, lineWidth: 3) } }
-        .accessibilityElement(children: .ignore)
-        .accessibilityLabel("\(stepTag(step)), \(stepTitle(step)), \(status), \(detail)")
-    }
-
-    private var continueButton: some View {
-        Button(action: startTodayTraining) {
-            VStack(alignment: .leading, spacing: 4) {
-                Text(settings.localized(isPlanFinished ? "Summary" : "Continue"))
-                    .font(Theme.boldDisplay(22))
-                    .lineLimit(1)
-                Text(continueSubtitle)
-                    .font(Theme.text(13))
-                    .foregroundStyle(Theme.black.opacity(0.7))
-                    .lineLimit(2)
-                    .multilineTextAlignment(.leading)
+        .padding(Theme.Space.controlGap)
+        .frame(maxWidth: .infinity, minHeight: 104, alignment: .topLeading)
+        .background {
+            shape.fill(isDone || isCurrent ? Theme.white : Theme.Skin.Plate.top)
+                .environment(\.colorScheme, .light)
+        }
+        .overlay {
+            if isCurrent {
+                shape.strokeBorder(Theme.black, lineWidth: 2)
+            } else if !isDone {
+                shape.strokeBorder(Theme.black.opacity(0.20), lineWidth: 1)
             }
-            .padding(.vertical, 16)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .frame(height: 124)
         }
-        .buttonStyle(PadPrimaryButtonStyle())
-        .disabled(continueTarget == nil)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel([stepTag(step), stepTitle(step), status, detail == status ? "" : detail]
+            .filter { !$0.isEmpty }.joined(separator: ", "))
     }
 
-    private var continueSubtitle: String {
-        guard case .step(let plan) = continueTarget, plan.steps.indices.contains(plan.index) else {
-            return settings.localized("training.doneForToday")
+    private func continueButton(for target: TodayContinueTarget?) -> some View {
+        let title: String = switch target {
+        case .summary: "Summary"
+        case .step(let plan) where plan.index > 0: "Continue"
+        default: "Start"
         }
-        return stepTitle(plan.steps[plan.index])
+
+        return Button(action: startTodayTraining) {
+            VStack(alignment: .leading, spacing: Theme.Space.tight) {
+                Text(settings.localized(title))
+                    .font(Theme.sectionTitle)
+                Text(continueSubtitle(for: target))
+                    .font(Theme.caption.monospacedDigit())
+                    .lineLimit(2)
+            }
+            .padding(.vertical, Theme.Space.controlGap)
+            .frame(maxWidth: .infinity, minHeight: 104, alignment: .leading)
+        }
+        .buttonStyle(PadPrimaryButtonStyle(darkFace: true))
+        .disabled(target == nil)
+    }
+
+    private func continueSubtitle(for target: TodayContinueTarget?) -> String {
+        guard let target else { return settings.localized("training.nothingDue") }
+        guard case .step(let plan) = target else { return settings.localized("training.doneForToday") }
+        let remaining = plan.remainingStepCount
+        let format: String = if remaining == 1 {
+            "%lld step · ~%lld min"
+        } else if settings.languagePreference == .czech && remaining >= 5 {
+            "%lld kroků · ~%lld min"
+        } else {
+            "%lld steps · ~%lld min"
+        }
+        return settings.localized(format, remaining, plan.estimatedMinutes)
     }
 
     private func preserveTodayPlan(for lessonID: Int) {
@@ -683,9 +679,9 @@ public struct TrainingScreen: View {
         }
         .padding(Theme.Space.regular)
         .frame(maxWidth: .infinity, alignment: .topLeading)
-        .background(Theme.surface, in: RoundedRectangle(cornerRadius: 20))
+        .background(Theme.surface, in: RoundedRectangle(cornerRadius: Theme.Radius.panel))
         .overlay {
-            RoundedRectangle(cornerRadius: 20)
+            RoundedRectangle(cornerRadius: Theme.Radius.panel)
                 .strokeBorder(Theme.hairline, lineWidth: 1)
         }
     }
@@ -765,9 +761,9 @@ public struct TrainingScreen: View {
                     .padding(.vertical, 8)
                     .padding(.horizontal, 2)
                     .frame(maxWidth: .infinity)
-                    .background(isToday ? Theme.background : Color.clear, in: RoundedRectangle(cornerRadius: 10))
+                    .background(isToday ? Theme.background : Color.clear, in: RoundedRectangle(cornerRadius: Theme.Radius.panel))
                     .overlay(
-                        RoundedRectangle(cornerRadius: 10)
+                        RoundedRectangle(cornerRadius: Theme.Radius.panel)
                             .stroke(isToday ? Theme.ink : Theme.hairline, lineWidth: isToday ? 2 : 1)
                     )
                     .overlay(alignment: .bottom) {
@@ -775,8 +771,8 @@ public struct TrainingScreen: View {
                             HardwareLightBar(active: true, breathes: false)
                         }
                     }
-                    .clipShape(RoundedRectangle(cornerRadius: 10))
-                    .contentShape(RoundedRectangle(cornerRadius: 10))
+                    .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.panel))
+                    .contentShape(RoundedRectangle(cornerRadius: Theme.Radius.panel))
 
                     if isTappable {
                         Button {
@@ -805,9 +801,9 @@ public struct TrainingScreen: View {
         }
         .padding(Theme.Space.regular)
         .frame(maxWidth: .infinity, alignment: .topLeading)
-        .background(Theme.surface, in: RoundedRectangle(cornerRadius: 20))
+        .background(Theme.surface, in: RoundedRectangle(cornerRadius: Theme.Radius.panel))
         .overlay {
-            RoundedRectangle(cornerRadius: 20)
+            RoundedRectangle(cornerRadius: Theme.Radius.panel)
                 .strokeBorder(Theme.hairline, lineWidth: 1)
         }
     }
@@ -1180,8 +1176,9 @@ public struct TrainingScreen: View {
         VStack(alignment: .leading, spacing: 14) {
             HStack(alignment: .center, spacing: 12) {
                 Text(settings.localized("Extra mix"))
-                    .font(Theme.strong(13))
-                    .foregroundStyle(Theme.secondary)
+                    .font(Theme.sectionTitle)
+                    .foregroundStyle(Theme.ink)
+                    .accessibilityAddTraits(.isHeader)
                     .lineLimit(1)
 
                 Spacer(minLength: 8)
@@ -1240,9 +1237,9 @@ public struct TrainingScreen: View {
         }
         .padding(20)
         .frame(maxWidth: .infinity, alignment: .topLeading)
-        .background(Theme.surface, in: RoundedRectangle(cornerRadius: 20))
+        .background(Theme.surface, in: RoundedRectangle(cornerRadius: Theme.Radius.panel))
         .overlay {
-            RoundedRectangle(cornerRadius: 20)
+            RoundedRectangle(cornerRadius: Theme.Radius.panel)
                 .strokeBorder(Theme.hairline, lineWidth: 1)
         }
     }
@@ -1286,8 +1283,9 @@ public struct TrainingScreen: View {
 
         return VStack(alignment: .leading, spacing: 14) {
             Text(settings.localized("Play after me"))
-                .font(Theme.strong(13))
-                .foregroundStyle(Theme.secondary)
+                .font(Theme.sectionTitle)
+                .foregroundStyle(Theme.ink)
+                .accessibilityAddTraits(.isHeader)
                 .lineLimit(1)
 
             if let lesson = candidate {
@@ -1341,14 +1339,42 @@ public struct TrainingScreen: View {
         }
         .padding(20)
         .frame(maxWidth: .infinity, alignment: .topLeading)
-        .background(Theme.surface, in: RoundedRectangle(cornerRadius: 20))
+        .background(Theme.surface, in: RoundedRectangle(cornerRadius: Theme.Radius.panel))
         .overlay {
-            RoundedRectangle(cornerRadius: 20)
+            RoundedRectangle(cornerRadius: Theme.Radius.panel)
                 .strokeBorder(Theme.hairline, lineWidth: 1)
         }
     }
 
     // MARK: - 5. Compact Rows & Queue Screen
+
+    private func trainingTools(isLandscape: Bool) -> some View {
+        VStack(spacing: 0) {
+            reviewQueueRow
+            Rectangle().fill(Theme.hairline).frame(height: 1)
+            memoryAndForecastRow
+            if isMemoryExpanded {
+                Group {
+                    if isLandscape {
+                        HStack(alignment: .top, spacing: Theme.Space.controlGap) {
+                            memoryMeterPanel
+                            next7DaysPanel
+                        }
+                    } else {
+                        VStack(spacing: Theme.Space.controlGap) {
+                            memoryMeterPanel
+                            next7DaysPanel
+                        }
+                    }
+                }
+                .padding(Theme.Space.controlGap)
+            }
+            Rectangle().fill(Theme.hairline).frame(height: 1)
+            trainingBadgesRow
+        }
+        .padding(.horizontal, Theme.Space.small)
+        .background(Theme.surface, in: RoundedRectangle(cornerRadius: Theme.Radius.panel))
+    }
 
     private var reviewQueueRow: some View {
         trainingListRow(
@@ -1391,9 +1417,7 @@ public struct TrainingScreen: View {
         chevron: String,
         action: @escaping () -> Void
     ) -> some View {
-        let shape = RoundedRectangle(cornerRadius: 14)
-
-        return Button(action: action) {
+        Button(action: action) {
             HStack(spacing: 12) {
                 Text(title)
                     .font(Theme.strong(16))
@@ -1412,13 +1436,9 @@ public struct TrainingScreen: View {
                     .font(.system(size: 13, weight: .semibold))
                     .foregroundStyle(Theme.secondary)
             }
-            .padding(.horizontal, 20)
-            .frame(maxWidth: .infinity, minHeight: 60)
-            .background(Theme.surface, in: shape)
-            .overlay {
-                shape.strokeBorder(Theme.hairline, lineWidth: 1)
-            }
-            .contentShape(shape)
+            .padding(.horizontal, Theme.Space.small)
+            .frame(maxWidth: .infinity, minHeight: Theme.Size.row)
+            .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
     }

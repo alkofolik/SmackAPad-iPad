@@ -3356,7 +3356,13 @@
 "App plays, you repeat." = "App plays, you repeat.";
 "each once" = "each once";
 "Mix · optional" = "Mix · optional";
-"daySummary.title" = "DONE FOR\nTODAY";
+"daySummary.title" = "Done for today";
+"This week: %lld× · %lld days total" = "This week: %lld× · %lld days total";
+"Next milestone: %@ · %lld / %lld 2★ lessons" = "Next milestone: %@ · %lld / %lld 2★ lessons";
+"Milestone reached · %@ unlocked" = "Milestone reached · %@ unlocked";
+"Practiced" = "Practiced";
+"%lld step · ~%lld min" = "%lld step · ~%lld min";
+"%lld steps · ~%lld min" = "%lld steps · ~%lld min";
 "training.doneForToday" = "Done for today";
 "home.today.done" = "Done for today";
 "%lld step · %lld min" = "%lld step · %lld min";
