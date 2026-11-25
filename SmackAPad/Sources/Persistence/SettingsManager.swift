@@ -53,6 +53,10 @@ public final class SettingsManager: @unchecked Sendable {
         didSet { persistKitId() }
     }
 
+    public var selectedInstrumentSkinId: String {
+        didSet { userDefaults.set(selectedInstrumentSkinId, forKey: SettingsKey.selectedInstrumentSkinId.rawValue) }
+    }
+
     public var lessonKitOverrides: [Int: String] {
         didSet { persistLessonKitOverrides() }
     }
@@ -224,6 +228,7 @@ public final class SettingsManager: @unchecked Sendable {
         lastLessonID = userDefaults.integer(forKey: "smackapad.library.lastLesson")
 
         self.selectedKitId = userDefaults.string(forKey: SettingsKey.selectedKitId.rawValue) ?? Self.defaultKitId
+        self.selectedInstrumentSkinId = userDefaults.string(forKey: SettingsKey.selectedInstrumentSkinId.rawValue) ?? StudioRigCatalog.defaultSkinId
 
         if let data = userDefaults.data(forKey: SettingsKey.lessonKitOverrides.rawValue),
            let overrides = try? JSONDecoder().decode([Int: String].self, from: data) {

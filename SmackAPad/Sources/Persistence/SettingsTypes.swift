@@ -29,6 +29,7 @@ public enum SettingsKey: String, CaseIterable, Sendable {
     case autoPeekMemory = "smackapad.settings.autoPeekMemory"
     case reviewReminderEnabled = "smackapad.settings.reviewReminderEnabled"
     case reviewReminderTime = "smackapad.settings.reviewReminderTime"
+    case selectedInstrumentSkinId = "smackapad.settings.selectedInstrumentSkinId"
 }
 
 /// Supported app appearances (Light, Dark, or follow System).

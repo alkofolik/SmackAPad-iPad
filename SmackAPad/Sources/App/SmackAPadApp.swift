@@ -70,6 +70,7 @@ struct SmackAPadApp: App {
                     settings.appearance.applyToWindows()
                     store.start()
                     midi.start()
+                    progress.migrateDrummerPathIfNeeded(catalog: progression.catalog)
                     badges.awardSilently(progress: progress.records, catalog: progression.catalog, trainingLog: progress.trainingLog)
                     ReviewReminderScheduler.shared.reschedule()
                 }

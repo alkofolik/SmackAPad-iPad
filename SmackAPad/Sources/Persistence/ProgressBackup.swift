@@ -22,6 +22,7 @@ public enum ProgressBackupError: LocalizedError, Equatable {
 public struct BackupSettings: Codable, Equatable, Sendable {
     public var settingsModifiedAt: Date?
     public var selectedKitId: String
+    public var selectedInstrumentSkinId: String
     public var lessonKitOverrides: [Int: String]
     public var midiControls: MIDIControlConfiguration
     public var bpmStep: Int
@@ -57,6 +58,7 @@ public struct BackupSettings: Codable, Equatable, Sendable {
     public init(
         settingsModifiedAt: Date? = nil,
         selectedKitId: String = SettingsManager.defaultKitId,
+        selectedInstrumentSkinId: String = StudioRigCatalog.defaultSkinId,
         lessonKitOverrides: [Int: String] = [:],
         midiControls: MIDIControlConfiguration? = nil,
         bpmStep: Int = SettingsManager.defaultBpmStep,
@@ -91,6 +93,7 @@ public struct BackupSettings: Codable, Equatable, Sendable {
     ) {
         self.settingsModifiedAt = settingsModifiedAt
         self.selectedKitId = selectedKitId
+        self.selectedInstrumentSkinId = selectedInstrumentSkinId
         self.lessonKitOverrides = lessonKitOverrides
         self.midiControls = midiControls ?? MIDIControlConfiguration()
         self.bpmStep = bpmStep
@@ -125,7 +128,7 @@ public struct BackupSettings: Codable, Equatable, Sendable {
     }
 
     private enum CodingKeys: String, CodingKey {
-        case settingsModifiedAt, selectedKitId, lessonKitOverrides, midiControls, bpmStep, practiceMode
+        case settingsModifiedAt, selectedKitId, selectedInstrumentSkinId, lessonKitOverrides, midiControls, bpmStep, practiceMode
         case activeProfileName, customProfiles, languagePreference, appearance, metronomeVolume, padsVolume, patternVolume, instrumentTrims
         case playPadsWithKeyboard, fadeMemoryNotes, reviewReminderEnabled, reviewReminderTime, hideCompletedLessons
         case autoPeekMemory
@@ -139,6 +142,7 @@ public struct BackupSettings: Codable, Equatable, Sendable {
         let c = try decoder.container(keyedBy: CodingKeys.self)
         self.settingsModifiedAt = try c.decodeIfPresent(Date.self, forKey: .settingsModifiedAt)
         self.selectedKitId = try c.decodeIfPresent(String.self, forKey: .selectedKitId) ?? SettingsManager.defaultKitId
+        self.selectedInstrumentSkinId = try c.decodeIfPresent(String.self, forKey: .selectedInstrumentSkinId) ?? StudioRigCatalog.defaultSkinId
         self.lessonKitOverrides = try c.decodeIfPresent([Int: String].self, forKey: .lessonKitOverrides) ?? [:]
         self.midiControls = try c.decodeIfPresent(MIDIControlConfiguration.self, forKey: .midiControls) ?? MIDIControlConfiguration()
         self.bpmStep = try c.decodeIfPresent(Int.self, forKey: .bpmStep) ?? SettingsManager.defaultBpmStep
@@ -184,6 +188,7 @@ public struct ProgressBackupEnvelope: Codable, Equatable, Sendable {
     public var trainingLog: TrainingLog
     public var badges: [String: Date]
     public var settings: BackupSettings
+    public var drummerPath: DrummerPathState?
 
     public init(
         app: String = ProgressBackup.appIdentifier,
@@ -194,7 +199,8 @@ public struct ProgressBackupEnvelope: Codable, Equatable, Sendable {
         progress: [Int: LessonProgress] = [:],
         trainingLog: TrainingLog = TrainingLog(),
         badges: [String: Date] = [:],
-        settings: BackupSettings = BackupSettings()
+        settings: BackupSettings = BackupSettings(),
+        drummerPath: DrummerPathState? = nil
     ) {
         self.app = app
         self.formatVersion = formatVersion
@@ -205,10 +211,11 @@ public struct ProgressBackupEnvelope: Codable, Equatable, Sendable {
         self.trainingLog = trainingLog
         self.badges = badges
         self.settings = settings
+        self.drummerPath = drummerPath
     }
 
     private enum CodingKeys: String, CodingKey {
-        case app, formatVersion, exportedAt, appVersion, deviceId, progress, trainingLog, badges, settings
+        case app, formatVersion, exportedAt, appVersion, deviceId, progress, trainingLog, badges, settings, drummerPath
     }
 
     public init(from decoder: Decoder) throws {
@@ -230,6 +237,7 @@ public struct ProgressBackupEnvelope: Codable, Equatable, Sendable {
         self.trainingLog.restorePracticeDays(from: converted)
         self.badges = try container.decodeIfPresent([String: Date].self, forKey: .badges) ?? [:]
         self.settings = try container.decodeIfPresent(BackupSettings.self, forKey: .settings) ?? BackupSettings()
+        self.drummerPath = try container.decodeIfPresent(DrummerPathState.self, forKey: .drummerPath)
     }
 
     public func encode(to encoder: Encoder) throws {
@@ -248,6 +256,7 @@ public struct ProgressBackupEnvelope: Codable, Equatable, Sendable {
         try container.encode(trainingLog, forKey: .trainingLog)
         try container.encode(badges, forKey: .badges)
         try container.encode(settings, forKey: .settings)
+        try container.encodeIfPresent(drummerPath, forKey: .drummerPath)
     }
 }
 

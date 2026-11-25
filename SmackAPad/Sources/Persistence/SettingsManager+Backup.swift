@@ -26,6 +26,7 @@ extension SettingsManager {
                 userDefaults.removeObject(forKey: key.rawValue)
             }
             self.selectedKitId = Self.defaultKitId
+            self.selectedInstrumentSkinId = StudioRigCatalog.defaultSkinId
             self.lessonKitOverrides = [:]
             self.midiControls = MIDIControlConfiguration()
             self.practiceMode = .learning
@@ -71,6 +72,7 @@ extension SettingsManager {
             return BackupSettings(
                 settingsModifiedAt: modifiedAt,
                 selectedKitId: selectedKitId,
+                selectedInstrumentSkinId: selectedInstrumentSkinId,
                 lessonKitOverrides: lessonKitOverrides,
                 midiControls: midiControls,
                 bpmStep: bpmStep,
@@ -111,6 +113,7 @@ extension SettingsManager {
     public func applyImportedSettings(_ settings: BackupSettings) {
         withLock {
             self.selectedKitId = settings.selectedKitId
+            self.selectedInstrumentSkinId = settings.selectedInstrumentSkinId
             self.lessonKitOverrides = settings.lessonKitOverrides
             self.midiControls = settings.midiControls
             self.bpmStep = settings.bpmStep
