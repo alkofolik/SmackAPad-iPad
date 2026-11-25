@@ -1234,6 +1234,7 @@ struct PadLayoutGrid: View {
     @Environment(\.accessibilityReduceMotion) private var reduced
     @ScaledMetric(relativeTo: .body) private var width: CGFloat = 176
     var side: CGFloat? = nil
+    var gridSize: CGSize? = nil
     let model: PadLayoutModel
     var flashes: [Int: PadFlash] = [:]
     var showKeyboardKeys: Bool = false
@@ -1250,16 +1251,18 @@ struct PadLayoutGrid: View {
         }
     }
 
-    init(side: CGFloat? = nil, model: PadLayoutModel, flashes: [Int: PadFlash] = [:], showKeyboardKeys: Bool = false, externalNow: Date? = nil) {
+    init(side: CGFloat? = nil, gridSize: CGSize? = nil, model: PadLayoutModel, flashes: [Int: PadFlash] = [:], showKeyboardKeys: Bool = false, externalNow: Date? = nil) {
         self.side = side
+        self.gridSize = gridSize
         self.model = model
         self.flashes = flashes
         self.showKeyboardKeys = showKeyboardKeys
         self.externalNow = externalNow
     }
 
-    init(side: CGFloat? = nil, pads: [Int], used: Set<Int>, flashes: [Int: PadFlash] = [:], showKeyboardKeys: Bool = false, externalNow: Date? = nil) {
+    init(side: CGFloat? = nil, gridSize: CGSize? = nil, pads: [Int], used: Set<Int>, flashes: [Int: PadFlash] = [:], showKeyboardKeys: Bool = false, externalNow: Date? = nil) {
         self.side = side
+        self.gridSize = gridSize
         self.model = PadLayoutModel(pads: pads, used: used, canShowKeys: pads.count == 16)
         self.flashes = flashes
         self.showKeyboardKeys = showKeyboardKeys
@@ -1278,49 +1281,51 @@ struct PadLayoutGrid: View {
 
     @ViewBuilder
     private func gridContent(now: Date) -> some View {
-        if let side {
+        if let resolved = gridSize ?? side.map({ CGSize(width: $0, height: $0) }) {
             let spacing = Theme.Space.tight
-            let cellSize = max(0, (side - CGFloat(max(grid.rows, grid.columns) - 1) * spacing) / CGFloat(max(grid.rows, grid.columns)))
+            let cellWidth = max(0, (resolved.width - CGFloat(max(1, grid.columns) - 1) * spacing) / CGFloat(max(1, grid.columns)))
+            let cellHeight = max(0, (resolved.height - CGFloat(max(1, grid.rows) - 1) * spacing) / CGFloat(max(1, grid.rows)))
             VStack(spacing: spacing) {
                 ForEach(0..<grid.rows, id: \.self) { row in
                     HStack(spacing: spacing) {
                         ForEach(0..<grid.columns, id: \.self) { col in
                             let index = row * grid.columns + col
                             if displayCells.indices.contains(index) {
-                                cell(displayCells[index], cellSize: cellSize, now: now)
+                                cell(displayCells[index], cellWidth: cellWidth, cellHeight: cellHeight, now: now)
                             }
                         }
                     }
                 }
             }
-            .frame(width: side, height: side)
+            .frame(width: resolved.width, height: resolved.height)
         } else {
             LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: Theme.Space.tight), count: grid.columns), spacing: Theme.Space.tight) {
                 ForEach(displayCells, id: \.pad) { cellData in
-                    cell(cellData, cellSize: nil, now: now)
+                    cell(cellData, cellWidth: nil, cellHeight: nil, now: now)
                 }
             }
             .frame(width: width)
         }
     }
 
-    private func cell(_ cellData: PadLayoutCellData, cellSize: CGFloat?, now: Date) -> some View {
+    private func cell(_ cellData: PadLayoutCellData, cellWidth: CGFloat?, cellHeight: CGFloat?, now: Date) -> some View {
         let age = flashes[cellData.pad].map { max(0, now.timeIntervalSince($0.date)) } ?? .infinity
         let fade = PracticeHardware.padFadeDuration
         let strength = age < fade ? (reduced ? 1 : 1 - age / fade) : 0
         let isUsed = cellData.isUsed
         let outline = isUsed ? PracticeHardware.orange : PracticeHardware.padBorder
         let shape = RoundedRectangle(cornerRadius: 6)
+        let minDim = min(cellWidth ?? 34, cellHeight ?? 34)
 
         let fontWithoutKeys: Font = {
-            if let cellSize {
-                return Theme.canvasDisplay(min(18, max(12, cellSize * 0.4)))
+            if cellWidth != nil || cellHeight != nil {
+                return Theme.canvasDisplay(min(18, max(12, minDim * 0.42)))
             }
             return Theme.text(Theme.Size.dense)
         }()
         let fontWithKeys: Font = {
-            if let cellSize {
-                return Theme.text(min(11, cellSize * 0.3))
+            if cellWidth != nil || cellHeight != nil {
+                return Theme.text(min(11, minDim * 0.3))
             }
             return Theme.text(12)
         }()
@@ -1340,11 +1345,12 @@ struct PadLayoutGrid: View {
         }
         .animation(motion.animation(Theme.Motion.fast), value: showKeyboardKeys)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .frame(width: cellSize, height: cellSize)
+        .frame(width: cellWidth, height: cellHeight)
         .foregroundStyle(Color.white.opacity(isUsed || strength > 0 ? 1 : 0.48))
         .background {
             shape
-                .fill(PracticeHardware.padFill)
+                .fill(isUsed ? PracticeHardware.orange.opacity(0.12) : .clear)
+                .background(PracticeHardware.padFill, in: shape)
                 .overlay { shape.strokeBorder(outline, lineWidth: isUsed ? 2 : 1) }
                 .overlay {
                     shape
@@ -1365,6 +1371,7 @@ struct PracticePadLayoutSquare: View {
     @Environment(SettingsManager.self) private var settings
     @State private var showPadKeys = false
     let side: CGFloat
+    var gridSize: CGSize? = nil
     let model: PadLayoutModel
     let session: PracticeSession
     let showPads: Bool
@@ -1373,6 +1380,7 @@ struct PracticePadLayoutSquare: View {
     private var motion: Theme.Motion.Policy { .init(reduced: reduced) }
 
     var body: some View {
+        let resolved = gridSize ?? CGSize(width: side, height: side)
         ZStack {
             if showPads && !model.cells.isEmpty {
                 Group {
@@ -1380,6 +1388,7 @@ struct PracticePadLayoutSquare: View {
                         PracticeDisplayFrame(clock: clock, session: session) { frame, date in
                             PadLayoutGrid(
                                 side: side,
+                                gridSize: resolved,
                                 model: model,
                                 flashes: mergedFlashes(frame: frame, date: date),
                                 showKeyboardKeys: model.canShowKeys && showPadKeys,
@@ -1389,6 +1398,7 @@ struct PracticePadLayoutSquare: View {
                     } else {
                         PadLayoutGrid(
                             side: side,
+                            gridSize: resolved,
                             model: model,
                             flashes: session.padFlashes,
                             showKeyboardKeys: model.canShowKeys && showPadKeys
@@ -1407,7 +1417,7 @@ struct PracticePadLayoutSquare: View {
                 .accessibilityHint(model.canShowKeys ? settings.localized("Shows or hides keyboard keys") : "")
             }
         }
-        .frame(width: side, height: side)
+        .frame(width: resolved.width, height: resolved.height)
     }
 
     private func mergedFlashes(frame: PatternFrame, date: Date) -> [Int: PadFlash] {

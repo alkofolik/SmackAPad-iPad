@@ -25,19 +25,27 @@ struct PracticeTransportPadStyle: ButtonStyle {
 
     func makeBody(configuration: Configuration) -> some View {
         let shape = RoundedRectangle(cornerRadius: 8, style: .continuous)
-        let top = primary ? PracticeHardware.color(0xFF9447) : PracticeHardware.padBorder
+        let top = primary ? PracticeHardware.color(0xFF9447) : PracticeHardware.color(0x454552)
         let edge = primary ? PracticeHardware.displayBottom : PracticeHardware.padBorder
 
         configuration.label
             .foregroundStyle(.white)
             .background {
                 shape
-                    .fill(primary ? PracticeHardware.orange : PracticeHardware.padFill)
-                    .shadow(color: PracticeHardware.orange.opacity(primary && !configuration.isPressed ? 0.55 : 0),
+                    .fill(
+                        LinearGradient(
+                            colors: primary
+                                ? [PracticeHardware.color(0xFF7B1A), PracticeHardware.orange]
+                                : [PracticeHardware.padFill, PracticeHardware.color(0x18181D)],
+                            startPoint: .top,
+                            endPoint: .bottom
+                        )
+                    )
+                    .shadow(color: PracticeHardware.orange.opacity(primary && !configuration.isPressed ? 0.65 : 0),
                             radius: 10, y: 2)
             }
             .overlay {
-                shape.fill(.black.opacity(configuration.isPressed ? 0.22 : 0))
+                shape.fill(.black.opacity(configuration.isPressed ? 0.24 : 0))
             }
             .overlay {
                 shape.strokeBorder(
@@ -45,6 +53,7 @@ struct PracticeTransportPadStyle: ButtonStyle {
                     lineWidth: 1.5
                 )
             }
+            .scaleEffect(configuration.isPressed ? 0.98 : 1.0)
             .contentShape(shape)
     }
 }
@@ -444,24 +453,24 @@ struct TempoTile<CueContent: View>: View {
                 Button(action: action) {
                     HStack(spacing: 5) {
                         Circle()
-                            .fill(editable ? Theme.orange : Theme.Skin.Display.secondary.opacity(0.4))
+                            .fill(editable ? PracticeHardware.orange : Color.white.opacity(0.3))
                             .frame(width: 6, height: 6)
-                            .shadow(color: editable ? Theme.orange.opacity(0.7) : .clear, radius: 3)
+                            .shadow(color: editable ? PracticeHardware.orange.opacity(0.8) : .clear, radius: 4)
                         Text("TEMPO")
                             .font(Theme.strong(11))
                             .tracking(0.8)
-                            .foregroundStyle(Theme.Skin.Display.ink.opacity(editable ? 0.9 : 0.45))
+                            .foregroundStyle(Color.white.opacity(editable ? 0.92 : 0.45))
                         if editable {
                             Image(systemName: "chevron.down")
                                 .font(.system(size: 9, weight: .bold))
-                                .foregroundStyle(Theme.Skin.Display.secondary)
+                                .foregroundStyle(Color.white.opacity(0.65))
                         }
                     }
                     .padding(.horizontal, 9)
                     .padding(.vertical, 4)
-                    .background(Theme.white.opacity(0.06), in: Capsule())
+                    .background(PracticeHardware.chassis, in: Capsule())
                     .overlay {
-                        Capsule().strokeBorder(Theme.white.opacity(0.10), lineWidth: 1)
+                        Capsule().strokeBorder(PracticeHardware.border, lineWidth: 1)
                     }
                 }
                 .buttonStyle(.plain)
@@ -474,21 +483,21 @@ struct TempoTile<CueContent: View>: View {
                     Text(settings.localized("Goal").uppercased())
                         .font(Theme.strong(10))
                         .tracking(0.6)
-                        .foregroundStyle(Theme.Skin.Display.secondary)
+                        .foregroundStyle(Color.white.opacity(0.6))
                     Text("\(targetBpm)")
                         .font(Theme.strong(13))
                         .monospacedDigit()
-                        .foregroundStyle(bpm >= targetBpm ? Theme.orange : Theme.Skin.Display.ink)
+                        .foregroundStyle(bpm >= targetBpm ? PracticeHardware.orange : Color.white)
                 }
                 .padding(.horizontal, 9)
                 .padding(.vertical, 4)
                 .background(
-                    (bpm >= targetBpm ? Theme.orange.opacity(0.16) : Theme.white.opacity(0.05)),
+                    (bpm >= targetBpm ? PracticeHardware.orange.opacity(0.18) : PracticeHardware.chassis),
                     in: Capsule()
                 )
                 .overlay {
                     Capsule().strokeBorder(
-                        bpm >= targetBpm ? Theme.orange.opacity(0.45) : Theme.white.opacity(0.09),
+                        bpm >= targetBpm ? PracticeHardware.orange : PracticeHardware.border,
                         lineWidth: 1
                     )
                 }
@@ -508,9 +517,9 @@ struct TempoTile<CueContent: View>: View {
                         Text("\(bpm)")
                             .font(Theme.boldDisplay(min(54, max(34, side * 0.36))))
                             .monospacedDigit()
-                            .foregroundStyle(Theme.Skin.Display.ink)
-                            .shadow(color: Theme.orange.opacity(0.55), radius: 10)
-                            .shadow(color: Theme.orange.opacity(0.25), radius: 2)
+                            .foregroundStyle(Color.white)
+                            .shadow(color: PracticeHardware.orange.opacity(0.60), radius: 10)
+                            .shadow(color: PracticeHardware.playheadGlow.opacity(0.30), radius: 3)
                             .lineLimit(1)
                             .minimumScaleFactor(0.65)
                             .contentTransition(motion.numeric)
@@ -518,7 +527,7 @@ struct TempoTile<CueContent: View>: View {
                         Text("BPM")
                             .font(Theme.strong(13))
                             .tracking(0.6)
-                            .foregroundStyle(Theme.orange.opacity(0.9))
+                            .foregroundStyle(PracticeHardware.orange)
                     }
                     .frame(maxWidth: .infinity)
                     .contentShape(Rectangle())
@@ -554,20 +563,20 @@ struct TempoTile<CueContent: View>: View {
                     Text("\(bpm)")
                         .font(Theme.boldDisplay(min(44, side * 0.42)))
                         .monospacedDigit()
-                        .foregroundStyle(Theme.Skin.Display.ink)
-                        .shadow(color: Theme.orange.opacity(0.45), radius: 8)
+                        .foregroundStyle(Color.white)
+                        .shadow(color: PracticeHardware.orange.opacity(0.55), radius: 8)
                         .lineLimit(1)
                         .minimumScaleFactor(0.7)
                         .contentTransition(motion.numeric)
                         .motion(value: bpm)
                     Text("BPM")
                         .font(Theme.strong(11))
-                        .foregroundStyle(Theme.orange.opacity(0.9))
+                        .foregroundStyle(PracticeHardware.orange)
                 }
                 Text("\(settings.localized("Goal")) \(targetBpm)")
                     .font(Theme.meta)
                     .monospacedDigit()
-                    .foregroundStyle(bpm >= targetBpm ? Theme.orange : Theme.Skin.Display.secondary)
+                    .foregroundStyle(bpm >= targetBpm ? PracticeHardware.orange : Color.white.opacity(0.65))
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .contentShape(Rectangle())
@@ -593,16 +602,16 @@ struct TempoTile<CueContent: View>: View {
                         let threshold = Double(index) / Double(segmentCount)
                         let lit = threshold <= fraction
                         RoundedRectangle(cornerRadius: 1.5)
-                            .fill(lit ? Theme.orange : Theme.white.opacity(0.10))
+                            .fill(lit ? PracticeHardware.orange : PracticeHardware.padBorder.opacity(0.65))
                             .frame(width: segWidth, height: lit ? 10 : 7)
-                            .shadow(color: lit ? Theme.orange.opacity(0.45) : .clear, radius: 2.5)
+                            .shadow(color: lit ? PracticeHardware.orange.opacity(0.55) : .clear, radius: 3)
                     }
                 }
                 .frame(maxHeight: .infinity)
 
                 // Goal marker tick
                 Rectangle()
-                    .fill(Theme.white.opacity(0.85))
+                    .fill(Color.white.opacity(0.9))
                     .frame(width: 2, height: 16)
                     .offset(x: max(0, min(width - 2, width * goalFraction - 1)))
             }
@@ -625,32 +634,16 @@ struct TempoTile<CueContent: View>: View {
         Button(action: onTap) {
             Image(systemName: symbol)
                 .font(.system(size: 16, weight: .bold))
-                .foregroundStyle(Theme.Skin.Display.ink)
+                .foregroundStyle(Color.white)
                 .frame(width: 44, height: 42)
                 .background {
                     RoundedRectangle(cornerRadius: Theme.Radius.button, style: .continuous)
-                        .fill(
-                            LinearGradient(
-                                colors: [
-                                    Color(red: 0.22, green: 0.20, blue: 0.18),
-                                    Color(red: 0.13, green: 0.12, blue: 0.10)
-                                ],
-                                startPoint: .top,
-                                endPoint: .bottom
-                            )
-                        )
+                        .fill(PracticeHardware.padFill)
                         .overlay {
                             RoundedRectangle(cornerRadius: Theme.Radius.button, style: .continuous)
-                                .strokeBorder(
-                                    LinearGradient(
-                                        colors: [Theme.white.opacity(0.20), Theme.black.opacity(0.65)],
-                                        startPoint: .top,
-                                        endPoint: .bottom
-                                    ),
-                                    lineWidth: 1
-                                )
+                                .strokeBorder(PracticeHardware.padBorder, lineWidth: 1)
                         }
-                        .shadow(color: Theme.black.opacity(0.45), radius: 3, y: 2)
+                        .shadow(color: Color.black.opacity(0.45), radius: 3, y: 2)
                 }
         }
         .buttonStyle(.plain)

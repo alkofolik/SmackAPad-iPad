@@ -407,7 +407,7 @@ struct PracticeScreen: View {
     }
 
     private var libraryButton: some View {
-        BackButton {
+        BackButton(onDark: true) {
             session.stop()
             reportStepResult()
             if let dismissLesson { dismissLesson() } else { dismiss() }
@@ -1021,15 +1021,17 @@ struct PracticeScreen: View {
         let deckPadding: CGFloat = 10
         let deckInnerHeight = max(44, s - deckPadding * 2)
         let padWellPadding: CGFloat = 6
-        let padSide = max(36, deckInnerHeight - padWellPadding * 2)
+        let padHeight = max(36, deckInnerHeight - padWellPadding * 2)
+        let padWidth = max(padHeight, min(availableWidth * 0.30, 4 * 44 + 3 * Theme.Space.tight))
+        let padWellWidth = padWidth + padWellPadding * 2
         let transportPadding: CGFloat = 6
         let transportInnerHeight = max(36, deckInnerHeight - transportPadding * 2)
         let transportWidth = min(236, max(136, availableWidth * 0.24))
 
         return HStack(spacing: 14) {
-            padLayoutSquare(s: padSide)
+            padLayoutSquare(s: padHeight, gridSize: CGSize(width: padWidth, height: padHeight))
                 .padding(padWellPadding)
-                .frame(width: deckInnerHeight, height: deckInnerHeight)
+                .frame(width: padWellWidth, height: deckInnerHeight)
                 .background {
                     RoundedRectangle(cornerRadius: Theme.Radius.panel, style: .continuous)
                         .fill(PracticeHardware.chassis)
@@ -1395,9 +1397,10 @@ struct PracticeScreen: View {
         )
     }
 
-    private func padLayoutSquare(s: CGFloat) -> some View {
+    private func padLayoutSquare(s: CGFloat, gridSize: CGSize? = nil) -> some View {
         PracticePadLayoutSquare(
             side: s,
+            gridSize: gridSize,
             model: padLayoutModel,
             session: session,
             showPads: showPads,

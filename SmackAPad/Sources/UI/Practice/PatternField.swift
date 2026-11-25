@@ -887,9 +887,13 @@ private func drawMarker(x: CGFloat, size: CGSize, context: inout GraphicsContext
     let width: CGFloat = 3
     let center = max(width / 2, min(x, size.width - width / 2))
     let line = CGRect(x: center - width / 2, y: 0, width: width, height: size.height)
-    var glow = context
-    glow.addFilter(.shadow(color: PracticeHardware.playheadGlow, radius: 8))
-    glow.fill(Path(line), with: .color(.white))
+    var outerGlow = context
+    outerGlow.blendMode = .plusLighter
+    outerGlow.addFilter(.shadow(color: PracticeHardware.playheadGlow, radius: 8, x: 0, y: 0))
+    outerGlow.fill(Path(line), with: .color(PracticeHardware.playheadGlow.opacity(0.65)))
+    var coreGlow = context
+    coreGlow.addFilter(.shadow(color: PracticeHardware.playheadGlow, radius: 8, x: 0, y: 0))
+    coreGlow.fill(Path(line), with: .color(.white))
 }
 
 /// A thin ruler (8 pt high) along the top edge of the orange band, spanning the band width.
@@ -1210,16 +1214,17 @@ private struct BandMarginRowIndicator: View {
                     DrumGlyph(kind: DrumKind.forPad(padIndex))
                         .frame(width: iconSize, height: iconSize)
                         .scaleEffect(glyphScale)
-                        .foregroundStyle(isStriking ? Theme.white : Theme.white.opacity(0.92))
+                        .foregroundStyle(isStriking ? Color.white : Color.white.opacity(0.92))
                         .frame(width: badgeSize, height: badgeSize)
                         .background(
                             RoundedRectangle(cornerRadius: 6, style: .continuous)
-                                .fill(isStriking ? Theme.orange.opacity(0.24) : Theme.white.opacity(0.06))
+                                .fill(isStriking ? PracticeHardware.orange.opacity(0.28) : PracticeHardware.padFill)
                         )
                         .overlay {
                             RoundedRectangle(cornerRadius: 6, style: .continuous)
-                                .strokeBorder(isStriking ? Theme.orange.opacity(0.85) : Theme.white.opacity(0.12), lineWidth: 1)
+                                .strokeBorder(isStriking ? PracticeHardware.orange : PracticeHardware.padBorder, lineWidth: 1)
                         }
+                        .shadow(color: PracticeHardware.orange.opacity(isStriking ? 0.55 : 0), radius: 5)
                         .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
