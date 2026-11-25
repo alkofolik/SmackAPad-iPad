@@ -65,7 +65,7 @@ enum PracticeBandStyle {
 
     static func bandMarginWidth(rowHeight: CGFloat) -> CGFloat {
         let icon = bandMarginIconSize(rowHeight: rowHeight)
-        return ceil(icon + 28)
+        return ceil(icon + 30)
     }
 
     static func bandMarginIconSize(rowHeight: CGFloat) -> CGFloat {

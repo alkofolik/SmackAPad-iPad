@@ -81,6 +81,14 @@ private struct PatternFeedback {
         let envelope = phase < 0.28 ? (phase / 0.28) : ((1 - phase) / 0.72)
         return 1 + 0.08 * CGFloat(max(0, min(1, envelope)))
     }
+
+    static func correctPulseProgress(struckAt: Double?, hostSeconds: Double?, reduceMotion: Bool) -> Double? {
+        guard !reduceMotion, let struckAt, let hostSeconds else { return nil }
+        let age = hostSeconds - struckAt
+        let duration = 0.18
+        guard age >= 0, age < duration else { return nil }
+        return age / duration
+    }
 }
 
 struct PatternField: View {
@@ -178,7 +186,7 @@ struct PatternField: View {
                                              hostSeconds: hostSeconds, displayDate: displayDate, pass: pass,
                                              playedHits: playedHits, scoring: scoring,
                                              missGraceSteps: missGraceSteps, band: band, layout: layout,
-                                             labelLayout: labelLayout,
+                                             labelLayout: labelLayout, bpm: bpm,
                                              peekNotesOpacity: peekNotesOpacity, peekCycles: peekCycles)
                         } else {
                             let currentBar = min(lesson.bars - 1, max(0, Int(position) / 16))
@@ -363,18 +371,46 @@ private struct PatternLanes {
 
 }
 
-private func drawBeat(step: Int, x: CGFloat, lanes: PatternLanes, context: inout GraphicsContext) {
+private func drawBeat(
+    step: Int,
+    x: CGFloat,
+    lanes: PatternLanes,
+    beatOnePulse: Double = 0,
+    reduceMotion: Bool = false,
+    context: inout GraphicsContext
+) {
     if step.isMultiple(of: 4) {
-        context.draw(Text(String(step % 16 / 4 + 1)).font(Theme.canvasDisplay(lanes.beatFontSize)).monospacedDigit().foregroundColor(Theme.black),
-                     at: CGPoint(x: x, y: lanes.countY))
         let bar = step.isMultiple(of: 16)
+        if bar && beatOnePulse > 0 {
+            let haloRadius = lanes.beatFontSize * 0.50
+            let haloRect = CGRect(
+                x: x - haloRadius,
+                y: lanes.countY - haloRadius * 0.9,
+                width: haloRadius * 2,
+                height: haloRadius * 1.8
+            )
+            context.fill(
+                Path(ellipseIn: haloRect),
+                with: .color(Theme.white.opacity((reduceMotion ? 0.34 : 0.48) * beatOnePulse))
+            )
+        }
+        let digitSize = (bar && beatOnePulse > 0 && !reduceMotion)
+            ? lanes.beatFontSize * (1 + 0.08 * beatOnePulse)
+            : lanes.beatFontSize
+        context.draw(Text(String(step % 16 / 4 + 1)).font(Theme.canvasDisplay(digitSize)).monospacedDigit().foregroundColor(Theme.black),
+                     at: CGPoint(x: x, y: lanes.countY))
         var path = Path()
         path.move(to: CGPoint(x: x, y: lanes.beatLineTop))
         path.addLine(to: CGPoint(x: x, y: lanes.bottom))
         context.stroke(path, with: .color(Theme.black.opacity(bar ? 0.58 : 0.32)), lineWidth: bar ? 1.75 : 1.1)
         if bar {
-            context.fill(Path(roundedRect: CGRect(x: x - lanes.tickWidth / 2, y: lanes.tickY, width: lanes.tickWidth, height: lanes.tickHeight), cornerRadius: 1),
+            let tickRect = CGRect(x: x - lanes.tickWidth / 2, y: lanes.tickY, width: lanes.tickWidth, height: lanes.tickHeight)
+            context.fill(Path(roundedRect: tickRect, cornerRadius: 1),
                          with: .color(Theme.black.opacity(0.78)))
+            if beatOnePulse > 0 {
+                context.fill(Path(roundedRect: tickRect, cornerRadius: 1),
+                             with: .color(Theme.white.opacity((reduceMotion ? 0.70 : 0.92) * beatOnePulse)))
+            }
         }
     } else {
         let isEighth = step.isMultiple(of: 2)
@@ -426,12 +462,25 @@ private struct StaticPattern: View {
                 lanes.drawRows(context: &context)
 
                 // Beat division marks and numbers for each bar
+                let pulseSteps = max(0.75, 0.18 * Double(max(1, bpm)) / 15.0)
                 for (barIndex, _) in bars.enumerated() {
                     let barOffsetSteps = barIndex * 16
+                    let barGlobalStep = (firstBar + barIndex) * 16
+                    let delta = position - Double(barGlobalStep)
+                    let beatOnePulse = (running && delta >= 0 && delta < pulseSteps)
+                        ? pow(1.0 - delta / pulseSteps, 1.5)
+                        : 0
                     for step in 0..<16 {
                         let visibleStep = barOffsetSteps + step
                         let x = (CGFloat(visibleStep) + 0.5) * cellWidth
-                        drawBeat(step: step, x: x, lanes: lanes, context: &context)
+                        drawBeat(
+                            step: step,
+                            x: x,
+                            lanes: lanes,
+                            beatOnePulse: step == 0 ? beatOnePulse : 0,
+                            reduceMotion: reduceMotion,
+                            context: &context
+                        )
                     }
                 }
             }
@@ -457,8 +506,12 @@ private struct StaticPattern: View {
                             let popScale = mark == .correct
                                 ? PatternFeedback.correctPopScale(struckAt: result?.struckAt, hostSeconds: feedback.hostSeconds, reduceMotion: reduceMotion)
                                 : 1
+                            let pulse = mark == .correct
+                                ? PatternFeedback.correctPulseProgress(struckAt: result?.struckAt, hostSeconds: feedback.hostSeconds, reduceMotion: reduceMotion)
+                                : nil
                             drawHit(hit, in: rect, mark: mark, strength: tail > 0 ? tail : 1,
                                     popScale: popScale,
+                                    correctPulse: pulse,
                                     visibility: afterMe || peekNotesOpacity != nil ? .shown : visibility,
                                     fontSize: lanes.fontSize, context: &context)
                         }
@@ -494,7 +547,10 @@ private struct StaticPattern: View {
                             let popScale = hit.mark == .correct
                                 ? PatternFeedback.correctPopScale(struckAt: hit.struckAt, hostSeconds: feedback.hostSeconds, reduceMotion: reduceMotion)
                                 : 1
-                            drawPlayedHit(hit, in: rect, popScale: popScale, fontSize: lanes.fontSize, context: &hitContext, hits: hits)
+                            let pulse = hit.mark == .correct
+                                ? PatternFeedback.correctPulseProgress(struckAt: hit.struckAt, hostSeconds: feedback.hostSeconds, reduceMotion: reduceMotion)
+                                : nil
+                            drawPlayedHit(hit, in: rect, popScale: popScale, correctPulse: pulse, fontSize: lanes.fontSize, context: &hitContext, hits: hits)
                         }
                     }
                 }
@@ -535,6 +591,7 @@ private struct ScrollingPattern: View {
     let band: Color
     let layout: BandGeometry
     let labelLayout: BandLabelLayout
+    var bpm: Int = 60
     var peekNotesOpacity: Double? = nil
     var peekCycles: Range<Int>? = nil
 
@@ -548,12 +605,24 @@ private struct ScrollingPattern: View {
                 let lanes = PatternLanes(geometry: layout, rows: rows)
                 let firstStep = Int(floor(position - Double(markerX / cellWidth))) - 1
                 let lastStep = Int(ceil(position + Double((size.width - markerX) / cellWidth))) + 1
+                let pulseSteps = max(0.75, 0.18 * Double(max(1, bpm)) / 15.0)
                 lanes.drawRows(context: &context)
                 for globalStep in firstStep...lastStep {
                     guard globalStep >= 0 else { continue }
                     let step = (globalStep % total + total) % total
                     let x = markerX + CGFloat(Double(globalStep) - position) * cellWidth
-                    drawBeat(step: step, x: x, lanes: lanes, context: &context)
+                    let delta = position - Double(globalStep)
+                    let beatOnePulse = (running && step.isMultiple(of: 16) && delta >= 0 && delta < pulseSteps)
+                        ? pow(1.0 - delta / pulseSteps, 1.5)
+                        : 0
+                    drawBeat(
+                        step: step,
+                        x: x,
+                        lanes: lanes,
+                        beatOnePulse: beatOnePulse,
+                        reduceMotion: reduceMotion,
+                        context: &context
+                    )
                 }
             }
 
@@ -584,9 +653,13 @@ private struct ScrollingPattern: View {
                             let popScale = mark == .correct
                                 ? PatternFeedback.correctPopScale(struckAt: result?.struckAt, hostSeconds: hostSeconds, reduceMotion: reduceMotion)
                                 : 1
+                            let pulse = mark == .correct
+                                ? PatternFeedback.correctPulseProgress(struckAt: result?.struckAt, hostSeconds: hostSeconds, reduceMotion: reduceMotion)
+                                : nil
                             var noteContext = context
                             noteContext.opacity *= edgeOpacity
                             drawHit(hit, in: rect, mark: mark, strength: 1, popScale: popScale,
+                                    correctPulse: pulse,
                                     visibility: afterMe ? .shown : stepVisibility,
                                     fontSize: lanes.fontSize, context: &noteContext)
                         }
@@ -619,7 +692,10 @@ private struct ScrollingPattern: View {
                         let popScale = hit.mark == .correct
                             ? PatternFeedback.correctPopScale(struckAt: hit.struckAt, hostSeconds: hostSeconds, reduceMotion: reduceMotion)
                             : 1
-                        drawPlayedHit(hit, in: rect, popScale: popScale, fontSize: lanes.fontSize, context: &hitContext, hits: hits)
+                        let pulse = hit.mark == .correct
+                            ? PatternFeedback.correctPulseProgress(struckAt: hit.struckAt, hostSeconds: hostSeconds, reduceMotion: reduceMotion)
+                            : nil
+                        drawPlayedHit(hit, in: rect, popScale: popScale, correctPulse: pulse, fontSize: lanes.fontSize, context: &hitContext, hits: hits)
                     }
                 }
                 if running {
@@ -660,11 +736,12 @@ private func drawPlayheadRowFlashes(
     }
 }
 
-private func drawPlayedHit(_ hit: PlayedHit, in rect: CGRect, popScale: CGFloat = 1, fontSize: CGFloat,
+private func drawPlayedHit(_ hit: PlayedHit, in rect: CGRect, popScale: CGFloat = 1,
+                           correctPulse: Double? = nil, fontSize: CGFloat,
                            context: inout GraphicsContext, hits: [LessonHit]? = nil) {
     let hand = hits?.first(where: { $0.padIndex == hit.padIndex && abs(Double($0.step) - hit.step) < 0.75 })?.hand ?? "R"
     let note = LessonHit(step: Int(hit.step), padIndex: hit.padIndex, hand: hand, velocity: 0)
-    drawHit(note, in: rect, mark: hit.mark, strength: 1, popScale: popScale, visibility: .shown, fontSize: fontSize, context: &context)
+    drawHit(note, in: rect, mark: hit.mark, strength: 1, popScale: popScale, correctPulse: correctPulse, visibility: .shown, fontSize: fontSize, context: &context)
 }
 
 private func hitMark(_ feedback: PatternHitFeedback?, scoring: Bool,
@@ -675,6 +752,7 @@ private func hitMark(_ feedback: PatternHitFeedback?, scoring: Bool,
 
 func drawHit(_ hit: LessonHit, in rect: CGRect, mark: HitMark?, strength: Double = 1,
              popScale: CGFloat = 1,
+             correctPulse: Double? = nil,
              visibility: NoteVisibility = .shown,
              fontSize: CGFloat, context: inout GraphicsContext) {
     guard visibility != .hidden else { return }
@@ -685,7 +763,7 @@ func drawHit(_ hit: LessonHit, in rect: CGRect, mark: HitMark?, strength: Double
         if strength > 0 {
             var marked = context
             marked.opacity *= strength
-            drawHit(hit, in: rect, mark: mark, popScale: popScale, visibility: visibility,
+            drawHit(hit, in: rect, mark: mark, popScale: popScale, correctPulse: correctPulse, visibility: visibility,
                     fontSize: fontSize, context: &marked)
         }
         return
@@ -754,6 +832,18 @@ func drawHit(_ hit: LessonHit, in rect: CGRect, mark: HitMark?, strength: Double
     var labelRect = drawRect
     switch mark {
     case .correct:
+        if let pulse = correctPulse {
+            let eased = 1 - pow(1 - pulse, 2)
+            let alpha = (1 - pulse) * (1 - 0.2 * pulse)
+            let expand = 1.5 + 9.0 * eased
+            let pulseRect = drawRect.insetBy(dx: -expand, dy: -expand)
+            let pulsePath = Path(roundedRect: pulseRect, cornerRadius: cornerRadius + expand * 0.45)
+            context.stroke(
+                pulsePath,
+                with: .color(Theme.white.opacity(0.92 * alpha)),
+                lineWidth: max(1.0, 2.2 - 0.8 * pulse)
+            )
+        }
         let inset = min(2.5, min(drawRect.width, drawRect.height) * 0.22)
         context.stroke(Path(roundedRect: drawRect.insetBy(dx: inset, dy: inset),
                             cornerRadius: max(0, cornerRadius - inset)),
@@ -1063,7 +1153,7 @@ struct HelpPatternBand: View {
 
 private struct BandRowDotSchedule: TimelineSchedule {
     let flashDate: Date?
-    static let fadeDuration: TimeInterval = 0.14
+    static let fadeDuration: TimeInterval = 0.20
     private static let frameInterval: TimeInterval = 1.0 / 60.0
 
     func entries(from startDate: Date, mode: TimelineScheduleMode) -> [Date] {
@@ -1081,19 +1171,31 @@ private struct BandRowDotSchedule: TimelineSchedule {
     }
 }
 
-private struct BandRowDot: View {
-    let strike: Double
-    let isStriking: Bool
-    let color: Color
+private struct BandVelocityMeter: View {
+    let level: Double
+    let height: CGFloat
+
+    private let segmentCount = 4
 
     var body: some View {
-        let size: CGFloat = isStriking ? 8 : 6
-        let opacity = isStriking ? max(0.55, strike) : 0.25
-        Circle()
-            .fill(color)
-            .opacity(opacity)
-            .frame(width: size, height: size)
-            .frame(width: 8, height: 8)
+        VStack(spacing: 1.5) {
+            ForEach((0..<segmentCount).reversed(), id: \.self) { index in
+                let threshold = Double(index) / Double(segmentCount)
+                let fill = max(0, min(1, (level - threshold) * Double(segmentCount)))
+                let activeColor = index == segmentCount - 1
+                    ? Color(red: 1, green: 0.78, blue: 0.35)
+                    : Theme.orange
+                RoundedRectangle(cornerRadius: 1)
+                    .fill(Theme.white.opacity(0.16))
+                    .overlay {
+                        RoundedRectangle(cornerRadius: 1)
+                            .fill(activeColor)
+                            .opacity(fill)
+                    }
+            }
+        }
+        .frame(width: 7, height: max(14, height))
+        .accessibilityHidden(true)
     }
 }
 
@@ -1112,22 +1214,26 @@ private struct BandMarginRowIndicator: View {
             let age = flash.map { max(0, timeline.date.timeIntervalSince($0.date)) } ?? .infinity
             let phase = age / BandRowDotSchedule.fadeDuration
             let isStriking = phase < 1
-            let strike = isStriking ? 1 - phase : 0
-            let pulse = isStriking ? (phase < 0.25 ? phase / 0.25 : (1 - phase) / 0.75) : 0
-            let glyphScale: CGFloat = (!reduceMotion && isStriking) ? (1.0 + 0.18 * CGFloat(pulse)) : 1.0
+            let velocityLevel: Double = {
+                guard isStriking, let flash, flash.velocity > 0 else { return 0 }
+                let peak = max(0.22, Double(flash.velocity) / 127.0)
+                return reduceMotion ? peak : peak * (1 - phase)
+            }()
+            let press = isStriking ? (phase < 0.22 ? phase / 0.22 : (1 - phase) / 0.78) : 0
+            let glyphScale: CGFloat = (!reduceMotion && isStriking) ? (1.0 - 0.14 * CGFloat(press)) : 1.0
 
             HStack(spacing: 6) {
                 Button(action: onTap) {
                     DrumGlyph(kind: DrumKind.forPad(padIndex))
                         .frame(width: iconSize, height: iconSize)
                         .scaleEffect(glyphScale)
-                        .foregroundStyle(Theme.white.opacity(0.92))
+                        .foregroundStyle(isStriking ? Theme.white : Theme.white.opacity(0.88))
                         .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
                 .accessibilityLabel(name)
 
-                BandRowDot(strike: strike, isStriking: isStriking, color: isStriking ? Theme.orange : Theme.white.opacity(0.5))
+                BandVelocityMeter(level: velocityLevel, height: iconSize * 0.9)
             }
         }
     }

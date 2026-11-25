@@ -1677,21 +1677,21 @@ final class PracticeSession {
         guard event.isNoteOn, ready, kitTask == nil else { return }
         let receivedAt = now
         guard running else {
-            recordFlash(padIndex: event.padIndex, mark: nil)
+            recordFlash(padIndex: event.padIndex, mark: nil, velocity: event.velocity)
             return
         }
         let sourceTime = AVAudioTime.seconds(forHostTime: event.timestamp)
         let offset = settings.calibrationOffset(for: event.deviceID, outputRoute: runOutputRoute)
         let adjusted = max(0, sourceTime - offset / 1_000)
         guard !listen else {
-            recordFlash(padIndex: event.padIndex, mark: nil)
+            recordFlash(padIndex: event.padIndex, mark: nil, velocity: event.velocity)
             recordPlayedHit(padIndex: event.padIndex, at: adjusted, mark: nil, struckAt: receivedAt)
             return
         }
         // Boundary ownership follows the calibrated input timestamp, never the
         // display tick. Call hits cannot match even an early response note.
         if afterMe, !passes.contains(where: { $0.acceptsInput(at: adjusted) }) {
-            recordFlash(padIndex: event.padIndex, mark: nil)
+            recordFlash(padIndex: event.padIndex, mark: nil, velocity: event.velocity)
             recordPlayedHit(padIndex: event.padIndex, at: adjusted, mark: nil, struckAt: receivedAt)
             return
         }
@@ -1722,14 +1722,14 @@ final class PracticeSession {
                                      maximumMilliseconds: best.1.maximumTimingMilliseconds,
                                      goodMilliseconds: best.1.goodTimingMilliseconds)
             }
-            mark = record(best.3, pass: best.0.number, padIndex: event.padIndex, struckAt: receivedAt)
+            mark = record(best.3, pass: best.0.number, padIndex: event.padIndex, struckAt: receivedAt, velocity: event.velocity)
             matchedFeedback = best.3
             currentScorerCenter = best.1.currentTimingCenterMilliseconds
             matchedPassNumber = best.0.number
         } else if let pass = passes.first(where: { $0.start <= adjusted && adjusted < $0.start + $0.duration && $0.acceptsInput(at: adjusted) }) {
             if let feedback = pass.scorer?.receive(padIndex: event.padIndex, at: timestamp) {
                 guard feedback.judgment != .ignored else { return }
-                mark = record(feedback, pass: pass.number, padIndex: event.padIndex, struckAt: receivedAt)
+                mark = record(feedback, pass: pass.number, padIndex: event.padIndex, struckAt: receivedAt, velocity: event.velocity)
                 matchedFeedback = feedback
                 currentScorerCenter = pass.scorer?.currentTimingCenterMilliseconds
                 matchedPassNumber = pass.number
@@ -1740,7 +1740,7 @@ final class PracticeSession {
             if let activePass { matchedPassNumber = activePass.number }
         }
         if matchedFeedback == nil {
-            recordFlash(padIndex: event.padIndex, mark: nil)
+            recordFlash(padIndex: event.padIndex, mark: nil, velocity: event.velocity)
         }
         recordPlayedHit(padIndex: event.padIndex, at: adjusted, mark: mark, struckAt: receivedAt)
 
@@ -1769,17 +1769,17 @@ final class PracticeSession {
         playedHits.append(PlayedHit(padIndex: padIndex, step: localStep, pass: cycle, mark: mark, hidden: wasHidden, struckAt: struckAt))
     }
 
-    private func recordFlash(padIndex: Int, mark: HitMark?) {
+    private func recordFlash(padIndex: Int, mark: HitMark?, velocity: Int = 127) {
         let now = Date()
         var updated = padFlashes.filter { now.timeIntervalSince($0.value.date) < PadFlash.fadeDuration }
-        updated[padIndex] = PadFlash(mark: mark, date: now)
+        updated[padIndex] = PadFlash(mark: mark, date: now, velocity: velocity)
         padFlashes = updated
     }
 
     /// Shape-coded hit feedback only. Scoring itself is unchanged.
-    private func record(_ feedback: HitFeedback, pass: Int, padIndex: Int, struckAt: Double) -> HitMark? {
+    private func record(_ feedback: HitFeedback, pass: Int, padIndex: Int, struckAt: Double, velocity: Int = 127) -> HitMark? {
         guard let mark = HitMark.from(feedback) else { return nil }
-        recordFlash(padIndex: padIndex, mark: mark)
+        recordFlash(padIndex: padIndex, mark: mark, velocity: velocity)
         let hits = patternHits
         guard !hits.isEmpty else { return mark }
         if let index = feedback.expectedHitIndex {

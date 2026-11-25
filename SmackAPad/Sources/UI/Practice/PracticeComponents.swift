@@ -30,10 +30,23 @@ enum HitMark: Equatable, Sendable {
 
 /// A short colour flash on the pad layout; `mark` is nil when nothing is scored.
 struct PadFlash: Equatable {
-    static let fadeDuration: TimeInterval = 0.4
+    static let fadeDuration: TimeInterval = 0.20
+    static let padFadeDuration: TimeInterval = 0.15
 
     let mark: HitMark?
     let date: Date
+    let velocity: Int
+
+    init(mark: HitMark?, date: Date, velocity: Int = 127) {
+        self.mark = mark
+        self.date = date
+        self.velocity = max(0, min(127, velocity))
+    }
+
+    var velocityFraction: Double {
+        guard velocity > 0 else { return 0 }
+        return max(0.25, Double(velocity) / 127.0)
+    }
 
     var color: Color {
         switch mark {
@@ -44,20 +57,26 @@ struct PadFlash: Equatable {
         }
     }
     func strength(at now: Date) -> Double { max(0, 1 - now.timeIntervalSince(date) / Self.fadeDuration) }
+    func padStrength(at now: Date, reduceMotion: Bool = false) -> Double {
+        let age = now.timeIntervalSince(date)
+        guard age >= 0, age < Self.padFadeDuration else { return 0 }
+        let decay = reduceMotion ? 1.0 : (1 - age / Self.padFadeDuration)
+        return decay * velocityFraction
+    }
     func isFading(at now: Date = Date()) -> Bool { now.timeIntervalSince(date) < Self.fadeDuration }
 }
 
 /// Schedules animation frames only while at least one pad flash is fading.
-/// When no flash is fading, updates cease so the 30 Hz timeline pauses.
+/// When no flash is fading, updates cease so the 60 Hz timeline pauses.
 struct PadFlashSchedule: TimelineSchedule {
     let flashes: [Int: PadFlash]
-    private static let frameInterval: TimeInterval = 1.0 / 30.0
+    private static let frameInterval: TimeInterval = 1.0 / 60.0
 
     func entries(from startDate: Date, mode: TimelineScheduleMode) -> [Date] {
         guard let latest = flashes.values.map(\.date).max() else {
             return [startDate]
         }
-        let finish = latest.addingTimeInterval(PadFlash.fadeDuration)
+        let finish = latest.addingTimeInterval(PadFlash.padFadeDuration)
         guard finish > startDate else {
             return [startDate]
         }
@@ -1218,6 +1237,7 @@ struct PadLayoutGrid: View {
     let model: PadLayoutModel
     var flashes: [Int: PadFlash] = [:]
     var showKeyboardKeys: Bool = false
+    var externalNow: Date? = nil
 
     private var motion: Theme.Motion.Policy { .init(reduced: reduced) }
 
@@ -1230,54 +1250,66 @@ struct PadLayoutGrid: View {
         }
     }
 
-    init(side: CGFloat? = nil, model: PadLayoutModel, flashes: [Int: PadFlash] = [:], showKeyboardKeys: Bool = false) {
+    init(side: CGFloat? = nil, model: PadLayoutModel, flashes: [Int: PadFlash] = [:], showKeyboardKeys: Bool = false, externalNow: Date? = nil) {
         self.side = side
         self.model = model
         self.flashes = flashes
         self.showKeyboardKeys = showKeyboardKeys
+        self.externalNow = externalNow
     }
 
-    init(side: CGFloat? = nil, pads: [Int], used: Set<Int>, flashes: [Int: PadFlash] = [:], showKeyboardKeys: Bool = false) {
+    init(side: CGFloat? = nil, pads: [Int], used: Set<Int>, flashes: [Int: PadFlash] = [:], showKeyboardKeys: Bool = false, externalNow: Date? = nil) {
         self.side = side
         self.model = PadLayoutModel(pads: pads, used: used, canShowKeys: pads.count == 16)
         self.flashes = flashes
         self.showKeyboardKeys = showKeyboardKeys
+        self.externalNow = externalNow
     }
 
     var body: some View {
-        TimelineView(PadFlashSchedule(flashes: flashes)) { timeline in
-            if let side {
-                let spacing = Theme.Space.tight
-                let cellSize = max(0, (side - CGFloat(max(grid.rows, grid.columns) - 1) * spacing) / CGFloat(max(grid.rows, grid.columns)))
-                VStack(spacing: spacing) {
-                    ForEach(0..<grid.rows, id: \.self) { row in
-                        HStack(spacing: spacing) {
-                            ForEach(0..<grid.columns, id: \.self) { col in
-                                let index = row * grid.columns + col
-                                if displayCells.indices.contains(index) {
-                                    cell(displayCells[index], cellSize: cellSize, now: timeline.date)
-                                }
+        if let externalNow {
+            gridContent(now: externalNow)
+        } else {
+            TimelineView(PadFlashSchedule(flashes: flashes)) { timeline in
+                gridContent(now: timeline.date)
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func gridContent(now: Date) -> some View {
+        if let side {
+            let spacing = Theme.Space.tight
+            let cellSize = max(0, (side - CGFloat(max(grid.rows, grid.columns) - 1) * spacing) / CGFloat(max(grid.rows, grid.columns)))
+            VStack(spacing: spacing) {
+                ForEach(0..<grid.rows, id: \.self) { row in
+                    HStack(spacing: spacing) {
+                        ForEach(0..<grid.columns, id: \.self) { col in
+                            let index = row * grid.columns + col
+                            if displayCells.indices.contains(index) {
+                                cell(displayCells[index], cellSize: cellSize, now: now)
                             }
                         }
                     }
                 }
-                .frame(width: side, height: side)
-            } else {
-                LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: Theme.Space.tight), count: grid.columns), spacing: Theme.Space.tight) {
-                    ForEach(displayCells, id: \.pad) { cellData in
-                        cell(cellData, cellSize: nil, now: timeline.date)
-                    }
-                }
-                .frame(width: width)
             }
+            .frame(width: side, height: side)
+        } else {
+            LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: Theme.Space.tight), count: grid.columns), spacing: Theme.Space.tight) {
+                ForEach(displayCells, id: \.pad) { cellData in
+                    cell(cellData, cellSize: nil, now: now)
+                }
+            }
+            .frame(width: width)
         }
     }
 
     private func cell(_ cellData: PadLayoutCellData, cellSize: CGFloat?, now: Date) -> some View {
         let flash = flashes[cellData.pad]
-        let strength = flash?.strength(at: now) ?? 0
+        let strength = flash?.padStrength(at: now, reduceMotion: reduced) ?? 0
         let isUsed = cellData.isUsed
-        let tint = (flash?.color ?? Theme.orange).opacity(strength)
+        let flashColor = flash?.color ?? Theme.orange
+        let tint = flashColor.opacity(strength)
 
         let fontWithoutKeys: Font = {
             if let cellSize {
@@ -1356,18 +1388,33 @@ struct PracticePadLayoutSquare: View {
     let model: PadLayoutModel
     let session: PracticeSession
     let showPads: Bool
+    var clock: PracticeDisplayClock? = nil
 
     private var motion: Theme.Motion.Policy { .init(reduced: reduced) }
 
     var body: some View {
         ZStack {
             if showPads && !model.cells.isEmpty {
-                PadLayoutGrid(
-                    side: side,
-                    model: model,
-                    flashes: session.padFlashes,
-                    showKeyboardKeys: model.canShowKeys && showPadKeys
-                )
+                Group {
+                    if session.running, let clock {
+                        PracticeDisplayFrame(clock: clock, session: session) { frame, date in
+                            PadLayoutGrid(
+                                side: side,
+                                model: model,
+                                flashes: mergedFlashes(frame: frame, date: date),
+                                showKeyboardKeys: model.canShowKeys && showPadKeys,
+                                externalNow: date
+                            )
+                        }
+                    } else {
+                        PadLayoutGrid(
+                            side: side,
+                            model: model,
+                            flashes: session.padFlashes,
+                            showKeyboardKeys: model.canShowKeys && showPadKeys
+                        )
+                    }
+                }
                 .contentShape(Rectangle())
                 .onTapGesture {
                     if model.canShowKeys {
@@ -1381,6 +1428,38 @@ struct PracticePadLayoutSquare: View {
             }
         }
         .frame(width: side, height: side)
+    }
+
+    private func mergedFlashes(frame: PatternFrame, date: Date) -> [Int: PadFlash] {
+        var combined = session.padFlashes
+        guard frame.countdown == nil else { return combined }
+        let isDemoPlaying = session.listen || (session.afterMe && !frame.pass.isMultiple(of: 2))
+        guard isDemoPlaying else { return combined }
+
+        let totalSteps = max(1, session.practiceLesson.bars * 16)
+        let stepsPerSecond = Double(max(1, frame.bpm)) / 15.0
+        let fadeSteps = PadFlash.padFadeDuration * stepsPerSecond
+        let canWrap = !session.afterMe && frame.tapePosition >= Double(totalSteps)
+
+        for hit in session.patternHits {
+            let directDelta = frame.position - Double(hit.step)
+            let wrapDelta = canWrap ? (frame.position + Double(totalSteps) - Double(hit.step)) : -1
+            let delta: Double?
+            if directDelta >= 0 && directDelta < fadeSteps {
+                delta = directDelta
+            } else if canWrap && wrapDelta >= 0 && wrapDelta < fadeSteps {
+                delta = wrapDelta
+            } else {
+                delta = nil
+            }
+            guard let delta else { continue }
+            let flashDate = date.addingTimeInterval(-delta / stepsPerSecond)
+            if let existing = combined[hit.padIndex], existing.date >= flashDate {
+                continue
+            }
+            combined[hit.padIndex] = PadFlash(mark: nil, date: flashDate, velocity: hit.velocity)
+        }
+        return combined
     }
 }
 

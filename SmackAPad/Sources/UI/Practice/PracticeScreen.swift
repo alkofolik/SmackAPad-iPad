@@ -1382,7 +1382,8 @@ struct PracticeScreen: View {
             side: s,
             model: padLayoutModel,
             session: session,
-            showPads: showPads
+            showPads: showPads,
+            clock: displayClock
         )
         .id(session.lesson.id)
     }
