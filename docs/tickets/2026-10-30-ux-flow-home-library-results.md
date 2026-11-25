@@ -1,6 +1,6 @@
 # 17 — UX Flow: Home, Library Layout, Lesson Result (Melodics-inspired)
 
-Status: ON HOLD (2026-10-30) — to be rewritten after the practice screen (ticket 11); it must then use the three-star model and drop the old Result screen. Prompts B7–B10 are obsolete.
+Status: cancelled (2026-11-25, Jakub). Previous: ON HOLD (2026-10-30) — to be rewritten after the practice screen (ticket 11); it must then use the three-star model and drop the old Result screen. Prompts B7–B10 are obsolete.
 
 ## Goal
 

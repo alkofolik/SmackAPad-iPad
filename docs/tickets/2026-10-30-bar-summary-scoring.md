@@ -1,6 +1,6 @@
 # Bar Summary for the Scoring Engine (follow-up to 08)
 
-Status: not shipped / planned (draft — Jakub approves before it goes to an agent)
+Status: cancelled (2026-11-25, Jakub). Previous: not shipped / planned (draft — Jakub approves before it goes to an agent)
 
 ## Goal
 
