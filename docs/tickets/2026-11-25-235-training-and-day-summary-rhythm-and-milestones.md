@@ -43,7 +43,7 @@ Open Training and Day summary in landscape and portrait, light and dark mode; ve
 
 ## Agent assignment
 
-Gemini Flash, thinking **high** (`practiceDays` follows the existing `trainingDays` pattern directly, while `TrainingScreen.swift` is ~1700 lines so Flash benefits from `high` thinking without needing Pro). Fallback: Codex Sol, medium. Run after 233.
+Gemini 4 Neon, thinking **high** (`practiceDays` follows the existing `trainingDays` pattern directly, while `TrainingScreen.swift` is ~1700 lines so Neon benefits from `high` thinking without needing Carbon). Fallback: Claude Sonnet 5.5, medium. Run after 233.
 
 ## Done rule
 

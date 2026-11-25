@@ -47,7 +47,7 @@ Open a 2-bar or 4-bar lesson, intentionally miss notes in bar 2 (tap `"Drill bar
 
 ## Agent assignment
 
-Gemini Flash, thinking **high** (pure `PracticeCoach` formula is fully specified; `high` thinking gives Flash enough care for saving/restoring loop state in `PracticeSession` without spending Pro quota). Fallback: Codex Sol, medium. Run after 233 (same files).
+Gemini 4 Neon, thinking **high** (pure `PracticeCoach` formula is fully specified; `high` thinking gives Neon enough care for saving/restoring loop state in `PracticeSession` without spending Carbon quota). Fallback: Claude Sonnet 5.5, medium. Run after 233 (same files).
 
 ## Done rule
 

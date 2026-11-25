@@ -44,7 +44,7 @@ Walk through every screen from Home (Today → Practice → Day Summary, Library
 
 ## Agent assignment
 
-Gemini Flash, thinking **medium** (standard SwiftUI two-column split, `LazyVGrid` replacement, and reuse of existing `calmChassisBackground` / `padPresentation` modifiers). Fallback: Codex Sol, medium. Run last (runs final full test suite).
+Gemini 4 Neon, thinking **medium** (standard SwiftUI two-column split, `LazyVGrid` replacement, and reuse of existing `calmChassisBackground` / `padPresentation` modifiers). Fallback: Claude Sonnet 5.5, low. Run last (runs final full test suite).
 
 ## Done rule
 

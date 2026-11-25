@@ -41,7 +41,7 @@ Browse Library in Path, Genres, and Techniques views (landscape and portrait), o
 
 ## Agent assignment
 
-Gemini Flash, thinking **medium** (pure SwiftUI container and row restyling across `LibraryScreen`, `IntroScreen`, and `MixLineupScreen`; zero scoring, persistence, or progression logic changes). Fallback: Codex Sol, medium. Run after 230 (and after 232 if touching `IntroScreen`).
+Gemini 4 Neon, thinking **medium** (pure SwiftUI container and row restyling across `LibraryScreen`, `IntroScreen`, and `MixLineupScreen`; zero scoring, persistence, or progression logic changes). Fallback: Claude Sonnet 5.5, low. Run after 230 (and after 232 if touching `IntroScreen`).
 
 ## Done rule
 

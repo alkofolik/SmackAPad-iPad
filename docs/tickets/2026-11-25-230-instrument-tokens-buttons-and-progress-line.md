@@ -45,7 +45,7 @@ Check Home (must look identical to before), then open Library, Training, Practic
 
 ## Agent assignment
 
-Gemini Flash, thinking **low** (mechanical token, button-style, and `ProgressLine` update; all values and call sites are explicitly specified). Fallback: Codex Sol, low. Run first before 231–237.
+Gemini 4 Neon, thinking **low** (mechanical token, button-style, and `ProgressLine` update; all values and call sites are explicitly specified). Fallback: Claude Sonnet 5.5, low. Run first before 231–237.
 
 ## Done rule
 
