@@ -1,6 +1,6 @@
 # 231 — Practice screen: anchored non-jumping layout and high-contrast tactile hit feedback
 
-Status: ready-for-agent
+Status: implemented, awaiting manual iPad verification
 
 ## Goal
 

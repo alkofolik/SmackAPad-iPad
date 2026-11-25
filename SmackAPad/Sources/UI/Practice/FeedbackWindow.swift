@@ -56,9 +56,9 @@ enum FeedbackWindow {
         return max(0, 1 - elapsed / fadeSeconds)
     }
 
-    static func visibleJudgments(_ history: [Int: [LessonHit: HitJudgment]], pass: Int,
-                                 position: Double, totalSteps: Int, bpm: Int,
-                                 reduceMotion: Bool) -> [Int: [LessonHit: HitJudgment]] {
+    static func visibleJudgments<Value>(_ history: [Int: [LessonHit: Value]], pass: Int,
+                                        position: Double, totalSteps: Int, bpm: Int,
+                                        reduceMotion: Bool) -> [Int: [LessonHit: Value]] {
         history.reduce(into: [:]) { visible, entry in
             let notes = entry.value.filter {
                 strength(recordedPass: entry.key, step: Double($0.key.step), pass: pass,

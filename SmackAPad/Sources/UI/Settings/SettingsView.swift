@@ -248,7 +248,7 @@ public struct SettingsView: View {
                         if notificationsDenied {
                             Text(settings.localized("Notifications are turned off in iPad Settings."))
                                 .font(Theme.meta)
-                                .foregroundStyle(Theme.markWrong)
+                                .foregroundStyle(Theme.destructive)
                         }
 
                         if settings.reviewReminderEnabled {

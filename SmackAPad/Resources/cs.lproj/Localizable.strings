@@ -861,10 +861,11 @@
 "help.lesson.padRow" = "Jeden řádek na pad";
 "help.lesson.now" = "Čára ukazuje, kdy udeřit";
 "help.lesson.countIn" = "Odpočet";
-"help.tutorial.hitColours.title" = "Barvy úderů";
-"help.tutorial.hitColours.caption" = "Podívej se na barvu úderu v pásu.\nPodle ní uprav načasování nebo zvol jiný pad.";
+"help.tutorial.hitColours.title" = "Značky úderů";
+"help.tutorial.hitColours.caption" = "Oranžový rámeček znamená úder v rytmu. ‹ značí úder moc brzy a › moc pozdě. Prázdné přeškrtnuté políčko značí špatný pad nebo vynechaný úder.";
 "help.hit.correct" = "Správný pad v rytmu";
-"help.hit.off" = "Správný pad mimo rytmus";
+"help.hit.early" = "Správný pad, dřív";
+"help.hit.late" = "Správný pad, později";
 "help.hit.wrong" = "Špatný pad nebo vynechaný úder";
 "help.tutorial.modes.title" = "Režimy cvičení";
 "help.tutorial.modes.caption" = "Poslech: poslouchej pattern a klidně se přidej. Bez hvězd.\nHra: hraj pattern a sbírej hvězdy. Metronom můžeš vypnout.\nPo mně: poslechni si, co aplikace zahraje, a pak to zopakuj. Bez hvězd.\nZ paměti: skryj noty a vyzkoušej se. Noty zmizí po dvou úspěšných průchodech. Klepnutím na oko ukážeš noty do konce průchodu.";
@@ -884,8 +885,8 @@
 "Start · Stop · Restart" = "Začít · Stop · Znovu";
 "help.modes.title" = "Režimy";
 "help.modes.caption" = "Poslech: poslouchej pattern a klidně se přidej. Tempo se samo nezvyšuje a hvězdy nezískáš.\nHra: hraj pattern a sbírej hvězdy. Metronom i zvuk patternu přepneš v Dalších nástrojích.\nPo mně: poslechni si, co aplikace zahraje, a pak to zopakuj. Za odpověď dostaneš skóre, hvězdy nezískáš.\nZ paměti: skryj noty a připrav se na opakování. Noty zmizí po dvou úspěšných průchodech za sebou.";
-"help.signals.title" = "Barvy a ukazatele";
-"help.signals.caption" = "Sleduj barvy úderů v pásu. V Poslechu je pás světlejší než ve Hře.\nČím blíž jsi cílovému tempu, tím je pás sytější. Záře vpravo znamená, že hraješ napřed, vlevo, že se zpožďuješ.\nPo hře otevři Detail a zjisti, které takty byly čisté, napřed, pozadu nebo nerovnoměrné.\nPodle výsledku můžeš lekci zkusit znovu, hrát dál nebo otevřít další lekci, když ji aplikace nabídne.";
+"help.signals.title" = "Značky a ukazatele";
+"help.signals.caption" = "Sleduj značky úderů v pásu: oranžový rámeček v rytmu, ‹ dřív, › později a prázdné přeškrtnuté políčko při úderu na špatný pad nebo vynechání.\nV Poslechu je pás světlejší než ve Hře a s blížícím se cílovým tempem tmavne.\nUkazatel načasování dole se posouvá doleva, když spěcháš, a doprava, když se zpožďuješ.\nPo hře otevři Detail a zjisti, které takty byly čisté, napřed, pozadu nebo nerovnoměrné.\nPodle výsledku můžeš lekci zkusit znovu, hrát dál nebo otevřít další lekci, když ji aplikace nabídne.";
 "help.signals.behind" = "Pozadu";
 "help.signals.ahead" = "Napřed";
 "help.stars.label" = "%lld. hvězda: %@";

@@ -27,7 +27,7 @@ final class PlayedHitTests: XCTestCase {
             XCTAssertNil(visible(2, 6)[1])
             XCTAssertNotNil(visible(2, 3.999, true)[1])
             XCTAssertNil(visible(2, 4, true)[1])
-            XCTAssertTrue(FeedbackWindow.visibleJudgments([:], pass: 1, position: 0,
+            XCTAssertTrue(FeedbackWindow.visibleJudgments([Int: [LessonHit: HitMark]](), pass: 1, position: 0,
                 totalSteps: total, bpm: 120, reduceMotion: false).isEmpty, "Restart clears history")
         }
         XCTAssertEqual(FeedbackWindow.strength(recordedPass: 1, step: 15, pass: 2,
@@ -38,15 +38,59 @@ final class PlayedHitTests: XCTestCase {
 
     func testPlayedHitsShareTheTailWithoutAppearingAheadOfTheMarker() {
         let previous = PlayedHit(padIndex: 12, step: 15.75, pass: 1, mark: .correct)
-        let current = PlayedHit(padIndex: 12, step: 0.5, pass: 2, mark: .off)
+        let early = PlayedHit(padIndex: 12, step: 0.4, pass: 2, mark: .early)
+        let late = PlayedHit(padIndex: 12, step: 0.5, pass: 2, mark: .late)
         XCTAssertTrue(previous.isVisible(in: 2, before: 0, steps: 0..<16, totalSteps: 16))
         XCTAssertTrue(previous.isVisible(in: 2, before: 4.5, steps: 0..<16, totalSteps: 16))
         XCTAssertFalse(previous.isVisible(in: 2, before: 5, steps: 0..<16, totalSteps: 16))
         XCTAssertFalse(previous.isVisible(in: 2, before: 4, steps: 0..<16, totalSteps: 16, reduceMotion: true))
         XCTAssertFalse(previous.isVisible(in: 3, before: 0, steps: 0..<16, totalSteps: 16))
-        XCTAssertFalse(current.isVisible(in: 2, before: 0.5, steps: 0..<16, totalSteps: 16))
-        XCTAssertTrue(current.isVisible(in: 2, before: 0.6, steps: 0..<16, totalSteps: 16))
+        XCTAssertFalse(early.isVisible(in: 2, before: 0.4, steps: 0..<16, totalSteps: 16))
+        XCTAssertTrue(early.isVisible(in: 2, before: 0.5, steps: 0..<16, totalSteps: 16))
+        XCTAssertFalse(late.isVisible(in: 2, before: 0.5, steps: 0..<16, totalSteps: 16))
+        XCTAssertTrue(late.isVisible(in: 2, before: 0.6, steps: 0..<16, totalSteps: 16))
         XCTAssertFalse(previous.isVisible(in: 2, before: 1, steps: 16..<32, totalSteps: 32))
+    }
+
+    func testOffJudgmentMapsTimingErrorDirectionToEarlyAndLateMarks() {
+        XCTAssertEqual(
+            HitMark.from(HitFeedback(expectedHitIndex: 0, expectedStep: 0, judgment: .off, timingErrorMilliseconds: -42)),
+            .early
+        )
+        XCTAssertEqual(
+            HitMark.from(HitFeedback(expectedHitIndex: 0, expectedStep: 0, judgment: .off, timingErrorMilliseconds: -0.01)),
+            .early
+        )
+        XCTAssertEqual(
+            HitMark.from(HitFeedback(expectedHitIndex: 0, expectedStep: 0, judgment: .off, timingErrorMilliseconds: 0)),
+            .late
+        )
+        XCTAssertEqual(
+            HitMark.from(HitFeedback(expectedHitIndex: 0, expectedStep: 0, judgment: .off, timingErrorMilliseconds: 42)),
+            .late
+        )
+        XCTAssertEqual(
+            HitMark.from(HitFeedback(expectedHitIndex: 0, expectedStep: 0, judgment: .perfect, timingErrorMilliseconds: -8)),
+            .correct
+        )
+        XCTAssertEqual(
+            HitMark.from(HitFeedback(expectedHitIndex: 0, expectedStep: 0, judgment: .good, timingErrorMilliseconds: 18)),
+            .correct
+        )
+        XCTAssertEqual(
+            HitMark.from(HitFeedback(expectedHitIndex: nil, expectedStep: nil, judgment: .wrongPad, timingErrorMilliseconds: nil)),
+            .wrong
+        )
+        XCTAssertNil(
+            HitMark.from(HitFeedback(expectedHitIndex: nil, expectedStep: nil, judgment: .ignored, timingErrorMilliseconds: nil))
+        )
+
+        let earlyHit = LessonHit(step: 14, padIndex: 12, hand: "L", velocity: 100)
+        let lateHit = LessonHit(step: 15, padIndex: 13, hand: "R", velocity: 100)
+        let marks: [Int: [LessonHit: HitMark]] = [1: [earlyHit: .early, lateHit: .late]]
+        let visible = FeedbackWindow.visibleJudgments(marks, pass: 2, position: 1, totalSteps: 16, bpm: 120, reduceMotion: false)
+        XCTAssertEqual(visible[1]?[earlyHit], .early)
+        XCTAssertEqual(visible[1]?[lateHit], .late)
     }
 
     func testNonHiddenPlayedHitDoesNotShareTailAcrossPassBoundary() {

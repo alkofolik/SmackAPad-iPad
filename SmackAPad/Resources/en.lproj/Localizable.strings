@@ -858,10 +858,11 @@
 "help.lesson.padRow" = "One row per pad";
 "help.lesson.now" = "The line shows when to hit";
 "help.lesson.countIn" = "Count-in";
-"help.tutorial.hitColours.title" = "Hit colours";
-"help.tutorial.hitColours.caption" = "Check the colour of each hit in the pattern band.\nUse the feedback to adjust your timing and pad choice.";
+"help.tutorial.hitColours.title" = "Hit marks";
+"help.tutorial.hitColours.caption" = "An orange frame means you hit on time. ‹ means early and › means late. A hollow block with a slash marks a wrong pad or missed hit.";
 "help.hit.correct" = "Right pad, on time";
-"help.hit.off" = "Right pad, off time";
+"help.hit.early" = "Right pad, early";
+"help.hit.late" = "Right pad, late";
 "help.hit.wrong" = "Wrong pad or missed hit";
 "help.tutorial.modes.title" = "Practice modes";
 "help.tutorial.modes.caption" = "Listen: hear the pattern and join in. No stars.\nPlay: play the pattern yourself and earn stars. The metronome is optional.\nAfter me: listen to the app play a phrase, then repeat it. No stars.\nFrom memory: hide the notes to test yourself. Notes hide after two good passes. Tap the eye to show the notes for the rest of the pass.";
@@ -881,8 +882,8 @@
 "Start · Stop · Restart" = "Start · Stop · Restart";
 "help.modes.title" = "Modes";
 "help.modes.caption" = "Listen: hear the pattern and join in. Tempo stays fixed and you earn no stars.\nPlay: earn stars by playing the pattern. Use More tools to turn the metronome or pattern sound on or off.\nAfter me: hear a phrase, then repeat it. Your response gets a score, with no lesson stars.\nFrom memory: hide the notes to prepare for reviews. Notes hide after two good passes in a row.";
-"help.signals.title" = "Colours and signals";
-"help.signals.caption" = "Read the hit colours in the band. Listen uses a lighter band than Play.\nWatch the band deepen as the tempo approaches the goal. A glow on the right means you are early, on the left you are late.\nOpen Details after playing to see which bars were clean, early, late or uneven.\nUse the result controls to try again, play on or move to the next lesson when offered.";
+"help.signals.title" = "Marks and signals";
+"help.signals.caption" = "Read the hit marks in the band: orange frame on time, ‹ early, › late, and a hollow slashed block for a wrong pad or missed hit.\nListen uses a lighter band than Play, and the band deepens as the tempo approaches the goal.\nThe timing cue at the bottom shifts left when you rush and right when you drag.\nOpen Details after playing to see which bars were clean, early, late or uneven.\nUse the result controls to try again, play on or move to the next lesson when offered.";
 "help.signals.behind" = "Late";
 "help.signals.ahead" = "Early";
 "help.stars.label" = "Star %lld: %@";

@@ -102,7 +102,7 @@ struct HelpIllustration: View {
         case .playLesson: lessonExample(progress)
         case .hitColours:
             VStack(alignment: .leading, spacing: Theme.Space.small) {
-                HelpPatternBand(height: 86, showHitColours: true)
+                HelpPatternBand(height: 86, showHitMarks: true)
                 hitKey
             }
         case .modes: modesExample(progress)
@@ -323,20 +323,23 @@ struct HelpIllustration: View {
 
     private var hitKey: some View {
         VStack(alignment: .leading, spacing: Theme.Space.small) {
-            hitRow("help.hit.correct", mark: .correct, symbol: "checkmark")
-            hitRow("help.hit.off", mark: .off, symbol: "clock")
-            hitRow("help.hit.wrong", mark: .wrong, symbol: "xmark")
+            hitRow("help.hit.correct", mark: .correct)
+            hitRow("help.hit.early", mark: .early)
+            hitRow("help.hit.late", mark: .late)
+            hitRow("help.hit.wrong", mark: .wrong)
         }
     }
 
-    private func hitRow(_ key: String, mark: HitMark, symbol: String) -> some View {
+    private func hitRow(_ key: String, mark: HitMark) -> some View {
         HStack(spacing: Theme.Space.small) {
-            Image(systemName: symbol)
-                .font(.system(size: 17, weight: .semibold))
-                .frame(width: 38, height: 32)
-                .foregroundStyle(Theme.black)
-                .background(PracticeBandStyle.hitColor(mark), in: RoundedRectangle(cornerRadius: Theme.Radius.button))
-                .accessibilityHidden(true)
+            Canvas { context, size in
+                let sample = LessonHit(step: 0, padIndex: HelpPatternBand.hiHat, hand: "R", velocity: 100)
+                let tileRect = CGRect(origin: .zero, size: size).insetBy(dx: 5, dy: 4)
+                drawHit(sample, in: tileRect, mark: mark, visibility: .shown, fontSize: 13, context: &context)
+            }
+            .frame(width: 44, height: 34)
+            .background(PracticeBandStyle.orange, in: RoundedRectangle(cornerRadius: Theme.Radius.button))
+            .accessibilityHidden(true)
             Text(settings.localized(key))
         }
     }

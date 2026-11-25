@@ -130,6 +130,7 @@ final class PracticeSession {
     private(set) var errorMessage: String?
     private(set) var barVerdicts: [Int: BarVerdict] = [:]
     @ObservationIgnored private var judgmentsByPass: [Int: [LessonHit: HitJudgment]] = [:]
+    @ObservationIgnored private var hitFeedbackByPass: [Int: [LessonHit: PatternHitFeedback]] = [:]
     private(set) var judgmentVersion = 0
     private(set) var padFlashes: [Int: PadFlash] = [:]
     private(set) var playedHits: [PlayedHit] = []
@@ -143,6 +144,10 @@ final class PracticeSession {
     var hitJudgments: [Int: [LessonHit: HitJudgment]] {
         _ = judgmentVersion
         return judgmentsByPass
+    }
+    var patternHitFeedback: [Int: [LessonHit: PatternHitFeedback]] {
+        _ = judgmentVersion
+        return hitFeedbackByPass
     }
     /// A note not struck this long after its time is shown as missed.
     var missGraceSteps: Double { Double(bpm) * 4 / 60 * 0.2 }
@@ -870,6 +875,7 @@ final class PracticeSession {
             barVerdicts = [:]
             mixBarVerdicts = [:]
             judgmentsByPass = [:]
+            hitFeedbackByPass = [:]
             playedHits = []
             timingHistory = TimingHistory()
             completedMatches = 0
@@ -937,6 +943,7 @@ final class PracticeSession {
         lastVerdict = nil
         playedHits = []
         judgmentsByPass = [:]
+        hitFeedbackByPass = [:]
         judgmentVersion += 1
         countdown = nil
         task?.cancel(); task = nil
@@ -1120,6 +1127,7 @@ final class PracticeSession {
         barVerdicts = [:]
         mixBarVerdicts = [:]
         judgmentsByPass = [:]
+        hitFeedbackByPass = [:]
         judgmentVersion += 1
         playedHits = []
         padFlashes = [:]
@@ -1212,6 +1220,7 @@ final class PracticeSession {
             let minCycle = max(1, currentCycle - 3)
             if judgmentsByPass.keys.contains(where: { $0 < minCycle }) {
                 judgmentsByPass = judgmentsByPass.filter { $0.key >= minCycle }
+                hitFeedbackByPass = hitFeedbackByPass.filter { $0.key >= minCycle }
                 judgmentVersion += 1
             }
             if playedHits.contains(where: { $0.pass < minCycle }) {
@@ -1500,6 +1509,7 @@ final class PracticeSession {
 
     private func receive(_ event: PadInputEvent) {
         guard event.isNoteOn, ready, kitTask == nil else { return }
+        let receivedAt = now
         guard running else {
             recordFlash(padIndex: event.padIndex, mark: nil)
             return
@@ -1509,14 +1519,14 @@ final class PracticeSession {
         let adjusted = max(0, sourceTime - offset / 1_000)
         guard !listen else {
             recordFlash(padIndex: event.padIndex, mark: nil)
-            recordPlayedHit(padIndex: event.padIndex, at: adjusted, mark: nil)
+            recordPlayedHit(padIndex: event.padIndex, at: adjusted, mark: nil, struckAt: receivedAt)
             return
         }
         // Boundary ownership follows the calibrated input timestamp, never the
         // display tick. Call hits cannot match even an early response note.
         if afterMe, !passes.contains(where: { $0.acceptsInput(at: adjusted) }) {
             recordFlash(padIndex: event.padIndex, mark: nil)
-            recordPlayedHit(padIndex: event.padIndex, at: adjusted, mark: nil)
+            recordPlayedHit(padIndex: event.padIndex, at: adjusted, mark: nil, struckAt: receivedAt)
             return
         }
         let timestamp = AVAudioTime.hostTime(forSeconds: adjusted)
@@ -1546,14 +1556,14 @@ final class PracticeSession {
                                      maximumMilliseconds: best.1.maximumTimingMilliseconds,
                                      goodMilliseconds: best.1.goodTimingMilliseconds)
             }
-            mark = record(best.3, pass: best.0.number, padIndex: event.padIndex)
+            mark = record(best.3, pass: best.0.number, padIndex: event.padIndex, struckAt: receivedAt)
             matchedFeedback = best.3
             currentScorerCenter = best.1.currentTimingCenterMilliseconds
             matchedPassNumber = best.0.number
         } else if let pass = passes.first(where: { $0.start <= adjusted && adjusted < $0.start + $0.duration && $0.acceptsInput(at: adjusted) }) {
             if let feedback = pass.scorer?.receive(padIndex: event.padIndex, at: timestamp) {
                 guard feedback.judgment != .ignored else { return }
-                mark = record(feedback, pass: pass.number, padIndex: event.padIndex)
+                mark = record(feedback, pass: pass.number, padIndex: event.padIndex, struckAt: receivedAt)
                 matchedFeedback = feedback
                 currentScorerCenter = pass.scorer?.currentTimingCenterMilliseconds
                 matchedPassNumber = pass.number
@@ -1566,7 +1576,7 @@ final class PracticeSession {
         if matchedFeedback == nil {
             recordFlash(padIndex: event.padIndex, mark: nil)
         }
-        recordPlayedHit(padIndex: event.padIndex, at: adjusted, mark: mark)
+        recordPlayedHit(padIndex: event.padIndex, at: adjusted, mark: mark, struckAt: receivedAt)
 
         BluetoothTimingDiagnostics.shared.logNoteOn(
             deviceID: event.deviceID,
@@ -1581,7 +1591,7 @@ final class PracticeSession {
         )
     }
 
-    private func recordPlayedHit(padIndex: Int, at time: Double, mark: HitMark?) {
+    private func recordPlayedHit(padIndex: Int, at time: Double, mark: HitMark?, struckAt: Double) {
         guard let pass = passes.last(where: { $0.start <= time }) ?? passes.first else { return }
         let total = practiceLesson.bars * 16
         guard total > 0 else { return }
@@ -1590,7 +1600,7 @@ final class PracticeSession {
         let cycle = (pass.number - 1) * repeatsPerRun + repIndex + 1
         let localStep = elapsedSteps.truncatingRemainder(dividingBy: Double(total))
         let wasHidden = pass.peek == nil && fromMemory && memoryWarmUp.areNotesHidden(fadeNotes: settings.fadeMemoryNotes)
-        playedHits.append(PlayedHit(padIndex: padIndex, step: localStep, pass: cycle, mark: mark, hidden: wasHidden))
+        playedHits.append(PlayedHit(padIndex: padIndex, step: localStep, pass: cycle, mark: mark, hidden: wasHidden, struckAt: struckAt))
     }
 
     private func recordFlash(padIndex: Int, mark: HitMark?) {
@@ -1600,15 +1610,9 @@ final class PracticeSession {
         padFlashes = updated
     }
 
-    /// Colour feedback only. Scoring itself is unchanged.
-    private func record(_ feedback: HitFeedback, pass: Int, padIndex: Int) -> HitMark? {
-        let mark: HitMark
-        switch feedback.judgment {
-        case .perfect, .good: mark = .correct
-        case .off: mark = .off
-        case .wrongPad: mark = .wrong
-        case .ignored: return nil
-        }
+    /// Shape-coded hit feedback only. Scoring itself is unchanged.
+    private func record(_ feedback: HitFeedback, pass: Int, padIndex: Int, struckAt: Double) -> HitMark? {
+        guard let mark = HitMark.from(feedback) else { return nil }
         recordFlash(padIndex: padIndex, mark: mark)
         let hits = patternHits
         guard !hits.isEmpty else { return mark }
@@ -1618,6 +1622,7 @@ final class PracticeSession {
             let repIndex = index / baseCount
             let cycle = (pass - 1) * repeatsPerRun + (afterMe ? 2 : repIndex + 1)
             judgmentsByPass[cycle, default: [:]][baseHit] = feedback.judgment
+            hitFeedbackByPass[cycle, default: [:]][baseHit] = PatternHitFeedback(mark: mark, struckAt: struckAt)
             judgmentVersion += 1
         }
         return mark

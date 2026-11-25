@@ -40,7 +40,7 @@ struct MIDILearnView: View {
                         if nameExists {
                             Text(settings.localized("This profile name is already in use."))
                                 .font(Theme.meta)
-                                .foregroundStyle(Theme.markWrong)
+                                .foregroundStyle(Theme.destructive)
                         }
                     } header: { SectionHeader(title: settings.localized("New controller profile")) }
 
@@ -52,7 +52,7 @@ struct MIDILearnView: View {
                             if midi.learningComplete {
                                 Text(settings.localized("All pads learned. Save the profile to use it."))
                                     .font(Theme.meta)
-                                    .foregroundStyle(Theme.markCorrect)
+                                    .foregroundStyle(Theme.orange)
                             } else {
                                 Text(settings.localized("Press the highlighted pad on your controller."))
                                     .font(Theme.meta)
@@ -81,7 +81,7 @@ struct MIDILearnView: View {
                             if midi.learningNotice == "duplicateNote" {
                                 Text(settings.localized("That note is already assigned. Press a different pad."))
                                     .font(Theme.meta)
-                                    .foregroundStyle(Theme.markWrong)
+                                    .foregroundStyle(Theme.destructive)
                             }
 
                             Button {

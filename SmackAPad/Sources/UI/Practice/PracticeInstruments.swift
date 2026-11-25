@@ -8,14 +8,6 @@ enum PracticeBandStyle {
     static let rowGap: CGFloat = 8
     static let orange = Color(red: 1, green: 120.0 / 255, blue: 0)
 
-    static func hitColor(_ mark: HitMark) -> Color {
-        switch mark {
-        case .correct: return Color(red: 1, green: 224.0 / 255, blue: 194.0 / 255)
-        case .off: return Color(red: 1, green: 181.0 / 255, blue: 116.0 / 255)
-        case .wrong: return Color(red: 212.0 / 255, green: 79.0 / 255, blue: 0)
-        }
-    }
-
     static let minRowHeight: CGFloat = 36
     static let maxRowHeight: CGFloat = 74
     static let baseRowHeight: CGFloat = 44
@@ -275,6 +267,7 @@ struct TimingCue: View {
 
     let offset: Double
     var active = true
+    var maximumWidth: CGFloat? = nil
 
     @ScaledMetric(relativeTo: .body) private var trackWidth: CGFloat = 180
     @ScaledMetric(relativeTo: .body) private var trackHeight: CGFloat = 30
@@ -290,6 +283,7 @@ struct TimingCue: View {
     }
 
     var body: some View {
+        let width = min(maximumWidth ?? trackWidth, trackWidth)
         ZStack {
             Capsule()
                 .fill(Theme.surface)
@@ -299,7 +293,7 @@ struct TimingCue: View {
                 Rectangle()
                     .fill(Theme.hairline)
                     .frame(width: 1, height: markHeight)
-                    .offset(x: side * trackWidth / 9)
+                    .offset(x: side * width / 9)
             }
 
             Rectangle()
@@ -308,12 +302,12 @@ struct TimingCue: View {
 
             Capsule()
                 .fill(offset == 0 ? Theme.orange : Theme.ink)
-                .frame(width: pipWidth, height: pipHeight)
-                .offset(x: offset * (trackWidth - pipWidth) / 2)
+                .frame(width: min(pipWidth, width), height: pipHeight)
+                .offset(x: offset * max(0, width - pipWidth) / 2)
                 .animation(reduceMotion ? nil : .spring(response: 0.35, dampingFraction: 0.78),
                            value: offset)
         }
-        .frame(width: trackWidth, height: trackHeight)
+        .frame(width: width, height: trackHeight)
         .opacity(active ? 1 : 0.35)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(settings.localized("Hit timing"))
@@ -330,38 +324,51 @@ struct TempoTile: View {
     let bpm: Int
     let targetBpm: Int
     let editable: Bool
+    let status: String?
+    let side: CGFloat
     let action: () -> Void
 
     var body: some View {
         Button(action: action) {
-            HStack(alignment: .center, spacing: Theme.Space.small + 2) {
-                Text("\(bpm)")
-                    .font(Theme.mainValue).monospacedDigit()
-                    .contentTransition(motion.numeric).motion(value: bpm)
-                VStack(alignment: .leading, spacing: 0) {
-                    Text("BPM").font(Theme.text(22))
-                    Text("→ \(targetBpm)").font(Theme.meta).monospacedDigit().foregroundStyle(Theme.secondary)
+            Group {
+                if let status {
+                    Text(status)
+                        .font(Theme.meta)
+                        .multilineTextAlignment(.center)
+                        .minimumScaleFactor(0.7)
+                        .padding(Theme.Space.small)
+                } else {
+                    VStack(spacing: 2) {
+                        Text("\(bpm)")
+                            .font(Theme.display(min(56, side * 0.36)))
+                            .fontWeight(.bold)
+                            .monospacedDigit()
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.7)
+                            .contentTransition(motion.numeric)
+                            .motion(value: bpm)
+                        Text("BPM")
+                            .font(Theme.meta)
+                        HStack(spacing: 4) {
+                            Text("→ \(targetBpm)")
+                                .font(Theme.meta)
+                                .monospacedDigit()
+                            Image(systemName: "chevron.down")
+                                .font(.system(size: 11, weight: .semibold))
+                                .opacity(editable ? 1 : 0)
+                        }
+                        .foregroundStyle(Theme.Skin.Display.secondary)
+                    }
                 }
-                Image(systemName: "chevron.down")
-                    .font(Theme.meta)
-                    .foregroundStyle(Theme.secondary)
-                    .opacity(editable ? 1 : 0)
             }
-            .padding(.horizontal, Theme.Space.regular - 2)
-            .padding(.vertical, Theme.Space.tight)
-            .frame(minHeight: InstrumentTile.height)
-            .overlay(Rectangle().strokeBorder(Theme.ink.opacity(editable ? 1 : 0.35), lineWidth: Theme.Size.border))
-            .contentShape(Rectangle())
+            .frame(width: side, height: side)
+            .insetDisplay()
+            .contentShape(RoundedRectangle(cornerRadius: Theme.Skin.Pad.radius))
         }
         .buttonStyle(.plain)
         .disabled(!editable)
-        .accessibilityLabel(settings.localized("Tempo"))
-        .accessibilityValue("\(bpm) BPM, \(settings.localized("Goal tempo")) \(targetBpm)")
+        .accessibilityLabel(status ?? settings.localized("Tempo %lld BPM, goal %lld", bpm, targetBpm))
     }
-}
-
-enum InstrumentTile {
-    static let height: CGFloat = 80
 }
 
 /// Thin pass-progress bar displayed below the orange band across its full width.
@@ -490,6 +497,7 @@ struct PracticeProgressMeter: View {
     let verdict: RunVerdict?
     let starMomentActive: Bool
     let currentAccuracy: Double?
+    var listenProgress: Double? = nil
 
     private var accuracyText: String {
         guard let currentAccuracy else { return "—\u{00a0}%" }
@@ -504,6 +512,17 @@ struct PracticeProgressMeter: View {
     }
 
     var body: some View {
+        if let listenProgress {
+            ProgressView(value: min(1, max(0, listenProgress)))
+                .tint(Theme.orange)
+                .frame(width: 120, height: blockHeight)
+                .accessibilityLabel(settings.localized("Position in the current pass"))
+        } else {
+            scoredMeter
+        }
+    }
+
+    private var scoredMeter: some View {
         HStack(spacing: Theme.Space.regular) {
             if showWarmUps {
                 warmUpEyes
@@ -1446,7 +1465,7 @@ struct RunMeterView: View {
         .animation(verdict?.passed == true ? Theme.Motion.fast : .easeOut(duration: 0.20),
                    value: verdict?.id)
         .overlay {
-            Rectangle().strokeBorder(flashingOutline ? Theme.markWrong : Theme.hairline, lineWidth: 1)
+            Rectangle().strokeBorder(flashingOutline ? Theme.destructive : Theme.hairline, lineWidth: 1)
         }
     }
 }

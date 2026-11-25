@@ -7,15 +7,23 @@ enum LessonPlaybackMode: String, CaseIterable {
     case afterMe = "After me"
 }
 
-/// How one pad strike or expected note turned out. Shown as colour only.
-enum HitMark {
-    case correct, off, wrong
+/// How one pad strike or expected note turned out. Shape-coded on the pattern band.
+enum HitMark: Equatable, Sendable {
+    case correct, early, late, wrong
 
-    var color: Color {
-        switch self {
-        case .correct: return Theme.markCorrect
-        case .off: return Theme.markOff
-        case .wrong: return Theme.markWrong
+    static func from(_ feedback: HitFeedback) -> HitMark? {
+        switch feedback.judgment {
+        case .perfect, .good:
+            return .correct
+        case .off:
+            if let error = feedback.timingErrorMilliseconds, error < 0 {
+                return .early
+            }
+            return .late
+        case .wrongPad:
+            return .wrong
+        case .ignored:
+            return nil
         }
     }
 }
@@ -27,7 +35,14 @@ struct PadFlash: Equatable {
     let mark: HitMark?
     let date: Date
 
-    var color: Color { mark?.color ?? Theme.orange }
+    var color: Color {
+        switch mark {
+        case .correct: Color(red: 0.04, green: 0.34, blue: 0.15)
+        case .early, .late: Color(red: 0.36, green: 0.26, blue: 0)
+        case .wrong: Color(red: 0.62, green: 0.06, blue: 0.10)
+        case nil: Theme.orange
+        }
+    }
     func strength(at now: Date) -> Double { max(0, 1 - now.timeIntervalSince(date) / Self.fadeDuration) }
     func isFading(at now: Date = Date()) -> Bool { now.timeIntervalSince(date) < Self.fadeDuration }
 }

@@ -98,7 +98,7 @@ public struct ControllerSetupView: View {
                     if let error = midi.errorMessage {
                         Text(error)
                             .font(Theme.meta)
-                            .foregroundStyle(Theme.markWrong)
+                            .foregroundStyle(Theme.destructive)
                         Button {
                             midi.stop()
                             midi.start()

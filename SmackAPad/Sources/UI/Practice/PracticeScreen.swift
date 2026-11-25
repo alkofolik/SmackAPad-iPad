@@ -1,6 +1,29 @@
 import AVFoundation
 import SwiftUI
 
+/// Space for the band and its neighbours, independent of playback state.
+struct PracticeScreenLayout {
+    static let passProgressHeight: CGFloat = 12
+    static let passProgressReserve: CGFloat = passProgressHeight + Theme.Space.controlGap
+    static let mixHeaderHeight: CGFloat = 28
+    static let mixHeaderReserve: CGFloat = mixHeaderHeight + Theme.Space.controlGap
+    static let afterMePromptHeight: CGFloat = 28
+
+    let bandHeight: CGFloat
+    let stackTop: CGFloat
+
+    init(middleZoneHeight: CGFloat, rows: Int, isMix: Bool, isAfterMe: Bool) {
+        let promptDeduction: CGFloat = isAfterMe ? (Self.afterMePromptHeight + Theme.Space.small) : 0
+        let contentHeight = max(0, middleZoneHeight - promptDeduction)
+        let mixReserve: CGFloat = isMix ? Self.mixHeaderReserve : 0
+        let available = max(0, contentHeight - Self.passProgressReserve - mixReserve)
+        let computedBand = min(available, PracticeBandStyle.bandHeight(rows: rows, availableHeight: available))
+        bandHeight = computedBand
+        let stackHeight = mixReserve + computedBand + Self.passProgressReserve
+        stackTop = promptDeduction + max(0, (contentHeight - stackHeight) / 2)
+    }
+}
+
 @MainActor
 private struct MemoryPeekButton: View {
     @Environment(SettingsManager.self) private var settings
@@ -140,16 +163,13 @@ struct PracticeScreen: View {
             let portraitPads = isPortrait && touchPadsInPortrait && midi.padIndices?.count == 16
             let availableWidth = max(0, geometry.size.width - 2 * Theme.Space.page)
             let defaultS: CGFloat = 2 * Theme.Size.control + Theme.Space.small
-            let s = min(defaultS, max(80, (availableWidth - 2 * Theme.Space.small) / 3))
+            let s = min(defaultS, max(44, (availableWidth - 2 * Theme.Space.small - 64) / 3))
 
             VStack(spacing: Theme.Space.regular) {
-                if !focusActive {
-                    topZone(isPortrait: isPortrait, width: geometry.size.width, screenHeight: geometry.size.height)
-                        .fixedSize(horizontal: false, vertical: true)
-                        .practiceToolbarHintContainer()
-                        .zIndex(20)
-                        .transition(.opacity)
-                }
+                topZone(isPortrait: isPortrait, width: geometry.size.width, screenHeight: geometry.size.height)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .practiceToolbarHintContainer()
+                    .zIndex(20)
 
                 middleZone
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -161,12 +181,11 @@ struct PracticeScreen: View {
                         }
                     }
 
-                bottomZone(s: s, isPortrait: isPortrait, portraitPads: portraitPads, screenHeight: geometry.size.height, availableWidth: availableWidth)
+                bottomZone(s: s, portraitPads: portraitPads, screenHeight: geometry.size.height, availableWidth: availableWidth)
                     .fixedSize(horizontal: false, vertical: true)
             }
             .padding(Theme.Space.page)
             .frame(width: geometry.size.width, height: geometry.size.height)
-            .animation(reduced ? nil : Theme.Motion.standard, value: focusActive)
             .calmChassisBackground()
             .foregroundStyle(Theme.ink)
             .overlay {
@@ -307,25 +326,64 @@ struct PracticeScreen: View {
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .zIndex(1)
 
-                    FlowLayout(spacing: 20) {
-                        modeGroup
-                        patternGroup
-                        infoGroup(windowWidth: width, screenHeight: screenHeight)
-                        settingsButton
+                    trailingToolbar {
+                        FlowLayout(spacing: 20) {
+                            toolbarTools(width: width, screenHeight: screenHeight)
+                        }
+                        .frame(maxWidth: .infinity, alignment: .leading)
                     }
                 }
             } else {
                 HStack(alignment: .center, spacing: 20) {
                     libraryButton
                     titleAndSubtitle
-                    modeGroup
-                    patternGroup
-                    infoGroup(windowWidth: width, screenHeight: screenHeight)
-                    settingsButton
+                    trailingToolbar {
+                        HStack(spacing: 20) {
+                            toolbarTools(width: width, screenHeight: screenHeight)
+                        }
+                    }
                 }
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    @ViewBuilder
+    private func toolbarTools(width: CGFloat, screenHeight: CGFloat) -> some View {
+        modeGroup
+        patternGroup
+        infoGroup(windowWidth: width, screenHeight: screenHeight)
+        settingsButton
+    }
+
+    private func trailingToolbar<Tools: View>(@ViewBuilder tools: () -> Tools) -> some View {
+        let playing = session.running
+        return tools()
+            .opacity(playing ? 0 : 1)
+            .allowsHitTesting(!playing)
+            .accessibilityHidden(playing)
+            .overlay(alignment: .trailing) {
+                if playing {
+                    activeTopTrailingHUD
+                        .transition(.opacity)
+                }
+            }
+            .animation(reduced ? nil : Theme.Motion.fast, value: playing)
+    }
+
+    private var activeTopTrailingHUD: some View {
+        HStack(spacing: Theme.Space.controlGap) {
+            PracticeDisplayFrame(clock: displayClock, session: session) { frame, _ in
+                runMeter(frame: frame, scored: isScored(frame))
+            }
+            if session.supportsMemoryPeek {
+                MemoryPeekButton(session: session)
+            }
+        }
+        .overlay(alignment: .bottomTrailing) {
+            tempoUpBanner
+                .alignmentGuide(.bottom) { $0[.top] - Theme.Space.small }
+        }
     }
 
     private var libraryButton: some View {
@@ -676,64 +734,65 @@ struct PracticeScreen: View {
 
     private var middleZone: some View {
         let showingResult = isShowingResult
-        let passLineReserve: CGFloat = session.running ? 24 : 0
         let showMixHeader = session.isMix && !focusActive && !showingResult
-        let mixHeaderReserve: CGFloat = showMixHeader ? 40 : 0
 
-        return VStack(spacing: Theme.Space.small) {
-            if focusActive || session.listen {
-                practiceHUD
-                    .fixedSize(horizontal: false, vertical: true)
-                    .transition(.opacity)
-            }
+        return GeometryReader { geometry in
+            let layout = PracticeScreenLayout(
+                middleZoneHeight: geometry.size.height,
+                rows: Set(session.patternHits.map(\.padIndex)).count,
+                isMix: session.isMix,
+                isAfterMe: session.afterMe
+            )
 
-            if session.afterMe && focusActive {
-                Text(settings.localized(session.countdown == nil && session.currentRepetition.isMultiple(of: 2)
-                                        ? "Your turn" : "Listen…"))
-                    .font(Theme.rowTitle)
-                    .lineLimit(1)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .allowsHitTesting(false)
-            }
+            VStack(spacing: Theme.Space.controlGap) {
+                if session.isMix {
+                    mixStatusHeader
+                        .frame(height: PracticeScreenLayout.mixHeaderHeight)
+                        .opacity(showMixHeader ? 1 : 0)
+                        .allowsHitTesting(showMixHeader)
+                        .accessibilityHidden(!showMixHeader)
+                }
 
-            GeometryReader { geometry in
-                let rows = Set(session.patternHits.map(\.padIndex)).count
-                let bandAvailableHeight = max(0, geometry.size.height - passLineReserve - mixHeaderReserve)
-                let bandHeight = min(bandAvailableHeight,
-                    PracticeBandStyle.bandHeight(rows: rows, availableHeight: bandAvailableHeight))
+                PracticeDisplayFrame(clock: displayClock, session: session) { frame, date in
+                    practiceBand(frame: frame, date: date, scored: isScored(frame))
+                }
+                .frame(height: layout.bandHeight)
+                .contentShape(Rectangle())
+                .simultaneousGesture(TapGesture().onEnded { session.peekAtPattern() })
+                .overlay(alignment: .top) {
+                    MemoryPeekTimeLine(clock: displayClock, session: session)
+                        .offset(y: -3)
+                        .allowsHitTesting(false)
+                }
+                .opacity(showingResult ? 0.55 : 1)
+                .animation(focusFade, value: showingResult)
 
-                VStack(spacing: Theme.Space.controlGap) {
-                    if showMixHeader {
-                        mixStatusHeader
-                    }
-
-                    PracticeDisplayFrame(clock: displayClock, session: session) { frame, _ in
-                        practiceBand(frame: frame, scored: isScored(frame))
-                    }
-                    .frame(height: bandHeight)
-                    .contentShape(Rectangle())
-                    .simultaneousGesture(TapGesture().onEnded { session.peekAtPattern() })
-                    .overlay(alignment: .top) {
-                        MemoryPeekTimeLine(clock: displayClock, session: session)
-                            .offset(y: -3)
-                            .allowsHitTesting(false)
-                    }
-                    .opacity(showingResult ? 0.55 : 1)
-                    .animation(focusFade, value: showingResult)
-
+                ZStack {
                     if session.running {
                         PracticeDisplayFrame(clock: displayClock, session: session) { frame, date in
                             PassProgressBar(
                                 pass: frame.pass,
                                 position: frame.position,
                                 bars: session.practiceLesson.bars,
-                                active: session.running && frame.countdown == nil,
+                                active: frame.countdown == nil,
                                 date: date
                             )
                         }
                     }
                 }
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .frame(height: PracticeScreenLayout.passProgressHeight)
+            }
+            .frame(maxWidth: .infinity)
+            .offset(y: layout.stackTop)
+            .overlay(alignment: .topLeading) {
+                if session.afterMe && focusActive {
+                    Text(settings.localized(session.countdown == nil && session.currentRepetition.isMultiple(of: 2)
+                                            ? "Your turn" : "Listen…"))
+                        .font(Theme.rowTitle)
+                        .lineLimit(1)
+                        .frame(height: PracticeScreenLayout.afterMePromptHeight)
+                        .allowsHitTesting(false)
+                }
             }
         }
         #if DEBUG
@@ -747,68 +806,22 @@ struct PracticeScreen: View {
         focusActive && frame.countdown == nil && (!session.afterMe || frame.pass.isMultiple(of: 2))
     }
 
-    private var practiceHUD: some View {
-        VStack(spacing: Theme.Space.small) {
-            ZStack {
-                tempoUpBanner
-
-                HStack(alignment: .center) {
-                    hudTempo(bpm: session.bpm)
-                    Spacer(minLength: 0)
-                    PracticeDisplayFrame(clock: displayClock, session: session) { frame, _ in
-                        runMeter(frame: frame, scored: isScored(frame))
-                    }
-                }
-            }
-            .frame(maxWidth: .infinity)
-
-            HStack(spacing: Theme.Space.controlGap) {
-                Spacer(minLength: 0)
-                PracticeDisplayFrame(clock: displayClock, session: session) { frame, date in
-                    let scored = isScored(frame)
-                    TimingCue(offset: scored ? session.timingHistory.cueOffset(at: date) : 0, active: scored)
-                }
-                if session.supportsMemoryPeek {
-                    MemoryPeekButton(session: session)
-                }
-            }
-            .frame(maxWidth: .infinity)
-        }
-        .frame(maxWidth: .infinity)
-    }
-
-    private func hudTempo(bpm: Int) -> some View {
-        VStack(alignment: .leading, spacing: 0) {
-            Text("\(bpm)")
-                .font(Theme.display(28).bold())
-                .monospacedDigit()
-            Text("BPM").font(Theme.meta)
-        }
-        .fixedSize()
-        .accessibilityElement(children: .combine)
-        .opacity(focusActive ? 1 : 0)
-        .accessibilityHidden(!focusActive)
-        .animation(focusFade, value: focusActive)
-    }
-
-    @ViewBuilder
     private func runMeter(frame: PatternFrame, scored: Bool) -> some View {
-        if focusActive {
-            PracticeProgressMeter(
-                showWarmUps: session.showsMemoryFadePhase,
-                completedWarmUps: session.completedWarmUps,
-                starProgress: session.starRunProgress,
-                reviewProgress: session.reviewRunProgress,
-                startBpm: session.lesson.startBpm,
-                goalBpm: session.lesson.targetBpm,
-                currentBpm: frame.bpm,
-                tempoStep: settings.bpmStep,
-                fraction: scored ? session.runMeterFraction(at: frame) : 0,
-                verdict: session.lastVerdict,
-                starMomentActive: midLessonStarMomentActive,
-                currentAccuracy: session.currentRunAccuracy
-            )
-        }
+        PracticeProgressMeter(
+            showWarmUps: session.showsMemoryFadePhase,
+            completedWarmUps: session.completedWarmUps,
+            starProgress: session.starRunProgress,
+            reviewProgress: session.reviewRunProgress,
+            startBpm: session.lesson.startBpm,
+            goalBpm: session.lesson.targetBpm,
+            currentBpm: frame.bpm,
+            tempoStep: settings.bpmStep,
+            fraction: scored ? session.runMeterFraction(at: frame) : 0,
+            verdict: session.lastVerdict,
+            starMomentActive: midLessonStarMomentActive,
+            currentAccuracy: session.currentRunAccuracy,
+            listenProgress: session.listen ? frame.position / Double(max(1, session.practiceLesson.bars * 16)) : nil
+        )
     }
 
     @ViewBuilder
@@ -899,7 +912,7 @@ struct PracticeScreen: View {
         .background(Theme.black, in: Capsule())
     }
 
-    private func practiceBand(frame: PatternFrame, scored: Bool) -> some View {
+    private func practiceBand(frame: PatternFrame, date: Date, scored: Bool) -> some View {
         let peekOpacity = frame.hostSeconds.flatMap {
             session.memoryPeek?.noteOpacity(at: $0, reduceMotion: reduced)
         }
@@ -916,7 +929,10 @@ struct PracticeScreen: View {
                      peekCycles: peekOpacity == nil ? nil : firstCycle..<(firstCycle + repeats),
                      scrolling: scrolling, visibleBars: [1, 2, 3, 4].contains(visibleBars) ? visibleBars : 4,
                      verdicts: session.barVerdicts,
-                     judgments: session.hitJudgments, bpm: frame.bpm,
+                     hitsByPass: session.patternHitFeedback,
+                     hostSeconds: frame.hostSeconds,
+                     displayDate: date,
+                     bpm: frame.bpm,
                      playedHits: session.playedHits, pass: frame.pass,
                      scoring: scored,
                      missGraceSteps: frame.missGraceSteps, countdown: frame.countdown,
@@ -929,7 +945,7 @@ struct PracticeScreen: View {
             .frame(maxWidth: .infinity)
     }
 
-    private func bottomZone(s: CGFloat, isPortrait: Bool, portraitPads: Bool, screenHeight: CGFloat, availableWidth: CGFloat) -> some View {
+    private func bottomZone(s: CGFloat, portraitPads: Bool, screenHeight: CGFloat, availableWidth: CGFloat) -> some View {
         let padsHeight: CGFloat = (portraitPads && midi.padIndices != nil) ? {
             let availableForPads = max(260, screenHeight - 48 - 110 - s - 280)
             return min(520, max(280, min((screenHeight - 48) * 0.44, availableForPads)))
@@ -940,7 +956,7 @@ struct PracticeScreen: View {
             : (screenHeight - Theme.Space.page - s)
 
         return VStack(spacing: Theme.Space.regular) {
-            bottomZoneRow(s: s, isPortrait: isPortrait, availableWidth: availableWidth, spaceAbove: spaceAbove)
+            bottomZoneRow(s: s, availableWidth: availableWidth, spaceAbove: spaceAbove)
 
             if portraitPads, let pads = midi.padIndices {
                 PracticeTouchPadGrid(session: session,
@@ -958,82 +974,101 @@ struct PracticeScreen: View {
         .frame(maxWidth: .infinity)
     }
 
-    private func bottomZoneRow(s: CGFloat, isPortrait: Bool, availableWidth: CGFloat, spaceAbove: CGFloat) -> some View {
+    private func bottomZoneRow(s: CGFloat, availableWidth: CGFloat, spaceAbove: CGFloat) -> some View {
         let showingResult = isShowingResult && !session.isMix
+        let freeWidth = max(0, availableWidth - 3 * s)
+        let cueSlotWidth = min(freeWidth, max(64, freeWidth / 2))
 
-        return Group {
-            if showingResult, let summary = activeSummary {
-                let nextTarget = resolveResultNextTarget()
-                let resultView = ResultCard(
-                    summary: summary,
-                    runs: session.runResults,
-                    saved: session.savedProgress,
-                    event: session.starEvent,
-                    announcement: resultAnnouncement,
-                    reviewFeedback: session.afterMe ? nil : session.reviewFeedback,
-                    isDueReview: session.isDueReview && !session.isSectionLoop,
-                    reviewPendingReason: session.reviewPendingReason,
-                    badgeCount: session.earnedBadgesInRun.count,
-                    isAfterMe: session.afterMe,
-                    isSectionLoop: session.isSectionLoop,
-                    bestResponseScore: session.bestResponseScore,
-                    cardWidth: availableWidth,
-                    nextAction: nextTarget.action,
-                    nextEnabled: nextTarget.enabled,
-                    nextLocked: nextTarget.locked,
-                    nextHint: nextTarget.hint,
-                    restartAction: {
-                        dismissDebugResult()
-                        showingInfo = false
-                        session.restart()
-                    },
-                    restartEnabled: session.ready && session.available,
-                    openRules: {
-                        showingDetails = false
-                        showingTempo = false
-                        showingStarRules = true
-                    },
-                    openSessionResults: {
-                        showingStarRules = false
-                        showingTempo = false
-                        showingDetails = true
-                    },
-                    starRulesAttachment: AnyView(
-                        Color.clear
-                            .adaptivePopoverOrSheet(
-                                isPresented: $showingStarRules,
-                                asSheet: spaceAbove < 415,
-                                arrowEdge: .bottom
-                            ) {
-                                starRules
-                            }
-                    )
-                )
-                .adaptivePopoverOrSheet(
-                    isPresented: $showingDetails,
-                    asSheet: spaceAbove < 650,
-                    arrowEdge: .bottom
-                ) {
-                    sessionResultsView(summary)
-                }
-
-                resultView
-                    .frame(maxWidth: .infinity)
-            } else {
-                HStack(spacing: 0) {
-                    padLayoutSquare(s: s)
-                    Spacer(minLength: 0)
-                    tempoSquare(s: s, spaceAbove: spaceAbove)
-                        .opacity(focusActive ? 0 : 1)
-                        .allowsHitTesting(!focusActive)
-                        .accessibilityHidden(focusActive)
-                        .animation(focusFade, value: focusActive)
-                    Spacer(minLength: 0)
-                    transportSquare(s: s)
+        return HStack(spacing: 0) {
+            padLayoutSquare(s: s)
+            Spacer(minLength: 0)
+            tempoSquare(s: s, spaceAbove: spaceAbove)
+            ZStack {
+                if focusActive {
+                    PracticeDisplayFrame(clock: displayClock, session: session) { frame, date in
+                        let scored = isScored(frame)
+                        TimingCue(
+                            offset: scored ? session.timingHistory.cueOffset(at: date) : 0,
+                            active: scored,
+                            maximumWidth: max(1, cueSlotWidth - 2 * Theme.Space.small)
+                        )
+                    }
+                    .transition(.opacity)
                 }
             }
+            .frame(width: cueSlotWidth, height: s)
+            .allowsHitTesting(false)
+            .accessibilityHidden(!focusActive)
+            .animation(reduced ? nil : Theme.Motion.fast, value: focusActive)
+            transportSquare(s: s)
         }
         .frame(maxWidth: .infinity)
+        .frame(height: s)
+        .opacity(showingResult ? 0 : 1)
+        .allowsHitTesting(!showingResult)
+        .accessibilityHidden(showingResult)
+        .overlay(alignment: .bottom) {
+            if showingResult, let summary = activeSummary {
+                practiceResult(summary, availableWidth: availableWidth, spaceAbove: spaceAbove)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        }
+    }
+
+    private func practiceResult(_ summary: RunSummary, availableWidth: CGFloat, spaceAbove: CGFloat) -> some View {
+        let nextTarget = resolveResultNextTarget()
+        return ResultCard(
+            summary: summary,
+            runs: session.runResults,
+            saved: session.savedProgress,
+            event: session.starEvent,
+            announcement: resultAnnouncement,
+            reviewFeedback: session.afterMe ? nil : session.reviewFeedback,
+            isDueReview: session.isDueReview && !session.isSectionLoop,
+            reviewPendingReason: session.reviewPendingReason,
+            badgeCount: session.earnedBadgesInRun.count,
+            isAfterMe: session.afterMe,
+            isSectionLoop: session.isSectionLoop,
+            bestResponseScore: session.bestResponseScore,
+            cardWidth: availableWidth,
+            nextAction: nextTarget.action,
+            nextEnabled: nextTarget.enabled,
+            nextLocked: nextTarget.locked,
+            nextHint: nextTarget.hint,
+            restartAction: {
+                dismissDebugResult()
+                showingInfo = false
+                session.restart()
+            },
+            restartEnabled: session.ready && session.available,
+            openRules: {
+                showingDetails = false
+                showingTempo = false
+                showingStarRules = true
+            },
+            openSessionResults: {
+                showingStarRules = false
+                showingTempo = false
+                showingDetails = true
+            },
+            starRulesAttachment: AnyView(
+                Color.clear
+                    .adaptivePopoverOrSheet(
+                        isPresented: $showingStarRules,
+                        asSheet: spaceAbove < 415,
+                        arrowEdge: .bottom
+                    ) {
+                        starRules
+                    }
+            )
+        )
+        .adaptivePopoverOrSheet(
+            isPresented: $showingDetails,
+            asSheet: spaceAbove < 650,
+            arrowEdge: .bottom
+        ) {
+            sessionResultsView(summary)
+        }
     }
 
     private func mixSummaryOverlay(summary: RunSummary) -> some View {
@@ -1274,49 +1309,18 @@ struct PracticeScreen: View {
     }
 
     private func tempoSquare(s: CGFloat, spaceAbove: CGFloat) -> some View {
-        let editable = !session.running && session.ready && session.available
-        return Button {
+        TempoTile(
+            bpm: session.bpm,
+            targetBpm: session.lesson.targetBpm,
+            editable: !session.running && session.ready && session.available,
+            status: !session.available ? settings.localized("This lesson requires 16 pads.")
+                : (!session.ready ? settings.localized("Preparing sound…") : nil),
+            side: s
+        ) {
             showingDetails = false
             showingStarRules = false
             showingTempo.toggle()
-        } label: {
-            ZStack {
-                if !session.available {
-                    Text(settings.localized("This lesson requires 16 pads."))
-                        .font(Theme.meta)
-                        .multilineTextAlignment(.center)
-                        .padding(Theme.Space.small)
-                } else if !session.ready {
-                    Text(settings.localized("Preparing sound…"))
-                        .font(Theme.meta)
-                        .multilineTextAlignment(.center)
-                        .padding(Theme.Space.small)
-                } else {
-                    VStack(spacing: 2) {
-                        Text("\(session.bpm)")
-                            .font(Theme.display(min(56, s * 0.36)))
-                            .fontWeight(.bold)
-                            .monospacedDigit()
-                            .lineLimit(1)
-                            .minimumScaleFactor(0.7)
-                            .contentTransition(motion.numeric)
-                            .motion(value: session.bpm)
-                        Text("BPM")
-                            .font(Theme.meta)
-                        Text("→ \(session.lesson.targetBpm)")
-                            .font(Theme.meta)
-                            .monospacedDigit()
-                            .foregroundStyle(Theme.Skin.Display.secondary)
-                    }
-                    .opacity(editable ? 1 : 0.6)
-                }
-            }
-            .frame(width: s, height: s)
-            .insetDisplay()
-            .contentShape(RoundedRectangle(cornerRadius: Theme.Skin.Pad.radius))
         }
-        .buttonStyle(.plain)
-        .disabled(!editable)
         .adaptivePopoverOrSheet(
             isPresented: $showingTempo,
             asSheet: spaceAbove < 285,
@@ -1327,7 +1331,6 @@ struct PracticeScreen: View {
                 .background(Theme.background)
                 .presentationDetents([.height(300), .medium])
         }
-        .accessibilityLabel(settings.localized("Tempo %lld BPM, goal %lld", session.bpm, session.lesson.targetBpm))
     }
 
     private func resolveResultNextTarget() -> (enabled: Bool, locked: Bool, hint: String?, action: (() -> Void)?) {
@@ -1519,7 +1522,7 @@ struct PracticeScreen: View {
                                             .frame(width: 5, height: 20)
                                     } else {
                                         Rectangle()
-                                            .strokeBorder(Theme.markWrong, lineWidth: 1.5)
+                                            .strokeBorder(Theme.destructive, lineWidth: 1.5)
                                             .frame(width: 5, height: 20)
                                     }
                                 }
