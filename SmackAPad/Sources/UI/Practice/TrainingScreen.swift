@@ -474,16 +474,15 @@ public struct TrainingScreen: View {
                     .lineLimit(1)
                 Text(continueSubtitle)
                     .font(Theme.text(13))
-                    .foregroundStyle(Theme.white.opacity(0.7))
+                    .foregroundStyle(Theme.black.opacity(0.7))
                     .lineLimit(2)
                     .multilineTextAlignment(.leading)
             }
-            .foregroundStyle(Theme.white)
-            .padding(16)
+            .padding(.vertical, 16)
             .frame(maxWidth: .infinity, alignment: .leading)
             .frame(height: 124)
         }
-        .buttonStyle(TrainingActionButtonStyle(variant: .dark))
+        .buttonStyle(PadPrimaryButtonStyle())
         .disabled(continueTarget == nil)
     }
 
@@ -1173,7 +1172,7 @@ public struct TrainingScreen: View {
                         .frame(maxWidth: .infinity)
                         .frame(height: 56)
                 }
-                .buttonStyle(TrainingActionButtonStyle(variant: .secondary))
+                .buttonStyle(PadSecondaryButtonStyle())
                 .disabled(mixLessons.count < LearningRules.minimumMixLessons)
 
                 Button {
@@ -1185,7 +1184,7 @@ public struct TrainingScreen: View {
                         .frame(maxWidth: .infinity)
                         .frame(height: 56)
                 }
-                .buttonStyle(TrainingActionButtonStyle(variant: .primary))
+                .buttonStyle(PadPrimaryButtonStyle())
                 .disabled(mixLessons.count < LearningRules.minimumMixLessons)
             }
         }
@@ -1273,7 +1272,7 @@ public struct TrainingScreen: View {
                         .frame(maxWidth: .infinity)
                         .frame(height: 56)
                 }
-                .buttonStyle(TrainingActionButtonStyle(variant: .secondary))
+                .buttonStyle(PadSecondaryButtonStyle())
                 .disabled(afterMeCandidates.count < 2)
 
                 Button {
@@ -1286,7 +1285,7 @@ public struct TrainingScreen: View {
                         .frame(maxWidth: .infinity)
                         .frame(height: 56)
                 }
-                .buttonStyle(TrainingActionButtonStyle(variant: .primary))
+                .buttonStyle(PadPrimaryButtonStyle())
                 .disabled(candidate == nil)
             }
         }

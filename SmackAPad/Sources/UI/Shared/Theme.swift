@@ -54,7 +54,7 @@ enum Theme {
     /// Inactive LED / off segment colour.
     static let ledOff = starColor(for: 0)
 
-    /// Star progression colours: not done grey, 1 star light orange, 2 stars medium orange, 3 stars full orange.
+    /// Star progression colours: not done grey, earned star full orange.
     static func starColor(for stars: Int) -> Color {
         switch stars {
         case 1, 2, 3:
@@ -67,16 +67,31 @@ enum Theme {
         }
     }
 
+    /// Three-step progress bar segment colours: 3★ full orange, 2★ medium orange, 1★ light orange.
+    static func progressSegmentColor(for stars: Int) -> Color {
+        switch stars {
+        case 3:
+            return orange
+        case 2:
+            return orange.opacity(0.68)
+        case 1:
+            return orange.opacity(0.38)
+        default:
+            return starColor(for: 0)
+        }
+    }
+
     static let mainValue = strong(44)
-    static let screenTitle = display(28)
+    static let screenTitle = boldDisplay(26)
     static let handoffTitle = boldDisplay(28)
     static let handoffNext = strong(20)
-    static let sectionTitle = display(22)
-    static let rowTitle = display(22)
-    static let meta = text(16)
-    static let control = text(18)
-    static let navigation = text(18)
-    static let action = strong(22)
+    static let sectionTitle = strong(19)
+    static let rowTitle = strong(18)
+    static let meta = text(14)
+    static let caption = text(13)
+    static let control = text(16)
+    static let navigation = text(16)
+    static let action = strong(18)
 
 
     enum Space {
@@ -118,6 +133,8 @@ enum Theme {
     enum Radius {
         /// Home pad radius (Akai MPC Tactile Rubber style, ticket 112).
         static let pad: CGFloat = 8
+        /// Inner-screen panel and card radius (ticket 230).
+        static let panel: CGFloat = 8
         /// Button & control radius (Variant B studio precision, ticket 133).
         static let button: CGFloat = 6
         /// Controller plate at the reference pad size; scaled with the Home grid.
@@ -159,7 +176,7 @@ enum Theme {
             static let top = adaptive(light: plateCreamTop, dark: UIColor(hex: 0x272521))
             static let bottom = adaptive(light: plateCreamBottom, dark: UIColor(hex: 0x1E1C19))
             static let angle: Double = 165
-            static let radius = Radius.controllerPlate
+            static let radius = Radius.panel
             static let bevel: CGFloat = 1.5
             static let highlight = adaptive(light: creamWhite.withAlphaComponent(0.85), dark: creamWhite.withAlphaComponent(0.24))
             static let shade = adaptive(light: softBlack.withAlphaComponent(0.2), dark: softBlack.withAlphaComponent(0.7))

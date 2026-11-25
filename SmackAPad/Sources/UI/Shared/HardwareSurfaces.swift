@@ -71,8 +71,6 @@ private struct SatinPlateSurface: View {
                 RoundedRectangle(cornerRadius: Theme.Skin.Plate.radius)
                     .strokeBorder(Theme.hairline, lineWidth: 1)
             }
-            .shadow(color: Theme.Skin.Plate.shadow, radius: Theme.Skin.Plate.shadowRadius, y: Theme.Skin.Plate.shadowY)
-            .shadow(color: Theme.Skin.Plate.contactShadow, radius: Theme.Skin.Plate.contactRadius, y: Theme.Skin.Plate.contactY)
             .allowsHitTesting(false)
             .accessibilityHidden(true)
     }

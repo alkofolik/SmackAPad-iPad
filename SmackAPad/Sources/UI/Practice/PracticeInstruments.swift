@@ -1164,7 +1164,7 @@ struct ResultCard: View {
                         .minimumScaleFactor(0.8)
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
                 }
-                .buttonStyle(ResultPrimaryButtonStyle())
+                .buttonStyle(PadPrimaryButtonStyle())
                 .frame(width: sideZoneWidth, height: 48)
                 .accessibilityLabel(settings.localized("Next lesson"))
                 .accessibilityHint(nextHint ?? "")
@@ -1179,7 +1179,7 @@ struct ResultCard: View {
                         .minimumScaleFactor(0.8)
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
                 }
-                .buttonStyle(ResultSecondaryButtonStyle())
+                .buttonStyle(PadSecondaryButtonStyle(onDark: true))
                 .frame(width: sideZoneWidth, height: 48)
                 .accessibilityLabel(settings.localized("Again"))
                 .disabled(!restartEnabled || restartAction == nil)
@@ -1194,7 +1194,7 @@ struct ResultCard: View {
                         .minimumScaleFactor(0.8)
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
                 }
-                .buttonStyle(ResultPrimaryButtonStyle())
+                .buttonStyle(PadPrimaryButtonStyle())
                 .frame(width: sideZoneWidth, height: 52)
                 .accessibilityLabel(settings.localized("Again"))
                 .disabled(!restartEnabled || restartAction == nil)
@@ -1251,7 +1251,7 @@ struct ResultCard: View {
                             .minimumScaleFactor(0.8)
                             .frame(maxWidth: .infinity, maxHeight: .infinity)
                     }
-                    .buttonStyle(ResultPrimaryButtonStyle())
+                    .buttonStyle(PadPrimaryButtonStyle())
                     .frame(height: 48)
                     .accessibilityLabel(settings.localized("Next lesson"))
                     .accessibilityHint(nextHint ?? "")
@@ -1266,7 +1266,7 @@ struct ResultCard: View {
                             .minimumScaleFactor(0.8)
                             .frame(maxWidth: .infinity, maxHeight: .infinity)
                     }
-                    .buttonStyle(ResultSecondaryButtonStyle())
+                    .buttonStyle(PadSecondaryButtonStyle(onDark: true))
                     .frame(height: 48)
                     .accessibilityLabel(settings.localized("Again"))
                     .disabled(!restartEnabled || restartAction == nil)
@@ -1281,7 +1281,7 @@ struct ResultCard: View {
                             .minimumScaleFactor(0.8)
                             .frame(maxWidth: .infinity, maxHeight: .infinity)
                     }
-                    .buttonStyle(ResultPrimaryButtonStyle())
+                    .buttonStyle(PadPrimaryButtonStyle())
                     .frame(height: 52)
                     .accessibilityLabel(settings.localized("Again"))
                     .disabled(!restartEnabled || restartAction == nil)
@@ -1319,39 +1319,6 @@ struct ResultCard: View {
         UIAccessibility.post(notification: .announcement, argument: announcement)
     }
 }
-
-struct ResultPrimaryButtonStyle: ButtonStyle {
-    func makeBody(configuration: Configuration) -> some View {
-        configuration.label
-            .foregroundStyle(Theme.black)
-            .background {
-                RoundedRectangle(cornerRadius: 12)
-                    .fill(Theme.orange)
-                    .opacity(configuration.isPressed ? 0.85 : 1.0)
-            }
-            .scaleEffect(configuration.isPressed ? 0.98 : 1.0)
-            .animation(.easeOut(duration: 0.12), value: configuration.isPressed)
-    }
-}
-
-struct ResultSecondaryButtonStyle: ButtonStyle {
-    func makeBody(configuration: Configuration) -> some View {
-        configuration.label
-            .foregroundStyle(Theme.white)
-            .background {
-                RoundedRectangle(cornerRadius: 12)
-                    .fill(configuration.isPressed ? Theme.white.opacity(0.12) : Color.clear)
-                    .overlay {
-                        RoundedRectangle(cornerRadius: 12)
-                            .strokeBorder(Theme.white.opacity(configuration.isPressed ? 0.6 : 0.35), lineWidth: 1.5)
-                    }
-            }
-            .scaleEffect(configuration.isPressed ? 0.98 : 1.0)
-            .animation(.easeOut(duration: 0.12), value: configuration.isPressed)
-    }
-}
-
-
 
 private struct RunMeterBadge: View {
     @ScaledMetric(relativeTo: .body) private var height: CGFloat = 40

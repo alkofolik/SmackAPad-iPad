@@ -65,6 +65,7 @@ private struct PadControlBody<Label: View>: View {
     let pressed: Bool
     var primary = false
     var destructive = false
+    var onDark = false
     var selected: Bool? = nil
     var showLightBar = false
     var horizontalPadding: CGFloat = 16
@@ -116,13 +117,15 @@ private struct PadControlBody<Label: View>: View {
 
     private var foregroundColor: Color {
         guard enabled else {
-            let base = destructive ? Theme.destructive : (primary ? Theme.black : Theme.ink)
+            let base = destructive ? Theme.destructive : (primary ? Theme.black : (onDark ? Theme.white : Theme.ink))
             return base.opacity(0.35)
         }
         if destructive {
             return Theme.destructive
         } else if primary {
             return Theme.black
+        } else if onDark {
+            return Theme.white
         } else {
             return Theme.ink
         }
@@ -134,6 +137,8 @@ private struct PadControlBody<Label: View>: View {
         }
         if primary {
             return Theme.orange
+        } else if onDark {
+            return Theme.white.opacity(0.10)
         } else {
             return Theme.Skin.Pad.fill
         }
@@ -141,12 +146,14 @@ private struct PadControlBody<Label: View>: View {
 
     private var borderColor: Color {
         guard enabled else {
-            return Theme.hairline.opacity(0.6)
+            return onDark ? Theme.white.opacity(0.16) : Theme.hairline.opacity(0.6)
         }
         if destructive {
             return Theme.destructiveOutline
         } else if primary {
             return Theme.black.opacity(0.18)
+        } else if onDark {
+            return Theme.white.opacity(0.28)
         } else {
             return Theme.hairline
         }
@@ -160,11 +167,14 @@ struct PadPrimaryButtonStyle: ButtonStyle {
 }
 
 struct PadSecondaryButtonStyle: ButtonStyle {
+    var onDark: Bool = false
+
     func makeBody(configuration: Configuration) -> some View {
         PadControlBody(
             label: configuration.label,
             pressed: configuration.isPressed,
-            destructive: configuration.role == .destructive
+            destructive: configuration.role == .destructive,
+            onDark: onDark
         )
     }
 }

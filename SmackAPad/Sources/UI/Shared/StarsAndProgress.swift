@@ -122,17 +122,18 @@ struct ProgressLine: View {
             let t = CGFloat(max(1, total))
             let factor = appeared || Theme.Motion.Policy(reduced: reduced).opacityOnly ? 1.0 : 0.0
             HStack(spacing: 0) {
-                Rectangle().fill(Theme.starColor(for: 3))
+                Rectangle().fill(Theme.progressSegmentColor(for: 3))
                     .frame(width: w * CGFloat(threeStars) / t * factor)
-                Rectangle().fill(Theme.starColor(for: 2))
+                Rectangle().fill(Theme.progressSegmentColor(for: 2))
                     .frame(width: w * CGFloat(twoStars) / t * factor)
-                Rectangle().fill(Theme.starColor(for: 1))
+                Rectangle().fill(Theme.progressSegmentColor(for: 1))
                     .frame(width: w * CGFloat(oneStar) / t * factor)
                 Spacer(minLength: 0)
             }
             .background(Theme.starColor(for: 0))
+            .clipShape(RoundedRectangle(cornerRadius: 2.5))
         }
-        .frame(height: Theme.Size.border).accessibilityHidden(true)
+        .frame(height: 5).accessibilityHidden(true)
         .onAppear { appeared = true }
         .motion(Theme.Motion.emphasis, value: appeared)
         .motion(Theme.Motion.emphasis, value: threeStars)

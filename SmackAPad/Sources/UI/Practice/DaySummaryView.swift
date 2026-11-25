@@ -23,51 +23,6 @@ enum DayDateFormatter {
     }
 }
 
-struct TrainingActionButtonStyle: ButtonStyle {
-    enum Variant { case primary, secondary, dark }
-
-    let variant: Variant
-    var cornerRadius: CGFloat = 14
-    @Environment(\.isEnabled) private var isEnabled
-    @Environment(\.accessibilityReduceMotion) private var reduced
-
-    func makeBody(configuration: Configuration) -> some View {
-        let policy = Theme.Motion.Policy(reduced: reduced)
-        let shape = RoundedRectangle(cornerRadius: cornerRadius)
-
-        configuration.label
-            .foregroundStyle(foreground)
-            .background {
-                shape
-                    .fill(background)
-                    .overlay {
-                        if case .secondary = variant {
-                            shape.strokeBorder(Theme.ink.opacity(0.22), lineWidth: 1.5)
-                        }
-                    }
-            }
-            .contentShape(shape)
-            .opacity(isEnabled ? (configuration.isPressed ? 0.84 : 1) : 0.42)
-            .animation(policy.animation(Theme.Motion.padFlash), value: configuration.isPressed)
-    }
-
-    private var foreground: Color {
-        switch variant {
-        case .primary: return Theme.black
-        case .secondary: return Theme.ink
-        case .dark: return Theme.white
-        }
-    }
-
-    private var background: Color {
-        switch variant {
-        case .primary: return Theme.orange
-        case .secondary: return Theme.surface
-        case .dark: return Theme.black
-        }
-    }
-}
-
 // MARK: - Day Summary View (End of Day)
 
 struct DaySummaryView: View {
@@ -328,7 +283,7 @@ struct DaySummaryView: View {
                     .frame(maxWidth: .infinity)
                     .frame(height: height)
             }
-            .buttonStyle(TrainingActionButtonStyle(variant: .secondary))
+            .buttonStyle(PadSecondaryButtonStyle())
             .disabled(!canStartExtraMix)
 
             Button {
@@ -339,7 +294,7 @@ struct DaySummaryView: View {
                     .frame(maxWidth: .infinity)
                     .frame(height: height)
             }
-            .buttonStyle(TrainingActionButtonStyle(variant: .primary))
+            .buttonStyle(PadPrimaryButtonStyle())
         }
     }
 
