@@ -1,6 +1,6 @@
 # 224 — Split `SettingsManager.swift` by area
 
-Status: open. Follow-up B4 from ticket 210 (Desloppify baseline 92.6 / 100 on 2026-11-24). Run after 221–223 or independently (no overlap with `UI/`).
+Status: done (2026-11-25, pending Jakub's iPad check). Follow-up B4 from ticket 210 (Desloppify baseline 92.6 / 100 on 2026-11-24). Run after 221–223 or independently (no overlap with `UI/`).
 
 ## Goal
 
@@ -24,10 +24,10 @@ Full test suite (`AGENTS.md` requires full suite when touching persistence). No 
 
 ## Acceptance criteria
 
-- [ ] `SettingsManager.swift` is split into focused files by area.
-- [ ] All persistence keys and behaviours remain identical.
-- [ ] App builds and full test suite passes.
-- [ ] Desloppify objective scan re-run and new score noted.
+- [x] `SettingsManager.swift` is split into focused files by area.
+- [x] All persistence keys and behaviours remain identical.
+- [x] App builds and full test suite passes.
+- [x] Desloppify objective scan re-run and new score noted: **93.9 / 100** (File health 87.9 %, Code quality 90.0 %, Duplication 98.9 %, Security 100.0 %; 49 issues).
 
 ### Manual iPad checks for Jakub
 
