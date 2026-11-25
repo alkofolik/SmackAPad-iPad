@@ -24,10 +24,10 @@ Build and run Home-related tests (`-only-testing`) if any exist. No new tests.
 
 ## Acceptance criteria
 
-- [ ] `HomeScreen.swift` sub-views are extracted into separate focused files.
-- [ ] Leaf-view observation rule (ticket 209) is preserved.
-- [ ] App builds and relevant tests pass.
-- [ ] Desloppify objective scan re-run and new score noted.
+- [x] `HomeScreen.swift` sub-views are extracted into separate focused files.
+- [x] Leaf-view observation rule (ticket 209) is preserved.
+- [x] App builds and relevant tests pass.
+- [x] Desloppify objective scan re-run and new score noted: **94.1 / 100** (File health 88.5 %, Code quality 91.8 %, Duplication 98.8 %, Security 100.0 %; 49 issues, up from 92.6 / 100).
 
 ### Manual iPad checks for Jakub
 
