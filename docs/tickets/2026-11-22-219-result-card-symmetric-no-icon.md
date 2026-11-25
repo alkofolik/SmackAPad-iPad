@@ -1,6 +1,6 @@
 # 219 — Result card: symmetric layout, no icon beside the buttons, detail via a summary row
 
-Status: open. Jakub on 2026-11-22: result card variant **E** of the mockup (design canvas "Smack-a-Pad – návrhy (kolo 22. 11.)", artboard Result) is fine in look, but without the icon next to "Next lesson" and "Again" next to the overall results, and the card must be placed **symmetrically**. Also from the earlier checklist: the result card needs a complete new design (Jakub: "udělej to nějak pěkně").
+Status: done (2026-11-25). Jakub on 2026-11-22: result card variant **E** of the mockup (design canvas "Smack-a-Pad – návrhy (kolo 22. 11.)", artboard Result) is fine in look, but without the icon next to "Next lesson" and "Again" next to the overall results, and the card must be placed **symmetrically**. Also from the earlier checklist: the result card needs a complete new design (Jakub: "udělej to nějak pěkně").
 
 ## Goal
 
@@ -24,11 +24,11 @@ Redo the layout of `ResultCard` (`SmackAPad/Sources/UI/PracticeInstruments.swift
 
 ## Acceptance criteria
 
-- [ ] Left and right padding are equal; the three zones are separated by dividers and look symmetric.
-- [ ] No icon beside "Next lesson" / "Again" or the overall-results row.
-- [ ] Tapping the summary row opens the overall results exactly as before.
-- [ ] Counted and not-counted variants, compact width and the pop-up version all use the new layout.
-- [ ] Build and tests pass (existing `EndOfRunCardModel` tests unchanged).
+- [x] Left and right padding are equal; the three zones are separated by dividers and look symmetric.
+- [x] No icon beside "Next lesson" / "Again" or the overall-results row.
+- [x] Tapping the summary row opens the overall results exactly as before.
+- [x] Counted and not-counted variants, compact width and the pop-up version all use the new layout.
+- [x] Build and tests pass (existing `EndOfRunCardModel` tests unchanged).
 
 ### Manual iPad checks for Jakub
 

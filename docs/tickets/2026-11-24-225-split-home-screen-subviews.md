@@ -1,6 +1,6 @@
 # 225 — Split `HomeScreen.swift` into sub-views
 
-Status: open. Follow-up B5 from ticket 210 (Desloppify baseline 92.6 / 100 on 2026-11-24). Recommended after 223 (`UI/` subfolders) so new files land directly in `UI/Home/`.
+Status: done (2026-11-25, pending Jakub's iPad check). Follow-up B5 from ticket 210 (Desloppify baseline 92.6 / 100 on 2026-11-24). Recommended after 223 (`UI/` subfolders) so new files land directly in `UI/Home/`.
 
 ## Goal
 
