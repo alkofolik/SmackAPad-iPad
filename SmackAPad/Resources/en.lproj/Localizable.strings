@@ -3651,3 +3651,9 @@
 "Finish one full pass to see your score" = "Finish one full pass to see your score";
 "Continue · %@" = "Continue · %@";
 "Finish training" = "Finish training";
+
+/* Ticket 234: Smart coach weak-bar drill and tempo step-down. */
+"Drill bar %lld" = "Drill bar %lld";
+"Slow to %lld BPM" = "Slow to %lld BPM";
+"Bar %lld nailed!" = "Bar %lld nailed!";
+"Play full lesson" = "Play full lesson";

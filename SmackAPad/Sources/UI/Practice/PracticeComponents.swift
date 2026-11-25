@@ -827,6 +827,7 @@ struct RunSummary: Identifiable {
     var totalBars: Int = 0
     var cleanBars: Int = 0
     var weakestBar: Int? = nil
+    var errorsByBar: [Int: Int] = [:]
 }
 
 struct StarShape: Shape {

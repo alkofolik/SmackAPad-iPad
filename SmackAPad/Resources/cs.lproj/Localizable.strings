@@ -3656,3 +3656,9 @@
 "Finish one full pass to see your score" = "Dohraj celý průchod pro vyhodnocení";
 "Continue · %@" = "Pokračovat · %@";
 "Finish training" = "Dokončit trénink";
+
+/* Ticket 234: Smart coach weak-bar drill and tempo step-down. */
+"Drill bar %lld" = "Procvičit takt %lld";
+"Slow to %lld BPM" = "Zpomalit na %lld BPM";
+"Bar %lld nailed!" = "Takt %lld zvládnutý!";
+"Play full lesson" = "Zpět na celou lekci";

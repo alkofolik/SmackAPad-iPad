@@ -329,6 +329,9 @@ struct PracticeScreen: View {
                     headerLayout {
                         libraryButton
                         titleAndSubtitle
+                        if session.activeCoachDrill != nil {
+                            exitCoachDrillButton
+                        }
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .zIndex(1)
@@ -344,6 +347,9 @@ struct PracticeScreen: View {
                 HStack(alignment: .center, spacing: 20) {
                     libraryButton
                     titleAndSubtitle
+                    if session.activeCoachDrill != nil {
+                        exitCoachDrillButton
+                    }
                     trailingToolbar {
                         HStack(spacing: 20) {
                             toolbarTools(width: width, screenHeight: screenHeight)
@@ -400,6 +406,31 @@ struct PracticeScreen: View {
             if let dismissLesson { dismissLesson() } else { dismiss() }
         }
         .practiceToolbarHint(settings.localized("Back"))
+    }
+
+    private var exitCoachDrillButton: some View {
+        Button {
+            dismissDebugResult()
+            session.exitCoachDrill()
+        } label: {
+            HStack(spacing: 6) {
+                Image(systemName: "arrow.uturn.backward")
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundStyle(Theme.orange)
+                Text(settings.localized("Full lesson"))
+                    .font(Theme.control)
+                    .foregroundStyle(Theme.ink)
+                    .lineLimit(1)
+            }
+            .padding(.horizontal, 14)
+            .frame(minHeight: 40)
+            .background(Theme.surface, in: Capsule())
+            .overlay { Capsule().strokeBorder(Theme.hairline, lineWidth: 1) }
+            .contentShape(Capsule())
+        }
+        .buttonStyle(.plain)
+        .fixedSize()
+        .accessibilityLabel(settings.localized("Full lesson"))
     }
 
     private var titleAndSubtitle: some View {
@@ -1050,6 +1081,18 @@ struct PracticeScreen: View {
                 session.restart()
             },
             restartEnabled: session.ready && session.available,
+            coachSuggestion: session.coachSuggestion,
+            coachAction: { suggestion in
+                dismissDebugResult()
+                showingInfo = false
+                session.startCoachSuggestion(suggestion)
+            },
+            completedCoachDrillBarIndex: session.completedCoachDrillBar,
+            finishCoachDrillAction: {
+                dismissDebugResult()
+                showingInfo = false
+                session.finishCoachDrillAndRestart()
+            },
             openRules: {
                 showingDetails = false
                 showingTempo = false
@@ -1466,6 +1509,9 @@ struct PracticeScreen: View {
 
     private var resultAnnouncement: String {
         var parts: [String] = []
+        if let completedBar = session.completedCoachDrillBar {
+            parts.append(settings.localized("Bar %lld nailed!", completedBar + 1))
+        }
         if let reviewMessage = session.reviewFeedback?.message(language: settings.languagePreference) {
             parts.append(reviewMessage)
         }

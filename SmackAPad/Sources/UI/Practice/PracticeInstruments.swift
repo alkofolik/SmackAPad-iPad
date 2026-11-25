@@ -701,7 +701,8 @@ struct EndOfRunCardModel: Equatable {
         language: AppLanguage,
         isDueReview: Bool = false,
         reviewPendingReason: PracticeStepOutcome.Reason? = nil,
-        reviewSuccesses: Int? = nil
+        reviewSuccesses: Int? = nil,
+        completedCoachDrillBarIndex: Int? = nil
     ) -> EndOfRunCardModel {
         let scorePercent = Int((summary.score * 100).rounded())
         let earnedStars = [saved?.passed == true, saved?.mastery == true, saved?.memory == true]
@@ -736,6 +737,13 @@ struct EndOfRunCardModel: Equatable {
                 icon: summary.score >= Scoring.passMark ? "checkmark" : "repeat",
                 tintOrange: summary.score >= Scoring.passMark,
                 title: language.localized("Practice only · no stars")
+            )
+            progressDetail = nil
+        } else if let completedBarIndex = completedCoachDrillBarIndex {
+            status = EndOfRunStatus(
+                icon: "checkmark.circle.fill",
+                tintOrange: true,
+                title: language.localized("Bar %lld nailed!", completedBarIndex + 1)
             )
             progressDetail = nil
         } else if isSectionLoop {
@@ -777,7 +785,7 @@ struct EndOfRunCardModel: Equatable {
 
         let growthLine: String?
         let growthLineHighlighted: Bool
-        if summary.passes > 0, !isAfterMe, reviewPendingReason != .peeked {
+        if summary.passes > 0, !isAfterMe, reviewPendingReason != .peeked, completedCoachDrillBarIndex == nil {
             let previousPercent = summary.previousBestScore.map { Int(($0 * 100).rounded()) }
             let isClean = summary.isCleanRun || (summary.totalBars > 0 && summary.cleanBars == summary.totalBars)
             if let previousPercent, scorePercent - previousPercent >= 1 {
@@ -858,6 +866,8 @@ struct EndOfRunCardModel: Equatable {
             } else {
                 reviewLine = nil
             }
+        } else if completedCoachDrillBarIndex != nil {
+            reviewLine = nil
         } else if isSectionLoop {
             reviewLine = EndOfRunLine(
                 kind: .review,
@@ -905,7 +915,7 @@ struct EndOfRunCardModel: Equatable {
         return EndOfRunCardModel(
             scorePercent: scorePercent,
             bpm: summary.bpm,
-            showsStars: !isAfterMe,
+            showsStars: !isAfterMe && completedCoachDrillBarIndex == nil,
             earnedStars: earnedStars,
             status: status,
             progressDetail: progressDetail,
@@ -986,6 +996,10 @@ struct ResultCard: View {
     var nextHint: String? = nil
     var restartAction: (() -> Void)? = nil
     var restartEnabled: Bool = true
+    var coachSuggestion: CoachSuggestion? = nil
+    var coachAction: ((CoachSuggestion) -> Void)? = nil
+    var completedCoachDrillBarIndex: Int? = nil
+    var finishCoachDrillAction: (() -> Void)? = nil
     let openRules: () -> Void
     let openSessionResults: () -> Void
     var starRulesAttachment: AnyView? = nil
@@ -1006,7 +1020,8 @@ struct ResultCard: View {
             language: settings.languagePreference,
             isDueReview: isDueReview,
             reviewPendingReason: reviewPendingReason,
-            reviewSuccesses: reviewSuccesses
+            reviewSuccesses: reviewSuccesses,
+            completedCoachDrillBarIndex: completedCoachDrillBarIndex
         )
     }
 
@@ -1033,6 +1048,23 @@ struct ResultCard: View {
 
     private var showNext: Bool {
         model.progressDetail == nil && nextEnabled && nextAction != nil
+    }
+
+    private var showFinishCoachDrill: Bool {
+        completedCoachDrillBarIndex != nil && finishCoachDrillAction != nil
+    }
+
+    private var showCoachSuggestion: Bool {
+        !showFinishCoachDrill && !showNext && coachSuggestion != nil && coachAction != nil
+    }
+
+    private func coachSuggestionLabel(_ suggestion: CoachSuggestion) -> String {
+        switch suggestion {
+        case let .drillBar(barIndex, _):
+            return settings.localized("Drill bar %lld", barIndex + 1)
+        case let .slowDown(targetBpm):
+            return settings.localized("Slow to %lld BPM", targetBpm)
+        }
     }
 
     private var primaryNextLabel: String {
@@ -1163,7 +1195,7 @@ struct ResultCard: View {
             } else {
                 Image(systemName: model.status.icon)
                     .font(.system(size: 36, weight: .regular))
-                    .foregroundStyle(Theme.white.opacity(0.85))
+                    .foregroundStyle(model.status.tintOrange ? Theme.orange : Theme.white.opacity(0.85))
                     .frame(height: 52)
                     .accessibilityHidden(true)
             }
@@ -1234,7 +1266,40 @@ struct ResultCard: View {
 
     private var buttonsColumn: some View {
         VStack(spacing: 10) {
-            if showNext {
+            if showFinishCoachDrill {
+                let label = settings.localized("Play full lesson")
+                Button {
+                    finishCoachDrillAction?()
+                } label: {
+                    Text(label)
+                        .font(Theme.action)
+                        .lineLimit(2)
+                        .minimumScaleFactor(0.72)
+                        .multilineTextAlignment(.center)
+                        .padding(.horizontal, 8)
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                }
+                .buttonStyle(PadPrimaryButtonStyle())
+                .frame(width: sideZoneWidth, height: 48)
+                .accessibilityLabel(label)
+                .disabled(!restartEnabled || finishCoachDrillAction == nil)
+                .opacity(restartEnabled ? 1 : 0.5)
+
+                Button {
+                    restartAction?()
+                } label: {
+                    Text(settings.localized("Again"))
+                        .font(Theme.action)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.8)
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                }
+                .buttonStyle(PadSecondaryButtonStyle(onDark: true))
+                .frame(width: sideZoneWidth, height: 48)
+                .accessibilityLabel(settings.localized("Again"))
+                .disabled(!restartEnabled || restartAction == nil)
+                .opacity(restartEnabled ? 1 : 0.5)
+            } else if showNext {
                 Button {
                     nextAction?()
                 } label: {
@@ -1251,6 +1316,39 @@ struct ResultCard: View {
                 .accessibilityLabel(primaryNextLabel)
                 .accessibilityHint(nextHint ?? "")
                 .disabled(!nextEnabled || nextAction == nil)
+
+                Button {
+                    restartAction?()
+                } label: {
+                    Text(settings.localized("Again"))
+                        .font(Theme.action)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.8)
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                }
+                .buttonStyle(PadSecondaryButtonStyle(onDark: true))
+                .frame(width: sideZoneWidth, height: 48)
+                .accessibilityLabel(settings.localized("Again"))
+                .disabled(!restartEnabled || restartAction == nil)
+                .opacity(restartEnabled ? 1 : 0.5)
+            } else if showCoachSuggestion, let suggestion = coachSuggestion {
+                let label = coachSuggestionLabel(suggestion)
+                Button {
+                    coachAction?(suggestion)
+                } label: {
+                    Text(label)
+                        .font(Theme.action)
+                        .lineLimit(2)
+                        .minimumScaleFactor(0.72)
+                        .multilineTextAlignment(.center)
+                        .padding(.horizontal, 8)
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                }
+                .buttonStyle(PadPrimaryButtonStyle())
+                .frame(width: sideZoneWidth, height: 48)
+                .accessibilityLabel(label)
+                .disabled(!restartEnabled || coachAction == nil)
+                .opacity(restartEnabled ? 1 : 0.5)
 
                 Button {
                     restartAction?()
@@ -1295,6 +1393,12 @@ struct ResultCard: View {
                     progressIcon
                 } else if model.showsStars {
                     starsRow
+                } else if model.status.tintOrange {
+                    Image(systemName: model.status.icon)
+                        .font(.system(size: 30, weight: .regular))
+                        .foregroundStyle(Theme.orange)
+                        .frame(height: 44)
+                        .accessibilityHidden(true)
                 }
             }
 
@@ -1334,7 +1438,40 @@ struct ResultCard: View {
             .frame(maxWidth: .infinity, alignment: .center)
 
             HStack(spacing: Theme.Space.controlGap) {
-                if showNext {
+                if showFinishCoachDrill {
+                    let label = settings.localized("Play full lesson")
+                    Button {
+                        finishCoachDrillAction?()
+                    } label: {
+                        Text(label)
+                            .font(Theme.action)
+                            .lineLimit(2)
+                            .minimumScaleFactor(0.72)
+                            .multilineTextAlignment(.center)
+                            .padding(.horizontal, 8)
+                            .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    }
+                    .buttonStyle(PadPrimaryButtonStyle())
+                    .frame(height: 48)
+                    .accessibilityLabel(label)
+                    .disabled(!restartEnabled || finishCoachDrillAction == nil)
+                    .opacity(restartEnabled ? 1 : 0.5)
+
+                    Button {
+                        restartAction?()
+                    } label: {
+                        Text(settings.localized("Again"))
+                            .font(Theme.action)
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.8)
+                            .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    }
+                    .buttonStyle(PadSecondaryButtonStyle(onDark: true))
+                    .frame(height: 48)
+                    .accessibilityLabel(settings.localized("Again"))
+                    .disabled(!restartEnabled || restartAction == nil)
+                    .opacity(restartEnabled ? 1 : 0.5)
+                } else if showNext {
                     Button {
                         nextAction?()
                     } label: {
@@ -1351,6 +1488,39 @@ struct ResultCard: View {
                     .accessibilityLabel(primaryNextLabel)
                     .accessibilityHint(nextHint ?? "")
                     .disabled(!nextEnabled || nextAction == nil)
+
+                    Button {
+                        restartAction?()
+                    } label: {
+                        Text(settings.localized("Again"))
+                            .font(Theme.action)
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.8)
+                            .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    }
+                    .buttonStyle(PadSecondaryButtonStyle(onDark: true))
+                    .frame(height: 48)
+                    .accessibilityLabel(settings.localized("Again"))
+                    .disabled(!restartEnabled || restartAction == nil)
+                    .opacity(restartEnabled ? 1 : 0.5)
+                } else if showCoachSuggestion, let suggestion = coachSuggestion {
+                    let label = coachSuggestionLabel(suggestion)
+                    Button {
+                        coachAction?(suggestion)
+                    } label: {
+                        Text(label)
+                            .font(Theme.action)
+                            .lineLimit(2)
+                            .minimumScaleFactor(0.72)
+                            .multilineTextAlignment(.center)
+                            .padding(.horizontal, 8)
+                            .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    }
+                    .buttonStyle(PadPrimaryButtonStyle())
+                    .frame(height: 48)
+                    .accessibilityLabel(label)
+                    .disabled(!restartEnabled || coachAction == nil)
+                    .opacity(restartEnabled ? 1 : 0.5)
 
                     Button {
                         restartAction?()
