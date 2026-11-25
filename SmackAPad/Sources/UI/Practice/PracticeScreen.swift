@@ -169,11 +169,15 @@ struct PracticeScreen: View {
             let isPortrait = geometry.size.height > geometry.size.width
             let portraitPads = isPortrait && touchPadsInPortrait && midi.padIndices?.count == 16
             let availableWidth = max(0, geometry.size.width - 2 * Theme.Space.page)
-            let defaultS: CGFloat = 2 * Theme.Size.control + Theme.Space.small
+            let minimumPadDeck = 4 * 38 + 3 * Theme.Space.tight + 32
+            let defaultS = showPads && padLayoutModel.pads.count == 16
+                ? minimumPadDeck : 2 * Theme.Size.control + Theme.Space.small
             let deckTarget: CGFloat = portraitPads
                 ? defaultS
                 : min(212, max(defaultS, geometry.size.height * 0.25))
-            let s = min(deckTarget, max(44, (availableWidth - 2 * Theme.Space.small - 64) / 3))
+            let deckWidthLimit = (availableWidth - 2 * Theme.Space.small - 64) / 3
+            let padDeckFloor = showPads && padLayoutModel.pads.count == 16 ? minimumPadDeck : 44
+            let s = min(deckTarget, max(padDeckFloor, deckWidthLimit))
 
             VStack(spacing: Theme.Space.regular) {
                 topZone(isPortrait: isPortrait, width: geometry.size.width, screenHeight: geometry.size.height)
@@ -196,7 +200,7 @@ struct PracticeScreen: View {
             }
             .padding(Theme.Space.page)
             .frame(width: geometry.size.width, height: geometry.size.height)
-            .calmChassisBackground()
+            .background(PracticeHardware.chassis.ignoresSafeArea())
             .foregroundStyle(Theme.ink)
             .overlay {
                 if session.isMix && isShowingResult, let summary = activeSummary {
@@ -206,6 +210,7 @@ struct PracticeScreen: View {
             }
             .animation(reduced ? .easeOut(duration: 0.2) : .easeOut(duration: 0.22), value: session.isMix && isShowingResult)
         }
+        .environment(\.colorScheme, .dark)
         #if DEBUG
         .debugTestMarker()
         #endif
@@ -977,10 +982,6 @@ struct PracticeScreen: View {
                      playedHits: session.playedHits, pass: frame.pass,
                      scoring: scored,
                      missGraceSteps: frame.missGraceSteps, countdown: frame.countdown,
-                     band: BandTone.color(listen: session.listen,
-                                          memory: session.fromMemory && !session.listen && !session.afterMe,
-                                          bpm: session.bpm, startBpm: session.lesson.startBpm,
-                                          targetBpm: session.lesson.targetBpm),
                      runBars: session.repeatsPerRun * session.practiceLesson.bars,
                      starMomentBeamActive: midLessonStarMomentActive)
             .frame(maxWidth: .infinity)
@@ -1031,27 +1032,10 @@ struct PracticeScreen: View {
                 .frame(width: deckInnerHeight, height: deckInnerHeight)
                 .background {
                     RoundedRectangle(cornerRadius: Theme.Radius.panel, style: .continuous)
-                        .fill(
-                            LinearGradient(
-                                colors: [
-                                    Color(red: 0.05, green: 0.045, blue: 0.04),
-                                    Color(red: 0.08, green: 0.075, blue: 0.068)
-                                ],
-                                startPoint: .top,
-                                endPoint: .bottom
-                            )
-                            .shadow(.inner(color: Theme.black.opacity(0.92), radius: 5, y: 3))
-                        )
+                        .fill(PracticeHardware.chassis)
                         .overlay {
                             RoundedRectangle(cornerRadius: Theme.Radius.panel, style: .continuous)
-                                .strokeBorder(
-                                    LinearGradient(
-                                        colors: [Theme.black.opacity(0.85), Theme.white.opacity(0.08)],
-                                        startPoint: .top,
-                                        endPoint: .bottom
-                                    ),
-                                    lineWidth: 1.25
-                                )
+                                .strokeBorder(PracticeHardware.border, lineWidth: 1)
                         }
                 }
 
@@ -1076,20 +1060,10 @@ struct PracticeScreen: View {
                 .frame(width: transportWidth, height: deckInnerHeight)
                 .background {
                     RoundedRectangle(cornerRadius: Theme.Radius.panel, style: .continuous)
-                        .fill(
-                            Color(red: 0.06, green: 0.055, blue: 0.05)
-                                .shadow(.inner(color: Theme.black.opacity(0.88), radius: 4, y: 2))
-                        )
+                        .fill(PracticeHardware.chassis)
                         .overlay {
                             RoundedRectangle(cornerRadius: Theme.Radius.panel, style: .continuous)
-                                .strokeBorder(
-                                    LinearGradient(
-                                        colors: [Theme.black.opacity(0.8), Theme.white.opacity(0.08)],
-                                        startPoint: .top,
-                                        endPoint: .bottom
-                                    ),
-                                    lineWidth: 1.25
-                                )
+                                .strokeBorder(PracticeHardware.border, lineWidth: 1)
                         }
                 }
         }
@@ -1098,26 +1072,10 @@ struct PracticeScreen: View {
         .frame(height: s)
         .background {
             RoundedRectangle(cornerRadius: Theme.Radius.panel + 4, style: .continuous)
-                .fill(
-                    LinearGradient(
-                        colors: [
-                            Color(red: 0.135, green: 0.125, blue: 0.112),
-                            Color(red: 0.085, green: 0.078, blue: 0.070)
-                        ],
-                        startPoint: .top,
-                        endPoint: .bottom
-                    )
-                )
+                .fill(PracticeHardware.panel)
                 .overlay {
                     RoundedRectangle(cornerRadius: Theme.Radius.panel + 4, style: .continuous)
-                        .strokeBorder(
-                            LinearGradient(
-                                colors: [Theme.white.opacity(0.14), Theme.black.opacity(0.75)],
-                                startPoint: .top,
-                                endPoint: .bottom
-                            ),
-                            lineWidth: 1.5
-                        )
+                        .strokeBorder(PracticeHardware.border, lineWidth: 1)
                 }
         }
         .shadow(color: Theme.black.opacity(0.32), radius: 10, y: 5)
@@ -1561,7 +1519,6 @@ struct PracticeScreen: View {
             showsResult: false,
             squareSize: s,
             buttonWidth: width,
-            onDark: true,
             start: {
                 dismissDebugResult()
                 showingInfo = false
@@ -1883,35 +1840,6 @@ struct PracticeScreen: View {
                                 .font(Theme.control)
                                 .foregroundStyle(Theme.ink)
                         }
-                    }
-                }
-
-                popoverBlock(title: "Band colour") {
-                    VStack(alignment: .leading, spacing: Theme.Space.small) {
-                        HStack(spacing: Theme.Space.small) {
-                            let modes: [(String, Color)] = [
-                                ("Listen", BandTone.color(listen: true, memory: false, bpm: 0, startBpm: 0, targetBpm: 1)),
-                                ("Play", BandTone.color(listen: false, memory: false, bpm: 1, startBpm: 0, targetBpm: 2)),
-                                ("From memory", BandTone.color(listen: false, memory: true, bpm: 1, startBpm: 0, targetBpm: 1))
-                            ]
-                            ForEach(modes, id: \.0) { name, color in
-                                VStack(alignment: .leading, spacing: 4) {
-                                    RoundedRectangle(cornerRadius: 6)
-                                        .fill(color)
-                                        .frame(height: 32)
-                                    Text(settings.localized(name))
-                                        .font(Theme.meta)
-                                        .foregroundStyle(Theme.ink)
-                                        .lineLimit(1)
-                                        .minimumScaleFactor(0.8)
-                                }
-                                .frame(maxWidth: .infinity, alignment: .leading)
-                            }
-                        }
-                        Text(settings.localized("Deeper colour = closer to the goal tempo."))
-                            .font(Theme.meta)
-                            .foregroundStyle(Theme.secondary)
-                            .fixedSize(horizontal: false, vertical: true)
                     }
                 }
 
@@ -2269,10 +2197,10 @@ private struct ToolbarTrayModifier: ViewModifier {
     func body(content: Content) -> some View {
         content
             .padding(4)
-            .background(Theme.surface, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+            .background(PracticeHardware.panel, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
             .overlay(
                 RoundedRectangle(cornerRadius: 12, style: .continuous)
-                    .strokeBorder(Theme.hairline, lineWidth: 1)
+                    .strokeBorder(PracticeHardware.border, lineWidth: 1)
             )
             .fixedSize(horizontal: true, vertical: false)
     }

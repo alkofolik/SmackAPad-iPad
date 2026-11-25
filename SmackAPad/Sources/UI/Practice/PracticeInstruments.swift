@@ -1,12 +1,60 @@
 import SwiftUI
 import UIKit
 
+enum PracticeHardware {
+    static let chassis = color(0x0C0C0E)
+    static let panel = color(0x141417)
+    static let border = color(0x26262B)
+    static let orange = color(0xFF6B00)
+    static let displayBottom = color(0xE04E00)
+    static let playheadGlow = color(0xFF9E44)
+    static let strikeGlow = color(0xFFD1A6)
+    static let padFill = color(0x1E1E24)
+    static let padBorder = color(0x34343D)
+    static let padFadeDuration: TimeInterval = 0.18
+
+    static func color(_ hex: UInt32) -> Color {
+        Color(red: Double((hex >> 16) & 0xFF) / 255,
+              green: Double((hex >> 8) & 0xFF) / 255,
+              blue: Double(hex & 0xFF) / 255)
+    }
+}
+
+struct PracticeTransportPadStyle: ButtonStyle {
+    let primary: Bool
+
+    func makeBody(configuration: Configuration) -> some View {
+        let shape = RoundedRectangle(cornerRadius: 8, style: .continuous)
+        let top = primary ? PracticeHardware.color(0xFF9447) : PracticeHardware.padBorder
+        let edge = primary ? PracticeHardware.displayBottom : PracticeHardware.padBorder
+
+        configuration.label
+            .foregroundStyle(.white)
+            .background {
+                shape
+                    .fill(primary ? PracticeHardware.orange : PracticeHardware.padFill)
+                    .shadow(color: PracticeHardware.orange.opacity(primary && !configuration.isPressed ? 0.55 : 0),
+                            radius: 10, y: 2)
+            }
+            .overlay {
+                shape.fill(.black.opacity(configuration.isPressed ? 0.22 : 0))
+            }
+            .overlay {
+                shape.strokeBorder(
+                    LinearGradient(colors: [top, edge], startPoint: .top, endPoint: .bottom),
+                    lineWidth: 1.5
+                )
+            }
+            .contentShape(shape)
+    }
+}
+
 /// Measurements and colours from the approved Cut Tape B source.
 /// Kept local to practice so the library and settings retain their own styling.
 enum PracticeBandStyle {
     static let showPadLabels = true
     static let rowGap: CGFloat = 8
-    static let orange = Color(red: 1, green: 120.0 / 255, blue: 0)
+    static let orange = PracticeHardware.orange
 
     static let minRowHeight: CGFloat = 36
     static let maxRowHeight: CGFloat = 74
@@ -381,38 +429,10 @@ struct TempoTile<CueContent: View>: View {
         .frame(maxWidth: expanded ? .infinity : side, minHeight: side, maxHeight: side)
         .background {
             RoundedRectangle(cornerRadius: Theme.Radius.panel, style: .continuous)
-                .fill(
-                    LinearGradient(
-                        colors: [
-                            Color(red: 0.055, green: 0.05, blue: 0.045),
-                            Color(red: 0.085, green: 0.078, blue: 0.07)
-                        ],
-                        startPoint: .top,
-                        endPoint: .bottom
-                    )
-                    .shadow(.inner(color: Theme.black.opacity(0.92), radius: 6, y: 3))
-                )
+                .fill(PracticeHardware.panel.shadow(.inner(color: .black.opacity(0.8), radius: 6, y: 3)))
                 .overlay {
                     RoundedRectangle(cornerRadius: Theme.Radius.panel, style: .continuous)
-                        .fill(
-                            LinearGradient(
-                                colors: [Theme.white.opacity(0.05), .clear],
-                                startPoint: .top,
-                                endPoint: .center
-                            )
-                        )
-                        .allowsHitTesting(false)
-                }
-                .overlay {
-                    RoundedRectangle(cornerRadius: Theme.Radius.panel, style: .continuous)
-                        .strokeBorder(
-                            LinearGradient(
-                                colors: [Theme.black.opacity(0.85), Theme.white.opacity(0.09)],
-                                startPoint: .top,
-                                endPoint: .bottom
-                            ),
-                            lineWidth: 1.25
-                        )
+                        .strokeBorder(PracticeHardware.border, lineWidth: 1)
                 }
         }
         .contentShape(RoundedRectangle(cornerRadius: Theme.Radius.panel))

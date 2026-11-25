@@ -70,13 +70,14 @@ struct PadFlash: Equatable {
 /// When no flash is fading, updates cease so the 60 Hz timeline pauses.
 struct PadFlashSchedule: TimelineSchedule {
     let flashes: [Int: PadFlash]
+    var duration = PadFlash.padFadeDuration
     private static let frameInterval: TimeInterval = 1.0 / 60.0
 
     func entries(from startDate: Date, mode: TimelineScheduleMode) -> [Date] {
         guard let latest = flashes.values.map(\.date).max() else {
             return [startDate]
         }
-        let finish = latest.addingTimeInterval(PadFlash.padFadeDuration)
+        let finish = latest.addingTimeInterval(duration)
         guard finish > startDate else {
             return [startDate]
         }
@@ -651,7 +652,6 @@ struct TransportControls: View {
     var nextAction: (() -> Void)? = nil
     var squareSize: CGFloat
     var buttonWidth: CGFloat? = nil
-    var onDark: Bool = false
     var resultSize: CGSize? = nil
     var horizontalResultButtons: Bool = false
     let start: () -> Void
@@ -727,9 +727,9 @@ struct TransportControls: View {
         return VStack(spacing: Theme.Space.controlGap) {
             Button(action: running ? stop : start) {
                 HStack(spacing: Theme.Space.small) {
-                    if running {
-                        Rectangle().frame(width: 14, height: 14).transition(.opacity)
-                    }
+                    Image(systemName: running ? "stop.fill" : "play.fill")
+                        .font(.system(size: 14, weight: .semibold))
+                        .accessibilityHidden(true)
                     Text(settings.localized(running ? "Stop" : "Start"))
                         .font(Theme.action)
                         .lineLimit(1)
@@ -739,7 +739,7 @@ struct TransportControls: View {
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
-            .buttonStyle(PadPrimaryButtonStyle())
+            .buttonStyle(PracticeTransportPadStyle(primary: true))
             .frame(width: resolvedWidth, height: buttonHeight)
             .disabled(!running && !enabled)
             .opacity(running || enabled ? 1 : 0.5)
@@ -752,7 +752,7 @@ struct TransportControls: View {
                         .minimumScaleFactor(0.8)
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
                 }
-                .buttonStyle(PadSecondaryButtonStyle(onDark: onDark))
+                .buttonStyle(PracticeTransportPadStyle(primary: false))
                 .frame(width: resolvedWidth, height: buttonHeight)
                 .disabled(!enabled)
                 .opacity(enabled ? 1 : 0.5)
@@ -767,7 +767,7 @@ struct TransportControls: View {
                     }
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
                 }
-                .buttonStyle(PadSecondaryButtonStyle(onDark: onDark))
+                .buttonStyle(PracticeTransportPadStyle(primary: false))
                 .frame(width: resolvedWidth, height: buttonHeight)
                 .disabled(!enabled)
                 .opacity(enabled ? 1 : 0.5)
@@ -1270,7 +1270,7 @@ struct PadLayoutGrid: View {
         if let externalNow {
             gridContent(now: externalNow)
         } else {
-            TimelineView(PadFlashSchedule(flashes: flashes)) { timeline in
+            TimelineView(PadFlashSchedule(flashes: flashes, duration: PracticeHardware.padFadeDuration)) { timeline in
                 gridContent(now: timeline.date)
             }
         }
@@ -1305,11 +1305,12 @@ struct PadLayoutGrid: View {
     }
 
     private func cell(_ cellData: PadLayoutCellData, cellSize: CGFloat?, now: Date) -> some View {
-        let flash = flashes[cellData.pad]
-        let strength = flash?.padStrength(at: now, reduceMotion: reduced) ?? 0
+        let age = flashes[cellData.pad].map { max(0, now.timeIntervalSince($0.date)) } ?? .infinity
+        let fade = PracticeHardware.padFadeDuration
+        let strength = age < fade ? (reduced ? 1 : 1 - age / fade) : 0
         let isUsed = cellData.isUsed
-        let flashColor = flash?.color ?? Theme.orange
-        let tint = flashColor.opacity(strength)
+        let outline = isUsed ? PracticeHardware.orange : PracticeHardware.padBorder
+        let shape = RoundedRectangle(cornerRadius: 6)
 
         let fontWithoutKeys: Font = {
             if let cellSize {
@@ -1323,15 +1324,6 @@ struct PadLayoutGrid: View {
             }
             return Theme.text(12)
         }()
-
-        let textStyle: Color = {
-            if strength > 0.35 { return Theme.white }
-            if isUsed { return Theme.ink }
-            return Theme.ink.opacity(0.75)
-        }()
-        let cellRadius: CGFloat = 4
-        let outlineColor: Color = isUsed ? Theme.ink : Theme.hairline
-        let outlineWidth: CGFloat = isUsed ? Theme.Size.border : 1.0
 
         return ZStack {
             Text(cellData.abbreviation)
@@ -1349,32 +1341,20 @@ struct PadLayoutGrid: View {
         .animation(motion.animation(Theme.Motion.fast), value: showKeyboardKeys)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .frame(width: cellSize, height: cellSize)
-        .foregroundStyle(textStyle)
+        .foregroundStyle(Color.white.opacity(isUsed || strength > 0 ? 1 : 0.48))
         .background {
-            cellBackground(cellRadius: cellRadius, tint: tint, outlineColor: outlineColor, outlineWidth: outlineWidth)
+            shape
+                .fill(PracticeHardware.padFill)
+                .overlay { shape.strokeBorder(outline, lineWidth: isUsed ? 2 : 1) }
+                .overlay {
+                    shape
+                        .fill(PracticeHardware.orange.opacity(strength))
+                        .shadow(color: .orange.opacity(0.7 * strength), radius: 8)
+                }
         }
         .accessibilityLabel(showKeyboardKeys ? cellData.accessibilityWithKey : cellData.accessibilityBase)
     }
 
-    private func cellBackground(cellRadius: CGFloat, tint: Color, outlineColor: Color, outlineWidth: CGFloat) -> some View {
-        RoundedRectangle(cornerRadius: cellRadius)
-            .fill(Theme.Skin.Pad.fill)
-            .overlay {
-                SkinBevel(radius: cellRadius,
-                          highlight: Theme.Skin.Pad.highlight,
-                          shade: Theme.Skin.Pad.shade,
-                          top: 1, bottom: 1)
-            }
-            .overlay {
-                RoundedRectangle(cornerRadius: cellRadius)
-                    .fill(tint)
-            }
-            .overlay {
-                RoundedRectangle(cornerRadius: cellRadius)
-                    .strokeBorder(outlineColor, lineWidth: outlineWidth)
-            }
-            .shadow(color: Theme.black.opacity(0.06), radius: 1, y: 1)
-    }
 }
 
 /// The square in the bottom-left of the practice screen showing the controller layout.
@@ -1438,7 +1418,7 @@ struct PracticePadLayoutSquare: View {
 
         let totalSteps = max(1, session.practiceLesson.bars * 16)
         let stepsPerSecond = Double(max(1, frame.bpm)) / 15.0
-        let fadeSteps = PadFlash.padFadeDuration * stepsPerSecond
+        let fadeSteps = PracticeHardware.padFadeDuration * stepsPerSecond
         let canWrap = !session.afterMe && frame.tapePosition >= Double(totalSteps)
 
         for hit in session.patternHits {
