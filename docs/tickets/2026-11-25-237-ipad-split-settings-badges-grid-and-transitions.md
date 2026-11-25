@@ -44,7 +44,7 @@ Walk through every screen from Home (Today → Practice → Day Summary, Library
 
 ## Agent assignment
 
-Gemini 4 Carbon (or Codex GPT-6.1 Sol), thinking **medium**.
+Gemini Flash, thinking **medium** (standard SwiftUI two-column split, `LazyVGrid` replacement, and reuse of existing `calmChassisBackground` / `padPresentation` modifiers). Fallback: Codex Sol, medium. Run last (runs final full test suite).
 
 ## Done rule
 

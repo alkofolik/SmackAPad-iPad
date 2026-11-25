@@ -45,7 +45,7 @@ Check Home (must look identical to before), then open Library, Training, Practic
 
 ## Agent assignment
 
-Gemini 4 Carbon (or Codex GPT-6.1 Sol), thinking **medium**.
+Gemini Flash, thinking **low** (mechanical token, button-style, and `ProgressLine` update; all values and call sites are explicitly specified). Fallback: Codex Sol, low. Run first before 231–237.
 
 ## Done rule
 

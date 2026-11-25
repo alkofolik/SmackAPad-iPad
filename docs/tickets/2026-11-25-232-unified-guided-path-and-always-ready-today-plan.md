@@ -48,7 +48,7 @@ Test with Debug scenario "Fresh install" and "Active learner": check Home `Today
 
 ## Agent assignment
 
-Gemini 4 Carbon (or Codex GPT-6.1 Sol), thinking **high**.
+Gemini Pro, thinking **medium** (touches core progression, 8-pad eligibility, `TodayPlan`, and backup settings merge—needs reliable edge-case logic, but files are small so `high` thinking is unnecessary). Fallback: Codex Sol, medium. Run after 230.
 
 ## Done rule
 

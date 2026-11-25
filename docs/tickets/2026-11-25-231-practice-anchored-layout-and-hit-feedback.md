@@ -51,7 +51,7 @@ Place iPad at arm's length next to the MIDI controller: start/stop a lesson (ver
 
 ## Agent assignment
 
-Gemini 4 Carbon (or Codex GPT-6.1 Sol), thinking **high**.
+Gemini Pro, thinking **high** (combines 2100-line `PracticeScreen` layout anchoring, `Canvas` hit-mark geometry, and Ticket 209 leaf-isolated MIDI impulses). Fallback: Codex Sol, high. Run after 230; can run in parallel with 232 on a separate branch/worktree if needed, otherwise before 233.
 
 ## Done rule
 

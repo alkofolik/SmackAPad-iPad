@@ -54,7 +54,7 @@ Play a lesson twice improving your score (verify `+% personal best`), play a 2â€
 
 ## Agent assignment
 
-Gemini 4 Carbon (or Codex GPT-6.1 Sol), thinking **high**.
+Gemini Pro (or Codex Sol), thinking **high** (moves daily-step presentation state across `TrainingScreen`, `PracticeScreen`, `MixFlowScreen`, and `DaySummaryView`, and removes `TrainingStepResultCard.swift` from `project.pbxproj`). Fallback: Gemini Flash, high. Run after both 231 and 232.
 
 ## Done rule
 

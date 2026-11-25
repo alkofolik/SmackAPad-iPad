@@ -41,7 +41,7 @@ Browse Library in Path, Genres, and Techniques views (landscape and portrait), o
 
 ## Agent assignment
 
-Gemini 4 Carbon (or Codex GPT-6.1 Sol), thinking **medium**.
+Gemini Flash, thinking **medium** (pure SwiftUI container and row restyling across `LibraryScreen`, `IntroScreen`, and `MixLineupScreen`; zero scoring, persistence, or progression logic changes). Fallback: Codex Sol, medium. Run after 230 (and after 232 if touching `IntroScreen`).
 
 ## Done rule
 
