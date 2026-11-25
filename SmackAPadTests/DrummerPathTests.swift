@@ -428,4 +428,111 @@ final class DrummerPathTests: XCTestCase {
         XCTAssertEqual(merged.earnedMilestoneIDs, ["intro-spark", "first-mastery", "ten-passed"])
         XCTAssertGreaterThanOrEqual(merged.availableKeys, 0)
     }
+
+    func testDrummerPathMapTopologiesAndNodeStates() {
+        XCTAssertEqual(DrummerStageTopology.forStageIndex(0), .straightLine)
+        XCTAssertEqual(DrummerStageTopology.forStageIndex(1), .splitFork)
+        XCTAssertEqual(DrummerStageTopology.forStageIndex(2), .stepSequencer)
+        XCTAssertEqual(DrummerStageTopology.forStageIndex(3), .loopWithSideQuest)
+        XCTAssertEqual(DrummerStageTopology.forStageIndex(4), .straightLine)
+
+        let lessons = (1...5).map { idx in
+            Lesson(
+                id: 900 + idx,
+                cat: "rock",
+                title: "Rock \(idx)",
+                genre: "Rock",
+                tags: [],
+                text: "",
+                division: 8,
+                bars: 2,
+                startBpm: 70,
+                targetBpm: 100,
+                level: 1,
+                score: 1,
+                src: "",
+                hits: [],
+                hits8: nil,
+                eightNote: nil,
+                intro: nil,
+                access: nil
+            )
+        }
+
+        // Locked Rock kit keeps nodes locked and reports lockedKit
+        let lockedStage = DrummerPathMapBuilder.buildStage(
+            id: "L1-groove",
+            index: 1,
+            level: 1,
+            title: "Rock",
+            lessons: lessons,
+            topology: .splitFork,
+            progress: [:],
+            pathState: DrummerPathState()
+        )
+        XCTAssertEqual(lockedStage.lockedKit?.kitId, "rock")
+        XCTAssertTrue(lockedStage.nodes.allSatisfy { $0.state == .locked })
+
+        // Unlocked Rock kit with first 2 trunk lessons completed activates both parallel fork branches
+        var progress: [Int: LessonProgress] = [:]
+        progress[901] = LessonProgress(passed: true, mastery: false, memory: false, currentBpm: 80, bestScore: 0.9)
+        progress[902] = LessonProgress(passed: true, mastery: false, memory: false, currentBpm: 80, bestScore: 0.9)
+
+        let forkStage = DrummerPathMapBuilder.buildStage(
+            id: "L1-groove",
+            index: 1,
+            level: 1,
+            title: "Rock",
+            lessons: lessons,
+            topology: .splitFork,
+            progress: progress,
+            pathState: DrummerPathState(unlockedKitIds: ["acoustic", "rock"])
+        )
+        XCTAssertNil(forkStage.lockedKit)
+        XCTAssertEqual(forkStage.nodes[0].state, .completed)
+        XCTAssertEqual(forkStage.nodes[1].state, .completed)
+        XCTAssertEqual(forkStage.nodes[2].state, .active)
+        XCTAssertEqual(forkStage.nodes[3].state, .active)
+        XCTAssertEqual(forkStage.nodes[4].state, .locked)
+        XCTAssertTrue(forkStage.nodes[4].isBoss)
+
+        // Loop + Side Quest marks penultimate node as side quest
+        let loopStage = DrummerPathMapBuilder.buildStage(
+            id: "L2-fills",
+            index: 3,
+            level: 2,
+            title: "Fills",
+            lessons: lessons,
+            topology: .loopWithSideQuest,
+            progress: progress,
+            pathState: DrummerPathState(unlockedKitIds: ["acoustic", "rock"])
+        )
+        XCTAssertTrue(loopStage.nodes[3].isSideQuest)
+        XCTAssertTrue(loopStage.nodes[4].isBoss)
+    }
+
+    func testEndOfRunRpgLineFormatting() {
+        let delta = DrummerProgressDelta(
+            xpGained: 40,
+            previousLevel: 4,
+            newLevel: 4,
+            previousRank: .beatKeeper,
+            newRank: .beatKeeper,
+            timingDelta: 1,
+            speedDelta: 2,
+            techniqueDelta: 0,
+            memoryDelta: 0
+        )
+        let attrLine = EndOfRunCardModel.formattedRpgLine(delta: delta, keysAwarded: 0, language: .czech)
+        XCTAssertEqual(attrLine?.text, "+2 SPEED · +1 TIMING · +40 XP")
+        XCTAssertEqual(attrLine?.highlighted, false)
+
+        let keyLineCs = EndOfRunCardModel.formattedRpgLine(delta: delta, keysAwarded: 1, language: .czech)
+        XCTAssertEqual(keyLineCs?.text, "Získán +1 klíč! · +40 XP")
+        XCTAssertEqual(keyLineCs?.highlighted, true)
+
+        let keyLineEn = EndOfRunCardModel.formattedRpgLine(delta: delta, keysAwarded: 1, language: .english)
+        XCTAssertEqual(keyLineEn?.text, "Earned +1 key! · +40 XP")
+        XCTAssertEqual(keyLineEn?.highlighted, true)
+    }
 }

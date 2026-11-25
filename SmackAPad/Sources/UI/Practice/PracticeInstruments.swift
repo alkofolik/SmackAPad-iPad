@@ -752,6 +752,8 @@ struct EndOfRunCardModel: Equatable {
     let progressDetail: String?
     let growthLine: String?
     let growthLineHighlighted: Bool
+    let rpgLine: String?
+    let rpgLineHighlighted: Bool
     let reviewLine: EndOfRunLine?
     let runsLine: EndOfRunLine?
     let badgeLine: EndOfRunLine?
@@ -773,7 +775,9 @@ struct EndOfRunCardModel: Equatable {
         isDueReview: Bool = false,
         reviewPendingReason: PracticeStepOutcome.Reason? = nil,
         reviewSuccesses: Int? = nil,
-        completedCoachDrillBarIndex: Int? = nil
+        completedCoachDrillBarIndex: Int? = nil,
+        drummerDelta: DrummerProgressDelta? = nil,
+        keysAwarded: Int = 0
     ) -> EndOfRunCardModel {
         let scorePercent = Int((summary.score * 100).rounded())
         let earnedStars = [saved?.passed == true, saved?.mastery == true, saved?.memory == true]
@@ -983,6 +987,13 @@ struct EndOfRunCardModel: Equatable {
             badgeLine = nil
         }
 
+        let rpgSummary: (text: String, highlighted: Bool)?
+        if summary.passes > 0, !isAfterMe, !isSectionLoop, reviewPendingReason != .peeked, completedCoachDrillBarIndex == nil {
+            rpgSummary = formattedRpgLine(delta: drummerDelta, keysAwarded: keysAwarded, language: language)
+        } else {
+            rpgSummary = nil
+        }
+
         return EndOfRunCardModel(
             scorePercent: scorePercent,
             bpm: summary.bpm,
@@ -992,10 +1003,52 @@ struct EndOfRunCardModel: Equatable {
             progressDetail: progressDetail,
             growthLine: growthLine,
             growthLineHighlighted: growthLineHighlighted,
+            rpgLine: rpgSummary?.text,
+            rpgLineHighlighted: rpgSummary?.highlighted ?? false,
             reviewLine: reviewLine,
             runsLine: runsLine,
             badgeLine: badgeLine
         )
+    }
+
+    static func formattedRpgLine(
+        delta: DrummerProgressDelta?,
+        keysAwarded: Int,
+        language: AppLanguage
+    ) -> (text: String, highlighted: Bool)? {
+        if keysAwarded > 0 {
+            let keyText: String
+            switch language {
+            case .czech:
+                if keysAwarded == 1 {
+                    keyText = "Získán +1 klíč!"
+                } else if (2...4).contains(keysAwarded) {
+                    keyText = "Získány +\(keysAwarded) klíče!"
+                } else {
+                    keyText = "Získáno +\(keysAwarded) klíčů!"
+                }
+            case .english:
+                keyText = keysAwarded == 1 ? "Earned +1 key!" : "Earned +\(keysAwarded) keys!"
+            }
+            if let xp = delta?.xpGained, xp > 0 {
+                return ("\(keyText) · +\(xp) XP", true)
+            }
+            return (keyText, true)
+        }
+
+        guard let delta, !delta.isEmpty else { return nil }
+        var parts: [String] = []
+        if delta.didLevelUp {
+            parts.append("Lvl \(delta.newLevel)")
+        }
+        if !delta.formattedAttributeDeltas.isEmpty {
+            parts.append(delta.formattedAttributeDeltas)
+        }
+        if delta.xpGained > 0 {
+            parts.append("+\(delta.xpGained) XP")
+        }
+        guard !parts.isEmpty else { return nil }
+        return (parts.joined(separator: " · "), delta.didLevelUp)
     }
 
     static func nextReviewGapText(days: Int, language: AppLanguage) -> String {
@@ -1044,6 +1097,7 @@ struct EndOfRunCardModel: Equatable {
 /// Modern black end-of-run card with symmetric 3-zone layout.
 struct ResultCard: View {
     @Environment(SettingsManager.self) private var settings
+    @Environment(ProgressStore.self) private var progress
     @Environment(\.accessibilityReduceMotion) private var reduced
 
     let summary: RunSummary
@@ -1092,7 +1146,9 @@ struct ResultCard: View {
             isDueReview: isDueReview,
             reviewPendingReason: reviewPendingReason,
             reviewSuccesses: reviewSuccesses,
-            completedCoachDrillBarIndex: completedCoachDrillBarIndex
+            completedCoachDrillBarIndex: completedCoachDrillBarIndex,
+            drummerDelta: progress.lastDrummerDelta,
+            keysAwarded: progress.lastDrummerKeysAwarded
         )
     }
 
@@ -1296,11 +1352,20 @@ struct ResultCard: View {
                         .multilineTextAlignment(.center)
                 }
 
+                if let rpgLine = model.rpgLine {
+                    Text(rpgLine)
+                        .font(Theme.meta.monospacedDigit())
+                        .foregroundStyle(model.rpgLineHighlighted ? Theme.orange : Theme.white.opacity(0.72))
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.8)
+                        .multilineTextAlignment(.center)
+                }
+
                 if let runsLine = model.runsLine {
                     summaryRowButton(runsLine)
                 } else if let reviewLine = model.reviewLine {
                     summaryRowButton(reviewLine)
-                } else if model.growthLine == nil {
+                } else if model.growthLine == nil && model.rpgLine == nil {
                     Color.clear.frame(height: 44)
                 }
             }

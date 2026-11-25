@@ -49,6 +49,11 @@ public struct TrainingScreen: View {
     @State private var queueSectionOpen: [Int: Bool] = [:]
     @State private var expandedWaitingGroup: WaitingGroup?
     @State private var isSettledExpanded = false
+    @State private var selectedStageIndex = 0
+    @State private var hasInitializedStageSelection = false
+    @State private var selectedNodeId: Int?
+    @State private var showingStudioRig = false
+    @State private var studioRigHighlightedKitId: String?
 
     @AppStorage(TodayPlan.storageKey) private var savedTodayPlan = ""
     @AppStorage("smackapad.training.dailyMixes") private var dailyMixes = "{}"
@@ -87,6 +92,8 @@ public struct TrainingScreen: View {
         let waitingIn4to7Days: [Lesson]
         let waitingLater: [Lesson]
         let settledLessons: [Lesson]
+        let drummerCard: DrummerCardSnapshot
+        let pathStages: [DrummerPathStageModel]
     }
 
     private struct DaySummaryPresentation: Identifiable {
@@ -143,47 +150,64 @@ public struct TrainingScreen: View {
             GeometryReader { geometry in
                 let isLandscape = geometry.size.width >= 768 && geometry.size.width > geometry.size.height
 
-                ScrollView {
-                    VStack(alignment: .leading, spacing: Theme.Space.page) {
-                        header
+                Group {
+                    if isLandscape {
+                        VStack(alignment: .leading, spacing: Theme.Space.controlGap) {
+                            header
+                            if let data {
+                                drummerTopBar(data: data, isCompact: false)
+                                HStack(alignment: .top, spacing: Theme.Space.regular) {
+                                    pathMapPanel(data: data)
+                                        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
 
-                        if data == nil {
-                            ProgressView()
-                                .frame(maxWidth: .infinity, minHeight: 160)
-                                .accessibilityLabel(settings.localized("Training"))
-                        } else {
-                            VStack(spacing: Theme.Space.controlGap) {
-                                todayPanel(isLandscape: isLandscape)
-                                WeeklyRhythmStrip(day: today, practiceDays: progress.trainingLog.practiceDays)
-                            }
-
-                            if isLandscape {
-                                Grid(alignment: .topLeading, horizontalSpacing: Theme.Space.regular) {
-                                    GridRow {
-                                        afterMeCard
-                                            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-                                        extraMixCard
-                                            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-                                    }
+                                    rightSummaryPanel(data: data)
+                                        .frame(width: min(390, max(310, geometry.size.width * 0.36)), alignment: .topLeading)
                                 }
+                                .frame(maxHeight: .infinity, alignment: .top)
                             } else {
-                                afterMeCard
-                                extraMixCard
+                                ProgressView()
+                                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                                    .accessibilityLabel(settings.localized("Training"))
                             }
-
-                            trainingTools(isLandscape: isLandscape)
                         }
-
-                        Spacer(minLength: Theme.Space.page)
+                        .padding(.horizontal, Theme.Space.page)
+                        .padding(.vertical, Theme.Space.regular)
+                        .frame(maxWidth: 1240, maxHeight: .infinity, alignment: .topLeading)
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    } else {
+                        ScrollView {
+                            VStack(alignment: .leading, spacing: Theme.Space.controlGap) {
+                                header
+                                if let data {
+                                    drummerTopBar(data: data, isCompact: true)
+                                    pathMapPanel(data: data)
+                                    rightSummaryPanel(data: data)
+                                } else {
+                                    ProgressView()
+                                        .frame(maxWidth: .infinity, minHeight: 160)
+                                        .accessibilityLabel(settings.localized("Training"))
+                                }
+                                Spacer(minLength: Theme.Space.regular)
+                            }
+                            .padding(Theme.Space.regular)
+                            .frame(maxWidth: 920, alignment: .leading)
+                            .frame(maxWidth: .infinity)
+                        }
                     }
-                    .padding(Theme.Space.page)
-                    .frame(maxWidth: 1240, alignment: .leading)
-                    .frame(maxWidth: .infinity)
                 }
             }
             .calmChassisBackground()
             .navigationBarBackButtonHidden(true)
             .toolbar(.hidden, for: .navigationBar)
+            .sheet(isPresented: $showingStudioRig) {
+                StudioRigQuickSheet(
+                    highlightedKitId: studioRigHighlightedKitId,
+                    onOpenLibrary: {
+                        onHome()
+                        AppNavigation.shared.openLibrary(.none)
+                    }
+                )
+            }
             .navigationDestination(isPresented: $showingQueue) {
                 reviewQueueDestination
             }
@@ -308,7 +332,249 @@ public struct TrainingScreen: View {
                 .foregroundStyle(Theme.secondary)
                 .lineLimit(1)
         }
-        .frame(height: 56)
+        .frame(height: 44)
+    }
+
+    // MARK: - Drummer's Path Panels
+
+    private func drummerTopBar(data: TrainingData, isCompact: Bool) -> some View {
+        DrummerBarView(
+            card: data.drummerCard,
+            availableKeys: progress.drummerPath.availableKeys,
+            isCompact: isCompact,
+            onOpenStudioRig: {
+                studioRigHighlightedKitId = nil
+                showingStudioRig = true
+            }
+        )
+    }
+
+    private func pathMapPanel(data: TrainingData) -> some View {
+        DrummerPathMapView(
+            stages: data.pathStages,
+            selectedStageIndex: $selectedStageIndex,
+            selectedNodeId: $selectedNodeId,
+            availableKeys: progress.drummerPath.availableKeys,
+            onPlayLesson: { lesson in
+                guard !hasActiveCover else { return }
+                preserveTodayPlan(for: lesson.id)
+                selectedLesson = LessonLaunch.library(lesson, progress: progress.progress(for: lesson.id), today: today)
+            },
+            onUnlockKit: { kit in
+                if progress.drummerPath.availableKeys >= kit.unlockCost {
+                    let result = progress.unlockKit(kit.kitId)
+                    if case .unlocked = result {
+                        refreshTrainingData()
+                        return
+                    }
+                }
+                studioRigHighlightedKitId = kit.kitId
+                showingStudioRig = true
+            }
+        )
+    }
+
+    private func rightSummaryPanel(data: TrainingData) -> some View {
+        VStack(alignment: .leading, spacing: Theme.Space.controlGap) {
+            compactTodayBlock
+            WeeklyRhythmStrip(day: today, practiceDays: progress.trainingLog.practiceDays)
+            compactAuxModesBlock
+            compactToolsFooter
+        }
+    }
+
+    private var compactTodayBlock: some View {
+        let target = continueTarget
+        let steps = target?.plan.steps ?? []
+        let currentIndex = target?.plan.index ?? 0
+        let buttonTitle: String = switch target {
+        case .summary: "Summary"
+        case .step(let plan) where plan.index > 0: "Continue"
+        default: "Start"
+        }
+
+        return VStack(alignment: .leading, spacing: Theme.Space.small) {
+            HStack {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(settings.localized("Today"))
+                        .font(Theme.sectionTitle)
+                        .foregroundStyle(Theme.black)
+                        .accessibilityAddTraits(.isHeader)
+                    Text(continueSubtitle(for: target))
+                        .font(Theme.caption.monospacedDigit())
+                        .foregroundStyle(Theme.black.opacity(0.75))
+                        .lineLimit(1)
+                }
+                Spacer(minLength: 8)
+                Button(action: startTodayTraining) {
+                    Text(settings.localized(buttonTitle))
+                        .font(Theme.action)
+                        .padding(.horizontal, 18)
+                        .frame(minHeight: 44)
+                }
+                .buttonStyle(PadPrimaryButtonStyle(darkFace: true))
+                .disabled(target == nil)
+            }
+
+            if !steps.isEmpty {
+                VStack(spacing: 4) {
+                    ForEach(Array(steps.enumerated()), id: \.offset) { index, step in
+                        let isDone = index < currentIndex || step.outcome?.played == true
+                        let isCurrent = !isDone && index == currentIndex
+                        HStack(spacing: 8) {
+                            Image(systemName: isDone ? (step.markerSymbol ?? "checkmark.circle.fill") : (isCurrent ? "play.fill" : "circle"))
+                                .font(.system(size: 11, weight: .semibold))
+                                .foregroundStyle(Theme.black.opacity(isDone || isCurrent ? 0.95 : 0.45))
+                            Text(stepTitle(step))
+                                .font(Theme.caption.weight(isCurrent ? .semibold : .regular))
+                                .foregroundStyle(Theme.black)
+                                .lineLimit(1)
+                            Spacer(minLength: 4)
+                            Text(stepTag(step))
+                                .font(.system(size: 11))
+                                .foregroundStyle(Theme.black.opacity(0.65))
+                                .lineLimit(1)
+                        }
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 4)
+                        .background(
+                            (isCurrent ? Theme.white : Theme.white.opacity(isDone ? 0.65 : 0.35)),
+                            in: RoundedRectangle(cornerRadius: 6)
+                        )
+                    }
+                }
+            }
+        }
+        .padding(Theme.Space.controlGap)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(Theme.orange, in: RoundedRectangle(cornerRadius: Theme.Radius.panel))
+    }
+
+    private var compactAuxModesBlock: some View {
+        let afterMeCandidate = afterMeCandidates.first(where: { $0.id == afterMeLessonID })
+        let mixReady = mixLessons.count >= LearningRules.minimumMixLessons
+
+        return VStack(spacing: 0) {
+            HStack(spacing: 10) {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(settings.localized("Play after me"))
+                        .font(Theme.caption.weight(.semibold))
+                        .foregroundStyle(Theme.ink)
+                    Text(afterMeCandidate.map { settings.localized($0.title) }
+                         ?? settings.localized("Learn a lesson to play after me."))
+                        .font(.system(size: 12))
+                        .foregroundStyle(Theme.secondary)
+                        .lineLimit(1)
+                }
+                Spacer(minLength: 4)
+                if afterMeCandidates.count >= 2 {
+                    Button {
+                        chooseAfterMeLesson(another: true)
+                    } label: {
+                        Image(systemName: "arrow.triangle.2.circlepath")
+                            .font(.system(size: 13, weight: .semibold))
+                            .frame(width: 34, height: 34)
+                    }
+                    .buttonStyle(PadSecondaryButtonStyle())
+                    .accessibilityLabel(settings.localized("Another lesson"))
+                }
+                Button {
+                    if let afterMeCandidate, !hasActiveCover {
+                        selectedAfterMeLesson = afterMeCandidate
+                    }
+                } label: {
+                    Text(settings.localized("Start"))
+                        .font(Theme.caption.weight(.semibold))
+                        .padding(.horizontal, 12)
+                        .frame(height: 34)
+                }
+                .buttonStyle(PadPrimaryButtonStyle())
+                .disabled(afterMeCandidate == nil)
+                .padSource(afterMeCandidate?.id ?? 0, in: afterMeNamespace)
+            }
+            .padding(.horizontal, Theme.Space.controlGap)
+            .padding(.vertical, 10)
+
+            Rectangle().fill(Theme.hairline).frame(height: 1)
+
+            HStack(spacing: 10) {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(settings.localized("Extra mix"))
+                        .font(Theme.caption.weight(.semibold))
+                        .foregroundStyle(Theme.ink)
+                    Text(mixReady
+                         ? mixLessons.map { settings.localized($0.title) }.joined(separator: " · ")
+                         : settings.localized("Mix needs two lessons with two stars."))
+                        .font(.system(size: 12))
+                        .foregroundStyle(Theme.secondary)
+                        .lineLimit(1)
+                }
+                Spacer(minLength: 4)
+                if mixReady {
+                    Button {
+                        refreshMix(newDraw: true)
+                    } label: {
+                        Image(systemName: "arrow.triangle.2.circlepath")
+                            .font(.system(size: 13, weight: .semibold))
+                            .frame(width: 34, height: 34)
+                    }
+                    .buttonStyle(PadSecondaryButtonStyle())
+                    .accessibilityLabel(settings.localized("Another mix"))
+                }
+                Button {
+                    guard !hasActiveCover, mixReady else { return }
+                    mixPresentation = MixCoverItem(lessons: mixLessons)
+                } label: {
+                    Text(settings.localized("Start mix"))
+                        .font(Theme.caption.weight(.semibold))
+                        .padding(.horizontal, 12)
+                        .frame(height: 34)
+                }
+                .buttonStyle(PadPrimaryButtonStyle())
+                .disabled(!mixReady)
+            }
+            .padding(.horizontal, Theme.Space.controlGap)
+            .padding(.vertical, 10)
+        }
+        .background(Theme.surface, in: RoundedRectangle(cornerRadius: Theme.Radius.panel))
+        .overlay {
+            RoundedRectangle(cornerRadius: Theme.Radius.panel)
+                .strokeBorder(Theme.hairline, lineWidth: 1)
+        }
+    }
+
+    private var compactToolsFooter: some View {
+        HStack(spacing: Theme.Space.small) {
+            Button {
+                showingQueue = true
+            } label: {
+                HStack(spacing: 6) {
+                    Text(settings.localized("Review queue"))
+                        .font(Theme.caption.weight(.medium))
+                    Text("\(queuedLessons.count)")
+                        .font(Theme.caption.monospacedDigit())
+                        .foregroundStyle(Theme.secondary)
+                }
+                .padding(.horizontal, 12)
+                .frame(maxWidth: .infinity, minHeight: 38)
+            }
+            .buttonStyle(PadSecondaryButtonStyle())
+
+            Button {
+                showingBadges = true
+            } label: {
+                HStack(spacing: 6) {
+                    Image(systemName: "rosette")
+                        .font(.system(size: 12, weight: .semibold))
+                        .foregroundStyle(Theme.orange)
+                    Text(settings.localized("Training badges"))
+                        .font(Theme.caption.weight(.medium))
+                }
+                .padding(.horizontal, 12)
+                .frame(maxWidth: .infinity, minHeight: 38)
+            }
+            .buttonStyle(PadSecondaryButtonStyle())
+        }
     }
 
     // MARK: - 1. Today Panel
@@ -1584,6 +1850,12 @@ public struct TrainingScreen: View {
             }
         }
         data = snapshot
+        if !hasInitializedStageSelection {
+            hasInitializedStageSelection = true
+            if let firstActiveStage = snapshot.pathStages.first(where: { $0.activeNode != nil }) {
+                selectedStageIndex = firstActiveStage.index
+            }
+        }
         chooseAfterMeLesson()
         saveMix(snapshot.mixLessons.map(\.id))
         #if DEBUG
@@ -1681,6 +1953,14 @@ public struct TrainingScreen: View {
             .filter { $0 > today }
             .min()
 
+        let drummerCard = progress.drummerCard(catalog: progression.catalog)
+        let pathStages = DrummerPathMapBuilder.buildStages(
+            catalog: progression.catalog,
+            progress: records,
+            pathState: progress.drummerPath,
+            language: settings.languagePreference
+        )
+
         return TrainingData(
             dueLessons: due,
             nextLesson: dailyLessons.next,
@@ -1698,7 +1978,9 @@ public struct TrainingScreen: View {
             waitingIn2to3Days: waitingIn2to3Days,
             waitingIn4to7Days: waitingIn4to7Days,
             waitingLater: waitingLater,
-            settledLessons: settledLessons
+            settledLessons: settledLessons,
+            drummerCard: drummerCard,
+            pathStages: pathStages
         )
     }
 
