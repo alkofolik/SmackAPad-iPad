@@ -1,6 +1,6 @@
 # 92 — Palette: soften pure white and pure black (cream white, warm soft black)
 
-Status: resolved. Source: Jakub, 2026-11-05: likes the simple palette, but pure white feels too harsh and pure black too black. Wants white slightly creamy and black softened.
+Status: done (2026-11-25). Previous: resolved. Source: Jakub, 2026-11-05: likes the simple palette, but pure white feels too harsh and pure black too black. Wants white slightly creamy and black softened.
 
 ## Problem
 

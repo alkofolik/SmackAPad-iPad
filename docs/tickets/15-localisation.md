@@ -1,6 +1,6 @@
 # 15 — Localisation (English primary, Czech optional)
 
-Status: ready-for-review (updated 2026-11-01)
+Status: done (2026-11-25). Previous: ready-for-review (updated 2026-11-01)
 
 ## Goal
 

@@ -1,6 +1,6 @@
 # 207 — Home reacts to the MIDI controller
 
-Status: implemented; build and full suite passed; ready for iPad test. Decided by Jakub on 2026-11-13 (iPad review, photos 2 and 11: "pady MIDI nefungují"). Blocked by: 206 (uses its display status line).
+Status: done (2026-11-25). Previous: implemented; build and full suite passed; ready for iPad test. Decided by Jakub on 2026-11-13 (iPad review, photos 2 and 11: "pady MIDI nefungují"). Blocked by: 206 (uses its display status line).
 
 ## Goal
 

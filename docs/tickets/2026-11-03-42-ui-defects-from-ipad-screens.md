@@ -1,6 +1,6 @@
 # 42 — UI defects found in the iPad screenshot review (2026-11-03)
 
-Status: implemented; build passed; iPad verification pending. Source: Claude's review of 40 iPad screenshots (Czech/English, light/dark) after tickets 38/39 and the type-scale reduction. Approved by Jakub on 2026-11-03.
+Status: done (2026-11-25). Previous: implemented; build passed; iPad verification pending. Source: Claude's review of 40 iPad screenshots (Czech/English, light/dark) after tickets 38/39 and the type-scale reduction. Approved by Jakub on 2026-11-03.
 
 ## Goal
 

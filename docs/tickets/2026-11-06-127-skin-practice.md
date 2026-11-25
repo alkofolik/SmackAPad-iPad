@@ -1,6 +1,6 @@
 # 127 — App skin, part 2: Practice screen ("Klidný satén")
 
-Status: implemented; build OK; ready for iPad test. Depends on: 126, and 124 (same Practice files). Source: Jakub, 2026-11-06.
+Status: done (2026-11-25). Previous: implemented; build OK; ready for iPad test. Depends on: 126, and 124 (same Practice files). Source: Jakub, 2026-11-06.
 
 ## Hard rule: skin only, never layout (read first)
 

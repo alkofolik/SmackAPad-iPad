@@ -1,6 +1,6 @@
 # 175 — Show and store the true (un-centred) timing error
 
-Status: ready-for-human. Implemented and verified on 2026-11-11; awaiting Jakub's manual iPad check. Approved by Jakub on 2026-11-11. Corresponds to AI panel item #23 (claude R3-02). Model: Codex GPT-6.1 Sol, thinking high (fallback Gemini 3.8 Pro, high). Do not use Flash: this touches scoring and it could silently change hit matching.
+Status: done (2026-11-25). Previous: ready-for-human. Implemented and verified on 2026-11-11; awaiting Jakub's manual iPad check. Approved by Jakub on 2026-11-11. Corresponds to AI panel item #23 (claude R3-02). Model: Codex GPT-6.1 Sol, thinking high (fallback Gemini 3.8 Pro, high). Do not use Flash: this touches scoring and it could silently change hit matching.
 
 ## Goal
 

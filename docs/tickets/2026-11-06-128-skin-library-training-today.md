@@ -1,6 +1,6 @@
 # 128 — App skin, part 3: Library, Training, Today session ("Klidný satén")
 
-Status: implemented; build OK; ready for iPad test. Depends on: 126, and 121 (same Training/Library files). Source: Jakub, 2026-11-06.
+Status: done (2026-11-25). Previous: implemented; build OK; ready for iPad test. Depends on: 126, and 121 (same Training/Library files). Source: Jakub, 2026-11-06.
 
 ## Hard rule: skin only, never layout (read first)
 

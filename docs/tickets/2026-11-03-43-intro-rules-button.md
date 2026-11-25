@@ -1,6 +1,6 @@
 # 43 — Library: collapse the Intro rules behind a button
 
-Status: implemented; build OK; awaiting iPad verification. Source: Jakub, 2026-11-03 (approved).
+Status: done (2026-11-25). Previous: implemented; build OK; awaiting iPad verification. Source: Jakub, 2026-11-03 (approved).
 
 ## Problem
 

@@ -1,6 +1,6 @@
 # 140 — Home pad titles: Barlow Condensed ExtraBold
 
-Status: implemented; build OK; ready for iPad test. Depends on: 119 (controller body), 135 (font proposal). Source: Jakub, 2026-11-07: selected Barlow Condensed ExtraBold from ticket 135 preview ("líbí se mi 3 - barlow").
+Status: done (2026-11-25). Previous: implemented; build OK; ready for iPad test. Depends on: 119 (controller body), 135 (font proposal). Source: Jakub, 2026-11-07: selected Barlow Condensed ExtraBold from ticket 135 preview ("líbí se mi 3 - barlow").
 
 Spec = preview `docs/previews/135-pad-title-fonts.html` (candidate 3: Barlow Condensed ExtraBold).
 

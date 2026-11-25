@@ -1,6 +1,6 @@
 # 195 — Pad layout shows keyboard keys only after a tap, never by itself
 
-Status: implemented and verified, pending Jakub's iPad check. Reported by Jakub on 2026-11-13 with an iPad screenshot ("TH · 1", "KD · Z" on the pad layout without tapping it).
+Status: done (2026-11-25). Previous: implemented and verified, pending Jakub's iPad check. Reported by Jakub on 2026-11-13 with an iPad screenshot ("TH · 1", "KD · Z" on the pad layout without tapping it).
 
 ## Cause (from the code)
 

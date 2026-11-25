@@ -1,6 +1,6 @@
 # 93 — Practice screen: the orange pattern band is the one focus; pad map readable
 
-Status: resolved. Source: Jakub, 2026-11-05 (iPad photos): the Practice screen feels empty between the pattern band and the bottom controls. Decision: do not fill the space with content; make the orange band the dominant element and keep everything else quiet.
+Status: done (2026-11-25). Previous: resolved. Source: Jakub, 2026-11-05 (iPad photos): the Practice screen feels empty between the pattern band and the bottom controls. Decision: do not fill the space with content; make the orange band the dominant element and keep everything else quiet.
 
 ## Rule
 

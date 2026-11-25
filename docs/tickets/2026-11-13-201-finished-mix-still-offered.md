@@ -1,6 +1,6 @@
 # 201 — Bug: finished mix is still offered on Training
 
-Status: resolved. Reported by Jakub on 2026-11-13 (iPad review, photo 8).
+Status: done (2026-11-25). Previous: resolved. Reported by Jakub on 2026-11-13 (iPad review, photo 8).
 
 ## Goal
 

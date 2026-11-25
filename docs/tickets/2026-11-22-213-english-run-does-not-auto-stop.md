@@ -1,6 +1,6 @@
 # 213 — In English a lesson does not stop by itself when the requirement is met
 
-Status: resolved. Reported by Jakub on 2026-11-20 (checklist "Result card after a run"): in English the lesson does not stop automatically once the requirement is met. (The same note says the result card needs a complete new design; that is a separate design ticket after Jakub picks a mockup.)
+Status: done (2026-11-25). Previous: resolved. Reported by Jakub on 2026-11-20 (checklist "Result card after a run"): in English the lesson does not stop automatically once the requirement is met. (The same note says the result card needs a complete new design; that is a separate design ticket after Jakub picks a mockup.)
 
 ## What is known
 

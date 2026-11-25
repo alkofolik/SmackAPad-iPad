@@ -1,6 +1,6 @@
 # 29 — Start/stop from the MIDI controller and tempo knob
 
-Status: ready-for-ipad-test (2026-11-02). Source: legacy comparison 2026-11-02 (legacy manual §8.3). Jakub plays on a MIDI controller; he should not need to reach for the iPad to start, stop or change tempo.
+Status: done (2026-11-25). Previous: ready-for-ipad-test (2026-11-02). Source: legacy comparison 2026-11-02 (legacy manual §8.3). Jakub plays on a MIDI controller; he should not need to reach for the iPad to start, stop or change tempo.
 
 ## Goal
 

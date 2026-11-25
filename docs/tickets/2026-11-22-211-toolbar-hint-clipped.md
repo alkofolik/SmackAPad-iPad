@@ -1,6 +1,6 @@
 # 211 — Long-press hint on the top toolbar is cut off at the right edge
 
-Status: resolved. Reported by Jakub on 2026-11-14 (checklist "Top bar and back arrow after the fix"): the label shown on long press of "How it works" is cut off on the right and hidden under the Settings icon, in portrait and landscape.
+Status: done (2026-11-25). Previous: resolved. Reported by Jakub on 2026-11-14 (checklist "Top bar and back arrow after the fix"): the label shown on long press of "How it works" is cut off on the right and hidden under the Settings icon, in portrait and landscape.
 
 ## Cause confirmed
 

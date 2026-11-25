@@ -1,6 +1,6 @@
 # 11b — Fix tempo oscillation between continuous passes
 
-Status: implemented; iPad validation pending
+Status: done (2026-11-25). Previous: implemented; iPad validation pending
 
 ## Cause and change
 

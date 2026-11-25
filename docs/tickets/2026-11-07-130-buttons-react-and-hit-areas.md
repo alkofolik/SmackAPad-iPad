@@ -1,6 +1,6 @@
 # 130 — Buttons react again: hit areas after the satin skin, Library lessons open
 
-Status: ready-for-human. Implementation complete; final build passed; physical-iPad acceptance pending. Source: Jakub, 2026-11-07 (iPad): "after the last graphic change most buttons look broken; in the Library a lesson almost never opens; buttons mostly do not react."
+Status: done (2026-11-25). Previous: ready-for-human. Implementation complete; final build passed; physical-iPad acceptance pending. Source: Jakub, 2026-11-07 (iPad): "after the last graphic change most buttons look broken; in the Library a lesson almost never opens; buttons mostly do not react."
 
 ## Problem
 

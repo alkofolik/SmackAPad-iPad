@@ -1,6 +1,6 @@
 # 28 — Practice mode: Learning (default) and Challenge
 
-Status: ready-for-ipad-test (2026-11-02). Source: legacy comparison 2026-11-02 (legacy manual §5.2), Jakub's feedback round 4 ("intro lessons too strict, one failed run resets the whole streak").
+Status: done (2026-11-25). Previous: ready-for-ipad-test (2026-11-02). Source: legacy comparison 2026-11-02 (legacy manual §5.2), Jakub's feedback round 4 ("intro lessons too strict, one failed run resets the whole streak").
 
 ## Precondition
 

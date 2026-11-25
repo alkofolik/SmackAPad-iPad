@@ -1,6 +1,6 @@
 # 25 — Library redesign, unified look across screens, Intro rows, unlock flow
 
-Status: parts A and B ready for human iPad verification (2026-11-01). Part B: 14 targeted tests and final simulator build passed. Part A committed as `f8ebd27`. Ticket 24 prerequisite verified at commit `252a6b2`. Ticket 26 is independent.
+Status: done (2026-11-25). Previous: parts A and B ready for human iPad verification (2026-11-01). Part B: 14 targeted tests and final simulator build passed. Part A committed as `f8ebd27`. Ticket 24 prerequisite verified at commit `252a6b2`. Ticket 26 is independent.
 
 ## Goal
 

@@ -1,6 +1,6 @@
 # 135 — Proposal: Home pad titles in a font that matches the logo (HTML preview, no code)
 
-Status: resolved. Type: proposal. Source: Jakub, 2026-11-07: "líbí se mi 3 - barlow" (implementation ticket: 140).
+Status: done (2026-11-25). Previous: resolved. Type: proposal. Source: Jakub, 2026-11-07: "líbí se mi 3 - barlow" (implementation ticket: 140).
 
 ## Fact
 

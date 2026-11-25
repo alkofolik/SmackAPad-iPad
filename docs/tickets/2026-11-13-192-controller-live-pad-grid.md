@@ -1,6 +1,6 @@
 # 192 — Controller screen: live pad grid in the controller's own layout
 
-Status: implemented; awaiting Jakub's manual iPad checks. Decided by Jakub on 2026-11-13 (taste audit findings 57 and the "one big idea", variant 2).
+Status: done (2026-11-25). Previous: implemented; awaiting Jakub's manual iPad checks. Decided by Jakub on 2026-11-13 (taste audit findings 57 and the "one big idea", variant 2).
 
 ## Goal
 

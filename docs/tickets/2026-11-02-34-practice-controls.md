@@ -1,6 +1,6 @@
 # 34 — Practice screen: controls, icons, next lesson, lesson info
 
-Status: implemented; iOS build passed, Jakub's iPad acceptance pending. Source: Jakub's test 2026-11-02 (feedback round 5). Run after ticket 33 (same files).
+Status: done (2026-11-25). Previous: implemented; iOS build passed, Jakub's iPad acceptance pending. Source: Jakub's test 2026-11-02 (feedback round 5). Run after ticket 33 (same files).
 
 ## Goal
 

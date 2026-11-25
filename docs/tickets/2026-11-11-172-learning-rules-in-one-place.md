@@ -1,6 +1,6 @@
 # 172 — Learning rules in one place (no behaviour change)
 
-Status: ready-for-human. Implemented on 2026-11-11; manual iPad checks remain for Jakub. Approved by Jakub on 2026-11-11. Model: Codex GPT-6.1 Sol, thinking high (fallback Gemini 3.8 Pro, high). Do not use Flash: it can miss a less visible threshold when moving constants. Corresponds to AI panel item #28.
+Status: done (2026-11-25). Previous: ready-for-human. Implemented on 2026-11-11; manual iPad checks remain for Jakub. Approved by Jakub on 2026-11-11. Model: Codex GPT-6.1 Sol, thinking high (fallback Gemini 3.8 Pro, high). Do not use Flash: it can miss a less visible threshold when moving constants. Corresponds to AI panel item #28.
 
 ## Goal
 

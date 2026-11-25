@@ -1,6 +1,6 @@
 # 120 — Home "Continue" pad: crash on tap, Czech title wraps in portrait
 
-Status: in-testing. Source: Jakub, 2026-11-06 (iPad, Czech, portrait).
+Status: done (2026-11-25). Previous: in-testing. Source: Jakub, 2026-11-06 (iPad, Czech, portrait).
 
 ## Problem
 

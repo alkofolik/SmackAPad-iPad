@@ -1,6 +1,6 @@
 # 40 — Playable on-screen pads in portrait (no controller needed)
 
-Status: Phase B implemented (2026-11-03); unsigned iPad build passed, Jakub's iPad acceptance pending. Source: Jakub 2026-11-03 (widen the audience: iPad owners without a pad controller can try the app).
+Status: done (2026-11-25). Previous: Phase B implemented (2026-11-03); unsigned iPad build passed, Jakub's iPad acceptance pending. Source: Jakub 2026-11-03 (widen the audience: iPad owners without a pad controller can try the app).
 
 ## Phase B implementation — 2026-11-03
 

@@ -1,6 +1,6 @@
 # 26 — Sound kit "Automatic" (default) and per-lesson choice
 
-Status: ready-for-test (2026-11-01). Independent of 24 and 25; can run in parallel with them (touches Settings, Persistence, Audio selection only).
+Status: done (2026-11-25). Previous: ready-for-test (2026-11-01). Independent of 24 and 25; can run in parallel with them (touches Settings, Persistence, Audio selection only).
 
 ## Goal
 

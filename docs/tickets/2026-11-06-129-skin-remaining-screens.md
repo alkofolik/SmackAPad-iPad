@@ -1,6 +1,6 @@
 # 129 — App skin, part 4: remaining screens ("Klidný satén")
 
-Status: implemented; build OK; ready for iPad test. Depends on: 126. Can run alongside 127 or 128 (different files). Source: Jakub, 2026-11-06.
+Status: done (2026-11-25). Previous: implemented; build OK; ready for iPad test. Depends on: 126. Can run alongside 127 or 128 (different files). Source: Jakub, 2026-11-06.
 
 ## Hard rule: skin only, never layout (read first)
 

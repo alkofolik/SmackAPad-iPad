@@ -1,6 +1,6 @@
 # 39 — Typography: IBM Plex Sans across the app
 
-Status: ready-for-human — implemented; iOS build passed; iPad validation pending. Source: Jakub chose variant B on 2026-11-02 (docs/design/2026-11-02-typography-proposals.md).
+Status: done (2026-11-25). Previous: ready-for-human — implemented; iOS build passed; iPad validation pending. Source: Jakub chose variant B on 2026-11-02 (docs/design/2026-11-02-typography-proposals.md).
 
 ## Problem
 

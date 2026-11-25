@@ -1,6 +1,6 @@
 # 173 — One localisation path and a test that every key exists in both languages
 
-Status: implemented. Build and all 244 tests passed on 2026-11-11; awaiting Jakub’s manual iPad check. Approved by Jakub on 2026-11-11. Corresponds to AI panel item #31. No behaviour or look change.
+Status: done (2026-11-25). Previous: implemented. Build and all 244 tests passed on 2026-11-11; awaiting Jakub’s manual iPad check. Approved by Jakub on 2026-11-11. Corresponds to AI panel item #31. No behaviour or look change.
 
 ## Goal
 

@@ -1,6 +1,6 @@
 # 119 — Home: the controller body (ribbed body, smooth plate with screws, faders)
 
-Status: implemented; build OK; ready for iPad test. Depends on: 112, 113, 115, 116 (all done). Source: Jakub, 2026-11-06: approved the preview of ticket 118 ("I like it like this") **except the title**.
+Status: done (2026-11-25). Previous: implemented; build OK; ready for iPad test. Depends on: 112, 113, 115, 116 (all done). Source: Jakub, 2026-11-06: approved the preview of ticket 118 ("I like it like this") **except the title**.
 
 Spec = the preview `docs/design/2026-11-06-home-controller-body/index.html` (open it in a browser; keys G = guides, O = orientation, L = light/dark) and `README.md` in the same folder (layout numbers, build recipe, contrast table). Build exactly that, in SwiftUI, for the Home screen only.
 

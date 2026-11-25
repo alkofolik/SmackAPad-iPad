@@ -1,6 +1,6 @@
 # 199 — Star 2 meter: show the tempo climb first, the clean runs only at goal tempo
 
-Status: implemented — awaiting Jakub's manual iPad check. Design approved by Jakub on 2026-11-13 (mockups "A" and "B" in that conversation). Implemented after 198 (same HUD area).
+Status: done (2026-11-25). Previous: implemented — awaiting Jakub's manual iPad check. Design approved by Jakub on 2026-11-13 (mockups "A" and "B" in that conversation). Implemented after 198 (same HUD area).
 
 ## Goal
 

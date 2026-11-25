@@ -1,6 +1,6 @@
 # 08 — Scoring Engine
 
-Status: implemented — 12 new tests passed (2026-10-30); awaiting iPad validation
+Status: done (2026-11-25). Previous: implemented — 12 new tests passed (2026-10-30); awaiting iPad validation
 
 ## Implementation checkpoint (2026-10-30)
 

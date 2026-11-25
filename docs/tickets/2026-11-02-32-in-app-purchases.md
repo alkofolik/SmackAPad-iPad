@@ -1,6 +1,6 @@
 # Ticket 32 – Nákupy v aplikaci (free / Full unlock / rozšíření)
 
-Status: ready-for-ipad-test (2026-11-02).
+Status: done (2026-11-25). Previous: ready-for-ipad-test (2026-11-02).
 
 **Repo:** ~/Developer/SmackAPad-iPad
 **Závisí na:** dokončených ticketech 25A/25B (knihovna) a 28–31. Pokud ještě nejsou hotové, dělej tento ticket až po nich.

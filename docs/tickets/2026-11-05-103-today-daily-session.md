@@ -1,6 +1,6 @@
 # 103 — "Today": the hero pad starts a daily session when reviews are due
 
-Status: ready-for-human (implemented; iPad acceptance pending). Depends on: 98 (reviews), 100 (Mix). Source: Jakub, 2026-11-05, option A of `docs/2026-11-05-training-push-proposal.md` §3.1 (Training on the main path, never a lock). Mockup: `docs/design/2026-11-05-training-page/training-page.html` (frames 2 and 3).
+Status: done (2026-11-25). Previous: ready-for-human (implemented; iPad acceptance pending). Depends on: 98 (reviews), 100 (Mix). Source: Jakub, 2026-11-05, option A of `docs/2026-11-05-training-push-proposal.md` §3.1 (Training on the main path, never a lock). Mockup: `docs/design/2026-11-05-training-page/training-page.html` (frames 2 and 3).
 
 ## Goal
 

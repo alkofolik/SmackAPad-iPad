@@ -1,6 +1,6 @@
 # 126 — App skin, part 1: shared tokens and components ("Klidný satén")
 
-Status: implemented; build OK; ready for integration in 127–129. Depends on: 125 (preview, done). Source: Jakub, 2026-11-06: chose **variant B "Klidný satén"** for all non-Home screens; only colours, materials and motion may change, never layout or sizes.
+Status: done (2026-11-25). Previous: implemented; build OK; ready for integration in 127–129. Depends on: 125 (preview, done). Source: Jakub, 2026-11-06: chose **variant B "Klidný satén"** for all non-Home screens; only colours, materials and motion may change, never layout or sizes.
 
 ## Hard rule: skin only, never layout (read first)
 

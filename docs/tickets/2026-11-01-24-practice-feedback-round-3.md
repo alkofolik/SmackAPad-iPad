@@ -1,6 +1,6 @@
 # 24 — Practice screen: feedback round 3 (third star, tempo banner, colour tail, progress)
 
-Status: ready-for-ipad-test (2026-11-01). Implementation and targeted simulator tests complete. Run **first** of tickets 24, 25, 26 (24 and 25 both touch `PracticeScreen.swift`; do 24 before 25).
+Status: done (2026-11-25). Previous: ready-for-ipad-test (2026-11-01). Implementation and targeted simulator tests complete. Run **first** of tickets 24, 25, 26 (24 and 25 both touch `PracticeScreen.swift`; do 24 before 25).
 
 ## Goal
 

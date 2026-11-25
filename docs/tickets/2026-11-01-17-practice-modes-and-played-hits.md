@@ -1,6 +1,6 @@
 # 17 — Practice screen: hide pattern only in Play, show played hits in from-memory
 
-Status: ready-for-review (2026-11-01). Implementation complete; build validation blocked by concurrent library changes. iPad validation pending. Ticket 15 was committed (`b3a2f9c`) before this work started. Run before ticket 18 (both touch `PracticeSession.swift`).
+Status: done (2026-11-25). Previous: ready-for-review (2026-11-01). Implementation complete; build validation blocked by concurrent library changes. iPad validation pending. Ticket 15 was committed (`b3a2f9c`) before this work started. Run before ticket 18 (both touch `PracticeSession.swift`).
 
 ## Goal
 

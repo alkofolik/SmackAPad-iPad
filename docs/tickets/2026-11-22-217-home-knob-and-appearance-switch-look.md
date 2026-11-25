@@ -1,6 +1,6 @@
 # 217 — Home: language knob and appearance switch look like real hardware (labels without underline)
 
-Status: resolved (implemented in code; awaiting Jakub's iPad check). Jakub on 2026-11-22 (iPad review) and approved mockup on 2026-11-22 (design canvas "Smack-a-Pad – návrhy (kolo 22. 11.)", artboards Home and Home dark). **Only the language knob with its labels and the appearance switch change.** The rest of Home (display, faders, pads, buttons, layout) stays exactly as it is.
+Status: done (2026-11-25). Previous: resolved (implemented in code; awaiting Jakub's iPad check). Jakub on 2026-11-22 (iPad review) and approved mockup on 2026-11-22 (design canvas "Smack-a-Pad – návrhy (kolo 22. 11.)", artboards Home and Home dark). **Only the language knob with its labels and the appearance switch change.** The rest of Home (display, faders, pads, buttons, layout) stays exactly as it is.
 
 ## Goal
 

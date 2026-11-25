@@ -1,6 +1,6 @@
 # 208 — Playhead: no catch-up jumps, and proof that it matches the click
 
-Status: implemented; Instruments comparison and manual iPad validation pending. Reported by Jakub on 2026-11-13: "the position marker does not move evenly, at moments it speeds up a lot; I'm not sure whether it keeps to the metronome." Sound from the iPad's built-in speaker.
+Status: done (2026-11-25). Previous: implemented; Instruments comparison and manual iPad validation pending. Reported by Jakub on 2026-11-13: "the position marker does not move evenly, at moments it speeds up a lot; I'm not sure whether it keeps to the metronome." Sound from the iPad's built-in speaker.
 
 ## What a frame-by-frame measurement showed
 

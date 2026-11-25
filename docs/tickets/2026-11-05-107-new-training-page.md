@@ -1,6 +1,6 @@
 # 107 — New Training page
 
-Status: ready-for-test. Depends on: 103 (daily session), 105 (`ReviewForecast`), 106 (Training badges). Source: Jakub, 2026-11-05, `docs/2026-11-05-training-push-proposal.md` §5. **Mockup (approved direction): `docs/design/2026-11-05-training-page/training-page.html`, frame 1** (open it in a browser; example data only).
+Status: done (2026-11-25). Previous: ready-for-test. Depends on: 103 (daily session), 105 (`ReviewForecast`), 106 (Training badges). Source: Jakub, 2026-11-05, `docs/2026-11-05-training-push-proposal.md` §5. **Mockup (approved direction): `docs/design/2026-11-05-training-page/training-page.html`, frame 1** (open it in a browser; example data only).
 
 ## Goal
 

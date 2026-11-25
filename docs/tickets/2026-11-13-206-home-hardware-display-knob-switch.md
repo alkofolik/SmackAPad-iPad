@@ -1,6 +1,6 @@
 # 206 — Home as a real controller: display, language knob, appearance switch
 
-Status: implemented; build and full test suite passed. Awaiting Jakub’s manual iPad check. Decided by Jakub on 2026-11-13 (iPad review, photos 11 and 12). Defaults below follow the recommendation Jakub approved ("Ano, napiš tickety"); he may still change details after the iPad check.
+Status: done (2026-11-25). Previous: implemented; build and full test suite passed. Awaiting Jakub’s manual iPad check. Decided by Jakub on 2026-11-13 (iPad review, photos 11 and 12). Defaults below follow the recommendation Jakub approved ("Ano, napiš tickety"); he may still change details after the iPad check.
 
 ## Goal
 

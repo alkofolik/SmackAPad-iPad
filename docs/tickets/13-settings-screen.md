@@ -1,6 +1,6 @@
 # 13 — Settings Screen
 
-Status: implemented; build OK; awaiting iPad verification
+Status: done (2026-11-25). Previous: implemented; build OK; awaiting iPad verification
 
 ## Goal
 

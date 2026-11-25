@@ -1,6 +1,6 @@
 # 203 — Mix summary as one clean pop-up card
 
-Status: implemented; build OK; ready for iPad test. Decided by Jakub on 2026-11-13 (iPad review, photo 6). Blocked by: 202 (reuses its reason text).
+Status: done (2026-11-25). Previous: implemented; build OK; ready for iPad test. Decided by Jakub on 2026-11-13 (iPad review, photo 6). Blocked by: 202 (reuses its reason text).
 
 ## Goal
 

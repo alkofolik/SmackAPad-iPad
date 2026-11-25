@@ -1,6 +1,6 @@
 # 215 — From memory: previous run flashes at the end of the pattern when a new run starts
 
-Status: resolved. Reported by Jakub on 2026-11-22: in From memory, at the start of a new run, pads from the previous run briefly flash at the end of the pattern. It does not disturb him much but looks odd.
+Status: done (2026-11-25). Previous: resolved. Reported by Jakub on 2026-11-22: in From memory, at the start of a new run, pads from the previous run briefly flash at the end of the pattern. It does not disturb him much but looks odd.
 
 ## What is known
 

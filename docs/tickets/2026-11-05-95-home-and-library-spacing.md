@@ -1,6 +1,6 @@
 # 95 — Home grid centred and larger; Library header spacing even
 
-Status: resolved. Source: Jakub, 2026-11-05 (agreed with Claude's review).
+Status: done (2026-11-25). Previous: resolved. Source: Jakub, 2026-11-05 (agreed with Claude's review).
 
 ## Rule
 

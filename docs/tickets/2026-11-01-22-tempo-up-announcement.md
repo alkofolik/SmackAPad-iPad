@@ -1,6 +1,6 @@
 # 22 — Announce a tempo increase during a run
 
-Status: ready-for-ipad-test (2026-11-01). Implemented in `54a2331`; review fix below. Build and tests still to be run in Xcode.
+Status: done (2026-11-25). Previous: ready-for-ipad-test (2026-11-01). Implemented in `54a2331`; review fix below. Build and tests still to be run in Xcode.
 
 ## Goal
 

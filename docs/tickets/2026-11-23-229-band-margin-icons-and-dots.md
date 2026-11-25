@@ -1,6 +1,6 @@
 # 229 — Band margin: drum icons and light dots instead of text names
 
-Status: implemented, awaiting Jakub's iPad check. Jakub on 2026-11-23: the text names in the band margin from ticket 218 (variant A) did not look right; chose **variant 4**: a narrow margin with a drum icon and a colour dot per row. The hand colours from 218 (right = cream note, left = black note with outline) stay as they are.
+Status: done (2026-11-25). Previous: implemented, awaiting Jakub's iPad check. Jakub on 2026-11-23: the text names in the band margin from ticket 218 (variant A) did not look right; chose **variant 4**: a narrow margin with a drum icon and a colour dot per row. The hand colours from 218 (right = cream note, left = black note with outline) stay as they are.
 
 ## Goal
 

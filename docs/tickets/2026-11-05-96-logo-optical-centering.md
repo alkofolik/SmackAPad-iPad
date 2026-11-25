@@ -1,6 +1,6 @@
 # 96 — Logo: optically centred mark (icon, Home screen, wordmark)
 
-Status: resolved. Source: Jakub, 2026-11-05: the logo feels off-centre; wants it more symmetric everywhere (app icon, Home screen) without redesigning it.
+Status: done (2026-11-25). Previous: resolved. Source: Jakub, 2026-11-05: the logo feels off-centre; wants it more symmetric everywhere (app icon, Home screen) without redesigning it.
 
 ## Problem
 

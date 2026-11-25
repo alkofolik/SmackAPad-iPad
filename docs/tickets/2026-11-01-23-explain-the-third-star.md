@@ -1,6 +1,6 @@
 # 23 — Make it clear how to earn the third star
 
-Status: ready-for-ipad-test (2026-11-01). Implementation, unit tests, and simulator build complete.
+Status: done (2026-11-25). Previous: ready-for-ipad-test (2026-11-01). Implementation, unit tests, and simulator build complete.
 
 ## Goal
 

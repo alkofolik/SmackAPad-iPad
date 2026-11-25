@@ -1,6 +1,6 @@
 # 174 — Split Persistence.swift into smaller files (no behaviour change)
 
-Status: implemented. Seven incremental builds succeeded; the full suite passed 244 tests before and after the split on 2026-11-11. Awaiting Jakub’s manual iPad check. Approved by Jakub on 2026-11-11. Corresponds to AI panel item #29. Run after ticket 173 (both touch `AppLanguage` / `Persistence.swift`) and before the iCloud sync ticket 162.
+Status: done (2026-11-25). Previous: implemented. Seven incremental builds succeeded; the full suite passed 244 tests before and after the split on 2026-11-11. Awaiting Jakub’s manual iPad check. Approved by Jakub on 2026-11-11. Corresponds to AI panel item #29. Run after ticket 173 (both touch `AppLanguage` / `Persistence.swift`) and before the iCloud sync ticket 162.
 
 ## Goal
 

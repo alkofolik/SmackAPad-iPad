@@ -1,6 +1,6 @@
 # 204 — One training place: the Today session screen goes into Training
 
-Status: implemented; build and full suite passed (289 tests); ready for iPad test. Decided by Jakub on 2026-11-13 (iPad review, photos 3 and 4). Dependencies: 201, 202.
+Status: done (2026-11-25). Previous: implemented; build and full suite passed (289 tests); ready for iPad test. Decided by Jakub on 2026-11-13 (iPad review, photos 3 and 4). Dependencies: 201, 202.
 
 ## Goal
 

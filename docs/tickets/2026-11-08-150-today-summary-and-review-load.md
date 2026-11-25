@@ -1,6 +1,6 @@
 # 150 — Today summary, legacy ★3 and review load
 
-Status: implemented, ready for iPad review. Approved by Jakub in this conversation. Blocked by: none. Source: AI panel round 1 (`docs/reviews/ai-panel/results/synthesis.md`, items 3, 4, 5); `docs/2026-11-08-ai-panel-action-plan.md`, Batch 1.
+Status: done (2026-11-25). Previous: implemented, ready for iPad review. Approved by Jakub in this conversation. Blocked by: none. Source: AI panel round 1 (`docs/reviews/ai-panel/results/synthesis.md`, items 3, 4, 5); `docs/2026-11-08-ai-panel-action-plan.md`, Batch 1.
 
 ## Goal
 

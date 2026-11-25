@@ -1,6 +1,6 @@
 # 18 — Minimum number of runs per star (short lessons)
 
-Status: ready-for-ipad-test (2026-11-01). Implementation, three new unit tests and simulator build complete. Tickets 15 and 17 were committed before this work.
+Status: done (2026-11-25). Previous: ready-for-ipad-test (2026-11-01). Implementation, three new unit tests and simulator build complete. Tickets 15 and 17 were committed before this work.
 
 ## Problem
 

@@ -1,6 +1,6 @@
 # 115 — The centre logo becomes a pad that opens About
 
-Status: implemented; build OK; ready for iPad test. Depends on: 112 (pad look), 113 (zoom transitions). Source: Jakub, 2026-11-06: "the middle tile with the logo could work as a button too. Nothing written on it, only the logo, in effect an About button."
+Status: done (2026-11-25). Previous: implemented; build OK; ready for iPad test. Depends on: 112 (pad look), 113 (zoom transitions). Source: Jakub, 2026-11-06: "the middle tile with the logo could work as a button too. Nothing written on it, only the logo, in effect an About button."
 
 ## Now
 

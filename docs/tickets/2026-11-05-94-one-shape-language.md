@@ -1,6 +1,6 @@
 # 94 — One shape language: same corners and same edge everywhere
 
-Status: resolved. Source: Jakub, 2026-11-05 (agreed with Claude's review): the app mixes rounded tiles without outline, square buttons with a black outline and a strongly rounded pattern band. It should look like one system.
+Status: done (2026-11-25). Previous: resolved. Source: Jakub, 2026-11-05 (agreed with Claude's review): the app mixes rounded tiles without outline, square buttons with a black outline and a strongly rounded pattern band. It should look like one system.
 
 ## Rule
 

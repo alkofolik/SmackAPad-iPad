@@ -1,6 +1,6 @@
 # 218 — Band: drum names in a dark margin, orange field starts after them; right/left hand shown on the notes
 
-Status: implemented in c5bb207, rejected by Jakub on 2026-11-23 (text names); margin part superseded by ticket 229, hand colours stay. Jakub on 2026-11-22: the way the drums are listed in the band looks "very amateurish"; chose **variant A** of the mockup (design canvas "Smack-a-Pad – návrhy (kolo 22. 11.)", artboard C): names in the dark margin, the orange field starts after the names. Also from the checklist (2026-11-20, "Info popover and pad legend"): the notes must show which hand plays them, white = right hand, black = left hand.
+Status: done (2026-11-25). Previous: implemented in c5bb207, rejected by Jakub on 2026-11-23 (text names); margin part superseded by ticket 229, hand colours stay. Jakub on 2026-11-22: the way the drums are listed in the band looks "very amateurish"; chose **variant A** of the mockup (design canvas "Smack-a-Pad – návrhy (kolo 22. 11.)", artboard C): names in the dark margin, the orange field starts after the names. Also from the checklist (2026-11-20, "Info popover and pad legend"): the notes must show which hand plays them, white = right hand, black = left hand.
 
 ## Goal
 

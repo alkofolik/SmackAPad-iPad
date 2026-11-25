@@ -1,6 +1,6 @@
 # 165 — Practice screen: timing cue B1, run progress C2 and focus mode
 
-Status: implemented. Approved by Jakub on 2026-11-10. Follows design ticket 164 (`docs/design/2026-11-10-164-practice-hud-and-focus.md`, previews in `docs/design/previews/164/`). Jakub chose **B1 (Gliding Horizon Pip)** and **C2 (Stepped LED Meter)**. Sizes, BPM priority and focus layout below are updated by ticket 171 and its approved variant B (2026-11-11).
+Status: done (2026-11-25). Previous: implemented. Approved by Jakub on 2026-11-10. Follows design ticket 164 (`docs/design/2026-11-10-164-practice-hud-and-focus.md`, previews in `docs/design/previews/164/`). Jakub chose **B1 (Gliding Horizon Pip)** and **C2 (Stepped LED Meter)**. Sizes, BPM priority and focus layout below are updated by ticket 171 and its approved variant B (2026-11-11).
 
 ## Goal
 

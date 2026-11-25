@@ -1,6 +1,6 @@
 # 14 — Intro Section Screen
 
-Status: ready-for-ipad-test
+Status: done (2026-11-25). Previous: ready-for-ipad-test
 
 ## Goal
 

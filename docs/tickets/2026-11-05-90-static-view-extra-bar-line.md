@@ -1,6 +1,6 @@
 # 90 — Static view: one bar line only (extra vertical line at the bar boundary)
 
-Status: resolved. Source: Jakub, 2026-11-05 (iPad, photo 1, after ticket 84): "There is still an extra vertical line."
+Status: done (2026-11-25). Previous: resolved. Source: Jakub, 2026-11-05 (iPad, photo 1, after ticket 84): "There is still an extra vertical line."
 
 ## Problem
 
