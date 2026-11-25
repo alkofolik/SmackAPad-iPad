@@ -473,6 +473,18 @@ public final class AudioEngine: @unchecked Sendable {
 
     public func stopMetronome() { queue.sync { stopMetronomeOnQueue() } }
 
+    /// Stops any scheduled pattern preview buffers without tearing down the audio engine.
+    func stopPatternPlayback() {
+        queue.sync {
+            schedulingFailed = false
+            lateSounds = LateSoundPolicy()
+            for index in patternPlayers.indices {
+                patternPlayers[index].node.stop()
+                patternPlayers[index].availableAt = 0
+            }
+        }
+    }
+
     /// Four count-in clicks followed by ten measured clicks, exactly one second apart.
     /// The returned time is for display/deadline only, NEVER a measurement anchor.
     @discardableResult

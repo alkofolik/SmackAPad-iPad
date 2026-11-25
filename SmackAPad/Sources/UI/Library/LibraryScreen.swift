@@ -34,6 +34,7 @@ struct LibraryScreen: View {
     @State private var consumedStarLessons: Set<Int> = []
     @State private var returnedStars: [Int: Set<Int>] = [:]
     @Environment(\.accessibilityReduceMotion) private var reduced
+    @Environment(\.scenePhase) private var scenePhase
     private var motion: Theme.Motion.Policy { .init(reduced: reduced) }
     @State private var showingSettings = false
     @State private var purchaseAccess: String?
@@ -41,6 +42,7 @@ struct LibraryScreen: View {
     @State private var columnVisibility: NavigationSplitViewVisibility = .all
     @State private var pendingCategoryToHide: PendingHideTarget?
     @State private var isHiddenExpanded = false
+    @State private var previewPlayer = LibraryPatternPreviewPlayer()
 
     private var isSearchVisible: Bool {
         isSearchOpen || !query.isEmpty
@@ -238,6 +240,7 @@ struct LibraryScreen: View {
         }
         .onChange(of: selectedLesson?.id) { _, id in
             if let id {
+                previewPlayer.stop(releaseAudio: true)
                 practicedID = id
                 starsBefore = starSet(id)
                 returnedStars = [:]
@@ -247,14 +250,29 @@ struct LibraryScreen: View {
             }
         }
         .onChange(of: settings.libraryView) { _, _ in
+            previewPlayer.stop(releaseAudio: false)
             query = ""; cross = ""; showingIntro = false; progression.cancelStageAccessChange()
             isHiddenExpanded = false
             pendingCategoryToHide = nil
             isSearchOpen = false
             showingFilters = false
         }
-        .onChange(of: group?.id) { _, _ in progression.cancelStageAccessChange() }
-        .onChange(of: showingIntro) { _, _ in progression.cancelStageAccessChange() }
+        .onChange(of: group?.id) { _, _ in
+            previewPlayer.stop(releaseAudio: false)
+            progression.cancelStageAccessChange()
+        }
+        .onChange(of: showingIntro) { _, _ in
+            previewPlayer.stop(releaseAudio: false)
+            progression.cancelStageAccessChange()
+        }
+        .onChange(of: scenePhase) { _, phase in
+            if phase != .active {
+                previewPlayer.stop(releaseAudio: true)
+            }
+        }
+        .onDisappear {
+            previewPlayer.stop(releaseAudio: true)
+        }
     }
 
     private func starSet(_ id: Int) -> [Bool] {
@@ -336,7 +354,10 @@ struct LibraryScreen: View {
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             PadToolbarItem(placement: .topBarLeading) {
-                BackButton(action: onHome)
+                BackButton {
+                    previewPlayer.stop(releaseAudio: true)
+                    onHome()
+                }
             }
         }
     }
@@ -357,6 +378,7 @@ struct LibraryScreen: View {
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
+        .instrumentPanel(border: selected ? Theme.orange : Theme.hairline)
         .accessibilityAddTraits(selected ? .isSelected : [])
         .listRowInsets(EdgeInsets(top: Theme.Space.tight, leading: Theme.Space.regular, bottom: Theme.Space.tight, trailing: Theme.Space.regular))
         .listRowSeparator(.hidden)
@@ -371,7 +393,6 @@ struct LibraryScreen: View {
         .accessibilityAction(named: settings.localized("Hide category")) {
             pendingCategoryToHide = PendingHideTarget(id: "intro", title: title)
         }
-        .overlay(alignment: .bottom) { sidebarRule.offset(y: Theme.Space.tight) }
     }
     private var organiseSection: some View {
         Section {
@@ -387,6 +408,7 @@ struct LibraryScreen: View {
                 let nonPathGroups = groups.filter { !$0.isExtension && !settings.isCategoryHidden($0.id, in: mode.id) }
                 if !nonPathGroups.isEmpty {
                     categoryRows(nonPathGroups)
+                        .instrumentPanel()
                         .listRowInsets(EdgeInsets(top: Theme.Space.tight, leading: Theme.Space.regular, bottom: Theme.Space.tight, trailing: Theme.Space.regular))
                         .listRowSeparator(.hidden)
                         .listRowBackground(Color.clear)
@@ -399,9 +421,6 @@ struct LibraryScreen: View {
         let levels = (1...5).filter { !settings.isCategoryHidden("level-\($0)", in: mode.id) }
         return ForEach(levels, id: \.self) { level in
             levelView(level)
-                .overlay(alignment: .top) {
-                    if level != levels.first { sidebarRule }
-                }
         }
     }
 
@@ -412,21 +431,27 @@ struct LibraryScreen: View {
         let levelTitle = settings.localized("Level %lld", level)
         let levelLessons = catalog.path.filter { $0.level == level }
         let levelGroups = groups.filter { $0.stage?.level == level && !settings.isCategoryHidden($0.id, in: mode.id) }
+        let hasSelectedChild = !showingIntro && levelGroups.contains { $0.id == group?.id }
 
         if isExpanded {
-            VStack(alignment: .leading, spacing: Theme.Space.small) {
+            VStack(alignment: .leading, spacing: 0) {
                 Button {
                     expandedLevels.remove(level)
                 } label: {
                     HStack(spacing: Theme.Space.small) {
                         Image(systemName: "chevron.right")
                             .rotationEffect(motion.angle(90))
-                            .font(Theme.meta).frame(width: 16)
+                            .font(Theme.meta)
+                            .foregroundStyle(hasSelectedChild ? Theme.orange : Theme.secondary)
+                            .frame(width: 16)
                         sidebarLabel(levelTitle,
                                      lessons: levelLessons,
                                      isCategory: true,
                                      isStrong: true)
                     }
+                    .padding(.horizontal, Theme.Space.regular)
+                    .padding(.vertical, Theme.Space.tight)
+                    .frame(maxWidth: .infinity, minHeight: Theme.Size.touch, alignment: .leading)
                     .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
@@ -443,10 +468,11 @@ struct LibraryScreen: View {
                 }
 
                 if !levelGroups.isEmpty {
+                    sidebarRule
                     categoryRows(levelGroups)
                 }
             }
-            .padding(.vertical, Theme.Space.tight)
+            .instrumentPanel()
             .listRowInsets(EdgeInsets(top: Theme.Space.tight, leading: Theme.Space.regular, bottom: Theme.Space.small, trailing: Theme.Space.regular))
             .listRowSeparator(.hidden)
             .listRowBackground(Color.clear)
@@ -457,7 +483,9 @@ struct LibraryScreen: View {
                 HStack(spacing: Theme.Space.small) {
                     Image(systemName: "chevron.right")
                         .rotationEffect(motion.angle(0))
-                        .font(Theme.meta).frame(width: 16)
+                        .font(Theme.meta)
+                        .foregroundStyle(hasSelectedChild ? Theme.orange : Theme.secondary)
+                        .frame(width: 16)
                     sidebarLabel(levelTitle,
                                  lessons: levelLessons,
                                  isCategory: true,
@@ -466,9 +494,16 @@ struct LibraryScreen: View {
                 .padding(.horizontal, Theme.Space.regular)
                 .padding(.vertical, Theme.Space.tight)
                 .frame(maxWidth: .infinity, minHeight: Theme.Size.touch, alignment: .leading)
+                .background {
+                    if hasSelectedChild {
+                        Rectangle().fill(Theme.orange).frame(width: 3)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                    }
+                }
                 .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
+            .instrumentPanel(border: hasSelectedChild ? Theme.orange.opacity(0.6) : Theme.hairline)
             .accessibilityValue(settings.localized("Collapsed"))
             .contextMenu {
                 Button {
@@ -495,12 +530,11 @@ struct LibraryScreen: View {
     }
 
     private func sidebarSelection(_ selected: Bool) -> some View {
-        let shape = RoundedRectangle(cornerRadius: Theme.Radius.button)
-        return shape.fill(selected ? Theme.surface : Color.clear)
+        Rectangle()
+            .fill(selected ? Theme.activeFill : Color.clear)
             .overlay(alignment: .leading) {
                 if selected { Rectangle().fill(Theme.orange).frame(width: 3) }
             }
-            .clipShape(shape)
             .allowsHitTesting(false)
     }
 
@@ -521,14 +555,12 @@ struct LibraryScreen: View {
         if !visibleExtensions.isEmpty {
             Section {
                 categoryRows(visibleExtensions)
+                    .instrumentPanel()
                     .listRowInsets(EdgeInsets(top: Theme.Space.tight, leading: Theme.Space.regular, bottom: Theme.Space.tight, trailing: Theme.Space.regular))
                     .listRowSeparator(.hidden)
                     .listRowBackground(Color.clear)
             } header: {
-                VStack(alignment: .leading, spacing: Theme.Space.small) {
-                    sidebarRule
-                    SectionHeader(title: settings.localized("Extensions · outside the Path"))
-                }
+                SectionHeader(title: settings.localized("Extensions · outside the Path"))
             }
         }
     }
@@ -793,7 +825,11 @@ struct LibraryScreen: View {
                         LibraryLessonRow(lesson: lesson, settings: settings, progress: progress,
                                          number: (group.lessons.firstIndex { $0.id == lesson.id } ?? 0) + 1,
                                          showTechnique: mode == .genre,
-                                         locked: !progression.isLessonOpen(lesson), purchaseLocked: !store.isUnlocked(lesson), isNext: lesson.id == nextLesson?.id) {
+                                         locked: !progression.isLessonOpen(lesson), purchaseLocked: !store.isUnlocked(lesson), isNext: lesson.id == nextLesson?.id,
+                                         isPreviewPlaying: previewPlayer.playingLessonID == lesson.id,
+                                         previewAnchorHostTime: previewPlayer.anchorHostTime,
+                                         previewSecondsPerStep: previewPlayer.secondsPerStep,
+                                         onTogglePreview: { previewPlayer.toggle(lesson: lesson, settings: settings) }) {
                             open(lesson)
                         }
                     }
@@ -1122,6 +1158,7 @@ struct LibraryScreen: View {
     }
 
     private func open(_ lesson: Lesson) {
+        previewPlayer.stop(releaseAudio: true)
         guard store.isUnlocked(lesson) else {
             purchaseAccess = lesson.access ?? "full"
             return
@@ -1170,6 +1207,10 @@ struct LibraryLessonRow: View {
     var purchaseLocked = false
     var isNext = false
     var introGoal: String? = nil
+    var isPreviewPlaying = false
+    var previewAnchorHostTime: UInt64 = 0
+    var previewSecondsPerStep: Double = 0
+    var onTogglePreview: (() -> Void)? = nil
     let onSelect: () -> Void
 
     private var record: LessonProgress? { progress.progress(for: lesson.id) }
@@ -1226,12 +1267,22 @@ struct LibraryLessonRow: View {
             if introGoal == nil {
                 ViewThatFits(in: .horizontal) {
                     HStack(spacing: Theme.Space.regular) {
-                        LessonPatternStrip(hits: lesson.hits, dimmed: locked)
+                        HStack(spacing: Theme.Space.small) {
+                            previewButton
+                            LessonPatternStrip(
+                                hits: lesson.hits,
+                                dimmed: locked,
+                                isPlaying: isPreviewPlaying,
+                                anchorHostTime: previewAnchorHostTime,
+                                secondsPerStep: previewSecondsPerStep
+                            )
+                        }
                         settledMark
                         dueMark
                         StarsView(record: record, lesson: lesson)
                     }
                     HStack(spacing: Theme.Space.small) {
+                        previewButton
                         settledMark
                         dueMark
                         StarsView(record: record, lesson: lesson)
@@ -1264,6 +1315,32 @@ struct LibraryLessonRow: View {
             }
         }
         .lessonSource(lesson.id)
+    }
+
+    @ViewBuilder
+    private var previewButton: some View {
+        if let onTogglePreview {
+            Button(action: onTogglePreview) {
+                Image(systemName: isPreviewPlaying ? "stop.fill" : "play.fill")
+                    .font(Theme.meta)
+                    .foregroundStyle(isPreviewPlaying ? Theme.orange : Theme.ink)
+                    .frame(width: Theme.Size.minimumTouch, height: Theme.Size.minimumTouch)
+                    .background {
+                        RoundedRectangle(cornerRadius: Theme.Radius.button)
+                            .fill(isPreviewPlaying ? Theme.activeFill : Theme.Skin.Pad.fill)
+                            .overlay {
+                                RoundedRectangle(cornerRadius: Theme.Radius.button)
+                                    .strokeBorder(
+                                        isPreviewPlaying ? Theme.orange : Theme.hairline,
+                                        lineWidth: isPreviewPlaying ? 1.5 : 1
+                                    )
+                            }
+                    }
+                    .contentShape(RoundedRectangle(cornerRadius: Theme.Radius.button))
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel(settings.localized(isPreviewPlaying ? "Stop preview" : "Play preview"))
+        }
     }
 
     private var isDue: Bool {
