@@ -27,9 +27,10 @@ final class TodaySessionCoordinator {
         TodayContinueTarget.resolve(currentPlan: plan, today: plan.day, nextLessonID: nil, mixLessonIDs: [])
     }
 
-    func record(_ outcome: PracticeStepOutcome) {
+    func record(_ outcome: PracticeStepOutcome, at stepIndex: Int? = nil) {
         guard plan.day == AppCalendar.today(), !plan.finished, plan.phase == .practice,
               plan.steps.indices.contains(plan.index) else { return }
+        if let stepIndex, stepIndex != plan.index { return }
         var result = plan.steps[plan.index].outcome ?? PracticeStepOutcome()
         result.include(outcome)
         plan.steps[plan.index].outcome = result

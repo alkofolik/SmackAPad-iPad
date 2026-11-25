@@ -43,7 +43,6 @@ public struct TrainingScreen: View {
     @State private var todayPractice: TodayPracticePresentation?
     @State private var todayMixFromMemory = false
     @State private var todayPracticeStarted = false
-    @State private var showingStepResult = false
     @State private var daySummary: DaySummaryPresentation?
     @State private var startMixAfterSummary = false
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
@@ -94,21 +93,23 @@ public struct TrainingScreen: View {
         let plan: TodayPlan
     }
 
-    private enum TodayPracticePresentation: Identifiable {
-        case lesson(LessonLaunch)
-        case mix(MixCoverItem)
+    private enum TodayPracticePresentation {
+        case lesson(stepIndex: Int, launch: LessonLaunch)
+        case mix(stepIndex: Int, mix: MixCoverItem)
+        case summary(TodayPlan)
 
-        var id: String {
+        var stepID: String {
             switch self {
-            case .lesson(let launch): return "lesson-\(launch.id)"
-            case .mix(let mix): return mix.id.uuidString
+            case .lesson(let stepIndex, let launch): return "lesson-\(stepIndex)-\(launch.id)"
+            case .mix(let stepIndex, let mix): return "mix-\(stepIndex)-\(mix.id.uuidString)"
+            case .summary(let plan): return "summary-\(plan.day)-\(plan.index)-\(plan.finished)"
             }
         }
     }
 
     private var hasActiveCover: Bool {
         selectedLesson != nil || selectedAfterMeLesson != nil || mixPresentation != nil
-            || todayPractice != nil || daySummary != nil || showingStepResult
+            || todayPractice != nil || daySummary != nil
     }
 
     private var continueTarget: TodayContinueTarget? {
@@ -265,25 +266,16 @@ public struct TrainingScreen: View {
                     )
                 }
             }
-            .fullScreenCover(item: $todayPractice, onDismiss: dailyPracticeDismissed) { presentation in
-                switch presentation {
-                case .lesson(let launch):
-                    PracticeScreen(
-                        lesson: launch.lesson, settings: settings, progress: progress, midi: midi,
-                        initialFromMemory: launch.reviewTempo != nil, initialBpm: launch.reviewTempo,
-                        onStepResult: { todaySession?.record($0) }
-                    )
-                case .mix(let mix):
-                    MixFlowScreen(
-                        lessons: dailyMixBinding(fallback: mix.lessons),
-                        fromMemory: $todayMixFromMemory,
-                        onAnotherMix: rerollDailyMix,
-                        onMixStarted: {
-                            todayPracticeStarted = true
-                            todaySession?.continueSession()
-                        },
-                        onStepResult: { todaySession?.record($0) }
-                    )
+            .fullScreenCover(
+                isPresented: Binding(
+                    get: { todayPractice != nil },
+                    set: { if !$0 { todayPractice = nil } }
+                ),
+                onDismiss: dailyPracticeDismissed
+            ) {
+                if let presentation = todayPractice {
+                    todayPracticeCover(for: presentation)
+                        .id(presentation.stepID)
                 }
             }
             .fullScreenCover(item: $daySummary, onDismiss: {
@@ -311,22 +303,6 @@ public struct TrainingScreen: View {
                 }
             }
         }
-        .accessibilityHidden(showingStepResult)
-        .overlay {
-            if showingStepResult, let session = todaySession,
-               let index = session.plan.lastPlayedIndex, session.plan.steps.indices.contains(index) {
-                TrainingStepResultCard(
-                    step: session.plan.steps[index],
-                    nextStep: nextDailyStep,
-                    onContinue: continueAfterResult,
-                    onSkip: skipDailyStep,
-                    onDone: finishDailySession,
-                    onClose: { showingStepResult = false }
-                )
-                .transition(reduceMotion ? .opacity : .opacity.combined(with: .scale(scale: 0.94)))
-            }
-        }
-        .animation(.easeOut(duration: 0.22), value: showingStepResult)
         .environment(\.lessonNamespace, lessonNamespace)
         .practiceLessonPresentation(launch: $selectedLesson, namespace: lessonNamespace)
         .onChange(of: selectedLesson?.id) { _, id in
@@ -357,12 +333,6 @@ public struct TrainingScreen: View {
     }
 
     // MARK: - 1. Today Panel
-
-    private var nextDailyStep: TodayPlan.Step? {
-        guard case .step(let plan) = todaySession?.nextAction,
-              plan.steps.indices.contains(plan.index) else { return nil }
-        return plan.steps[plan.index]
-    }
 
     private var todaySteps: [TodayPlan.Step] {
         continueTarget?.plan.steps ?? []
@@ -518,57 +488,136 @@ public struct TrainingScreen: View {
         #endif
     }
 
-    private func openDailyStep() {
-        guard let session = todaySession, session.plan.day == AppCalendar.today() else { return }
-        guard case .step(let plan) = session.nextAction else {
-            showDaySummary()
-            return
+    @ViewBuilder
+    private func todayPracticeCover(for presentation: TodayPracticePresentation) -> some View {
+        switch presentation {
+        case .lesson(let stepIndex, let launch):
+            PracticeScreen(
+                lesson: launch.lesson,
+                settings: settings,
+                progress: progress,
+                midi: midi,
+                initialFromMemory: launch.reviewTempo != nil,
+                initialBpm: launch.reviewTempo,
+                onStepResult: { todaySession?.record($0, at: stepIndex) },
+                dailyNextTitle: dailyNextTitle(after: stepIndex),
+                onAdvanceDailyStep: { advanceDailyStep() }
+            )
+        case .mix(let stepIndex, let mix):
+            MixFlowScreen(
+                lessons: dailyMixBinding(fallback: mix.lessons),
+                fromMemory: $todayMixFromMemory,
+                onAnotherMix: rerollDailyMix,
+                onMixStarted: {
+                    todayPracticeStarted = true
+                    todaySession?.continueSession()
+                },
+                onStepResult: { todaySession?.record($0, at: stepIndex) },
+                dailyNextTitle: dailyNextTitle(after: stepIndex),
+                onAdvanceDailyStep: { advanceDailyStep() }
+            )
+        case .summary(let plan):
+            GeometryReader { geometry in
+                DaySummaryView(
+                    plan: plan,
+                    isLandscape: geometry.size.width >= 768 && geometry.size.width > geometry.size.height,
+                    canStartExtraMix: mixCandidates.count >= LearningRules.minimumMixLessons,
+                    onBack: { todayPractice = nil },
+                    onExtraMix: {
+                        startMixAfterSummary = true
+                        todayPractice = nil
+                    },
+                    onEndTraining: { todayPractice = nil }
+                )
+                .calmChassisBackground()
+            }
         }
-        let step = plan.steps[plan.index]
+    }
+
+    private func canOpenDailyStep(_ step: TodayPlan.Step) -> Bool {
         let lessons = step.lessonIDs.compactMap { lessonStore.lesson(for: $0) }
-        guard lessons.count == step.lessonIDs.count,
-              lessons.allSatisfy({ store.isUnlocked($0) && progression.isLessonOpen($0)
-                  && (midi.activeProfile.padCount == 16 || EightPadLayout.slots(for: $0) != nil) }) else {
-            session.skip(progress: progress)
+        guard lessons.count == step.lessonIDs.count else { return false }
+        return lessons.allSatisfy {
+            store.isUnlocked($0) && progression.isLessonOpen($0)
+                && (midi.activeProfile.padCount == 16 || EightPadLayout.slots(for: $0) != nil)
+        }
+    }
+
+    private func dailyNextTitle(after stepIndex: Int) -> String {
+        guard let plan = todaySession?.plan else {
+            return settings.localized("Finish training")
+        }
+        let nextStep = plan.steps.enumerated().first { idx, step in
+            idx > stepIndex && step.outcome?.played != true && canOpenDailyStep(step)
+        }?.element
+        if let nextStep {
+            return settings.localized("Continue · %@", stepTitle(nextStep))
+        }
+        return settings.localized("Finish training")
+    }
+
+    private func openDailyStep(inActiveCover: Bool = false) {
+        guard let session = todaySession, session.plan.day == AppCalendar.today() else { return }
+        while true {
+            guard case .step(let plan) = session.nextAction else {
+                todayPracticeStarted = false
+                if inActiveCover {
+                    todayPractice = .summary(session.plan)
+                } else {
+                    showDaySummary()
+                }
+                return
+            }
+            let stepIndex = plan.index
+            let step = plan.steps[stepIndex]
+            let lessons = step.lessonIDs.compactMap { lessonStore.lesson(for: $0) }
+            guard canOpenDailyStep(step) else {
+                session.skip(progress: progress)
+                continue
+            }
+            if step.kind == .mix {
+                todayPracticeStarted = false
+                todayPractice = .mix(stepIndex: stepIndex, mix: MixCoverItem(lessons: lessons))
+            } else if let lesson = lessons.first {
+                session.continueSession()
+                todayPracticeStarted = true
+                todayPractice = .lesson(
+                    stepIndex: stepIndex,
+                    launch: step.kind == .review ? .review(lesson) : .lesson(lesson)
+                )
+            }
             return
         }
-        if step.kind == .mix {
-            todayPracticeStarted = false
-            todayPractice = .mix(MixCoverItem(lessons: lessons))
-        } else if let lesson = lessons.first {
-            session.continueSession()
-            todayPracticeStarted = true
-            todayPractice = .lesson(step.kind == .review ? .review(lesson) : .lesson(lesson))
+    }
+
+    private func advanceDailyStep() {
+        guard let session = todaySession, session.plan.day == AppCalendar.today() else {
+            todayPractice = nil
+            return
         }
+        if todayPracticeStarted {
+            session.leavePractice(progress: progress)
+        }
+        openDailyStep(inActiveCover: true)
     }
 
     private func dailyPracticeDismissed() {
         isVisible = true
         guard let session = todaySession, session.plan.day == AppCalendar.today() else {
+            todayPracticeStarted = false
             refreshCalendarDay()
             return
         }
         if todayPracticeStarted {
             session.leavePractice(progress: progress)
-            showingStepResult = session.plan.lastPlayedIndex != nil
         }
+        todayPracticeStarted = false
         refreshTrainingData()
-    }
-
-    private func continueAfterResult() {
-        showingStepResult = false
-        openDailyStep()
-    }
-
-    private func skipDailyStep() {
-        todaySession?.skip(progress: progress)
-        refreshTrainingData()
-    }
-
-    private func finishDailySession() {
-        todaySession?.finish(progress: progress)
-        showingStepResult = false
-        showDaySummary()
+        if startMixAfterSummary {
+            startMixAfterSummary = false
+            refreshMix(newDraw: true)
+            if !mixLessons.isEmpty { mixPresentation = MixCoverItem(lessons: mixLessons) }
+        }
     }
 
     private func showDaySummary() {
@@ -579,13 +628,13 @@ public struct TrainingScreen: View {
     private func dailyMixBinding(fallback: [Lesson]) -> Binding<[Lesson]> {
         Binding(
             get: {
-                if case .mix(let mix) = todayPractice { return mix.lessons }
+                if case .mix(_, let mix) = todayPractice { return mix.lessons }
                 return fallback
             },
             set: { lessons in
-                if case .mix(var mix) = todayPractice {
+                if case .mix(let stepIndex, var mix) = todayPractice {
                     mix.lessons = lessons
-                    todayPractice = .mix(mix)
+                    todayPractice = .mix(stepIndex: stepIndex, mix: mix)
                     todaySession?.replaceCurrentMixLessons(lessons)
                 }
             }
@@ -593,7 +642,7 @@ public struct TrainingScreen: View {
     }
 
     private func rerollDailyMix() {
-        guard case .mix(var mix) = todayPractice else { return }
+        guard case .mix(let stepIndex, var mix) = todayPractice else { return }
         let chosen = TrainingMix.reroll(
             excluding: mix.lessons.map(\.id), lessons: progression.catalog.lessons,
             progress: progress.records, padCount: midi.activeProfile.padCount,
@@ -601,7 +650,7 @@ public struct TrainingScreen: View {
         )
         guard chosen.count >= LearningRules.minimumMixLessons else { return }
         mix.lessons = chosen
-        todayPractice = .mix(mix)
+        todayPractice = .mix(stepIndex: stepIndex, mix: mix)
         todaySession?.replaceCurrentMixLessons(chosen)
         saveMix(chosen.map(\.id))
         updateMix(chosen.map(\.id))
@@ -1496,7 +1545,6 @@ public struct TrainingScreen: View {
     private func refreshCalendarDay() {
         calendarDay = AppCalendar.today()
         if todaySession?.plan.day != calendarDay {
-            showingStepResult = false
             todayPractice = nil
             daySummary = nil
             todaySession = nil

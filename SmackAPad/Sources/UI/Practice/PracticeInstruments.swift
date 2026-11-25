@@ -678,6 +678,9 @@ struct EndOfRunCardModel: Equatable {
     let showsStars: Bool
     let earnedStars: [Bool]
     let status: EndOfRunStatus
+    let progressDetail: String?
+    let growthLine: String?
+    let growthLineHighlighted: Bool
     let reviewLine: EndOfRunLine?
     let runsLine: EndOfRunLine?
     let badgeLine: EndOfRunLine?
@@ -697,24 +700,36 @@ struct EndOfRunCardModel: Equatable {
         bestResponseScore: Double?,
         language: AppLanguage,
         isDueReview: Bool = false,
-        reviewPendingReason: PracticeStepOutcome.Reason? = nil
+        reviewPendingReason: PracticeStepOutcome.Reason? = nil,
+        reviewSuccesses: Int? = nil
     ) -> EndOfRunCardModel {
         let scorePercent = Int((summary.score * 100).rounded())
         let earnedStars = [saved?.passed == true, saved?.mastery == true, saved?.memory == true]
 
         let status: EndOfRunStatus
+        let progressDetail: String?
         if reviewPendingReason == .peeked {
-            status = EndOfRunStatus(icon: "exclamationmark.circle", tintOrange: false, title: language.localized("Not counted"))
+            status = EndOfRunStatus(
+                icon: "eye",
+                tintOrange: false,
+                title: PracticeStepOutcome.Reason.peeked.title(language: language)
+            )
+            progressDetail = PracticeStepOutcome.Reason.peeked.message(language: language)
         } else if let reviewFeedback {
             switch reviewFeedback {
             case .passed:
                 status = EndOfRunStatus(icon: "checkmark", tintOrange: true, title: language.localized("Review passed"))
+                progressDetail = nil
             case .settled:
                 status = EndOfRunStatus(icon: "checkmark", tintOrange: true, title: language.localized("Lesson settled"))
+                progressDetail = nil
             case .failed:
                 status = EndOfRunStatus(icon: "xmark", tintOrange: false, title: language.localized("Review not passed"))
-            case .doesNotCount:
-                status = EndOfRunStatus(icon: "exclamationmark.circle", tintOrange: false, title: language.localized("Not counted"))
+                progressDetail = nil
+            case .doesNotCount(let goalBpm):
+                let reason = PracticeStepOutcome.Reason.requirements(goalBpm: goalBpm)
+                status = EndOfRunStatus(icon: "metronome", tintOrange: false, title: reason.title(language: language))
+                progressDetail = reason.message(language: language)
             }
         } else if isAfterMe {
             status = EndOfRunStatus(
@@ -722,23 +737,69 @@ struct EndOfRunCardModel: Equatable {
                 tintOrange: summary.score >= Scoring.passMark,
                 title: language.localized("Practice only · no stars")
             )
+            progressDetail = nil
         } else if isSectionLoop {
             status = EndOfRunStatus(icon: "repeat", tintOrange: false, title: language.localized("Section loop"))
+            progressDetail = nil
         } else if isDueReview {
             if saved?.lastReviewFailDay == AppCalendar.today() || saved?.reviewSchedule.lastReviewFailDay == AppCalendar.today() {
                 status = EndOfRunStatus(icon: "xmark", tintOrange: false, title: language.localized("Review not passed"))
+                progressDetail = nil
             } else {
                 // An undecided due review must never report a regular "Passed" card (ticket 189).
-                status = EndOfRunStatus(icon: "exclamationmark.circle", tintOrange: false, title: language.localized("Not counted"))
+                let reason = reviewPendingReason ?? .unfinishedReview
+                let icon: String
+                switch reason {
+                case .notesVisible, .peeked: icon = "eye"
+                case .unfinishedReview: icon = "eye.slash"
+                case .requirements: icon = "metronome"
+                case .reviewNotPassed: icon = "xmark"
+                }
+                status = EndOfRunStatus(
+                    icon: icon,
+                    tintOrange: false,
+                    title: reason.title(language: language, reviewSuccesses: reviewSuccesses)
+                )
+                progressDetail = reason.message(language: language)
             }
         } else if summary.passes == 0 {
-            status = EndOfRunStatus(icon: "exclamationmark.circle", tintOrange: false, title: language.localized("Not counted"))
+            status = EndOfRunStatus(icon: "stop.circle", tintOrange: false, title: language.localized("Stopped early"))
+            progressDetail = language.localized("Finish one full pass to see your score")
         } else if summary.passed || runs.last?.passed == true || summary.score >= Scoring.passMark {
             status = EndOfRunStatus(icon: "checkmark", tintOrange: true, title: language.localized("Passed"))
+            progressDetail = nil
         } else {
             let notPassed = language.localized("not passed")
             let title = notPassed.prefix(1).uppercased(with: Locale(identifier: language == .czech ? "cs" : "en")) + notPassed.dropFirst()
             status = EndOfRunStatus(icon: "xmark", tintOrange: false, title: title)
+            progressDetail = nil
+        }
+
+        let growthLine: String?
+        let growthLineHighlighted: Bool
+        if summary.passes > 0, !isAfterMe, reviewPendingReason != .peeked {
+            let previousPercent = summary.previousBestScore.map { Int(($0 * 100).rounded()) }
+            let isClean = summary.isCleanRun || (summary.totalBars > 0 && summary.cleanBars == summary.totalBars)
+            if let previousPercent, scorePercent - previousPercent >= 1 {
+                growthLine = language.localized("+%lld%% personal best", scorePercent - previousPercent)
+                growthLineHighlighted = true
+            } else if isClean, let previousBpm = summary.previousBpm, summary.bpm > previousBpm {
+                growthLine = language.localized("New clean tempo best · %lld BPM", summary.bpm)
+                growthLineHighlighted = true
+            } else if summary.totalBars >= 2, summary.cleanBars > 0, let weakestBar = summary.weakestBar {
+                growthLine = language.localized("%lld of %lld bars clean · watch bar %lld",
+                                                summary.cleanBars, summary.totalBars, weakestBar)
+                growthLineHighlighted = false
+            } else if summary.totalBars > 0, summary.cleanBars == summary.totalBars {
+                growthLine = language.localized("All bars clean")
+                growthLineHighlighted = true
+            } else {
+                growthLine = nil
+                growthLineHighlighted = false
+            }
+        } else {
+            growthLine = nil
+            growthLineHighlighted = false
         }
 
         let reviewLine: EndOfRunLine?
@@ -767,7 +828,7 @@ struct EndOfRunCardModel: Equatable {
                 reviewLine = EndOfRunLine(
                     kind: .review,
                     icon: "calendar",
-                    text: "\(language.localized("From memory")) · \(goalBpm) BPM",
+                    text: PracticeStepOutcome.Reason.requirements(goalBpm: goalBpm).message(language: language),
                     isOrange: false
                 )
             }
@@ -847,6 +908,9 @@ struct EndOfRunCardModel: Equatable {
             showsStars: !isAfterMe,
             earnedStars: earnedStars,
             status: status,
+            progressDetail: progressDetail,
+            growthLine: growthLine,
+            growthLineHighlighted: growthLineHighlighted,
             reviewLine: reviewLine,
             runsLine: runsLine,
             badgeLine: badgeLine
@@ -909,6 +973,7 @@ struct ResultCard: View {
     var reviewFeedback: ReviewScheduler.ReviewFeedback? = nil
     var isDueReview: Bool = false
     var reviewPendingReason: PracticeStepOutcome.Reason? = nil
+    var reviewSuccesses: Int? = nil
     var badgeCount: Int = 0
     var isAfterMe: Bool = false
     var isSectionLoop: Bool = false
@@ -917,6 +982,7 @@ struct ResultCard: View {
     var nextAction: (() -> Void)? = nil
     var nextEnabled: Bool = false
     var nextLocked: Bool = false
+    var nextTitle: String? = nil
     var nextHint: String? = nil
     var restartAction: (() -> Void)? = nil
     var restartEnabled: Bool = true
@@ -939,33 +1005,14 @@ struct ResultCard: View {
             bestResponseScore: bestResponseScore,
             language: settings.languagePreference,
             isDueReview: isDueReview,
-            reviewPendingReason: reviewPendingReason
+            reviewPendingReason: reviewPendingReason,
+            reviewSuccesses: reviewSuccesses
         )
     }
 
-    private var isNotCounted: Bool {
-        reviewPendingReason != nil
-            || summary.passes == 0
-            || model.status.icon == "exclamationmark.circle"
-            || model.status.title == settings.localized("Not counted")
-    }
-
-    private var notCountedReason: String {
-        if let reviewPendingReason {
-            return reviewPendingReason.message(language: settings.languagePreference)
-        }
-        if let reviewLine = model.reviewLine {
-            return reviewLine.text
-        }
-        if summary.passes == 0 {
-            return settings.localized("Run stopped before the first pass finished.")
-        }
-        return model.status.title
-    }
-
     private var verdictText: String {
-        if isNotCounted {
-            return settings.localized("Not counted")
+        if model.progressDetail != nil {
+            return model.status.title
         }
         if let reviewLine = model.reviewLine, model.runsLine != nil {
             return "\(model.status.title) · \(reviewLine.text)"
@@ -985,7 +1032,11 @@ struct ResultCard: View {
     }
 
     private var showNext: Bool {
-        !isNotCounted && nextEnabled && nextAction != nil
+        model.progressDetail == nil && nextEnabled && nextAction != nil
+    }
+
+    private var primaryNextLabel: String {
+        nextTitle ?? settings.localized("Next lesson")
     }
 
     private var sideZoneWidth: CGFloat {
@@ -1023,7 +1074,7 @@ struct ResultCard: View {
         .frame(width: cardWidth)
         .frame(minHeight: 168)
         .foregroundStyle(Theme.white)
-        .background(Theme.black, in: RoundedRectangle(cornerRadius: 20))
+        .background(Theme.black, in: RoundedRectangle(cornerRadius: Theme.Radius.panel))
         .task(id: event?.id ?? summary.id) {
             await animateFreshStars()
             if event == nil, !announcement.isEmpty {
@@ -1095,9 +1146,8 @@ struct ResultCard: View {
         }
     }
 
-    private var notCountedIcon: some View {
-        let iconName = reviewPendingReason == .peeked ? "eye" : model.status.icon
-        return Image(systemName: iconName)
+    private var progressIcon: some View {
+        Image(systemName: model.status.icon)
             .font(.system(size: isCompactWidth ? 30 : 36, weight: .regular))
             .foregroundStyle(Theme.white.opacity(0.85))
             .frame(height: 52)
@@ -1106,8 +1156,8 @@ struct ResultCard: View {
 
     private var middleZone: some View {
         VStack(alignment: .center, spacing: 6) {
-            if isNotCounted {
-                notCountedIcon
+            if model.progressDetail != nil {
+                progressIcon
             } else if model.showsStars {
                 starsRow
             } else {
@@ -1125,20 +1175,31 @@ struct ResultCard: View {
                 .minimumScaleFactor(0.8)
                 .multilineTextAlignment(.center)
 
-            if isNotCounted {
-                Text(notCountedReason)
+            if let detail = model.progressDetail {
+                Text(detail)
                     .font(Theme.text(14).weight(.medium))
                     .foregroundStyle(Theme.white.opacity(0.8))
-                    .lineLimit(1)
+                    .lineLimit(2)
                     .minimumScaleFactor(0.8)
                     .multilineTextAlignment(.center)
                     .frame(minHeight: 44, alignment: .center)
-            } else if let runsLine = model.runsLine {
-                summaryRowButton(runsLine)
-            } else if let reviewLine = model.reviewLine {
-                summaryRowButton(reviewLine)
             } else {
-                Color.clear.frame(height: 44)
+                if let growthLine = model.growthLine {
+                    Text(growthLine)
+                        .font(Theme.meta)
+                        .foregroundStyle(model.growthLineHighlighted ? Theme.orange : Theme.white.opacity(0.78))
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.8)
+                        .multilineTextAlignment(.center)
+                }
+
+                if let runsLine = model.runsLine {
+                    summaryRowButton(runsLine)
+                } else if let reviewLine = model.reviewLine {
+                    summaryRowButton(reviewLine)
+                } else if model.growthLine == nil {
+                    Color.clear.frame(height: 44)
+                }
             }
         }
         .frame(maxWidth: .infinity, alignment: .center)
@@ -1177,15 +1238,17 @@ struct ResultCard: View {
                 Button {
                     nextAction?()
                 } label: {
-                    Text(settings.localized("Next lesson"))
+                    Text(primaryNextLabel)
                         .font(Theme.action)
-                        .lineLimit(1)
-                        .minimumScaleFactor(0.8)
+                        .lineLimit(2)
+                        .minimumScaleFactor(0.72)
+                        .multilineTextAlignment(.center)
+                        .padding(.horizontal, 8)
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
                 }
                 .buttonStyle(PadPrimaryButtonStyle())
                 .frame(width: sideZoneWidth, height: 48)
-                .accessibilityLabel(settings.localized("Next lesson"))
+                .accessibilityLabel(primaryNextLabel)
                 .accessibilityHint(nextHint ?? "")
                 .disabled(!nextEnabled || nextAction == nil)
 
@@ -1228,8 +1291,8 @@ struct ResultCard: View {
             HStack(alignment: .center, spacing: Theme.Space.regular) {
                 scoreColumn
                 Spacer(minLength: 0)
-                if isNotCounted {
-                    notCountedIcon
+                if model.progressDetail != nil {
+                    progressIcon
                 } else if model.showsStars {
                     starsRow
                 }
@@ -1243,18 +1306,29 @@ struct ResultCard: View {
                     .minimumScaleFactor(0.8)
                     .multilineTextAlignment(.center)
 
-                if isNotCounted {
-                    Text(notCountedReason)
+                if let detail = model.progressDetail {
+                    Text(detail)
                         .font(Theme.text(14).weight(.medium))
                         .foregroundStyle(Theme.white.opacity(0.8))
-                        .lineLimit(1)
+                        .lineLimit(2)
                         .minimumScaleFactor(0.8)
                         .multilineTextAlignment(.center)
                         .frame(minHeight: 44, alignment: .center)
-                } else if let runsLine = model.runsLine {
-                    summaryRowButton(runsLine)
-                } else if let reviewLine = model.reviewLine {
-                    summaryRowButton(reviewLine)
+                } else {
+                    if let growthLine = model.growthLine {
+                        Text(growthLine)
+                            .font(Theme.meta)
+                            .foregroundStyle(model.growthLineHighlighted ? Theme.orange : Theme.white.opacity(0.78))
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.8)
+                            .multilineTextAlignment(.center)
+                    }
+
+                    if let runsLine = model.runsLine {
+                        summaryRowButton(runsLine)
+                    } else if let reviewLine = model.reviewLine {
+                        summaryRowButton(reviewLine)
+                    }
                 }
             }
             .frame(maxWidth: .infinity, alignment: .center)
@@ -1264,15 +1338,17 @@ struct ResultCard: View {
                     Button {
                         nextAction?()
                     } label: {
-                        Text(settings.localized("Next lesson"))
+                        Text(primaryNextLabel)
                             .font(Theme.action)
-                            .lineLimit(1)
-                            .minimumScaleFactor(0.8)
+                            .lineLimit(2)
+                            .minimumScaleFactor(0.72)
+                            .multilineTextAlignment(.center)
+                            .padding(.horizontal, 8)
                             .frame(maxWidth: .infinity, maxHeight: .infinity)
                     }
                     .buttonStyle(PadPrimaryButtonStyle())
                     .frame(height: 48)
-                    .accessibilityLabel(settings.localized("Next lesson"))
+                    .accessibilityLabel(primaryNextLabel)
                     .accessibilityHint(nextHint ?? "")
                     .disabled(!nextEnabled || nextAction == nil)
 

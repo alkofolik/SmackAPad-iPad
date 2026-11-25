@@ -821,6 +821,12 @@ struct RunSummary: Identifiable {
     var finishedByStar: Int? = nil
     var runs: [PracticeRunResult] = []
     var firstStar2: Bool = false
+    var isCleanRun: Bool = false
+    var previousBestScore: Double? = nil
+    var previousBpm: Int? = nil
+    var totalBars: Int = 0
+    var cleanBars: Int = 0
+    var weakestBar: Int? = nil
 }
 
 struct StarShape: Shape {

@@ -64,7 +64,7 @@ final class RunMeterTests: XCTestCase {
     }
 
     @MainActor
-    func testEndOfRunCardModelFormatsReviewNormalAndNotCountedRuns() {
+    func testEndOfRunCardModelFormatsReviewNormalAndProgressRuns() {
         let savedThree = LessonProgress(passed: true, mastery: true, memory: true)
         let summary = RunSummary(score: 0.96, bpm: 90, passes: 2, passed: true, mastery: true, memory: true)
 
@@ -85,6 +85,7 @@ final class RunMeterTests: XCTestCase {
         XCTAssertEqual(reviewEn.earnedStars, [true, true, true])
         XCTAssertTrue(reviewEn.status.tintOrange)
         XCTAssertEqual(reviewEn.status.title, AppLanguage.english.localized("Review passed"))
+        XCTAssertNil(reviewEn.progressDetail)
         XCTAssertEqual(reviewEn.reviewLine?.text, "next in 3 days")
         XCTAssertEqual(reviewEn.reviewLine?.icon, "calendar")
         XCTAssertNil(reviewEn.runsLine)
@@ -144,7 +145,7 @@ final class RunMeterTests: XCTestCase {
         XCTAssertEqual(afterMe.lines.count, 1)
         XCTAssertEqual(afterMe.reviewLine?.text, "Best response: 92\u{00a0}%")
 
-        let notCounted = EndOfRunCardModel.build(
+        let stoppedEarlyEn = EndOfRunCardModel.build(
             summary: RunSummary(score: 0.5, bpm: 70, passes: 0, passed: false, mastery: false, memory: false),
             runs: [],
             saved: nil,
@@ -155,11 +156,27 @@ final class RunMeterTests: XCTestCase {
             bestResponseScore: nil,
             language: .english
         )
-        XCTAssertFalse(notCounted.status.tintOrange)
-        XCTAssertEqual(notCounted.status.icon, "exclamationmark.circle")
-        XCTAssertTrue(notCounted.lines.isEmpty)
+        XCTAssertFalse(stoppedEarlyEn.status.tintOrange)
+        XCTAssertEqual(stoppedEarlyEn.status.title, "Stopped early")
+        XCTAssertEqual(stoppedEarlyEn.progressDetail, "Finish one full pass to see your score")
+        XCTAssertNil(stoppedEarlyEn.growthLine)
+        XCTAssertTrue(stoppedEarlyEn.lines.isEmpty)
 
-        let earlyDueStop = EndOfRunCardModel.build(
+        let stoppedEarlyCs = EndOfRunCardModel.build(
+            summary: RunSummary(score: 0.5, bpm: 70, passes: 0, passed: false, mastery: false, memory: false),
+            runs: [],
+            saved: nil,
+            reviewFeedback: nil,
+            badgeCount: 0,
+            isAfterMe: false,
+            isSectionLoop: false,
+            bestResponseScore: nil,
+            language: .czech
+        )
+        XCTAssertEqual(stoppedEarlyCs.status.title, "Zastaveno")
+        XCTAssertEqual(stoppedEarlyCs.progressDetail, "Dohraj celý průchod pro vyhodnocení")
+
+        let warmUpEn = EndOfRunCardModel.build(
             summary: RunSummary(score: 1.0, bpm: 80, passes: 1, passed: true, mastery: false, memory: false),
             runs: [PracticeRunResult(runNumber: 1, score: 1.0, bpm: 80, passed: true)],
             saved: LessonProgress(passed: true, mastery: true, memory: true, currentBpm: 80, reviewStep: 2, reviewDueDay: "2026-11-12"),
@@ -172,12 +189,171 @@ final class RunMeterTests: XCTestCase {
             isDueReview: true,
             reviewPendingReason: .notesVisible
         )
-        XCTAssertFalse(earlyDueStop.status.tintOrange)
-        XCTAssertEqual(earlyDueStop.status.icon, "exclamationmark.circle")
-        XCTAssertEqual(earlyDueStop.status.title, AppLanguage.english.localized("Not counted"))
-        XCTAssertEqual(earlyDueStop.reviewLine?.text, PracticeStepOutcome.Reason.notesVisible.message(language: .english))
-        XCTAssertEqual(earlyDueStop.runsLine?.text, "1 run · best 100%")
-        XCTAssertEqual(earlyDueStop.lines.map(\.text), [PracticeStepOutcome.Reason.notesVisible.message(language: .english), "1 run · best 100%"])
+        XCTAssertFalse(warmUpEn.status.tintOrange)
+        XCTAssertEqual(warmUpEn.status.title, "Warm-up complete")
+        XCTAssertEqual(warmUpEn.progressDetail, "Now play 2 passes from memory")
+        XCTAssertEqual(warmUpEn.reviewLine?.text, "Now play 2 passes from memory")
+        XCTAssertEqual(warmUpEn.runsLine?.text, "1 run · best 100%")
+
+        let peekCs = EndOfRunCardModel.build(
+            summary: RunSummary(score: 1.0, bpm: 80, passes: 1, passed: false, mastery: false, memory: false),
+            runs: [PracticeRunResult(runNumber: 1, score: 1.0, bpm: 80, passed: false, peeked: true)],
+            saved: savedThree,
+            reviewFeedback: nil,
+            isAfterMe: false,
+            isSectionLoop: false,
+            bestResponseScore: nil,
+            language: .czech,
+            isDueReview: true,
+            reviewPendingReason: .peeked
+        )
+        XCTAssertEqual(peekCs.status.title, "Nápověda využita")
+        XCTAssertEqual(peekCs.progressDetail, "Další průchod zkus čistě zpaměti")
+        XCTAssertNil(peekCs.growthLine)
+
+        let oneOfTwoCs = EndOfRunCardModel.build(
+            summary: RunSummary(score: 0.9, bpm: 90, passes: 1, passed: true, mastery: false, memory: false),
+            runs: [PracticeRunResult(runNumber: 1, score: 0.9, bpm: 90, passed: true)],
+            saved: savedThree,
+            reviewFeedback: nil,
+            isAfterMe: false,
+            isSectionLoop: false,
+            bestResponseScore: nil,
+            language: .czech,
+            isDueReview: true,
+            reviewPendingReason: .unfinishedReview,
+            reviewSuccesses: 1
+        )
+        XCTAssertEqual(oneOfTwoCs.status.title, "1 ze 2 zpaměti")
+        XCTAssertEqual(oneOfTwoCs.progressDetail, "Ještě jeden úspěšný průchod zpaměti")
+
+        let zeroOfTwoCs = EndOfRunCardModel.build(
+            summary: RunSummary(score: 0.7, bpm: 90, passes: 1, passed: false, mastery: false, memory: false),
+            runs: [PracticeRunResult(runNumber: 1, score: 0.7, bpm: 90, passed: false)],
+            saved: savedThree,
+            reviewFeedback: nil,
+            isAfterMe: false,
+            isSectionLoop: false,
+            bestResponseScore: nil,
+            language: .czech,
+            isDueReview: true,
+            reviewPendingReason: .unfinishedReview,
+            reviewSuccesses: 0
+        )
+        XCTAssertEqual(zeroOfTwoCs.status.title, "Rozehřáto")
+
+        let practiceTempoEn = EndOfRunCardModel.build(
+            summary: RunSummary(score: 0.95, bpm: 80, passes: 1, passed: true, mastery: false, memory: false),
+            runs: [PracticeRunResult(runNumber: 1, score: 0.95, bpm: 80, passed: true)],
+            saved: savedThree,
+            reviewFeedback: .doesNotCount(goalBpm: 100),
+            isAfterMe: false,
+            isSectionLoop: false,
+            bestResponseScore: nil,
+            language: .english,
+            isDueReview: true
+        )
+        XCTAssertEqual(practiceTempoEn.status.title, "Practice tempo")
+        XCTAssertEqual(practiceTempoEn.progressDetail, "For review credit, play from memory at 100 BPM")
+
+        let practiceTempoCs = EndOfRunCardModel.build(
+            summary: RunSummary(score: 0.95, bpm: 80, passes: 1, passed: true, mastery: false, memory: false),
+            runs: [PracticeRunResult(runNumber: 1, score: 0.95, bpm: 80, passed: true)],
+            saved: savedThree,
+            reviewFeedback: .doesNotCount(goalBpm: 100),
+            isAfterMe: false,
+            isSectionLoop: false,
+            bestResponseScore: nil,
+            language: .czech,
+            isDueReview: true
+        )
+        XCTAssertEqual(practiceTempoCs.status.title, "Cvičné tempo")
+        XCTAssertEqual(practiceTempoCs.progressDetail, "Pro započítání opakování hraj zpaměti na 100 BPM")
+    }
+
+    @MainActor
+    func testEndOfRunCardModelGrowthLinePriorities() {
+        let saved = LessonProgress(passed: true, mastery: false, memory: false, currentBpm: 80, bestScore: 0.85)
+
+        // Priority 1: personal best score delta (>= 1 percentage point) beats tempo best and bar diagnosis.
+        let pbSummary = RunSummary(
+            score: 0.92, bpm: 90, passes: 1, passed: true, mastery: false, memory: false,
+            isCleanRun: true, previousBestScore: 0.85, previousBpm: 80,
+            totalBars: 4, cleanBars: 3, weakestBar: 2
+        )
+        let pbEn = EndOfRunCardModel.build(
+            summary: pbSummary, runs: [], saved: saved, reviewFeedback: nil,
+            isAfterMe: false, isSectionLoop: false, bestResponseScore: nil, language: .english
+        )
+        XCTAssertEqual(pbEn.growthLine, "+7% personal best")
+        XCTAssertTrue(pbEn.growthLineHighlighted)
+
+        let pbCs = EndOfRunCardModel.build(
+            summary: pbSummary, runs: [], saved: saved, reviewFeedback: nil,
+            isAfterMe: false, isSectionLoop: false, bestResponseScore: nil, language: .czech
+        )
+        XCTAssertEqual(pbCs.growthLine, "+7 % osobní rekord")
+        XCTAssertTrue(pbCs.growthLineHighlighted)
+
+        // Priority 2: clean run at higher BPM than previousBpm when score did not beat previous best.
+        let tempoSummary = RunSummary(
+            score: 0.90, bpm: 95, passes: 1, passed: true, mastery: false, memory: false,
+            isCleanRun: true, previousBestScore: 0.95, previousBpm: 85,
+            totalBars: 4, cleanBars: 4, weakestBar: nil
+        )
+        let tempoEn = EndOfRunCardModel.build(
+            summary: tempoSummary, runs: [], saved: saved, reviewFeedback: nil,
+            isAfterMe: false, isSectionLoop: false, bestResponseScore: nil, language: .english
+        )
+        XCTAssertEqual(tempoEn.growthLine, "New clean tempo best · 95 BPM")
+        XCTAssertTrue(tempoEn.growthLineHighlighted)
+
+        let tempoCs = EndOfRunCardModel.build(
+            summary: tempoSummary, runs: [], saved: saved, reviewFeedback: nil,
+            isAfterMe: false, isSectionLoop: false, bestResponseScore: nil, language: .czech
+        )
+        XCTAssertEqual(tempoCs.growthLine, "Nejvyšší čisté tempo · 95 BPM")
+        XCTAssertTrue(tempoCs.growthLineHighlighted)
+
+        // Priority 3: multi-bar diagnosis when some bars are clean and a weakest bar exists.
+        let diagSummary = RunSummary(
+            score: 0.84, bpm: 80, passes: 1, passed: true, mastery: false, memory: false,
+            isCleanRun: false, previousBestScore: 0.90, previousBpm: 80,
+            totalBars: 4, cleanBars: 3, weakestBar: 2
+        )
+        let diagEn = EndOfRunCardModel.build(
+            summary: diagSummary, runs: [], saved: saved, reviewFeedback: nil,
+            isAfterMe: false, isSectionLoop: false, bestResponseScore: nil, language: .english
+        )
+        XCTAssertEqual(diagEn.growthLine, "3 of 4 bars clean · watch bar 2")
+        XCTAssertFalse(diagEn.growthLineHighlighted)
+
+        let diagCs = EndOfRunCardModel.build(
+            summary: diagSummary, runs: [], saved: saved, reviewFeedback: nil,
+            isAfterMe: false, isSectionLoop: false, bestResponseScore: nil, language: .czech
+        )
+        XCTAssertEqual(diagCs.growthLine, "3 ze 4 taktů čistě · pohlídej takt 2")
+        XCTAssertFalse(diagCs.growthLineHighlighted)
+
+        // Priority 4: all bars clean (no new PB or tempo best).
+        let allCleanSummary = RunSummary(
+            score: 1.0, bpm: 80, passes: 1, passed: true, mastery: false, memory: false,
+            isCleanRun: true, previousBestScore: 1.0, previousBpm: 80,
+            totalBars: 2, cleanBars: 2, weakestBar: nil
+        )
+        let allCleanEn = EndOfRunCardModel.build(
+            summary: allCleanSummary, runs: [], saved: saved, reviewFeedback: nil,
+            isAfterMe: false, isSectionLoop: false, bestResponseScore: nil, language: .english
+        )
+        XCTAssertEqual(allCleanEn.growthLine, "All bars clean")
+        XCTAssertTrue(allCleanEn.growthLineHighlighted)
+
+        let allCleanCs = EndOfRunCardModel.build(
+            summary: allCleanSummary, runs: [], saved: saved, reviewFeedback: nil,
+            isAfterMe: false, isSectionLoop: false, bestResponseScore: nil, language: .czech
+        )
+        XCTAssertEqual(allCleanCs.growthLine, "Všechny takty čistě")
+        XCTAssertTrue(allCleanCs.growthLineHighlighted)
     }
 
     func testCzechBadgePlural() {

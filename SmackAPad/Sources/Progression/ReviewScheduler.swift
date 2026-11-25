@@ -99,8 +99,8 @@ public struct ReviewScheduler: Sendable {
 
             case .doesNotCount(let goalBpm):
                 return language == .czech
-                    ? String(format: "Nepočítá se · hraj zpaměti při %lld BPM", goalBpm)
-                    : String(format: "Does not count · play from memory at %lld BPM", goalBpm)
+                    ? String(format: "Cvičné tempo · pro započítání opakování hraj zpaměti na %lld BPM", goalBpm)
+                    : String(format: "Practice tempo · for review credit, play from memory at %lld BPM", goalBpm)
             }
         }
     }

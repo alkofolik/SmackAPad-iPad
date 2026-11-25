@@ -673,7 +673,6 @@
 "Review passed · next in 1 day" = "Opakování splněno · další za 1 den";
 "Lesson settled" = "Lekce je upevněná";
 "Review not passed · again tomorrow" = "Opakování nesplněno · znovu zítra";
-"Does not count · play from memory at %lld BPM" = "Nepočítá se · hraj zpaměti při %lld BPM";
 "Review passed" = "Opakování splněno";
 "Review not passed" = "Opakování nesplněno";
 "next in 1 day" = "další za 1 den";
@@ -726,7 +725,6 @@
 "Reviews passed: %lld of %lld" = "Splněná opakování: %lld ze %lld";
 "New lesson: %@" = "Nová lekce: %@";
 "Best score: %lld %%" = "Nejlepší skóre: %lld %%";
-"Does not count · finish a hidden pass" = "Nepočítá se · Dokonči průchod bez nápovědy, aby se lekce uložila jako zvládnutá.";
 
 /* Ticket 110: Today session screen matching mockup frame 3. */
 "NEXT" = "DALŠÍ";
@@ -3098,7 +3096,6 @@
 "Earned" = "Získána";
 "Beat" = "Doba";
 "What to complete" = "Co splnit";
-"Not counted" = "Nepočítá se";
 "Start here · your first lesson" = "Začni tady · první lekce";
 "Lesson pattern" = "Vzor lekce";
 "{bars} bars" = "{bars} taktů";
@@ -3640,3 +3637,22 @@
 "home.appearance.auto" = "Auto";
 "home.controller.connected" = "připojeno";
 "home.controller.none" = "Žádný kontrolér";
+
+/* Ticket 233: ResultCard growth line, human review progress, and direct daily-step handoff. */
+"+%lld%% personal best" = "+%lld %% osobní rekord";
+"New clean tempo best · %lld BPM" = "Nejvyšší čisté tempo · %lld BPM";
+"%lld of %lld bars clean · watch bar %lld" = "%lld ze %lld taktů čistě · pohlídej takt %lld";
+"All bars clean" = "Všechny takty čistě";
+"Warm-up complete" = "Rozehřáto s notami";
+"Now play 2 passes from memory" = "Teď dej 2 průchody zpaměti";
+"Peek used" = "Nápověda využita";
+"Try the next pass from memory" = "Další průchod zkus čistě zpaměti";
+"1 of 2 from memory" = "1 ze 2 zpaměti";
+"Warmed up" = "Rozehřáto";
+"One more clean memory pass to finish" = "Ještě jeden úspěšný průchod zpaměti";
+"Practice tempo" = "Cvičné tempo";
+"For review credit, play from memory at %lld BPM" = "Pro započítání opakování hraj zpaměti na %lld BPM";
+"Stopped early" = "Zastaveno";
+"Finish one full pass to see your score" = "Dohraj celý průchod pro vyhodnocení";
+"Continue · %@" = "Pokračovat · %@";
+"Finish training" = "Dokončit trénink";

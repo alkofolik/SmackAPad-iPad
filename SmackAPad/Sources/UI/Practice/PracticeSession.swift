@@ -45,7 +45,7 @@ struct PracticeRunResult: Identifiable, Equatable, Sendable {
     var peeked = false
 
     func accessibilityDescription(settings: SettingsManager) -> String {
-        let passedText = settings.localized(peeked ? "Not counted" : (passed ? "passed" : "not passed"))
+        let passedText = settings.localized(peeked ? "Peek used" : (passed ? "passed" : "not passed"))
         let percent = Int((score * 100).rounded())
         return settings.localized("Run %lld: %lld percent, %lld BPM, %@", runNumber, percent, bpm, passedText)
     }
@@ -238,6 +238,9 @@ final class PracticeSession {
     @ObservationIgnored private var pendingScore: Float?
     @ObservationIgnored private var pendingBpm = 0
     @ObservationIgnored private var pendingCredit = false
+    @ObservationIgnored private var runPreviousBestScore: Double?
+    @ObservationIgnored private var runPreviousBpm: Int?
+    @ObservationIgnored private var lastCompletedBarSummary: (totalBars: Int, cleanBars: Int, weakestBar: Int?) = (0, 0, nil)
     @ObservationIgnored private var currentMixRoundMemory = true
     @ObservationIgnored private var prepared = false
     @ObservationIgnored private var active = false
@@ -871,6 +874,15 @@ final class PracticeSession {
                 earnedBadgesInRun = []
             }
             pendingScore = nil; pendingBpm = 0; pendingCredit = false
+            lastCompletedBarSummary = (0, 0, nil)
+            if !listen && !afterMe && !unscored && !isSectionLoop {
+                let existingRecord = progress.progress(for: lesson.id)
+                runPreviousBestScore = (existingRecord?.hasPlayed == true) ? Double(existingRecord!.bestScore) : nil
+                runPreviousBpm = (existingRecord?.currentBpm ?? 0) > 0 ? existingRecord?.currentBpm : nil
+            } else {
+                runPreviousBestScore = nil
+                runPreviousBpm = nil
+            }
             tempo.reset()
             barVerdicts = [:]
             mixBarVerdicts = [:]
@@ -958,7 +970,13 @@ final class PracticeSession {
             summary = RunSummary(score: result.score, bpm: result.bpm, passes: completedPasses,
                                  passed: earnedPass, mastery: earnedMastery, memory: earnedMemory,
                                  finishedByStar: finishedByStar, runs: runResults,
-                                 firstStar2: earnedFirstMasteryInRun)
+                                 firstStar2: earnedFirstMasteryInRun,
+                                 isCleanRun: result.isCleanRun,
+                                 previousBestScore: runPreviousBestScore,
+                                 previousBpm: runPreviousBpm,
+                                 totalBars: lastCompletedBarSummary.totalBars,
+                                 cleanBars: lastCompletedBarSummary.cleanBars,
+                                 weakestBar: lastCompletedBarSummary.weakestBar)
         } else if !listen, !unscored, let accuracy {
             summary = RunSummary(score: accuracy, bpm: bpm, passes: 0,
                                  passed: false, mastery: false, memory: false,
@@ -1217,7 +1235,7 @@ final class PracticeSession {
                 if !barVerdicts.isEmpty { barVerdicts = [:] }
             }
             let currentCycle = (current.number - 1) * repeatsPerRun + (total > 0 ? Int(floor(elapsed / Double(total))) : 0) + 1
-            let minCycle = max(1, currentCycle - 3)
+            let minCycle = max(1, currentCycle - max(3, repeatsPerRun + 1))
             if judgmentsByPass.keys.contains(where: { $0 < minCycle }) {
                 judgmentsByPass = judgmentsByPass.filter { $0.key >= minCycle }
                 hitFeedbackByPass = hitFeedbackByPass.filter { $0.key >= minCycle }
@@ -1270,6 +1288,9 @@ final class PracticeSession {
             completedExpected += result.expectedHitCount
             completedExtras += result.extraHitCount
             completedPasses += 1
+            if !afterMe && !listen {
+                lastCompletedBarSummary = computeBarSummary(forPass: pass.number)
+            }
             if afterMe {
                 bestResponseScore = max(bestResponseScore ?? 0, result.score)
                 lastVerdict = RunVerdict(passed: result.passed, brokenStreak: false)
@@ -1500,6 +1521,43 @@ final class PracticeSession {
             }
             if stopAfterPass { return }
         }
+    }
+
+    private func computeBarSummary(forPass passNumber: Int) -> (totalBars: Int, cleanBars: Int, weakestBar: Int?) {
+        let bars = practiceLesson.bars
+        guard bars > 0, !afterMe, !listen else { return (0, 0, nil) }
+        let hits = patternHits
+        let firstCycle = (passNumber - 1) * repeatsPerRun + 1
+        let lastCycle = firstCycle + repeatsPerRun - 1
+        var issuesByBar = Array(repeating: 0, count: bars)
+
+        for cycle in firstCycle...lastCycle {
+            let cycleJudgments = judgmentsByPass[cycle] ?? [:]
+            for hit in hits {
+                let bar = min(bars - 1, max(0, hit.step / 16))
+                switch cycleJudgments[hit] {
+                case .perfect, .good:
+                    break
+                case .off, .wrongPad, .ignored, nil:
+                    issuesByBar[bar] += 1
+                }
+            }
+            for played in playedHits where played.pass == cycle && played.mark == .wrong {
+                let bar = min(bars - 1, max(0, Int(floor(played.step / 16))))
+                issuesByBar[bar] += 1
+            }
+        }
+
+        let cleanBars = issuesByBar.filter { $0 == 0 }.count
+        var weakestBar: Int?
+        if cleanBars < bars {
+            var worstCount = 0
+            for bar in 0..<bars where issuesByBar[bar] > worstCount {
+                worstCount = issuesByBar[bar]
+                weakestBar = bar + 1
+            }
+        }
+        return (bars, cleanBars, weakestBar)
     }
 
     private func canAutoPeek(_ pass: Pass, at time: Double) -> Bool {

@@ -58,6 +58,10 @@ final class ReviewWindowTests: XCTestCase {
         let ignored = ReviewScheduler.advanceWindow(first.window, with: passResult(score: 1, bpm: 90))
         XCTAssertEqual(ignored.window, first.window)
         XCTAssertNil(ignored.outcome)
+
+        let feedback = ReviewScheduler.ReviewFeedback.doesNotCount(goalBpm: 100)
+        XCTAssertEqual(feedback.message(language: .english), "Practice tempo · for review credit, play from memory at 100 BPM")
+        XCTAssertEqual(feedback.message(language: .czech), "Cvičné tempo · pro započítání opakování hraj zpaměti na 100 BPM")
     }
 
     func testLastStepSettlesOnlyAfterTwoSuccesses() {

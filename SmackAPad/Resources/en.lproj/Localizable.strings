@@ -671,7 +671,6 @@
 "Review passed · next in 1 day" = "Review passed · next in 1 day";
 "Lesson settled" = "Lesson settled";
 "Review not passed · again tomorrow" = "Review not passed · again tomorrow";
-"Does not count · play from memory at %lld BPM" = "Does not count · play from memory at %lld BPM";
 "Review passed" = "Review passed";
 "Review not passed" = "Review not passed";
 "next in 1 day" = "next in 1 day";
@@ -724,7 +723,6 @@
 "Reviews passed: %lld of %lld" = "Reviews passed: %lld of %lld";
 "New lesson: %@" = "New lesson: %@";
 "Best score: %lld %%" = "Best score: %lld %%";
-"Does not count · finish a hidden pass" = "Does not count · Complete a pass without hints to master the lesson.";
 
 /* Ticket 110: Today session screen matching mockup frame 3. */
 "NEXT" = "NEXT";
@@ -3095,7 +3093,6 @@
 "Earned" = "Earned";
 "Beat" = "Beat";
 "What to complete" = "What to complete";
-"Not counted" = "Not counted";
 "Start here · your first lesson" = "Start here · your first lesson";
 "Lesson pattern" = "Lesson pattern";
 "{bars} bars" = "{bars} bars";
@@ -3635,3 +3632,22 @@
 "home.appearance.auto" = "Auto";
 "home.controller.connected" = "connected";
 "home.controller.none" = "No controller";
+
+/* Ticket 233: ResultCard growth line, human review progress, and direct daily-step handoff. */
+"+%lld%% personal best" = "+%lld%% personal best";
+"New clean tempo best · %lld BPM" = "New clean tempo best · %lld BPM";
+"%lld of %lld bars clean · watch bar %lld" = "%lld of %lld bars clean · watch bar %lld";
+"All bars clean" = "All bars clean";
+"Warm-up complete" = "Warm-up complete";
+"Now play 2 passes from memory" = "Now play 2 passes from memory";
+"Peek used" = "Peek used";
+"Try the next pass from memory" = "Try the next pass from memory";
+"1 of 2 from memory" = "1 of 2 from memory";
+"Warmed up" = "Warmed up";
+"One more clean memory pass to finish" = "One more clean memory pass to finish";
+"Practice tempo" = "Practice tempo";
+"For review credit, play from memory at %lld BPM" = "For review credit, play from memory at %lld BPM";
+"Stopped early" = "Stopped early";
+"Finish one full pass to see your score" = "Finish one full pass to see your score";
+"Continue · %@" = "Continue · %@";
+"Finish training" = "Finish training";

@@ -167,7 +167,7 @@ struct DaySummaryView: View {
                 if isTriedNotMet { return false }
                 return failureReason != nil
             }
-            if case .didNotCount = status { return true }
+            if case .inProgress = status { return true }
             return false
         }()
 

@@ -99,13 +99,20 @@ struct PracticeScreen: View {
     #if DEBUG
     @State private var debugShowResult = false
     #endif
+    @State private var didAdvanceDailyStep = false
     private let onStepResult: ((PracticeStepOutcome) -> Void)?
+    private let dailyNextTitle: String?
+    private let onAdvanceDailyStep: (() -> Void)?
 
     init(lesson: Lesson, settings: SettingsManager, progress: ProgressStore, midi: MIDIInput,
          initialFromMemory: Bool = false, initialBpm: Int? = nil, mixLessons: [Lesson] = [], initialAfterMe: Bool = false,
          unscored: Bool = false,
-         onStepResult: ((PracticeStepOutcome) -> Void)? = nil) {
+         onStepResult: ((PracticeStepOutcome) -> Void)? = nil,
+         dailyNextTitle: String? = nil,
+         onAdvanceDailyStep: (() -> Void)? = nil) {
         self.onStepResult = onStepResult
+        self.dailyNextTitle = dailyNextTitle
+        self.onAdvanceDailyStep = onAdvanceDailyStep
         _session = State(initialValue: PracticeSession(
             lesson: lesson,
             settings: settings,
@@ -306,7 +313,7 @@ struct PracticeScreen: View {
     }
 
     private func reportStepResult() {
-        guard let outcome = session.todayStepOutcome else { return }
+        guard !didAdvanceDailyStep, let outcome = session.todayStepOutcome else { return }
         onStepResult?(outcome)
     }
 
@@ -1026,6 +1033,7 @@ struct PracticeScreen: View {
             reviewFeedback: session.afterMe ? nil : session.reviewFeedback,
             isDueReview: session.isDueReview && !session.isSectionLoop,
             reviewPendingReason: session.reviewPendingReason,
+            reviewSuccesses: session.reviewRunProgress?.count,
             badgeCount: session.earnedBadgesInRun.count,
             isAfterMe: session.afterMe,
             isSectionLoop: session.isSectionLoop,
@@ -1034,6 +1042,7 @@ struct PracticeScreen: View {
             nextAction: nextTarget.action,
             nextEnabled: nextTarget.enabled,
             nextLocked: nextTarget.locked,
+            nextTitle: nextTarget.title,
             nextHint: nextTarget.hint,
             restartAction: {
                 dismissDebugResult()
@@ -1159,10 +1168,18 @@ struct PracticeScreen: View {
                     dismissDebugResult()
                     session.stop()
                     reportStepResult()
-                    if let dismissLesson { dismissLesson() } else { dismiss() }
+                    if let onAdvanceDailyStep {
+                        didAdvanceDailyStep = true
+                        session.close()
+                        onAdvanceDailyStep()
+                    } else if let dismissLesson {
+                        dismissLesson()
+                    } else {
+                        dismiss()
+                    }
                 } label: {
                     HStack(spacing: Theme.Space.small) {
-                        Text(settings.localized("Next"))
+                        Text(dailyNextTitle ?? settings.localized("Next"))
                             .font(Theme.action)
                             .lineLimit(1)
                             .minimumScaleFactor(0.8)
@@ -1333,9 +1350,9 @@ struct PracticeScreen: View {
         }
     }
 
-    private func resolveResultNextTarget() -> (enabled: Bool, locked: Bool, hint: String?, action: (() -> Void)?) {
+    private func resolveResultNextTarget() -> (enabled: Bool, locked: Bool, title: String?, hint: String?, action: (() -> Void)?) {
         let target = ResultNextTarget.resolve(
-            isStepResult: onStepResult != nil,
+            isStepResult: onStepResult != nil || onAdvanceDailyStep != nil,
             isMix: session.isMix,
             afterMe: session.afterMe,
             finishedByReview: session.finishedByReview,
@@ -1348,21 +1365,32 @@ struct PracticeScreen: View {
 
         switch target {
         case .stepResult:
+            let title = dailyNextTitle ?? settings.localized("Next lesson")
             return (
                 enabled: true,
                 locked: false,
-                hint: settings.localized("Next lesson"),
+                title: title,
+                hint: title,
                 action: {
                     dismissDebugResult()
                     session.stop()
                     reportStepResult()
-                    if let dismissLesson { dismissLesson() } else { dismiss() }
+                    if let onAdvanceDailyStep {
+                        didAdvanceDailyStep = true
+                        session.close()
+                        onAdvanceDailyStep()
+                    } else if let dismissLesson {
+                        dismissLesson()
+                    } else {
+                        dismiss()
+                    }
                 }
             )
         case .lesson(let next):
             return (
                 enabled: true,
                 locked: !store.isUnlocked(next),
+                title: nil,
                 hint: settings.localized(next.title),
                 action: {
                     dismissDebugResult()
@@ -1373,6 +1401,7 @@ struct PracticeScreen: View {
             return (
                 enabled: false,
                 locked: false,
+                title: nil,
                 hint: settings.localized("No next lesson available"),
                 action: nil
             )

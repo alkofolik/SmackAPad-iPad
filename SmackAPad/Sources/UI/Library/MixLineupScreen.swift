@@ -8,6 +8,8 @@ struct MixFlowScreen: View {
     var onAnotherMix: () -> Void
     var onMixStarted: (() -> Void)? = nil
     var onStepResult: ((PracticeStepOutcome) -> Void)? = nil
+    var dailyNextTitle: String? = nil
+    var onAdvanceDailyStep: (() -> Void)? = nil
 
     @Environment(SettingsManager.self) private var settings
     @Environment(ProgressStore.self) private var progress
@@ -26,7 +28,9 @@ struct MixFlowScreen: View {
                     midi: midi,
                     initialFromMemory: fromMemory,
                     mixLessons: lessons,
-                    onStepResult: onStepResult
+                    onStepResult: onStepResult,
+                    dailyNextTitle: dailyNextTitle,
+                    onAdvanceDailyStep: onAdvanceDailyStep
                 )
             } else {
                 MixLineupScreen(
