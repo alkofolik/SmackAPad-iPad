@@ -8,6 +8,8 @@ public struct DrumKitDescriptor: Identifiable, Equatable, Hashable, Sendable {
     public let kitId: String
     public let name: String
     public let studioTitle: String
+    public let clanEpithet: String
+    public let clanEpithetCzech: String
     public let isStarter: Bool
     public let unlockCost: Int
     public let boundGenres: [String]
@@ -16,6 +18,8 @@ public struct DrumKitDescriptor: Identifiable, Equatable, Hashable, Sendable {
         kitId: String,
         name: String,
         studioTitle: String,
+        clanEpithet: String = "",
+        clanEpithetCzech: String = "",
         isStarter: Bool,
         unlockCost: Int,
         boundGenres: [String]
@@ -23,9 +27,18 @@ public struct DrumKitDescriptor: Identifiable, Equatable, Hashable, Sendable {
         self.kitId = kitId
         self.name = name
         self.studioTitle = studioTitle
+        self.clanEpithet = clanEpithet
+        self.clanEpithetCzech = clanEpithetCzech
         self.isStarter = isStarter
         self.unlockCost = unlockCost
         self.boundGenres = boundGenres
+    }
+
+    public func localizedClanEpithet(language: AppLanguage) -> String {
+        switch language {
+        case .english: return clanEpithet
+        case .czech: return clanEpithetCzech.isEmpty ? clanEpithet : clanEpithetCzech
+        }
     }
 }
 
@@ -71,6 +84,8 @@ public enum DrumKitCatalog {
             kitId: "acoustic",
             name: "Starter",
             studioTitle: "Starter · Acoustic AVL",
+            clanEpithet: "The Common Drum",
+            clanEpithetCzech: "Obyčejný buben",
             isStarter: true,
             unlockCost: 0,
             boundGenres: ["Funk", "Disco"]
@@ -79,6 +94,8 @@ public enum DrumKitCatalog {
             kitId: "rock",
             name: "Rock",
             studioTitle: "Rock · Big Rusty + VCSL",
+            clanEpithet: "The Iron Assembly",
+            clanEpithetCzech: "Železný sbor",
             isStarter: false,
             unlockCost: kitUnlockCost,
             boundGenres: ["Rock", "Punk", "Gospel"]
@@ -87,6 +104,8 @@ public enum DrumKitCatalog {
             kitId: "808",
             name: "808",
             studioTitle: "Electronic · Fischer 808",
+            clanEpithet: "The Buried Engine",
+            clanEpithetCzech: "Pohřbený stroj",
             isStarter: false,
             unlockCost: kitUnlockCost,
             boundGenres: ["Hip hop", "Trap", "Miami bass", "Electro"]
@@ -95,6 +114,8 @@ public enum DrumKitCatalog {
             kitId: "house",
             name: "House",
             studioTitle: "House / Techno · Synthesized",
+            clanEpithet: "The Endless Hall",
+            clanEpithetCzech: "Nekonečná síň",
             isStarter: false,
             unlockCost: kitUnlockCost,
             boundGenres: [
@@ -109,6 +130,8 @@ public enum DrumKitCatalog {
             kitId: "jazz",
             name: "Jazz",
             studioTitle: "Jazz · Virtuosity + AVL",
+            clanEpithet: "The Crooked Brass",
+            clanEpithetCzech: "Křivá dechovka",
             isStarter: false,
             unlockCost: kitUnlockCost,
             boundGenres: ["Jazz", "New Orleans"]
@@ -117,6 +140,8 @@ public enum DrumKitCatalog {
             kitId: "brush",
             name: "Brush",
             studioTitle: "Brush · Swirly + VCSL",
+            clanEpithet: "The Quiet Council",
+            clanEpithetCzech: "Tichá rada",
             isStarter: false,
             unlockCost: kitUnlockCost,
             boundGenres: ["Soul", "Blues", "Lo-fi", "Trip hop", "Country", "Pop"]
@@ -125,6 +150,8 @@ public enum DrumKitCatalog {
             kitId: "world",
             name: "World",
             studioTitle: "World · Acoustic Percussion",
+            clanEpithet: "The Wandering Circle",
+            clanEpithetCzech: "Putující kruh",
             isStarter: false,
             unlockCost: kitUnlockCost,
             boundGenres: ["Latin", "Afrobeat", "Highlife", "Reggae", "Reggaeton", "Middle Eastern"]
@@ -133,6 +160,8 @@ public enum DrumKitCatalog {
             kitId: "worldperc",
             name: "World Percussion",
             studioTitle: "World Percussion · VCSL + Swirly",
+            clanEpithet: "The Gathering of Hands",
+            clanEpithetCzech: "Shromáždění rukou",
             isStarter: false,
             unlockCost: kitUnlockCost,
             boundGenres: ["Afro-Cuban"]
@@ -232,6 +261,7 @@ public enum StudioRewardRequirement: Equatable, Hashable, Sendable {
     case milestone(id: String)
     case stageExam(stageId: String)
     case anyStageExamInLevel(level: Int)
+    case bossesDefeated(count: Int)
     case rank(DrummerRank)
 
     public func isSatisfied(by state: DrummerPathState, card: DrummerCardSnapshot) -> Bool {
@@ -244,6 +274,8 @@ public enum StudioRewardRequirement: Equatable, Hashable, Sendable {
             return state.completedExamStageIDs.contains(stageId)
         case .anyStageExamInLevel(let level):
             return state.completedExamStageIDs.contains { $0.hasPrefix("L\(level)-") }
+        case .bossesDefeated(let count):
+            return state.defeatedStageBossCount >= count
         case .rank(let requiredRank):
             return card.rank >= requiredRank
         }
@@ -259,6 +291,12 @@ public enum StudioRewardRequirement: Equatable, Hashable, Sendable {
         case (.stageExam(let stageId), .czech): return "Zkouška etapy: \(stageId)"
         case (.anyStageExamInLevel(let level), .english): return "Complete any Level \(level) stage exam"
         case (.anyStageExamInLevel(let level), .czech): return "Splň zkoušku libovolné etapy úrovně \(level)"
+        case (.bossesDefeated(let count), .english):
+            return count == 1 ? "Defeat 1 stage boss" : "Defeat \(count) stage bosses"
+        case (.bossesDefeated(let count), .czech):
+            if count == 1 { return "Poraz 1 bosse etapy" }
+            if (2...4).contains(count) { return "Poraz \(count) bossy etap" }
+            return "Poraz \(count) bossů etap"
         case (.rank(let rank), .english): return "Reach rank \(rank.title)"
         case (.rank(let rank), .czech): return "Dosáhni hodnosti \(rank.title)"
         }
@@ -375,7 +413,7 @@ public enum StudioRigCatalog {
             chassisHex: 0x12161F,
             padSurfaceHex: 0x1D2432,
             isDefault: false,
-            unlockRequirement: .milestone(id: "ten-passed")
+            unlockRequirement: .bossesDefeated(count: 1)
         ),
         InstrumentSkin(
             id: "cream-vintage",
@@ -385,7 +423,7 @@ public enum StudioRigCatalog {
             chassisHex: 0xEAE2D3,
             padSurfaceHex: 0xD8CFC0,
             isDefault: false,
-            unlockRequirement: .milestone(id: "ten-mastered")
+            unlockRequirement: .bossesDefeated(count: 5)
         ),
         InstrumentSkin(
             id: "acid-rack",
@@ -395,7 +433,7 @@ public enum StudioRigCatalog {
             chassisHex: 0x141714,
             padSurfaceHex: 0x20261F,
             isDefault: false,
-            unlockRequirement: .milestone(id: "memory-specialist")
+            unlockRequirement: .bossesDefeated(count: 15)
         )
     ]
 

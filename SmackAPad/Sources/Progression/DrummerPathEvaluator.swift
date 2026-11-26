@@ -2,14 +2,14 @@ import Foundation
 
 // MARK: - Stage Exams, Milestones & Unlock Outcomes
 
-/// Significant progress milestone that awards a Key (and optionally unlocks skins or bonus tracks).
+/// Significant progress milestone (achievement, optionally awarding a Tuning Key).
 public struct DrummerMilestone: Identifiable, Equatable, Sendable {
     public let id: String
     public let title: String
     public let description: String
     public let rewardKeys: Int
 
-    public init(id: String, title: String, description: String, rewardKeys: Int = 1) {
+    public init(id: String, title: String, description: String, rewardKeys: Int = 0) {
         self.id = id
         self.title = title
         self.description = description
@@ -30,6 +30,7 @@ public struct DrummerPathEvaluationOutcome: Equatable, Sendable {
     public let updatedState: DrummerPathState
     public let newlyCompletedExamStageIDs: [String]
     public let newlyEarnedMilestoneIDs: [String]
+    public let newlyAwardedKeySourceIDs: [String]
     public let newlyUnlockedSkinIDs: [String]
     public let newlyUnlockedBonusTrackIDs: [String]
     public let keysAwarded: Int
@@ -43,57 +44,89 @@ public struct DrummerPathEvaluationOutcome: Equatable, Sendable {
 /// Computes XP, levels, ranks, 4 musical attributes, keys, kit unlocks, skins, bonus tracks, and legacy migration.
 public enum DrummerPathEvaluator {
     public static let introExamStageId = "intro"
+    public static let tenBossesMilestoneId = "ten-bosses"
+
+    public static let keyAwardingExamStageIDs: Set<String> = [
+        introExamStageId,
+        "L1-groove",
+        "L1-swing",
+        "L2-sixteenths",
+        "L3-ghost",
+        "L4-fills"
+    ]
+
+    public static let suggestedKitIdByKeySource: [String: String] = [
+        introExamStageId: "rock",
+        "L1-groove": "808",
+        "L1-swing": "jazz",
+        "L2-sixteenths": "house",
+        tenBossesMilestoneId: "brush",
+        "L3-ghost": "world",
+        "L4-fills": "worldperc"
+    ]
 
     public static let milestones: [DrummerMilestone] = [
         DrummerMilestone(
             id: "intro-spark",
             title: "First Spark",
-            description: "Pass 5 Intro exercises.",
-            rewardKeys: 1
+            description: "Pass 5 Intro exercises."
         ),
         DrummerMilestone(
             id: "intro-graduate",
             title: "Intro Graduate",
-            description: "Pass all Intro exercises or the Intro boss lesson.",
-            rewardKeys: 1
+            description: "Pass all Intro exercises or the Intro boss lesson."
         ),
         DrummerMilestone(
             id: "first-mastery",
             title: "Goal Tempo",
-            description: "Master your first lesson at goal tempo (2★).",
-            rewardKeys: 1
+            description: "Master your first lesson at goal tempo (2★)."
         ),
         DrummerMilestone(
             id: "ten-passed",
             title: "Ten Grooves",
-            description: "Pass 10 different lessons.",
-            rewardKeys: 1
+            description: "Pass 10 different lessons."
         ),
         DrummerMilestone(
             id: "ten-mastered",
             title: "Tempo Builder",
-            description: "Master 10 lessons at goal tempo (2★).",
-            rewardKeys: 1
+            description: "Master 10 lessons at goal tempo (2★)."
         ),
         DrummerMilestone(
             id: "memory-specialist",
             title: "Memory Specialist",
-            description: "Earn 5 Memory stars (3★).",
-            rewardKeys: 1
+            description: "Earn 5 Memory stars (3★)."
         ),
         DrummerMilestone(
             id: "review-habit",
             title: "Steady Recall",
-            description: "Pass 5 spaced reviews.",
-            rewardKeys: 1
+            description: "Pass 5 spaced reviews."
         ),
         DrummerMilestone(
             id: "twenty-five-mastered",
             title: "Pocket Veteran",
-            description: "Master 25 lessons at goal tempo (2★).",
+            description: "Master 25 lessons at goal tempo (2★)."
+        ),
+        DrummerMilestone(
+            id: tenBossesMilestoneId,
+            title: "Boss Slayer",
+            description: "Defeat 10 distinct stage bosses.",
             rewardKeys: 1
         )
     ]
+
+    public static let keyAwardingMilestoneIDs: Set<String> = Set(
+        milestones.filter { $0.rewardKeys > 0 }.map(\.id)
+    )
+
+    public static func earnedKeyCount(exams: Set<String>, milestones: Set<String>) -> Int {
+        exams.intersection(keyAwardingExamStageIDs).count
+            + milestones.intersection(keyAwardingMilestoneIDs).count
+    }
+
+    public static func suggestedKit(forKeySource sourceId: String) -> DrumKitDescriptor? {
+        guard let kitId = suggestedKitIdByKeySource[sourceId] else { return nil }
+        return DrumKitCatalog.kit(forId: kitId)
+    }
 
     // MARK: - XP, Level & Attributes
 
@@ -269,11 +302,12 @@ public enum DrummerPathEvaluator {
         return record.passed || record.mastery
     }
 
-    /// Returns all milestone IDs currently satisfied by `progress` and `trainingLog`.
+    /// Returns all milestone IDs currently satisfied by `progress`, `trainingLog`, and defeated stage bosses.
     static func satisfiedMilestoneIDs(
         progress: [Int: LessonProgress],
         trainingLog: TrainingLog,
-        catalog: LibraryCatalog
+        catalog: LibraryCatalog,
+        completedExamStageIDs: Set<String> = []
     ) -> Set<String> {
         let introIDs = Set(catalog.introLessons.map(\.id))
         let passedIntroCount = introIDs.filter {
@@ -288,6 +322,7 @@ public enum DrummerPathEvaluator {
         let passedCount = progress.values.filter { $0.passed || $0.mastery }.count
         let masteredCount = progress.values.filter { $0.mastery }.count
         let memoryCount = progress.values.filter { $0.memory }.count
+        let stageBossCount = completedExamStageIDs.filter { $0 != introExamStageId }.count
 
         var earned: Set<String> = []
         if passedIntroCount >= 5 { earned.insert("intro-spark") }
@@ -300,6 +335,7 @@ public enum DrummerPathEvaluator {
         if memoryCount >= 5 { earned.insert("memory-specialist") }
         if trainingLog.reviewsPassed >= 5 { earned.insert("review-habit") }
         if masteredCount >= 25 { earned.insert("twenty-five-mastered") }
+        if stageBossCount >= 10 { earned.insert(tenBossesMilestoneId) }
         return earned
     }
 
@@ -335,7 +371,8 @@ public enum DrummerPathEvaluator {
         let satisfiedMilestones = satisfiedMilestoneIDs(
             progress: currentProgress,
             trainingLog: currentTrainingLog,
-            catalog: catalog
+            catalog: catalog,
+            completedExamStageIDs: nextState.completedExamStageIDs
         )
         let newMilestones = satisfiedMilestones.subtracting(nextState.earnedMilestoneIDs).sorted()
         nextState.earnedMilestoneIDs.formUnion(newMilestones)
@@ -368,6 +405,8 @@ public enum DrummerPathEvaluator {
             nextState.modifiedAt = now
         }
 
+        let newKeySources = newExams.filter { keyAwardingExamStageIDs.contains($0) }
+            + newMilestones.filter { keyAwardingMilestoneIDs.contains($0) }
         let keysAwarded = max(0, nextState.totalKeysEarned - previousState.totalKeysEarned)
         let delta = DrummerProgressDelta.between(previous: beforeCard, current: afterCard)
 
@@ -375,6 +414,7 @@ public enum DrummerPathEvaluator {
             updatedState: nextState,
             newlyCompletedExamStageIDs: newExams,
             newlyEarnedMilestoneIDs: newMilestones,
+            newlyAwardedKeySourceIDs: newKeySources,
             newlyUnlockedSkinIDs: newSkins,
             newlyUnlockedBonusTrackIDs: newTracks,
             keysAwarded: keysAwarded,
@@ -440,7 +480,14 @@ public enum DrummerPathEvaluator {
         state.completedExamStageIDs.formUnion(catalog.stages.compactMap { stage in
             passedExamLesson(stage.lessons.last, progress: progress) ? stage.id : nil
         })
-        state.earnedMilestoneIDs.formUnion(satisfiedMilestoneIDs(progress: progress, trainingLog: trainingLog, catalog: catalog))
+        state.earnedMilestoneIDs.formUnion(
+            satisfiedMilestoneIDs(
+                progress: progress,
+                trainingLog: trainingLog,
+                catalog: catalog,
+                completedExamStageIDs: state.completedExamStageIDs
+            )
+        )
 
         // 2. Preserve access to every kit where the player already earned stars
         let lessonsById = Dictionary(catalog.lessons.map { ($0.id, $0) }, uniquingKeysWith: { first, _ in first })
@@ -527,7 +574,8 @@ public enum DrummerPathEvaluator {
             }
         }
 
-        let totalEarned = mergedExams.count + mergedMilestones.count
+        let mergedLegacyBonus = max(local.legacyKeysBonus, incoming.legacyKeysBonus)
+        let totalEarned = mergedLegacyBonus + earnedKeyCount(exams: mergedExams, milestones: mergedMilestones)
         let localNonStarter = local.unlockedKitIds.subtracting([DrumKitCatalog.starterKitId])
         let incomingNonStarter = incoming.unlockedKitIds.subtracting([DrumKitCatalog.starterKitId])
         let candidateSpent = max(local.keysSpent, incoming.keysSpent)
@@ -555,6 +603,7 @@ public enum DrummerPathEvaluator {
             completedExamStageIDs: mergedExams,
             earnedMilestoneIDs: mergedMilestones,
             keysSpent: reconciledSpent,
+            legacyKeysBonus: mergedLegacyBonus,
             migratedFromLegacyProgress: local.migratedFromLegacyProgress || incoming.migratedFromLegacyProgress,
             storyForkChoices: mergedForkChoices,
             seenStoryCardStageIDs: mergedSeenStoryCards,

@@ -31,6 +31,7 @@ public final class ProgressStore: @unchecked Sendable {
     public private(set) var drummerPath = DrummerPathState(migratedFromLegacyProgress: true)
     public private(set) var lastDrummerDelta: DrummerProgressDelta?
     public private(set) var lastDrummerKeysAwarded: Int = 0
+    public private(set) var lastDrummerKeySources: [String] = []
     public private(set) var lastSaveError: Error?
     public private(set) var lastLoadError: Error?
     private var hasFinishedLoading = false
@@ -210,6 +211,7 @@ public final class ProgressStore: @unchecked Sendable {
         drummerPath = DrummerPathState(migratedFromLegacyProgress: true)
         lastDrummerDelta = nil
         lastDrummerKeysAwarded = 0
+        lastDrummerKeySources = []
         lastLoadError = nil
     }
 
@@ -671,6 +673,7 @@ public final class ProgressStore: @unchecked Sendable {
         )
         lastDrummerDelta = outcome.delta
         lastDrummerKeysAwarded = outcome.keysAwarded
+        lastDrummerKeySources = outcome.newlyAwardedKeySourceIDs
         lock.unlock()
 
         if autoSave {
@@ -853,7 +856,10 @@ public final class ProgressStore: @unchecked Sendable {
             catalog: LessonStore.shared.libraryCatalog
         )
         if !outcome.delta.isEmpty { lastDrummerDelta = outcome.delta }
-        if outcome.keysAwarded > 0 { lastDrummerKeysAwarded = outcome.keysAwarded }
+        if outcome.keysAwarded > 0 {
+            lastDrummerKeysAwarded = outcome.keysAwarded
+            lastDrummerKeySources = outcome.newlyAwardedKeySourceIDs
+        }
         lock.unlock()
 
         if autoSave {
@@ -882,7 +888,10 @@ public final class ProgressStore: @unchecked Sendable {
             catalog: LessonStore.shared.libraryCatalog
         )
         if !outcome.delta.isEmpty { lastDrummerDelta = outcome.delta }
-        if outcome.keysAwarded > 0 { lastDrummerKeysAwarded = outcome.keysAwarded }
+        if outcome.keysAwarded > 0 {
+            lastDrummerKeysAwarded = outcome.keysAwarded
+            lastDrummerKeySources = outcome.newlyAwardedKeySourceIDs
+        }
         lock.unlock()
 
         if autoSave {
@@ -911,7 +920,10 @@ public final class ProgressStore: @unchecked Sendable {
             catalog: LessonStore.shared.libraryCatalog
         )
         if !outcome.delta.isEmpty { lastDrummerDelta = outcome.delta }
-        if outcome.keysAwarded > 0 { lastDrummerKeysAwarded = outcome.keysAwarded }
+        if outcome.keysAwarded > 0 {
+            lastDrummerKeysAwarded = outcome.keysAwarded
+            lastDrummerKeySources = outcome.newlyAwardedKeySourceIDs
+        }
         lock.unlock()
 
         if autoSave {
@@ -1019,6 +1031,7 @@ public final class ProgressStore: @unchecked Sendable {
         }
         lastDrummerDelta = outcome.delta
         lastDrummerKeysAwarded = outcome.keysAwarded
+        lastDrummerKeySources = outcome.newlyAwardedKeySourceIDs
     }
 
     private func saveDrummerPathLocked() throws {
@@ -1122,6 +1135,7 @@ public final class ProgressStore: @unchecked Sendable {
         drummerPath = DrummerPathState(migratedFromLegacyProgress: true)
         lastDrummerDelta = nil
         lastDrummerKeysAwarded = 0
+        lastDrummerKeySources = []
         lock.unlock()
 
         if deleteFile {

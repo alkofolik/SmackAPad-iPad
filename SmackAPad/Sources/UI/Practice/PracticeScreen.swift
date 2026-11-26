@@ -1166,26 +1166,38 @@ struct PracticeScreen: View {
         }
     }
 
+    @ViewBuilder
     private func bossResult(_ attempt: BossAttempt) -> some View {
-        HardwareCard(padding: Theme.Space.regular) {
-            VStack(alignment: .leading, spacing: Theme.Space.small) {
-                Text(settings.localized(attempt.won ? attempt.encounter.victoryKey : "The boss is still standing."))
-                    .font(Theme.rowTitle)
-                    .foregroundStyle(Theme.ink)
-                    .accessibilityAddTraits(.isHeader)
-                if attempt.won {
-                    Button(settings.localized("Done"), action: leavePractice)
-                        .buttonStyle(PadSecondaryButtonStyle())
-                } else {
-                    ViewThatFits(in: .horizontal) {
-                        HStack(spacing: Theme.Space.small) { bossRetryActions(attempt.encounter) }
-                            .fixedSize(horizontal: true, vertical: false)
-                        VStack(alignment: .leading, spacing: Theme.Space.small) { bossRetryActions(attempt.encounter) }
+        if attempt.won && progress.lastDrummerKeysAwarded > 0 && progress.drummerPath.availableKeys > 0 {
+            let suggestedKit = progress.lastDrummerKeySources.first.flatMap {
+                DrummerPathEvaluator.suggestedKit(forKeySource: $0)
+            }
+            KitClaimCard(
+                victoryTitle: settings.localized(attempt.encounter.victoryKey),
+                suggestedKit: suggestedKit,
+                onDone: leavePractice
+            )
+        } else {
+            HardwareCard(padding: Theme.Space.regular) {
+                VStack(alignment: .leading, spacing: Theme.Space.small) {
+                    Text(settings.localized(attempt.won ? attempt.encounter.victoryKey : "The boss is still standing."))
+                        .font(Theme.rowTitle)
+                        .foregroundStyle(Theme.ink)
+                        .accessibilityAddTraits(.isHeader)
+                    if attempt.won {
+                        Button(settings.localized("Done"), action: leavePractice)
+                            .buttonStyle(PadSecondaryButtonStyle())
+                    } else {
+                        ViewThatFits(in: .horizontal) {
+                            HStack(spacing: Theme.Space.small) { bossRetryActions(attempt.encounter) }
+                                .fixedSize(horizontal: true, vertical: false)
+                            VStack(alignment: .leading, spacing: Theme.Space.small) { bossRetryActions(attempt.encounter) }
+                        }
                     }
                 }
             }
+            .fixedSize(horizontal: false, vertical: true)
         }
-        .fixedSize(horizontal: false, vertical: true)
     }
 
     @ViewBuilder

@@ -254,6 +254,7 @@ public struct DrummerPathState: Codable, Equatable, Hashable, Sendable {
     public var completedExamStageIDs: Set<String>
     public var earnedMilestoneIDs: Set<String>
     public var keysSpent: Int
+    public var legacyKeysBonus: Int
     public var migratedFromLegacyProgress: Bool
     public var storyForkChoices: [String: Int]
     public var seenStoryCardStageIDs: Set<String>
@@ -266,6 +267,7 @@ public struct DrummerPathState: Codable, Equatable, Hashable, Sendable {
         completedExamStageIDs: Set<String> = [],
         earnedMilestoneIDs: Set<String> = [],
         keysSpent: Int = 0,
+        legacyKeysBonus: Int = 0,
         migratedFromLegacyProgress: Bool = false,
         storyForkChoices: [String: Int] = [:],
         seenStoryCardStageIDs: Set<String> = [],
@@ -283,15 +285,24 @@ public struct DrummerPathState: Codable, Equatable, Hashable, Sendable {
         self.completedExamStageIDs = completedExamStageIDs
         self.earnedMilestoneIDs = earnedMilestoneIDs
         self.keysSpent = max(0, keysSpent)
+        self.legacyKeysBonus = max(0, legacyKeysBonus)
         self.migratedFromLegacyProgress = migratedFromLegacyProgress
         self.storyForkChoices = storyForkChoices
         self.seenStoryCardStageIDs = seenStoryCardStageIDs
         self.modifiedAt = modifiedAt
     }
 
-    /// Total keys awarded across completed stage exams and milestones.
+    /// Number of distinct stage bosses defeated (excluding the Intro exam).
+    public var defeatedStageBossCount: Int {
+        completedExamStageIDs.filter { $0 != DrummerPathEvaluator.introExamStageId }.count
+    }
+
+    /// Total keys awarded across the 7 finite key sources plus any preserved legacy keys.
     public var totalKeysEarned: Int {
-        completedExamStageIDs.count + earnedMilestoneIDs.count
+        legacyKeysBonus + DrummerPathEvaluator.earnedKeyCount(
+            exams: completedExamStageIDs,
+            milestones: earnedMilestoneIDs
+        )
     }
 
     /// Unspent keys available to unlock any locked drum kit (1 key = 1 kit).
@@ -318,6 +329,7 @@ public struct DrummerPathState: Codable, Equatable, Hashable, Sendable {
         case completedExamStageIDs
         case earnedMilestoneIDs
         case keysSpent
+        case legacyKeysBonus
         case migratedFromLegacyProgress
         case storyForkChoices
         case seenStoryCardStageIDs
@@ -338,6 +350,16 @@ public struct DrummerPathState: Codable, Equatable, Hashable, Sendable {
         self.completedExamStageIDs = try c.decodeIfPresent(Set<String>.self, forKey: .completedExamStageIDs) ?? []
         self.earnedMilestoneIDs = try c.decodeIfPresent(Set<String>.self, forKey: .earnedMilestoneIDs) ?? []
         self.keysSpent = max(0, try c.decodeIfPresent(Int.self, forKey: .keysSpent) ?? 0)
+        if let decodedLegacyBonus = try c.decodeIfPresent(Int.self, forKey: .legacyKeysBonus) {
+            self.legacyKeysBonus = max(0, decodedLegacyBonus)
+        } else {
+            let oldEarned = self.completedExamStageIDs.count + self.earnedMilestoneIDs.count
+            let newEarned = DrummerPathEvaluator.earnedKeyCount(
+                exams: self.completedExamStageIDs,
+                milestones: self.earnedMilestoneIDs
+            )
+            self.legacyKeysBonus = max(0, oldEarned - newEarned)
+        }
         self.migratedFromLegacyProgress = try c.decodeIfPresent(Bool.self, forKey: .migratedFromLegacyProgress) ?? false
         self.storyForkChoices = try c.decodeIfPresent([String: Int].self, forKey: .storyForkChoices) ?? [:]
         self.seenStoryCardStageIDs = try c.decodeIfPresent(Set<String>.self, forKey: .seenStoryCardStageIDs) ?? []
@@ -352,6 +374,7 @@ public struct DrummerPathState: Codable, Equatable, Hashable, Sendable {
         try c.encode(Array(completedExamStageIDs).sorted(), forKey: .completedExamStageIDs)
         try c.encode(Array(earnedMilestoneIDs).sorted(), forKey: .earnedMilestoneIDs)
         try c.encode(keysSpent, forKey: .keysSpent)
+        try c.encode(legacyKeysBonus, forKey: .legacyKeysBonus)
         try c.encode(migratedFromLegacyProgress, forKey: .migratedFromLegacyProgress)
         try c.encode(storyForkChoices, forKey: .storyForkChoices)
         try c.encode(Array(seenStoryCardStageIDs).sorted(), forKey: .seenStoryCardStageIDs)
@@ -365,6 +388,7 @@ public struct DrummerPathState: Codable, Equatable, Hashable, Sendable {
         lhs.completedExamStageIDs == rhs.completedExamStageIDs &&
         lhs.earnedMilestoneIDs == rhs.earnedMilestoneIDs &&
         lhs.keysSpent == rhs.keysSpent &&
+        lhs.legacyKeysBonus == rhs.legacyKeysBonus &&
         lhs.migratedFromLegacyProgress == rhs.migratedFromLegacyProgress &&
         lhs.storyForkChoices == rhs.storyForkChoices &&
         lhs.seenStoryCardStageIDs == rhs.seenStoryCardStageIDs
@@ -377,6 +401,7 @@ public struct DrummerPathState: Codable, Equatable, Hashable, Sendable {
         hasher.combine(completedExamStageIDs)
         hasher.combine(earnedMilestoneIDs)
         hasher.combine(keysSpent)
+        hasher.combine(legacyKeysBonus)
         hasher.combine(migratedFromLegacyProgress)
         hasher.combine(storyForkChoices)
         hasher.combine(seenStoryCardStageIDs)

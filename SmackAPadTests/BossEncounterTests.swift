@@ -161,7 +161,7 @@ final class BossEncounterTests: XCTestCase {
         session.tick()
         XCTAssertEqual(session.bossAttempt?.won, true)
         XCTAssertTrue(progress.drummerPath.completedExamStageIDs.contains(boss.stageID))
-        XCTAssertEqual(progress.drummerPath.availableKeys, before.availableKeys + 1)
+        XCTAssertEqual(progress.drummerPath.availableKeys, before.availableKeys)
         XCTAssertEqual(progress.progress(for: lesson.id)?.memory, false)
     }
 

@@ -214,19 +214,20 @@ final class DrummerPathTests: XCTestCase {
         XCTAssertTrue(state.earnedMilestoneIDs.contains("intro-graduate"))
         XCTAssertTrue(state.completedExamStageIDs.contains("intro"))
         XCTAssertTrue(state.completedExamStageIDs.contains("L1-groove"))
-        XCTAssertEqual(outcome.keysAwarded, 4)
-        XCTAssertEqual(state.availableKeys, 4)
+        XCTAssertEqual(outcome.keysAwarded, 2)
+        XCTAssertEqual(state.availableKeys, 2)
+        XCTAssertEqual(Set(outcome.newlyAwardedKeySourceIDs), ["intro", "L1-groove"])
 
         // Player can spend 1 key to unlock ANY locked kit (e.g. jazz first, then 808)
         let jazzUnlock = DrummerPathEvaluator.unlockKit("jazz", in: &state)
-        XCTAssertEqual(jazzUnlock, .unlocked(kit: DrumKitCatalog.kit(forId: "jazz")!, remainingKeys: 3))
+        XCTAssertEqual(jazzUnlock, .unlocked(kit: DrumKitCatalog.kit(forId: "jazz")!, remainingKeys: 1))
         XCTAssertTrue(state.isKitUnlocked("jazz"))
         XCTAssertFalse(state.isKitUnlocked("rock"))
 
         // Re-unlocking an already unlocked kit does not spend another key
         let repeatUnlock = DrummerPathEvaluator.unlockKit("jazz", in: &state)
         XCTAssertEqual(repeatUnlock, .alreadyUnlocked(kit: DrumKitCatalog.kit(forId: "jazz")!))
-        XCTAssertEqual(state.availableKeys, 3)
+        XCTAssertEqual(state.availableKeys, 1)
 
         // Insufficient keys check
         var emptyState = DrummerPathState()
@@ -244,7 +245,7 @@ final class DrummerPathTests: XCTestCase {
         let jazzLesson = makeLesson(id: 201, cat: "swing", genre: "Jazz", tags: ["triplet feel"], level: 2)
 
         var state = DrummerPathState(
-            earnedMilestoneIDs: ["intro-spark"] // 1 key available
+            completedExamStageIDs: ["L1-groove"] // 1 key available
         )
 
         // Intro stays unlocked on Starter even with Rock genre
@@ -296,10 +297,10 @@ final class DrummerPathTests: XCTestCase {
             completedBossStageID: "L1-groove"
         )
 
-        // Default skin + ten-passed ("midnight-mpc") + ten-mastered ("cream-vintage") unlocked
+        // Default skin + 1 stage boss ("midnight-mpc") unlocked; 5 and 15 boss skins stay locked
         XCTAssertTrue(outcome.updatedState.isSkinUnlocked("smack-orange"))
         XCTAssertTrue(outcome.updatedState.isSkinUnlocked("midnight-mpc"))
-        XCTAssertTrue(outcome.updatedState.isSkinUnlocked("cream-vintage"))
+        XCTAssertFalse(outcome.updatedState.isSkinUnlocked("cream-vintage"))
         XCTAssertFalse(outcome.updatedState.isSkinUnlocked("acid-rack"))
 
         // Bonus tracks for intro-graduate and Level 1 stage exam unlocked
@@ -311,6 +312,229 @@ final class DrummerPathTests: XCTestCase {
         let bonusLesson = StudioRigCatalog.bonusTrack(forId: "jam-pocket-starter")?.asLesson()
         XCTAssertEqual(bonusLesson?.cat, "bonus")
         XCTAssertEqual(bonusLesson?.targetBpm, 96)
+    }
+
+    func testSkinsUnlockByBossCountsOneFiveFifteen() throws {
+        let realCatalog = LessonStore.shared.libraryCatalog
+        let stageIDs = realCatalog.stages.map(\.id)
+        XCTAssertGreaterThanOrEqual(stageIDs.count, 15)
+
+        // Intro alone does not count as a stage boss for Midnight MPC
+        let introOnlyState = DrummerPathState(completedExamStageIDs: [DrummerPathEvaluator.introExamStageId])
+        let introCard = DrummerPathEvaluator.computeCard(progress: [:], catalog: realCatalog, trainingLog: TrainingLog(), state: introOnlyState)
+        XCTAssertFalse(StudioRigCatalog.skin(forId: "midnight-mpc")!.unlockRequirement.isSatisfied(by: introOnlyState, card: introCard))
+
+        // 1 stage boss -> Midnight MPC
+        let oneBossOutcome = DrummerPathEvaluator.evaluateProgressUpdate(
+            previousState: DrummerPathState(),
+            previousProgress: [:],
+            previousTrainingLog: TrainingLog(),
+            currentProgress: [:],
+            currentTrainingLog: TrainingLog(),
+            catalog: realCatalog,
+            completedBossStageID: stageIDs[0]
+        )
+        XCTAssertTrue(oneBossOutcome.updatedState.isSkinUnlocked("midnight-mpc"))
+        XCTAssertFalse(oneBossOutcome.updatedState.isSkinUnlocked("cream-vintage"))
+        XCTAssertFalse(oneBossOutcome.updatedState.isSkinUnlocked("acid-rack"))
+
+        // 5 stage bosses -> Cream Vintage
+        var fiveState = DrummerPathState(completedExamStageIDs: Set(stageIDs.prefix(4)))
+        fiveState = DrummerPathEvaluator.evaluateProgressUpdate(
+            previousState: fiveState,
+            previousProgress: [:],
+            previousTrainingLog: TrainingLog(),
+            currentProgress: [:],
+            currentTrainingLog: TrainingLog(),
+            catalog: realCatalog,
+            completedBossStageID: stageIDs[4]
+        ).updatedState
+        XCTAssertTrue(fiveState.isSkinUnlocked("midnight-mpc"))
+        XCTAssertTrue(fiveState.isSkinUnlocked("cream-vintage"))
+        XCTAssertFalse(fiveState.isSkinUnlocked("acid-rack"))
+
+        // 15 stage bosses -> Acid Rack
+        var fifteenState = DrummerPathState(completedExamStageIDs: Set(stageIDs.prefix(14)))
+        fifteenState = DrummerPathEvaluator.evaluateProgressUpdate(
+            previousState: fifteenState,
+            previousProgress: [:],
+            previousTrainingLog: TrainingLog(),
+            currentProgress: [:],
+            currentTrainingLog: TrainingLog(),
+            catalog: realCatalog,
+            completedBossStageID: stageIDs[14]
+        ).updatedState
+        XCTAssertTrue(fifteenState.isSkinUnlocked("midnight-mpc"))
+        XCTAssertTrue(fifteenState.isSkinUnlocked("cream-vintage"))
+        XCTAssertTrue(fifteenState.isSkinUnlocked("acid-rack"))
+    }
+
+    func testFiniteSevenKeyEconomyEachSourceOnceAndNoOtherSources() throws {
+        let realCatalog = LessonStore.shared.libraryCatalog
+        let introLessons = realCatalog.introLessons
+        XCTAssertFalse(introLessons.isEmpty)
+
+        // Complete all regular milestones (except 10 bosses) and all non-key stage bosses -> 0 keys
+        var progress: [Int: LessonProgress] = [:]
+        for lesson in realCatalog.lessons.prefix(30) where lesson.id != introLessons.last?.id {
+            progress[lesson.id] = LessonProgress(passed: true, mastery: true, memory: true, currentBpm: lesson.targetBpm, bestScore: 0.98)
+        }
+        let nonKeyStageIDs = realCatalog.stages.map(\.id).filter { !DrummerPathEvaluator.keyAwardingExamStageIDs.contains($0) }
+        var state = DrummerPathState()
+        for stageId in nonKeyStageIDs.prefix(9) {
+            state = DrummerPathEvaluator.evaluateProgressUpdate(
+                previousState: state,
+                previousProgress: progress,
+                previousTrainingLog: TrainingLog(reviewsPassed: 10),
+                currentProgress: progress,
+                currentTrainingLog: TrainingLog(reviewsPassed: 10),
+                catalog: realCatalog,
+                completedBossStageID: stageId
+            ).updatedState
+        }
+        XCTAssertEqual(state.totalKeysEarned, 0, "Non-key milestones and non-key stage bosses must award 0 keys")
+
+        // 1. Intro completed at 1★ -> 1 key (Rock suggested)
+        let introBoss = try XCTUnwrap(introLessons.last)
+        var withIntroProgress = progress
+        withIntroProgress[introBoss.id] = LessonProgress(passed: true, currentBpm: 80, bestScore: 0.85)
+        let introOutcome = DrummerPathEvaluator.evaluateProgressUpdate(
+            previousState: state,
+            previousProgress: progress,
+            previousTrainingLog: TrainingLog(reviewsPassed: 10),
+            currentProgress: withIntroProgress,
+            currentTrainingLog: TrainingLog(reviewsPassed: 10),
+            catalog: realCatalog
+        )
+        XCTAssertEqual(introOutcome.keysAwarded, 1)
+        XCTAssertEqual(introOutcome.newlyAwardedKeySourceIDs, ["intro"])
+        XCTAssertEqual(DrummerPathEvaluator.suggestedKit(forKeySource: "intro")?.kitId, "rock")
+        state = introOutcome.updatedState
+
+        // Repeating Intro does not duplicate key
+        let repeatIntroOutcome = DrummerPathEvaluator.evaluateProgressUpdate(
+            previousState: state,
+            previousProgress: withIntroProgress,
+            previousTrainingLog: TrainingLog(reviewsPassed: 10),
+            currentProgress: withIntroProgress,
+            currentTrainingLog: TrainingLog(reviewsPassed: 10),
+            catalog: realCatalog
+        )
+        XCTAssertEqual(repeatIntroOutcome.keysAwarded, 0)
+
+        // 2-6. Five key-awarding stage bosses + 7. 10th distinct stage boss
+        let keyBosses: [(String, String)] = [
+            ("L1-groove", "808"),
+            ("L1-swing", "jazz"),
+            ("L2-sixteenths", "house"),
+            ("L3-ghost", "world"),
+            ("L4-fills", "worldperc")
+        ]
+        for (stageId, expectedKitId) in keyBosses {
+            let bossOutcome = DrummerPathEvaluator.evaluateProgressUpdate(
+                previousState: state,
+                previousProgress: withIntroProgress,
+                previousTrainingLog: TrainingLog(reviewsPassed: 10),
+                currentProgress: withIntroProgress,
+                currentTrainingLog: TrainingLog(reviewsPassed: 10),
+                catalog: realCatalog,
+                completedBossStageID: stageId
+            )
+            XCTAssertGreaterThanOrEqual(bossOutcome.keysAwarded, 1)
+            XCTAssertTrue(bossOutcome.newlyAwardedKeySourceIDs.contains(stageId))
+            XCTAssertEqual(DrummerPathEvaluator.suggestedKit(forKeySource: stageId)?.kitId, expectedKitId)
+            state = bossOutcome.updatedState
+        }
+
+        // Complete all remaining stages -> total keys capped at 7 (6 exams + ten-bosses)
+        for stage in realCatalog.stages {
+            state = DrummerPathEvaluator.evaluateProgressUpdate(
+                previousState: state,
+                previousProgress: withIntroProgress,
+                previousTrainingLog: TrainingLog(reviewsPassed: 10),
+                currentProgress: withIntroProgress,
+                currentTrainingLog: TrainingLog(reviewsPassed: 10),
+                catalog: realCatalog,
+                completedBossStageID: stage.id
+            ).updatedState
+        }
+        XCTAssertTrue(state.earnedMilestoneIDs.contains(DrummerPathEvaluator.tenBossesMilestoneId))
+        XCTAssertEqual(DrummerPathEvaluator.suggestedKit(forKeySource: DrummerPathEvaluator.tenBossesMilestoneId)?.kitId, "brush")
+        XCTAssertEqual(state.totalKeysEarned, 7)
+
+        // Verify all 7 clan epithets exist
+        for kit in DrumKitCatalog.allKits {
+            XCTAssertFalse(kit.localizedClanEpithet(language: .english).isEmpty)
+            XCTAssertFalse(kit.localizedClanEpithet(language: .czech).isEmpty)
+        }
+    }
+
+    func testLegacySaveWithMoreKeysPreservesKeysAndNeverTakesAwayOrDuplicates() throws {
+        // Simulate pre-252 JSON without `legacyKeysBonus`
+        let legacyJSON = """
+        {
+          "completedExamStageIDs": ["intro", "L1-sixteenths", "L2-groove"],
+          "earnedMilestoneIDs": ["intro-spark", "intro-graduate", "first-mastery", "ten-passed", "ten-mastered", "review-habit"],
+          "keysSpent": 2,
+          "migratedFromLegacyProgress": true,
+          "unlockedKitIds": ["acoustic", "rock", "808"],
+          "unlockedSkinIds": ["smack-orange"]
+        }
+        """.data(using: .utf8)!
+
+        let decoder = JSONDecoder()
+        let decoded = try decoder.decode(DrummerPathState.self, from: legacyJSON)
+        // Old system had 3 exams + 6 milestones = 9 keys; spent 2 -> 7 available
+        XCTAssertEqual(decoded.totalKeysEarned, 9)
+        XCTAssertEqual(decoded.availableKeys, 7)
+        XCTAssertEqual(decoded.legacyKeysBonus, 8) // 9 - 1 ("intro") = 8
+        XCTAssertTrue(decoded.isKitUnlocked("rock"))
+        XCTAssertTrue(decoded.isKitUnlocked("808"))
+
+        // Re-encoding and decoding preserves legacyKeysBonus cleanly
+        let reencoded = try JSONEncoder().encode(decoded)
+        let roundTripped = try decoder.decode(DrummerPathState.self, from: reencoded)
+        XCTAssertEqual(roundTripped.totalKeysEarned, 9)
+        XCTAssertEqual(roundTripped.availableKeys, 7)
+        XCTAssertEqual(roundTripped, decoded)
+
+        // Winning L1-groove (new source not yet in completedExamStageIDs) awards +1 key once
+        let outcome = DrummerPathEvaluator.evaluateProgressUpdate(
+            previousState: roundTripped,
+            previousProgress: [:],
+            previousTrainingLog: TrainingLog(),
+            currentProgress: [:],
+            currentTrainingLog: TrainingLog(),
+            catalog: LessonStore.shared.libraryCatalog,
+            completedBossStageID: "L1-groove"
+        )
+        XCTAssertEqual(outcome.keysAwarded, 1)
+        XCTAssertEqual(outcome.updatedState.totalKeysEarned, 10)
+        XCTAssertEqual(outcome.updatedState.availableKeys, 8)
+    }
+
+    func testKitClaimChooseAndSaveKeyFlows() {
+        var state = DrummerPathState(completedExamStageIDs: ["L1-groove"])
+        XCTAssertEqual(state.availableKeys, 1)
+
+        // Claim suggested kit (808)
+        let suggested = DrummerPathEvaluator.suggestedKit(forKeySource: "L1-groove")!
+        XCTAssertEqual(suggested.kitId, "808")
+        var claimState = state
+        let claimResult = DrummerPathEvaluator.unlockKit(suggested.kitId, in: &claimState)
+        XCTAssertEqual(claimResult, .unlocked(kit: suggested, remainingKeys: 0))
+        XCTAssertTrue(claimState.isKitUnlocked("808"))
+
+        // Choose another kit (Jazz)
+        var chooseState = state
+        let chooseResult = DrummerPathEvaluator.unlockKit("jazz", in: &chooseState)
+        XCTAssertEqual(chooseResult, .unlocked(kit: DrumKitCatalog.kit(forId: "jazz")!, remainingKeys: 0))
+        XCTAssertTrue(chooseState.isKitUnlocked("jazz"))
+        XCTAssertFalse(chooseState.isKitUnlocked("808"))
+
+        // Save key (no spend)
+        XCTAssertEqual(state.availableKeys, 1)
+        XCTAssertFalse(state.isKitUnlocked("808"))
     }
 
     // MARK: - 4. Legacy Player Migration & Persistence / Backup Round-Trip
@@ -371,13 +595,12 @@ final class DrummerPathTests: XCTestCase {
         let progressURL = tempDir.appendingPathComponent("progress.json")
         let store = ProgressStore(fileURL: progressURL, autoLoad: false)
 
-        // Simulate earning keys & unlocking 808 kit + skin selection
-        store.recordResult(lessonId: 10001, passed: true, mastery: true, bpm: 100, score: 0.95, autoSave: false)
-        store.recordResult(lessonId: 10002, passed: true, mastery: false, bpm: 95, score: 0.90, autoSave: false)
-        store.recordResult(lessonId: 10003, passed: true, mastery: false, bpm: 95, score: 0.90, autoSave: false)
-        store.recordResult(lessonId: 10004, passed: true, mastery: false, bpm: 95, score: 0.90, autoSave: false)
-        store.recordResult(lessonId: 10005, passed: true, mastery: false, bpm: 95, score: 0.90, autoSave: false)
-        XCTAssertGreaterThanOrEqual(store.drummerPath.availableKeys, 2)
+        // Simulate earning a key (Intro exam) & unlocking 808 kit + skin selection
+        for id in [10001, 10002, 10003, 10004, 10005, 10024] {
+            store.recordResult(lessonId: id, passed: true, mastery: id == 10001, bpm: 100, score: 0.95, autoSave: false)
+        }
+        try store.recordBossVictory(stageID: "L1-groove")
+        XCTAssertGreaterThanOrEqual(store.drummerPath.availableKeys, 1)
 
         let unlock808 = store.unlockKit("808", autoSave: true)
         if case .unlocked(let kit, _) = unlock808 {
@@ -405,14 +628,15 @@ final class DrummerPathTests: XCTestCase {
         XCTAssertEqual(store.drummerPath.availableKeys, savedPath.availableKeys)
         XCTAssertEqual(SettingsManager.shared.selectedInstrumentSkinId, "midnight-mpc")
 
-        // Merging two DrummerPathStates never loses unlocked kits, exams, milestones, skins, or bonus tracks
+        // Merging two DrummerPathStates never loses unlocked kits, exams, milestones, skins, bonus tracks, or legacyKeysBonus
         let local = DrummerPathState(
             unlockedKitIds: ["acoustic", "rock"],
             unlockedSkinIds: ["smack-orange", "midnight-mpc"],
             unlockedBonusTrackIds: ["jam-pocket-starter"],
             completedExamStageIDs: ["intro"],
             earnedMilestoneIDs: ["intro-spark", "first-mastery"],
-            keysSpent: 1
+            keysSpent: 1,
+            legacyKeysBonus: 2
         )
         let incoming = DrummerPathState(
             unlockedKitIds: ["acoustic", "jazz"],
@@ -420,7 +644,8 @@ final class DrummerPathTests: XCTestCase {
             unlockedBonusTrackIds: ["jam-rock-basement"],
             completedExamStageIDs: ["L1-groove"],
             earnedMilestoneIDs: ["intro-spark", "ten-passed"],
-            keysSpent: 1
+            keysSpent: 1,
+            legacyKeysBonus: 3
         )
         let merged = ProgressMerge.mergeDrummerPath(local: local, incoming: incoming)
         XCTAssertEqual(merged.unlockedKitIds, ["acoustic", "rock", "jazz"])
@@ -428,6 +653,8 @@ final class DrummerPathTests: XCTestCase {
         XCTAssertEqual(merged.unlockedBonusTrackIds, ["jam-pocket-starter", "jam-rock-basement"])
         XCTAssertEqual(merged.completedExamStageIDs, ["intro", "L1-groove"])
         XCTAssertEqual(merged.earnedMilestoneIDs, ["intro-spark", "first-mastery", "ten-passed"])
+        XCTAssertEqual(merged.legacyKeysBonus, 3)
+        XCTAssertEqual(merged.totalKeysEarned, 5)
         XCTAssertGreaterThanOrEqual(merged.availableKeys, 0)
     }
 
