@@ -180,7 +180,8 @@ struct DrummerPathMapView: View {
             stageId: stage.id,
             pageCount: pages.count,
             bossPageIndex: bossPageIndex,
-            stageBaseTopology: stage.topology
+            stageBaseTopology: stage.topology,
+            nodeCounts: pages.map(\.nodes.count)
         )
         let activeTopology = pageTopologies.indices.contains(activePageIdx) ? pageTopologies[activePageIdx] : stage.topology
         let subtitle = language == .czech
@@ -218,30 +219,36 @@ struct DrummerPathMapView: View {
             }
 
             GeometryReader { geo in
+                let requiredWidth = minimumCanvasWidth(for: displayNodes, topology: activeTopology)
+                let canvasWidth = max(geo.size.width, requiredWidth)
+                let canvasSize = CGSize(width: canvasWidth, height: geo.size.height)
                 let points = nodeCoordinates(
                     nodes: displayNodes,
                     topology: activeTopology,
-                    in: geo.size
+                    in: canvasSize
                 )
-                let labelWidths = computeLabelWidths(points: points, canvasWidth: geo.size.width)
+                let labelWidths = computeLabelWidths(points: points, canvasWidth: canvasWidth)
 
-                ZStack {
-                    rackGridLines
+                ScrollView(.horizontal, showsIndicators: false) {
+                    ZStack {
+                        rackGridLines
 
-                    patchCableLayer(
-                        nodes: displayNodes,
-                        points: points,
-                        topology: activeTopology,
-                        canvasSize: geo.size
-                    )
+                        patchCableLayer(
+                            nodes: displayNodes,
+                            points: points,
+                            topology: activeTopology,
+                            canvasSize: canvasSize
+                        )
 
-                    ForEach(Array(displayNodes.enumerated()), id: \.element.id) { idx, node in
-                        if idx < points.count {
-                            let maxLabelW = idx < labelWidths.count ? labelWidths[idx] : 104
-                            moduleNode(node: node, stage: stage, labelWidth: maxLabelW)
-                                .position(points[idx])
+                        ForEach(Array(displayNodes.enumerated()), id: \.element.id) { idx, node in
+                            if idx < points.count {
+                                let maxLabelW = idx < labelWidths.count ? labelWidths[idx] : 105
+                                moduleNode(node: node, stage: stage, labelWidth: maxLabelW)
+                                    .position(points[idx])
+                            }
                         }
                     }
+                    .frame(width: canvasWidth, height: geo.size.height)
                 }
             }
             .frame(minHeight: 300, maxHeight: .infinity)
@@ -382,39 +389,15 @@ struct DrummerPathMapView: View {
         let dy = end.y - start.y
         let cornerRadius: CGFloat = 8
 
-        if topology == .serpentine && abs(dy) > 20 && abs(dx) < 120 {
-            // Sweeping U-turn on outer right edge between top and bottom serpentine rows.
-            let sweepX = min(max(start.x, end.x) + 64, canvasWidth - 16)
-            path.addCurve(
-                to: end,
-                control1: CGPoint(x: sweepX, y: start.y),
-                control2: CGPoint(x: sweepX, y: end.y)
-            )
-            return path
-        }
-
-        if topology == .circuitLoop && abs(dy) > 20 {
-            // Rounded-corner outer U-leg exiting sideways clear of top node labels before turning vertically.
-            let exitOffset = (dx >= 0 ? 1.0 : -1.0) * min(max(cornerRadius * 3.5, abs(dx) * 0.45), abs(dx) * 0.85)
-            let midX = start.x + exitOffset
-            path.addCurve(
-                to: end,
-                control1: CGPoint(x: midX + (dx >= 0 ? cornerRadius : -cornerRadius), y: start.y),
-                control2: CGPoint(x: end.x - (dx >= 0 ? cornerRadius : -cornerRadius), y: end.y)
-            )
-            return path
-        }
-
         if abs(dy) > 8 {
             // Smooth S-curve exiting/entering along node centers cleanly above labels.
             let midX = (start.x + end.x) * 0.5
-            let controlPull = max(cornerRadius, abs(dx) * 0.48)
-            let c1x = start.x + (dx >= 0 ? controlPull : -controlPull)
-            let c2x = end.x - (dx >= 0 ? controlPull : -controlPull)
-            let safeC1x = (c1x + c2x) * 0.5 == midX ? c1x : midX
+            let pull = max(cornerRadius, abs(dx) * 0.45)
+            let c1x = dx >= 0 ? min(midX, start.x + pull) : max(midX, start.x - pull)
+            let c2x = dx >= 0 ? max(midX, end.x - pull) : min(midX, end.x + pull)
             path.addCurve(
                 to: end,
-                control1: CGPoint(x: safeC1x, y: start.y),
+                control1: CGPoint(x: c1x, y: start.y),
                 control2: CGPoint(x: c2x, y: end.y)
             )
             return path
@@ -448,7 +431,9 @@ struct DrummerPathMapView: View {
 
         let boxWidth: CGFloat = node.isBoss ? 114 : (node.isSideQuest ? 70 : 64)
         let boxHeight: CGFloat = 62
-        let titleText = "\(node.orderIndex + 1). \(settings.localized(node.lesson.title))"
+        let titleText = node.isBoss
+            ? (language == .czech ? "Zkouška etapy · \(stage.title)" : "\(stage.title) Stage Exam")
+            : "\(node.orderIndex + 1). \(settings.localized(node.lesson.title))"
 
         return Button {
             selectedNodeId = node.id
@@ -477,9 +462,14 @@ struct DrummerPathMapView: View {
 
                 VStack(spacing: 4) {
                     if node.isBoss {
-                        Text("BOSS EXAM")
-                            .font(.system(size: 11, weight: .black, design: .monospaced))
-                            .foregroundStyle(lit ? Theme.orange : Color.white.opacity(0.55))
+                        HStack(spacing: 4) {
+                            Image(systemName: "trophy.fill")
+                                .font(.system(size: 10, weight: .bold))
+                                .foregroundStyle(lit ? Theme.orange : Color.white.opacity(0.55))
+                            Text("BOSS EXAM")
+                                .font(.system(size: 10.5, weight: .black, design: .monospaced))
+                                .foregroundStyle(lit ? Theme.orange : Color.white.opacity(0.55))
+                        }
                     } else {
                         Text("\(node.orderIndex + 1)")
                             .font(.system(size: 17, weight: .bold, design: .monospaced))
@@ -609,10 +599,12 @@ struct DrummerPathMapView: View {
 
         return ranges.map { range in
             let slice = Array(all[range])
-            let firstNum = slice.first.map { $0.orderIndex + 1 } ?? (range.lowerBound + 1)
-            let lastNum = slice.last.map { $0.orderIndex + 1 } ?? range.upperBound
             let hasBoss = slice.contains(where: \.isBoss)
-            let label = hasBoss ? "\(firstNum)–\(lastNum) + BOSS" : "\(firstNum)–\(lastNum)"
+            let lessonSlice = hasBoss ? Array(slice.dropLast()) : slice
+            let firstNum = lessonSlice.first.map { $0.orderIndex + 1 } ?? (range.lowerBound + 1)
+            let lastNum = lessonSlice.last.map { $0.orderIndex + 1 } ?? firstNum
+            let numberPart = firstNum == lastNum ? "\(firstNum)" : "\(firstNum)–\(lastNum)"
+            let label = hasBoss ? "\(numberPart) + BOSS" : numberPart
             return (label: label, nodes: slice)
         }
     }
@@ -636,6 +628,26 @@ struct DrummerPathMapView: View {
         return 0
     }
 
+    private func minimumCanvasWidth(for nodes: [DrummerPathNode], topology: DrummerStageTopology) -> CGFloat {
+        let count = nodes.count
+        guard count > 1 else { return 240 }
+        let padLeading: CGFloat = 72
+        let padTrailing: CGFloat = 86
+        let minCenterStep: CGFloat = 118
+
+        switch topology {
+        case .splitFork where count >= 4:
+            let columns: Int = switch count {
+            case 4: 3
+            case 5: 4
+            default: 5
+            }
+            return padLeading + padTrailing + CGFloat(columns - 1) * minCenterStep
+        default:
+            return padLeading + padTrailing + CGFloat(count - 1) * minCenterStep
+        }
+    }
+
     private func computeLabelWidths(points: [CGPoint], canvasWidth: CGFloat) -> [CGFloat] {
         guard !points.isEmpty else { return [] }
         return points.indices.map { i in
@@ -649,7 +661,7 @@ struct DrummerPathMapView: View {
             }
             let edgeAllowance = min(p.x, max(40, canvasWidth - p.x)) * 1.85
             let maxPossible = min(minSameRowGap - 14, edgeAllowance)
-            return min(114, max(76, maxPossible))
+            return min(105, max(72, maxPossible))
         }
     }
 
@@ -669,24 +681,26 @@ struct DrummerPathMapView: View {
 
         switch topology {
         case .signalLine:
-            if count <= 4 || usableW >= CGFloat(count - 1) * 98 {
-                // Sleek horizontal bus with a subtle gentle arc.
-                return (0..<count).map { i in
-                    let t = count == 1 ? 0.5 : CGFloat(i) / CGFloat(count - 1)
-                    let gentleArc = sin(t * .pi) * -18
-                    return CGPoint(x: padLeading + t * usableW, y: midY + gentleArc)
-                }
+            return (0..<count).map { i in
+                let t = count == 1 ? 0.5 : CGFloat(i) / CGFloat(count - 1)
+                let gentleArc = count <= 2 ? 0 : sin(t * .pi) * -16
+                return CGPoint(x: padLeading + t * usableW, y: midY + gentleArc)
             }
-            return twoRowSnakeCoordinates(count: count, padLeading: padLeading, usableW: usableW, topY: topY, botY: botY)
 
         case .serpentine:
-            if count <= 3 {
-                return (0..<count).map { i in
-                    let t = count == 1 ? 0.5 : CGFloat(i) / CGFloat(count - 1)
-                    return CGPoint(x: padLeading + t * usableW, y: midY)
+            // Strictly left-to-right 2-level S-wave: entry top-left, exit top-right.
+            return (0..<count).map { i in
+                let t = count == 1 ? 0.5 : CGFloat(i) / CGFloat(count - 1)
+                let x = padLeading + t * usableW
+                let y: CGFloat
+                if count <= 3 {
+                    y = (i % 2 == 0) ? topY : botY
+                } else {
+                    let wave = sin(t * .pi * 2.0 + .pi * 0.5)
+                    y = midY - wave * ((botY - topY) * 0.48)
                 }
+                return CGPoint(x: x, y: y)
             }
-            return twoRowSnakeCoordinates(count: count, padLeading: padLeading, usableW: usableW, topY: topY, botY: botY)
 
         case .diagonalClimb:
             // Rising staircase / diagonal wave from bottom-left up to top-right Boss.
@@ -694,48 +708,7 @@ struct DrummerPathMapView: View {
                 let t = count == 1 ? 0.5 : CGFloat(i) / CGFloat(count - 1)
                 let x = padLeading + t * usableW
                 let climb = botY + (topY - botY) * t
-                let slightStagger: CGFloat = count >= 6 ? ((i % 2 == 0) ? 10 : -10) : 0
-                let clampedY = min(botY, max(topY, climb + slightStagger))
-                return CGPoint(x: x, y: clampedY)
-            }
-
-        case .splitFork:
-            guard count >= 4 else {
-                return nodeCoordinates(nodes: nodes, topology: .signalLine, in: size)
-            }
-            if count == 4 {
-                return [
-                    CGPoint(x: padLeading, y: midY),
-                    CGPoint(x: padLeading + usableW * 0.48, y: topY),
-                    CGPoint(x: padLeading + usableW * 0.48, y: botY),
-                    CGPoint(x: padLeading + usableW, y: midY)
-                ]
-            }
-            let roles = effectiveForkBranches(nodes: nodes)
-            let branchNodesCount = roles.filter { $0 != nil }.count
-            let middleCols = max(1, (branchNodesCount + 1) / 2)
-            let hasPreMerge = count == 6
-            let mergeX = padLeading + usableW * 0.78
-            return (0..<count).map { i in
-                if i == 0 {
-                    return CGPoint(x: padLeading, y: midY)
-                } else if i == 1 {
-                    return CGPoint(x: padLeading + usableW * 0.22, y: midY)
-                } else if i == count - 1 {
-                    return CGPoint(x: padLeading + usableW, y: midY)
-                } else if hasPreMerge && i == 4 {
-                    return CGPoint(x: mergeX, y: midY)
-                } else if let branch = roles[i] {
-                    let col = (i - 2) / 2
-                    let forkStart = usableW * 0.48
-                    let forkEnd = hasPreMerge ? usableW * 0.54 : usableW * 0.74
-                    let x: CGFloat = middleCols == 1
-                        ? padLeading + (forkStart + forkEnd) * 0.5
-                        : padLeading + forkStart + (forkEnd - forkStart) * CGFloat(col) / CGFloat(middleCols - 1)
-                    return CGPoint(x: x, y: branch == 0 ? topY : botY)
-                } else {
-                    return CGPoint(x: mergeX, y: midY)
-                }
+                return CGPoint(x: x, y: climb)
             }
 
         case .chevronWave:
@@ -747,81 +720,57 @@ struct DrummerPathMapView: View {
                 return CGPoint(x: padLeading + t * usableW, y: isTop ? topY : botY)
             }
 
-        case .circuitLoop:
-            // U/rectangle perimeter loop with top-center bridge tap node.
+        case .splitFork:
             guard count >= 4 else {
                 return nodeCoordinates(nodes: nodes, topology: .signalLine, in: size)
             }
-            let sideIdx = nodes.firstIndex(where: \.isSideQuest) ?? (count - 2)
-            let perimeter = (0..<count).filter { $0 != sideIdx }
-            let perimeterCount = perimeter.count
+            if count == 4 {
+                return [
+                    CGPoint(x: padLeading, y: midY),
+                    CGPoint(x: padLeading + usableW * 0.50, y: topY),
+                    CGPoint(x: padLeading + usableW * 0.50, y: botY),
+                    CGPoint(x: padLeading + usableW, y: midY)
+                ]
+            }
+            if count == 5 {
+                return [
+                    CGPoint(x: padLeading, y: midY),
+                    CGPoint(x: padLeading + usableW * 0.28, y: midY),
+                    CGPoint(x: padLeading + usableW * 0.64, y: topY),
+                    CGPoint(x: padLeading + usableW * 0.64, y: botY),
+                    CGPoint(x: padLeading + usableW, y: midY)
+                ]
+            }
+            if count == 6 {
+                return [
+                    CGPoint(x: padLeading, y: midY),
+                    CGPoint(x: padLeading + usableW * 0.24, y: midY),
+                    CGPoint(x: padLeading + usableW * 0.50, y: topY),
+                    CGPoint(x: padLeading + usableW * 0.50, y: botY),
+                    CGPoint(x: padLeading + usableW * 0.76, y: midY),
+                    CGPoint(x: padLeading + usableW, y: midY)
+                ]
+            }
+            // 7 nodes: 0 -> 1 -> (2,3) -> (4,5) -> 6 (strictly ascending columns, >= 118 pt apart).
+            return [
+                CGPoint(x: padLeading, y: midY),
+                CGPoint(x: padLeading + usableW * 0.22, y: midY),
+                CGPoint(x: padLeading + usableW * 0.46, y: topY),
+                CGPoint(x: padLeading + usableW * 0.46, y: botY),
+                CGPoint(x: padLeading + usableW * 0.72, y: topY),
+                CGPoint(x: padLeading + usableW * 0.72, y: botY),
+                CGPoint(x: padLeading + usableW, y: midY)
+            ]
+
+        case .steppedArc:
+            // Bridge arch rising from lower-left entry over top center to right exit.
             return (0..<count).map { i in
-                if i == sideIdx {
-                    return CGPoint(x: padLeading + usableW * 0.50, y: topY)
-                }
-                guard let pPos = perimeter.firstIndex(of: i) else {
-                    return CGPoint(x: padLeading + usableW * 0.50, y: midY)
-                }
-                if pPos == 0 {
-                    return CGPoint(x: padLeading + usableW * 0.02, y: topY)
-                } else if pPos == perimeterCount - 1 {
-                    return CGPoint(x: padLeading + usableW * 0.98, y: topY)
-                } else {
-                    let bottomCount = max(1, perimeterCount - 2)
-                    let bottomIdx = pPos - 1
-                    let t: CGFloat = bottomCount == 1
-                        ? 0.50
-                        : 0.18 + (0.64 * CGFloat(bottomIdx) / CGFloat(bottomCount - 1))
-                    return CGPoint(x: padLeading + usableW * t, y: botY)
-                }
+                let t = count == 1 ? 0.5 : CGFloat(i) / CGFloat(count - 1)
+                let x = padLeading + t * usableW
+                let arch = sin(t * .pi)
+                let y = botY - arch * (botY - topY)
+                return CGPoint(x: x, y: y)
             }
-        }
-    }
-
-    private func twoRowSnakeCoordinates(
-        count: Int,
-        padLeading: CGFloat,
-        usableW: CGFloat,
-        topY: CGFloat,
-        botY: CGFloat
-    ) -> [CGPoint] {
-        let topCols = max(2, min(4, (count + 1) / 2))
-        let bottomCount = max(1, count - topCols)
-
-        return (0..<count).map { i in
-            if i < topCols {
-                let t = topCols == 1 ? 0.5 : CGFloat(i) / CGFloat(topCols - 1)
-                return CGPoint(x: padLeading + t * usableW, y: topY)
-            } else {
-                let bottomIndex = i - topCols
-                let t: CGFloat
-                if bottomCount == 1 {
-                    t = 0.5
-                } else if bottomCount == 2 {
-                    t = bottomIndex == 0 ? 0.68 : 0.22
-                } else {
-                    let span: CGFloat = 0.68
-                    let step = span / CGFloat(bottomCount - 1)
-                    t = 0.80 - CGFloat(bottomIndex) * step
-                }
-                return CGPoint(x: padLeading + t * usableW, y: botY)
-            }
-        }
-    }
-
-    private func effectiveForkBranches(nodes: [DrummerPathNode]) -> [Int?] {
-        let count = nodes.count
-        if nodes.contains(where: { $0.branchTrack != nil }) {
-            return nodes.map(\.branchTrack)
-        }
-        return (0..<count).map { i in
-            if i < 2 || i == count - 1 || count < 5 {
-                return nil
-            }
-            if count == 6 && i == 4 {
-                return nil
-            }
-            return (i - 2) % 2
         }
     }
 
@@ -830,45 +779,22 @@ struct DrummerPathMapView: View {
         guard count > 1 else { return [] }
 
         switch topology {
-        case .signalLine, .serpentine, .diagonalClimb, .chevronWave:
+        case .signalLine, .serpentine, .diagonalClimb, .chevronWave, .steppedArc:
             return (0..<(count - 1)).map { ($0, $0 + 1) }
 
         case .splitFork:
             guard count >= 4 else { return (0..<(count - 1)).map { ($0, $0 + 1) } }
-            if count == 4 {
+            switch count {
+            case 4:
                 return [(0, 1), (0, 2), (1, 3), (2, 3)]
+            case 5:
+                return [(0, 1), (1, 2), (1, 3), (2, 4), (3, 4)]
+            case 6:
+                return [(0, 1), (1, 2), (1, 3), (2, 4), (3, 4), (4, 5)]
+            default:
+                // 7 nodes: 0 -> 1 -> (2, 3) -> (4, 5) -> 6
+                return [(0, 1), (1, 2), (1, 3), (2, 4), (3, 5), (4, 6), (5, 6)]
             }
-            let roles = effectiveForkBranches(nodes: nodes)
-            var edges: [(Int, Int)] = [(0, 1)]
-            let branch0 = (0..<count).filter { roles[$0] == 0 }
-            let branch1 = (0..<count).filter { roles[$0] == 1 }
-            let mergeTarget = (count == 6) ? 4 : (count - 1)
-            if let first0 = branch0.first { edges.append((1, first0)) }
-            if let first1 = branch1.first { edges.append((1, first1)) }
-            for i in 0..<max(0, branch0.count - 1) { edges.append((branch0[i], branch0[i + 1])) }
-            for i in 0..<max(0, branch1.count - 1) { edges.append((branch1[i], branch1[i + 1])) }
-            if let last0 = branch0.last { edges.append((last0, mergeTarget)) }
-            if let last1 = branch1.last { edges.append((last1, mergeTarget)) }
-            if mergeTarget < count - 1 {
-                for i in mergeTarget..<(count - 1) {
-                    edges.append((i, i + 1))
-                }
-            }
-            return edges
-
-        case .circuitLoop:
-            guard count >= 4 else { return (0..<(count - 1)).map { ($0, $0 + 1) } }
-            let sideIdx = nodes.firstIndex(where: \.isSideQuest) ?? (count - 2)
-            let perimeter = (0..<count).filter { $0 != sideIdx }
-            var edges: [(Int, Int)] = []
-            for i in 0..<max(0, perimeter.count - 1) {
-                edges.append((perimeter[i], perimeter[i + 1]))
-            }
-            let anchor = perimeter.first ?? 0
-            let rejoin = perimeter.last ?? (count - 1)
-            edges.append((anchor, sideIdx))
-            edges.append((sideIdx, rejoin))
-            return edges
         }
     }
 
@@ -974,7 +900,11 @@ struct DrummerModuleInspectorCard: View {
                 }
 
                 VStack(alignment: .leading, spacing: 4) {
-                    Text("\(node.orderIndex + 1). \(settings.localized(node.lesson.title))")
+                    Text(
+                        node.isBoss
+                            ? (language == .czech ? "Zkouška etapy · \(stage.title)" : "\(stage.title) Stage Exam")
+                            : "\(node.orderIndex + 1). \(settings.localized(node.lesson.title))"
+                    )
                         .font(Theme.boldDisplay(21))
                         .foregroundStyle(Color.white)
                         .lineLimit(2)

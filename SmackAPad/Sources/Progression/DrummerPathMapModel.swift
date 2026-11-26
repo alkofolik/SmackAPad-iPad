@@ -2,14 +2,14 @@ import Foundation
 
 // MARK: - Drummer's Path Map Topologies & Nodes
 
-/// Six distinct hardware signal-patch layouts for Drummer's Path stages and pages.
+/// Six distinct left-to-right hardware signal-patch layouts for Drummer's Path stages and pages.
 public enum DrummerStageTopology: String, CaseIterable, Equatable, Sendable {
     case signalLine
     case serpentine
     case diagonalClimb
-    case splitFork
     case chevronWave
-    case circuitLoop
+    case splitFork
+    case steppedArc
 
     private static func stableHash(_ text: String) -> UInt64 {
         var hash: UInt64 = 14695981039346656037
@@ -34,13 +34,15 @@ public enum DrummerStageTopology: String, CaseIterable, Equatable, Sendable {
         return candidate
     }
 
-    /// Resolves a deterministic topology for every page/block in a stage so adjacent blocks never repeat
-    /// and multi-block Boss finale blocks prefer `diagonalClimb` or `splitFork`.
+    /// Resolves a deterministic topology for every page/block in a stage so adjacent blocks never repeat,
+    /// blocks with fewer than 4 nodes only use `signalLine` or `diagonalClimb`,
+    /// and multi-block Boss finale blocks (when >= 4 nodes) prefer `diagonalClimb` or `splitFork`.
     public static func topologiesForStage(
         stageId: String,
         pageCount: Int,
         bossPageIndex: Int?,
-        stageBaseTopology: DrummerStageTopology
+        stageBaseTopology: DrummerStageTopology,
+        nodeCounts: [Int] = []
     ) -> [DrummerStageTopology] {
         guard pageCount > 0 else { return [] }
         let cases = Self.allCases
@@ -48,13 +50,25 @@ public enum DrummerStageTopology: String, CaseIterable, Equatable, Sendable {
         result.reserveCapacity(pageCount)
 
         for pageIndex in 0..<pageCount {
+            let pageNodeCount = nodeCounts.indices.contains(pageIndex) ? nodeCounts[pageIndex] : 6
+            let prev = pageIndex > 0 ? result[pageIndex - 1] : nil
+            let isMultiPageBoss = pageCount > 1 && bossPageIndex == pageIndex
+
+            if pageNodeCount < 4 {
+                let preferred: DrummerStageTopology = isMultiPageBoss ? .diagonalClimb : .signalLine
+                if preferred == prev {
+                    result.append(preferred == .diagonalClimb ? .signalLine : .diagonalClimb)
+                } else {
+                    result.append(preferred)
+                }
+                continue
+            }
+
             if pageIndex == 0 {
                 result.append(stageBaseTopology)
                 continue
             }
 
-            let prev = result[pageIndex - 1]
-            let isMultiPageBoss = pageCount > 1 && bossPageIndex == pageIndex
             if isMultiPageBoss {
                 let pickDiagonal = (stableHash("\(stageId)#\(pageIndex)#boss") & 1) == 0
                 let preferred: DrummerStageTopology = pickDiagonal ? .diagonalClimb : .splitFork
@@ -67,7 +81,6 @@ public enum DrummerStageTopology: String, CaseIterable, Equatable, Sendable {
             }
 
             var idx = Int(stableHash("\(stageId)#page#\(pageIndex)") % UInt64(cases.count))
-            // Keep opening blocks distinct from immediate neighbors.
             for _ in 0..<cases.count {
                 let candidate = cases[idx]
                 if candidate != prev {
@@ -89,23 +102,23 @@ public enum DrummerStageTopology: String, CaseIterable, Equatable, Sendable {
         case (.serpentine, .czech): return "Hadí dráha"
         case (.diagonalClimb, .english): return "Diagonal Climb"
         case (.diagonalClimb, .czech): return "Diagonální výstup"
-        case (.splitFork, .english): return "Split Fork"
-        case (.splitFork, .czech): return "Rozbočení"
         case (.chevronWave, .english): return "Chevron Wave"
         case (.chevronWave, .czech): return "W-vlna"
-        case (.circuitLoop, .english): return "Circuit Loop"
-        case (.circuitLoop, .czech): return "Obvodová smyčka"
+        case (.splitFork, .english): return "Split Fork"
+        case (.splitFork, .czech): return "Rozbočení"
+        case (.steppedArc, .english): return "Stepped Arc"
+        case (.steppedArc, .czech): return "Obloukový most"
         }
     }
 
     public var systemImage: String {
         switch self {
         case .signalLine: return "arrow.right"
-        case .serpentine: return "square.grid.3x2"
+        case .serpentine: return "point.topleft.down.to.point.bottomright.curvepath"
         case .diagonalClimb: return "arrow.up.right"
-        case .splitFork: return "arrow.triangle.branch"
         case .chevronWave: return "waveform.path.ecg"
-        case .circuitLoop: return "point.topleft.down.to.point.bottomright.curvepath"
+        case .splitFork: return "arrow.triangle.branch"
+        case .steppedArc: return "chart.line.uptrend.xyaxis"
         }
     }
 }
@@ -119,7 +132,7 @@ public enum DrummerPathNodeState: Equatable, Sendable {
 
 /// Single lesson node in a Drummer's Path stage.
 public struct DrummerPathNode: Identifiable, Equatable, Sendable {
-    public var id: Int { lesson.id }
+    public var id: Int { isBoss ? -(1_000_000 + lesson.id) : lesson.id }
     public let lesson: Lesson
     public let orderIndex: Int
     public let isBoss: Bool
@@ -247,12 +260,11 @@ public enum DrummerPathMapBuilder {
         )
 
         var nodes: [DrummerPathNode] = []
-        nodes.reserveCapacity(count)
+        nodes.reserveCapacity(count + 1)
 
         for i in 0..<count {
             let lesson = lessons[i]
             let stars = starsList[i]
-            let isBoss = (i == count - 1)
             let role = roles[i]
 
             let state: DrummerPathNodeState
@@ -268,7 +280,7 @@ public enum DrummerPathMapBuilder {
                 DrummerPathNode(
                     lesson: lesson,
                     orderIndex: i,
-                    isBoss: isBoss,
+                    isBoss: false,
                     isSideQuest: role.isSideQuest,
                     branchTrack: role.branchTrack,
                     stars: stars,
@@ -278,7 +290,29 @@ public enum DrummerPathMapBuilder {
             )
         }
 
-        let examDone = pathState.completedExamStageIDs.contains(id) || (nodes.last?.state == .completed)
+        let examDone = pathState.completedExamStageIDs.contains(id) || (count > 0 && isCompletedList.allSatisfy { $0 })
+        if let examLesson = lessons.last, let examKit = kits.last {
+            let prereqsComplete = count <= 1 || isCompletedList.dropLast().allSatisfy { $0 }
+            let bossState: DrummerPathNodeState = if examDone {
+                .completed
+            } else if prereqsComplete && (isUnlockedKitList.last == true) {
+                .active
+            } else {
+                .locked
+            }
+            nodes.append(
+                DrummerPathNode(
+                    lesson: examLesson,
+                    orderIndex: count,
+                    isBoss: true,
+                    isSideQuest: false,
+                    branchTrack: nil,
+                    stars: starsList.last ?? 0,
+                    state: bossState,
+                    requiredKit: examKit
+                )
+            )
+        }
 
         return DrummerPathStageModel(
             id: id,
@@ -301,29 +335,23 @@ public enum DrummerPathMapBuilder {
     private static func assignRoles(count: Int, topology: DrummerStageTopology) -> [NodeRole] {
         guard count > 0 else { return [] }
         switch topology {
-        case .signalLine, .serpentine, .diagonalClimb, .chevronWave:
+        case .signalLine, .serpentine, .diagonalClimb, .chevronWave, .steppedArc:
             return Array(repeating: NodeRole(isSideQuest: false, branchTrack: nil), count: count)
 
         case .splitFork:
-            // Nodes 0 & 1 on trunk; nodes 2 & 3 fork into parallel branches; node 4+ merges back to trunk before Boss.
+            // Nodes 0 & 1 on trunk; nodes 2 & 3 fork into parallel branches; node 4+ merges back to trunk.
             return (0..<count).map { i in
-                if i < 2 || i == count - 1 || count < 5 {
+                if i < 2 || count < 5 {
                     return NodeRole(isSideQuest: false, branchTrack: nil)
                 }
-                if count == 6 && i == 4 {
+                if count == 5 && i == 4 {
+                    return NodeRole(isSideQuest: false, branchTrack: nil)
+                }
+                if count == 6 && i >= 4 {
                     return NodeRole(isSideQuest: false, branchTrack: nil)
                 }
                 let middleOffset = i - 2
                 return NodeRole(isSideQuest: false, branchTrack: middleOffset % 2)
-            }
-
-        case .circuitLoop:
-            // Penultimate node (when count >= 4) acts as an optional memory/bonus tap inside the perimeter circuit.
-            return (0..<count).map { i in
-                if count >= 4 && i == count - 2 {
-                    return NodeRole(isSideQuest: true, branchTrack: 1)
-                }
-                return NodeRole(isSideQuest: false, branchTrack: nil)
             }
         }
     }
@@ -339,7 +367,7 @@ public enum DrummerPathMapBuilder {
         var active: Set<Int> = []
 
         switch topology {
-        case .signalLine, .serpentine, .diagonalClimb, .chevronWave:
+        case .signalLine, .serpentine, .diagonalClimb, .chevronWave, .steppedArc:
             if let firstPending = (0..<count).first(where: { !isCompleted[$0] }) {
                 if isKitUnlocked[firstPending] {
                     active.insert(firstPending)
@@ -347,13 +375,11 @@ public enum DrummerPathMapBuilder {
             }
 
         case .splitFork:
-            // Trunk before fork (0, 1)
             let preFork = (0..<min(2, count)).filter { roles[$0].branchTrack == nil }
             if let firstTrunk = preFork.first(where: { !isCompleted[$0] }) {
                 if isKitUnlocked[firstTrunk] { active.insert(firstTrunk) }
                 return active
             }
-            // Parallel branches: first uncompleted node in branch 0 and branch 1 can both be active.
             let branch0 = (0..<count).filter { roles[$0].branchTrack == 0 }
             let branch1 = (0..<count).filter { roles[$0].branchTrack == 1 }
             var branchPending = false
@@ -365,25 +391,10 @@ public enum DrummerPathMapBuilder {
                 branchPending = true
                 if isKitUnlocked[next1] { active.insert(next1) }
             }
-            // Post-merge trunk & Boss unlock once both branches are completed.
             if !branchPending {
                 let postMerge = (2..<count).filter { roles[$0].branchTrack == nil }
                 if let nextTrunk = postMerge.first(where: { !isCompleted[$0] }), isKitUnlocked[nextTrunk] {
                     active.insert(nextTrunk)
-                }
-            }
-
-        case .circuitLoop:
-            // Main perimeter excludes the inner tap node; tap node unlocks after node 0 completes.
-            let mainIndices = (0..<count).filter { !roles[$0].isSideQuest }
-            if let firstMain = mainIndices.first(where: { !isCompleted[$0] }) {
-                if isKitUnlocked[firstMain] { active.insert(firstMain) }
-            }
-            let sideIndices = (0..<count).filter { roles[$0].isSideQuest }
-            let prereqDone = count < 2 || isCompleted[0]
-            if prereqDone {
-                for sideIdx in sideIndices where !isCompleted[sideIdx] && isKitUnlocked[sideIdx] {
-                    active.insert(sideIdx)
                 }
             }
         }

@@ -431,6 +431,7 @@ final class DrummerPathTests: XCTestCase {
 
     func testDrummerPathMapTopologiesAndNodeStates() {
         XCTAssertEqual(DrummerStageTopology.allCases.count, 6)
+        XCTAssertFalse(DrummerStageTopology.allCases.map(\.rawValue).contains("circuitLoop"))
 
         // Adjacent stages never share the same topology and stages build deterministically from stageId
         let builtStages = DrummerPathMapBuilder.buildStages(
@@ -447,30 +448,35 @@ final class DrummerPathTests: XCTestCase {
             )
         }
 
-        // Consecutive blocks in a multi-block stage never repeat and final Boss block uses diagonalClimb or splitFork
+        // Consecutive blocks in a multi-block stage never repeat, <4-node blocks never use splitFork,
+        // and final >=4-node Boss blocks prefer diagonalClimb or splitFork.
         let baseIntro = DrummerStageTopology.topology(forStageId: "intro")
         let introPageTopologies = DrummerStageTopology.topologiesForStage(
             stageId: "intro",
             pageCount: 5,
             bossPageIndex: 4,
-            stageBaseTopology: baseIntro
+            stageBaseTopology: baseIntro,
+            nodeCounts: [6, 6, 6, 6, 7]
         )
         XCTAssertEqual(introPageTopologies.count, 5)
-        XCTAssertEqual(
-            introPageTopologies,
-            DrummerStageTopology.topologiesForStage(
-                stageId: "intro",
-                pageCount: 5,
-                bossPageIndex: 4,
-                stageBaseTopology: baseIntro
-            )
-        )
         for pIdx in 1..<introPageTopologies.count {
             XCTAssertNotEqual(introPageTopologies[pIdx], introPageTopologies[pIdx - 1])
         }
         XCTAssertTrue(
             introPageTopologies[4] == .diagonalClimb || introPageTopologies[4] == .splitFork,
             "Multi-block Boss page should use diagonalClimb or splitFork, got \(introPageTopologies[4])"
+        )
+
+        let shortPageTopologies = DrummerStageTopology.topologiesForStage(
+            stageId: "short-stage",
+            pageCount: 2,
+            bossPageIndex: 1,
+            stageBaseTopology: .splitFork,
+            nodeCounts: [6, 3]
+        )
+        XCTAssertTrue(
+            shortPageTopologies[1] == .signalLine || shortPageTopologies[1] == .diagonalClimb,
+            "Blocks with < 4 nodes must use signalLine or diagonalClimb, got \(shortPageTopologies[1])"
         )
 
         let lessons = (1...5).map { idx in
@@ -526,26 +532,30 @@ final class DrummerPathTests: XCTestCase {
             pathState: DrummerPathState(unlockedKitIds: ["acoustic", "rock"])
         )
         XCTAssertNil(forkStage.lockedKit)
+        XCTAssertEqual(forkStage.nodes.count, 6)
         XCTAssertEqual(forkStage.nodes[0].state, .completed)
         XCTAssertEqual(forkStage.nodes[1].state, .completed)
         XCTAssertEqual(forkStage.nodes[2].state, .active)
         XCTAssertEqual(forkStage.nodes[3].state, .active)
         XCTAssertEqual(forkStage.nodes[4].state, .locked)
-        XCTAssertTrue(forkStage.nodes[4].isBoss)
+        XCTAssertFalse(forkStage.nodes[4].isBoss)
+        XCTAssertTrue(forkStage.nodes[5].isBoss)
+        XCTAssertNotEqual(forkStage.nodes[4].id, forkStage.nodes[5].id)
 
-        // Circuit Loop marks penultimate node as side quest
-        let loopStage = DrummerPathMapBuilder.buildStage(
+        // Stepped Arc preserves all 5 lessons as regular nodes and appends a dedicated Boss node
+        let arcStage = DrummerPathMapBuilder.buildStage(
             id: "L2-fills",
             index: 3,
             level: 2,
             title: "Fills",
             lessons: lessons,
-            topology: .circuitLoop,
+            topology: .steppedArc,
             progress: progress,
             pathState: DrummerPathState(unlockedKitIds: ["acoustic", "rock"])
         )
-        XCTAssertTrue(loopStage.nodes[3].isSideQuest)
-        XCTAssertTrue(loopStage.nodes[4].isBoss)
+        XCTAssertEqual(arcStage.nodes.count, 6)
+        XCTAssertFalse(arcStage.nodes[4].isBoss)
+        XCTAssertTrue(arcStage.nodes[5].isBoss)
     }
 
     func testEndOfRunRpgLineFormatting() {
