@@ -430,11 +430,48 @@ final class DrummerPathTests: XCTestCase {
     }
 
     func testDrummerPathMapTopologiesAndNodeStates() {
-        XCTAssertEqual(DrummerStageTopology.forStageIndex(0), .straightLine)
-        XCTAssertEqual(DrummerStageTopology.forStageIndex(1), .splitFork)
-        XCTAssertEqual(DrummerStageTopology.forStageIndex(2), .stepSequencer)
-        XCTAssertEqual(DrummerStageTopology.forStageIndex(3), .loopWithSideQuest)
-        XCTAssertEqual(DrummerStageTopology.forStageIndex(4), .straightLine)
+        XCTAssertEqual(DrummerStageTopology.allCases.count, 6)
+
+        // Adjacent stages never share the same topology and stages build deterministically from stageId
+        let builtStages = DrummerPathMapBuilder.buildStages(
+            catalog: LessonStore.shared.libraryCatalog,
+            progress: [:],
+            pathState: DrummerPathState(),
+            language: .english
+        )
+        for idx in 1..<builtStages.count {
+            XCTAssertNotEqual(
+                builtStages[idx].topology,
+                builtStages[idx - 1].topology,
+                "Adjacent stages \(builtStages[idx - 1].id) and \(builtStages[idx].id) must not share topology"
+            )
+        }
+
+        // Consecutive blocks in a multi-block stage never repeat and final Boss block uses diagonalClimb or splitFork
+        let baseIntro = DrummerStageTopology.topology(forStageId: "intro")
+        let introPageTopologies = DrummerStageTopology.topologiesForStage(
+            stageId: "intro",
+            pageCount: 5,
+            bossPageIndex: 4,
+            stageBaseTopology: baseIntro
+        )
+        XCTAssertEqual(introPageTopologies.count, 5)
+        XCTAssertEqual(
+            introPageTopologies,
+            DrummerStageTopology.topologiesForStage(
+                stageId: "intro",
+                pageCount: 5,
+                bossPageIndex: 4,
+                stageBaseTopology: baseIntro
+            )
+        )
+        for pIdx in 1..<introPageTopologies.count {
+            XCTAssertNotEqual(introPageTopologies[pIdx], introPageTopologies[pIdx - 1])
+        }
+        XCTAssertTrue(
+            introPageTopologies[4] == .diagonalClimb || introPageTopologies[4] == .splitFork,
+            "Multi-block Boss page should use diagonalClimb or splitFork, got \(introPageTopologies[4])"
+        )
 
         let lessons = (1...5).map { idx in
             Lesson(
@@ -496,14 +533,14 @@ final class DrummerPathTests: XCTestCase {
         XCTAssertEqual(forkStage.nodes[4].state, .locked)
         XCTAssertTrue(forkStage.nodes[4].isBoss)
 
-        // Loop + Side Quest marks penultimate node as side quest
+        // Circuit Loop marks penultimate node as side quest
         let loopStage = DrummerPathMapBuilder.buildStage(
             id: "L2-fills",
             index: 3,
             level: 2,
             title: "Fills",
             lessons: lessons,
-            topology: .loopWithSideQuest,
+            topology: .circuitLoop,
             progress: progress,
             pathState: DrummerPathState(unlockedKitIds: ["acoustic", "rock"])
         )

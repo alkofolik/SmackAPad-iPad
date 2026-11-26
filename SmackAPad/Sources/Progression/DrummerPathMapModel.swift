@@ -2,37 +2,110 @@ import Foundation
 
 // MARK: - Drummer's Path Map Topologies & Nodes
 
-/// Four alternating hardware signal-patch layouts for Drummer's Path stages.
+/// Six distinct hardware signal-patch layouts for Drummer's Path stages and pages.
 public enum DrummerStageTopology: String, CaseIterable, Equatable, Sendable {
-    case straightLine
+    case signalLine
+    case serpentine
+    case diagonalClimb
     case splitFork
-    case stepSequencer
-    case loopWithSideQuest
+    case chevronWave
+    case circuitLoop
 
-    public static func forStageIndex(_ index: Int) -> DrummerStageTopology {
+    private static func stableHash(_ text: String) -> UInt64 {
+        var hash: UInt64 = 14695981039346656037
+        for byte in text.utf8 {
+            hash ^= UInt64(byte)
+            hash &*= 1099511628211
+        }
+        return hash
+    }
+
+    /// Selects a deterministic topology for a stage base identity, never matching the previous stage.
+    public static func topology(
+        forStageId stageId: String,
+        previousStageTopology: DrummerStageTopology? = nil
+    ) -> DrummerStageTopology {
         let cases = Self.allCases
-        return cases[abs(index) % cases.count]
+        let startIdx = Int(stableHash(stageId) % UInt64(cases.count))
+        let candidate = cases[startIdx]
+        if candidate == previousStageTopology {
+            return cases[(startIdx + 1) % cases.count]
+        }
+        return candidate
+    }
+
+    /// Resolves a deterministic topology for every page/block in a stage so adjacent blocks never repeat
+    /// and multi-block Boss finale blocks prefer `diagonalClimb` or `splitFork`.
+    public static func topologiesForStage(
+        stageId: String,
+        pageCount: Int,
+        bossPageIndex: Int?,
+        stageBaseTopology: DrummerStageTopology
+    ) -> [DrummerStageTopology] {
+        guard pageCount > 0 else { return [] }
+        let cases = Self.allCases
+        var result: [DrummerStageTopology] = []
+        result.reserveCapacity(pageCount)
+
+        for pageIndex in 0..<pageCount {
+            if pageIndex == 0 {
+                result.append(stageBaseTopology)
+                continue
+            }
+
+            let prev = result[pageIndex - 1]
+            let isMultiPageBoss = pageCount > 1 && bossPageIndex == pageIndex
+            if isMultiPageBoss {
+                let pickDiagonal = (stableHash("\(stageId)#\(pageIndex)#boss") & 1) == 0
+                let preferred: DrummerStageTopology = pickDiagonal ? .diagonalClimb : .splitFork
+                if preferred == prev {
+                    result.append(preferred == .diagonalClimb ? .splitFork : .diagonalClimb)
+                } else {
+                    result.append(preferred)
+                }
+                continue
+            }
+
+            var idx = Int(stableHash("\(stageId)#page#\(pageIndex)") % UInt64(cases.count))
+            // Keep opening blocks distinct from immediate neighbors.
+            for _ in 0..<cases.count {
+                let candidate = cases[idx]
+                if candidate != prev {
+                    result.append(candidate)
+                    break
+                }
+                idx = (idx + 1) % cases.count
+            }
+        }
+
+        return result
     }
 
     public func title(language: AppLanguage = .english) -> String {
         switch (self, language) {
-        case (.straightLine, .english): return "Signal Line"
-        case (.straightLine, .czech): return "Signálová linka"
+        case (.signalLine, .english): return "Signal Line"
+        case (.signalLine, .czech): return "Signálová linka"
+        case (.serpentine, .english): return "Serpentine"
+        case (.serpentine, .czech): return "Hadí dráha"
+        case (.diagonalClimb, .english): return "Diagonal Climb"
+        case (.diagonalClimb, .czech): return "Diagonální výstup"
         case (.splitFork, .english): return "Split Fork"
         case (.splitFork, .czech): return "Rozbočení"
-        case (.stepSequencer, .english): return "Step Matrix"
-        case (.stepSequencer, .czech): return "Krokový sekvencer"
-        case (.loopWithSideQuest, .english): return "Loop + Side Quest"
-        case (.loopWithSideQuest, .czech): return "Smyčka + výzva"
+        case (.chevronWave, .english): return "Chevron Wave"
+        case (.chevronWave, .czech): return "W-vlna"
+        case (.circuitLoop, .english): return "Circuit Loop"
+        case (.circuitLoop, .czech): return "Obvodová smyčka"
         }
     }
 
     public var systemImage: String {
         switch self {
-        case .straightLine: return "arrow.right"
+        case .signalLine: return "arrow.right"
+        case .serpentine: return "square.grid.3x2"
+        case .diagonalClimb: return "arrow.up.right"
         case .splitFork: return "arrow.triangle.branch"
-        case .stepSequencer: return "square.grid.3x2"
-        case .loopWithSideQuest: return "point.topleft.down.to.point.bottomright.curvepath"
+        case .chevronWave: return "waveform.path.ecg"
+        case .circuitLoop: return "point.topleft.down.to.point.bottomright.curvepath"
         }
     }
 }
@@ -96,9 +169,15 @@ public enum DrummerPathMapBuilder {
         language: AppLanguage = .english
     ) -> [DrummerPathStageModel] {
         var result: [DrummerPathStageModel] = []
+        var previousTopology: DrummerStageTopology?
 
         if !catalog.introLessons.isEmpty {
             let introTitle = language == .czech ? "Úvod" : "Intro"
+            let introTopology = DrummerStageTopology.topology(
+                forStageId: DrummerPathEvaluator.introExamStageId,
+                previousStageTopology: nil
+            )
+            previousTopology = introTopology
             result.append(
                 buildStage(
                     id: DrummerPathEvaluator.introExamStageId,
@@ -106,7 +185,7 @@ public enum DrummerPathMapBuilder {
                     level: 1,
                     title: introTitle,
                     lessons: catalog.introLessons,
-                    topology: .straightLine,
+                    topology: introTopology,
                     progress: progress,
                     pathState: pathState
                 )
@@ -115,7 +194,11 @@ public enum DrummerPathMapBuilder {
 
         for (offset, stage) in catalog.stages.enumerated() {
             let stageIndex = offset + 1
-            let topology = DrummerStageTopology.forStageIndex(stageIndex)
+            let topology = DrummerStageTopology.topology(
+                forStageId: stage.id,
+                previousStageTopology: previousTopology
+            )
+            previousTopology = topology
             let stageTitle = language.localized(stage.technique.title)
             result.append(
                 buildStage(
@@ -218,21 +301,24 @@ public enum DrummerPathMapBuilder {
     private static func assignRoles(count: Int, topology: DrummerStageTopology) -> [NodeRole] {
         guard count > 0 else { return [] }
         switch topology {
-        case .straightLine, .stepSequencer:
+        case .signalLine, .serpentine, .diagonalClimb, .chevronWave:
             return Array(repeating: NodeRole(isSideQuest: false, branchTrack: nil), count: count)
 
         case .splitFork:
-            // First 2 nodes on main trunk, last node (Boss) on main trunk; middle nodes split into two branches.
+            // Nodes 0 & 1 on trunk; nodes 2 & 3 fork into parallel branches; node 4+ merges back to trunk before Boss.
             return (0..<count).map { i in
                 if i < 2 || i == count - 1 || count < 5 {
+                    return NodeRole(isSideQuest: false, branchTrack: nil)
+                }
+                if count == 6 && i == 4 {
                     return NodeRole(isSideQuest: false, branchTrack: nil)
                 }
                 let middleOffset = i - 2
                 return NodeRole(isSideQuest: false, branchTrack: middleOffset % 2)
             }
 
-        case .loopWithSideQuest:
-            // Penultimate node (when count >= 4) acts as an optional memory/bonus side quest off the main loop.
+        case .circuitLoop:
+            // Penultimate node (when count >= 4) acts as an optional memory/bonus tap inside the perimeter circuit.
             return (0..<count).map { i in
                 if count >= 4 && i == count - 2 {
                     return NodeRole(isSideQuest: true, branchTrack: 1)
@@ -253,7 +339,7 @@ public enum DrummerPathMapBuilder {
         var active: Set<Int> = []
 
         switch topology {
-        case .straightLine, .stepSequencer:
+        case .signalLine, .serpentine, .diagonalClimb, .chevronWave:
             if let firstPending = (0..<count).first(where: { !isCompleted[$0] }) {
                 if isKitUnlocked[firstPending] {
                     active.insert(firstPending)
@@ -279,14 +365,16 @@ public enum DrummerPathMapBuilder {
                 branchPending = true
                 if isKitUnlocked[next1] { active.insert(next1) }
             }
-            // Boss node unlocks once both branches are completed.
-            let bossIndex = count - 1
-            if !branchPending && !isCompleted[bossIndex] && isKitUnlocked[bossIndex] {
-                active.insert(bossIndex)
+            // Post-merge trunk & Boss unlock once both branches are completed.
+            if !branchPending {
+                let postMerge = (2..<count).filter { roles[$0].branchTrack == nil }
+                if let nextTrunk = postMerge.first(where: { !isCompleted[$0] }), isKitUnlocked[nextTrunk] {
+                    active.insert(nextTrunk)
+                }
             }
 
-        case .loopWithSideQuest:
-            // Main trunk excludes the optional side quest; side quest unlocks after node 1 (or 0).
+        case .circuitLoop:
+            // Main perimeter excludes the inner tap node; tap node unlocks after node 0 completes.
             let mainIndices = (0..<count).filter { !roles[$0].isSideQuest }
             if let firstMain = mainIndices.first(where: { !isCompleted[$0] }) {
                 if isKitUnlocked[firstMain] { active.insert(firstMain) }

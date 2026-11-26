@@ -172,12 +172,20 @@ struct DrummerPathMapView: View {
     // MARK: - Signal Map Chassis
 
     private func signalMapChassis(stage: DrummerPathStageModel) -> some View {
-        let subtitle = language == .czech
-            ? "\(stage.topology.title(language: language)) · Dokonči všech \(stage.totalCount) modulů pro zvládnutí etapy"
-            : "\(stage.topology.title(language: language)) · Complete all \(stage.totalCount) hardware modules to master stage"
         let pages = stagePages(for: stage)
         let activePageIdx = resolvedPageIndex(for: stage, pages: pages)
         let displayNodes = pages.indices.contains(activePageIdx) ? pages[activePageIdx].nodes : stage.nodes
+        let bossPageIndex = pages.firstIndex(where: { $0.nodes.contains(where: \.isBoss) })
+        let pageTopologies = DrummerStageTopology.topologiesForStage(
+            stageId: stage.id,
+            pageCount: pages.count,
+            bossPageIndex: bossPageIndex,
+            stageBaseTopology: stage.topology
+        )
+        let activeTopology = pageTopologies.indices.contains(activePageIdx) ? pageTopologies[activePageIdx] : stage.topology
+        let subtitle = language == .czech
+            ? "\(activeTopology.title(language: language)) · Dokonči všech \(stage.totalCount) modulů pro zvládnutí etapy"
+            : "\(activeTopology.title(language: language)) · Complete all \(stage.totalCount) hardware modules to master stage"
 
         return VStack(alignment: .leading, spacing: 10) {
             HStack(alignment: .top, spacing: 12) {
@@ -212,7 +220,7 @@ struct DrummerPathMapView: View {
             GeometryReader { geo in
                 let points = nodeCoordinates(
                     nodes: displayNodes,
-                    topology: stage.topology,
+                    topology: activeTopology,
                     in: geo.size
                 )
                 let labelWidths = computeLabelWidths(points: points, canvasWidth: geo.size.width)
@@ -220,7 +228,12 @@ struct DrummerPathMapView: View {
                 ZStack {
                     rackGridLines
 
-                    patchCableLayer(nodes: displayNodes, points: points, topology: stage.topology)
+                    patchCableLayer(
+                        nodes: displayNodes,
+                        points: points,
+                        topology: activeTopology,
+                        canvasSize: geo.size
+                    )
 
                     ForEach(Array(displayNodes.enumerated()), id: \.element.id) { idx, node in
                         if idx < points.count {
@@ -305,41 +318,29 @@ struct DrummerPathMapView: View {
     private func patchCableLayer(
         nodes: [DrummerPathNode],
         points: [CGPoint],
-        topology: DrummerStageTopology
+        topology: DrummerStageTopology,
+        canvasSize: CGSize
     ) -> some View {
         Canvas { context, _ in
             let edges = buildEdges(nodes: nodes, topology: topology)
-            for (fromIdx, toIdx) in edges where fromIdx < points.count && toIdx < points.count {
+            for (edgeIdx, (fromIdx, toIdx)) in edges.enumerated() where fromIdx < points.count && toIdx < points.count {
                 let start = points[fromIdx]
                 let end = points[toIdx]
                 let isLit = nodes[fromIdx].state == .completed && nodes[toIdx].state != .locked
                 let isActiveLink = nodes[fromIdx].state == .completed && nodes[toIdx].state == .active
 
-                var path = Path()
-                path.move(to: start)
-                if (topology == .stepSequencer || topology == .straightLine) && abs(start.y - end.y) > 20 {
-                    // Sweeping curved turnaround from top row down to second row
-                    let sweepX = max(start.x, end.x) + 76
-                    path.addCurve(
-                        to: end,
-                        control1: CGPoint(x: sweepX, y: start.y),
-                        control2: CGPoint(x: sweepX, y: end.y)
-                    )
-                } else if abs(start.y - end.y) > 8 && abs(start.x - end.x) > 8 {
-                    let midX = (start.x + end.x) * 0.5
-                    path.addCurve(
-                        to: end,
-                        control1: CGPoint(x: midX, y: start.y),
-                        control2: CGPoint(x: midX, y: end.y)
-                    )
-                } else {
-                    path.addLine(to: end)
-                }
+                let path = curvedCablePath(
+                    from: start,
+                    to: end,
+                    topology: topology,
+                    edgeIndex: edgeIdx,
+                    canvasWidth: canvasSize.width
+                )
 
                 context.stroke(
                     path,
                     with: .color(Color.black.opacity(0.85)),
-                    style: StrokeStyle(lineWidth: 6, lineCap: .round)
+                    style: StrokeStyle(lineWidth: 6, lineCap: .round, lineJoin: .round)
                 )
 
                 let strokeColor: Color = (isLit || isActiveLink)
@@ -352,18 +353,81 @@ struct DrummerPathMapView: View {
                     glow.stroke(
                         path,
                         with: .color(strokeColor),
-                        style: StrokeStyle(lineWidth: 3.2, lineCap: .round)
+                        style: StrokeStyle(lineWidth: 3.2, lineCap: .round, lineJoin: .round)
                     )
                 } else {
                     context.stroke(
                         path,
                         with: .color(strokeColor),
-                        style: StrokeStyle(lineWidth: 2, lineCap: .round, dash: [6, 5])
+                        style: StrokeStyle(lineWidth: 2, lineCap: .round, lineJoin: .round, dash: [6, 5])
                     )
                 }
             }
         }
         .allowsHitTesting(false)
+    }
+
+    /// Builds a smooth cubic Bézier cable path with 8pt rounded entry/exit clearance so cables never cross node labels.
+    private func curvedCablePath(
+        from start: CGPoint,
+        to end: CGPoint,
+        topology: DrummerStageTopology,
+        edgeIndex: Int,
+        canvasWidth: CGFloat
+    ) -> Path {
+        var path = Path()
+        path.move(to: start)
+
+        let dx = end.x - start.x
+        let dy = end.y - start.y
+        let cornerRadius: CGFloat = 8
+
+        if topology == .serpentine && abs(dy) > 20 && abs(dx) < 120 {
+            // Sweeping U-turn on outer right edge between top and bottom serpentine rows.
+            let sweepX = min(max(start.x, end.x) + 64, canvasWidth - 16)
+            path.addCurve(
+                to: end,
+                control1: CGPoint(x: sweepX, y: start.y),
+                control2: CGPoint(x: sweepX, y: end.y)
+            )
+            return path
+        }
+
+        if topology == .circuitLoop && abs(dy) > 20 {
+            // Rounded-corner outer U-leg exiting sideways clear of top node labels before turning vertically.
+            let exitOffset = (dx >= 0 ? 1.0 : -1.0) * min(max(cornerRadius * 3.5, abs(dx) * 0.45), abs(dx) * 0.85)
+            let midX = start.x + exitOffset
+            path.addCurve(
+                to: end,
+                control1: CGPoint(x: midX + (dx >= 0 ? cornerRadius : -cornerRadius), y: start.y),
+                control2: CGPoint(x: end.x - (dx >= 0 ? cornerRadius : -cornerRadius), y: end.y)
+            )
+            return path
+        }
+
+        if abs(dy) > 8 {
+            // Smooth S-curve exiting/entering along node centers cleanly above labels.
+            let midX = (start.x + end.x) * 0.5
+            let controlPull = max(cornerRadius, abs(dx) * 0.48)
+            let c1x = start.x + (dx >= 0 ? controlPull : -controlPull)
+            let c2x = end.x - (dx >= 0 ? controlPull : -controlPull)
+            let safeC1x = (c1x + c2x) * 0.5 == midX ? c1x : midX
+            path.addCurve(
+                to: end,
+                control1: CGPoint(x: safeC1x, y: start.y),
+                control2: CGPoint(x: c2x, y: end.y)
+            )
+            return path
+        }
+
+        // Horizontal peers: gentle arched Bézier cable (4–6 pt arc) instead of a stark flat line.
+        let arcOffset: CGFloat = (edgeIndex % 2 == 0) ? -5 : 5
+        path.addCurve(
+            to: end,
+            control1: CGPoint(x: start.x + dx * 0.32, y: start.y + arcOffset),
+            control2: CGPoint(x: start.x + dx * 0.68, y: end.y + arcOffset)
+        )
+        return path
     }
 
     private func moduleNode(node: DrummerPathNode, stage: DrummerPathStageModel, labelWidth: CGFloat) -> some View {
@@ -467,7 +531,8 @@ struct DrummerPathMapView: View {
                     .truncationMode(.tail)
                     .frame(width: labelWidth, alignment: .top)
                     .fixedSize(horizontal: false, vertical: true)
-                    .offset(y: 35)
+                    .alignmentGuide(.bottom) { d in d[.top] }
+                    .offset(y: 8)
             }
         }
         .buttonStyle(.plain)
@@ -578,7 +643,7 @@ struct DrummerPathMapView: View {
             var minSameRowGap: CGFloat = canvasWidth
             for j in points.indices where i != j {
                 let q = points[j]
-                if abs(p.y - q.y) < 55 {
+                if abs(p.y - q.y) < 58 {
                     minSameRowGap = min(minSameRowGap, abs(p.x - q.x))
                 }
             }
@@ -595,70 +660,120 @@ struct DrummerPathMapView: View {
     ) -> [CGPoint] {
         let count = nodes.count
         guard count > 0 else { return [] }
-        let padLeading: CGFloat = 70
+        let padLeading: CGFloat = 72
         let padTrailing: CGFloat = 86
-        let usableW = max(140, size.width - padLeading - padTrailing)
-        let midY = size.height * 0.44
+        let usableW = max(160, size.width - padLeading - padTrailing)
+        let topY = max(54, size.height * 0.22)
+        let midY = size.height * 0.45
+        let botY = min(size.height - 68, size.height * 0.68)
 
         switch topology {
-        case .straightLine:
-            if count <= 4 {
+        case .signalLine:
+            if count <= 4 || usableW >= CGFloat(count - 1) * 98 {
+                // Sleek horizontal bus with a subtle gentle arc.
+                return (0..<count).map { i in
+                    let t = count == 1 ? 0.5 : CGFloat(i) / CGFloat(count - 1)
+                    let gentleArc = sin(t * .pi) * -18
+                    return CGPoint(x: padLeading + t * usableW, y: midY + gentleArc)
+                }
+            }
+            return twoRowSnakeCoordinates(count: count, padLeading: padLeading, usableW: usableW, topY: topY, botY: botY)
+
+        case .serpentine:
+            if count <= 3 {
                 return (0..<count).map { i in
                     let t = count == 1 ? 0.5 : CGFloat(i) / CGFloat(count - 1)
                     return CGPoint(x: padLeading + t * usableW, y: midY)
                 }
             }
-            // Fall through to two-row stepped layout when a page has 5–7 nodes so labels never crowd.
-            return twoRowSnakeCoordinates(count: count, padLeading: padLeading, usableW: usableW, size: size)
+            return twoRowSnakeCoordinates(count: count, padLeading: padLeading, usableW: usableW, topY: topY, botY: botY)
+
+        case .diagonalClimb:
+            // Rising staircase / diagonal wave from bottom-left up to top-right Boss.
+            return (0..<count).map { i in
+                let t = count == 1 ? 0.5 : CGFloat(i) / CGFloat(count - 1)
+                let x = padLeading + t * usableW
+                let climb = botY + (topY - botY) * t
+                let slightStagger: CGFloat = count >= 6 ? ((i % 2 == 0) ? 10 : -10) : 0
+                let clampedY = min(botY, max(topY, climb + slightStagger))
+                return CGPoint(x: x, y: clampedY)
+            }
 
         case .splitFork:
-            guard count >= 5 else {
-                return nodeCoordinates(nodes: nodes, topology: .straightLine, in: size)
+            guard count >= 4 else {
+                return nodeCoordinates(nodes: nodes, topology: .signalLine, in: size)
             }
-            let topY = size.height * 0.24
-            let botY = size.height * 0.68
+            if count == 4 {
+                return [
+                    CGPoint(x: padLeading, y: midY),
+                    CGPoint(x: padLeading + usableW * 0.48, y: topY),
+                    CGPoint(x: padLeading + usableW * 0.48, y: botY),
+                    CGPoint(x: padLeading + usableW, y: midY)
+                ]
+            }
+            let roles = effectiveForkBranches(nodes: nodes)
+            let branchNodesCount = roles.filter { $0 != nil }.count
+            let middleCols = max(1, (branchNodesCount + 1) / 2)
+            let hasPreMerge = count == 6
+            let mergeX = padLeading + usableW * 0.78
             return (0..<count).map { i in
                 if i == 0 {
                     return CGPoint(x: padLeading, y: midY)
                 } else if i == 1 {
-                    return CGPoint(x: padLeading + usableW * 0.23, y: midY)
+                    return CGPoint(x: padLeading + usableW * 0.22, y: midY)
                 } else if i == count - 1 {
                     return CGPoint(x: padLeading + usableW, y: midY)
-                } else {
-                    let branch = nodes[i].branchTrack ?? 0
-                    let middleTotal = max(1, (count - 3 + 1) / 2)
+                } else if hasPreMerge && i == 4 {
+                    return CGPoint(x: mergeX, y: midY)
+                } else if let branch = roles[i] {
                     let col = (i - 2) / 2
-                    let step = usableW * 0.44 / CGFloat(max(1, middleTotal))
-                    let x = padLeading + usableW * 0.46 + CGFloat(col) * step
+                    let forkStart = usableW * 0.48
+                    let forkEnd = hasPreMerge ? usableW * 0.54 : usableW * 0.74
+                    let x: CGFloat = middleCols == 1
+                        ? padLeading + (forkStart + forkEnd) * 0.5
+                        : padLeading + forkStart + (forkEnd - forkStart) * CGFloat(col) / CGFloat(middleCols - 1)
                     return CGPoint(x: x, y: branch == 0 ? topY : botY)
+                } else {
+                    return CGPoint(x: mergeX, y: midY)
                 }
             }
 
-        case .stepSequencer:
-            if count <= 4 {
-                return (0..<count).map { i in
-                    let t = count == 1 ? 0.5 : CGFloat(i) / CGFloat(count - 1)
-                    return CGPoint(x: padLeading + t * usableW, y: midY)
-                }
+        case .chevronWave:
+            // Bold alternating high/low V/W wave ending high on the last/Boss node.
+            return (0..<count).map { i in
+                let t = count == 1 ? 0.5 : CGFloat(i) / CGFloat(count - 1)
+                let distFromEnd = (count - 1) - i
+                let isTop = (distFromEnd % 2 == 0)
+                return CGPoint(x: padLeading + t * usableW, y: isTop ? topY : botY)
             }
-            return twoRowSnakeCoordinates(count: count, padLeading: padLeading, usableW: usableW, size: size)
 
-        case .loopWithSideQuest:
-            let mainNodes = nodes.filter { !$0.isSideQuest }
-            let mainCount = mainNodes.count
-            var mainIndexById: [Int: Int] = [:]
-            for (mIdx, node) in mainNodes.enumerated() {
-                mainIndexById[node.id] = mIdx
+        case .circuitLoop:
+            // U/rectangle perimeter loop with top-center bridge tap node.
+            guard count >= 4 else {
+                return nodeCoordinates(nodes: nodes, topology: .signalLine, in: size)
             }
-            let mainY = size.height * 0.26
-            let sideY = size.height * 0.70
-            return nodes.map { node in
-                if node.isSideQuest {
-                    return CGPoint(x: padLeading + usableW * 0.60, y: sideY)
+            let sideIdx = nodes.firstIndex(where: \.isSideQuest) ?? (count - 2)
+            let perimeter = (0..<count).filter { $0 != sideIdx }
+            let perimeterCount = perimeter.count
+            return (0..<count).map { i in
+                if i == sideIdx {
+                    return CGPoint(x: padLeading + usableW * 0.50, y: topY)
                 }
-                let mIdx = mainIndexById[node.id] ?? 0
-                let t = mainCount <= 1 ? 0.5 : CGFloat(mIdx) / CGFloat(mainCount - 1)
-                return CGPoint(x: padLeading + t * usableW, y: mainY)
+                guard let pPos = perimeter.firstIndex(of: i) else {
+                    return CGPoint(x: padLeading + usableW * 0.50, y: midY)
+                }
+                if pPos == 0 {
+                    return CGPoint(x: padLeading + usableW * 0.02, y: topY)
+                } else if pPos == perimeterCount - 1 {
+                    return CGPoint(x: padLeading + usableW * 0.98, y: topY)
+                } else {
+                    let bottomCount = max(1, perimeterCount - 2)
+                    let bottomIdx = pPos - 1
+                    let t: CGFloat = bottomCount == 1
+                        ? 0.50
+                        : 0.18 + (0.64 * CGFloat(bottomIdx) / CGFloat(bottomCount - 1))
+                    return CGPoint(x: padLeading + usableW * t, y: botY)
+                }
             }
         }
     }
@@ -667,20 +782,18 @@ struct DrummerPathMapView: View {
         count: Int,
         padLeading: CGFloat,
         usableW: CGFloat,
-        size: CGSize
+        topY: CGFloat,
+        botY: CGFloat
     ) -> [CGPoint] {
-        let topCols = min(4, max(3, (count + 1) / 2 + (count == 6 ? 1 : 0)))
-        let row0Y = size.height * 0.24
-        let row1Y = size.height * 0.68
+        let topCols = max(2, min(4, (count + 1) / 2))
         let bottomCount = max(1, count - topCols)
 
         return (0..<count).map { i in
             if i < topCols {
                 let t = topCols == 1 ? 0.5 : CGFloat(i) / CGFloat(topCols - 1)
-                return CGPoint(x: padLeading + t * usableW, y: row0Y)
+                return CGPoint(x: padLeading + t * usableW, y: topY)
             } else {
                 let bottomIndex = i - topCols
-                // Spread bottom nodes generously right-to-left so labels under node 5 and BOSS never touch.
                 let t: CGFloat
                 if bottomCount == 1 {
                     t = 0.5
@@ -691,8 +804,24 @@ struct DrummerPathMapView: View {
                     let step = span / CGFloat(bottomCount - 1)
                     t = 0.80 - CGFloat(bottomIndex) * step
                 }
-                return CGPoint(x: padLeading + t * usableW, y: row1Y)
+                return CGPoint(x: padLeading + t * usableW, y: botY)
             }
+        }
+    }
+
+    private func effectiveForkBranches(nodes: [DrummerPathNode]) -> [Int?] {
+        let count = nodes.count
+        if nodes.contains(where: { $0.branchTrack != nil }) {
+            return nodes.map(\.branchTrack)
+        }
+        return (0..<count).map { i in
+            if i < 2 || i == count - 1 || count < 5 {
+                return nil
+            }
+            if count == 6 && i == 4 {
+                return nil
+            }
+            return (i - 2) % 2
         }
     }
 
@@ -701,35 +830,44 @@ struct DrummerPathMapView: View {
         guard count > 1 else { return [] }
 
         switch topology {
-        case .straightLine, .stepSequencer:
+        case .signalLine, .serpentine, .diagonalClimb, .chevronWave:
             return (0..<(count - 1)).map { ($0, $0 + 1) }
 
         case .splitFork:
-            guard count >= 5 else { return (0..<(count - 1)).map { ($0, $0 + 1) } }
+            guard count >= 4 else { return (0..<(count - 1)).map { ($0, $0 + 1) } }
+            if count == 4 {
+                return [(0, 1), (0, 2), (1, 3), (2, 3)]
+            }
+            let roles = effectiveForkBranches(nodes: nodes)
             var edges: [(Int, Int)] = [(0, 1)]
-            let branch0 = (0..<count).filter { nodes[$0].branchTrack == 0 }
-            let branch1 = (0..<count).filter { nodes[$0].branchTrack == 1 }
-            let bossIdx = count - 1
+            let branch0 = (0..<count).filter { roles[$0] == 0 }
+            let branch1 = (0..<count).filter { roles[$0] == 1 }
+            let mergeTarget = (count == 6) ? 4 : (count - 1)
             if let first0 = branch0.first { edges.append((1, first0)) }
             if let first1 = branch1.first { edges.append((1, first1)) }
             for i in 0..<max(0, branch0.count - 1) { edges.append((branch0[i], branch0[i + 1])) }
             for i in 0..<max(0, branch1.count - 1) { edges.append((branch1[i], branch1[i + 1])) }
-            if let last0 = branch0.last { edges.append((last0, bossIdx)) }
-            if let last1 = branch1.last { edges.append((last1, bossIdx)) }
+            if let last0 = branch0.last { edges.append((last0, mergeTarget)) }
+            if let last1 = branch1.last { edges.append((last1, mergeTarget)) }
+            if mergeTarget < count - 1 {
+                for i in mergeTarget..<(count - 1) {
+                    edges.append((i, i + 1))
+                }
+            }
             return edges
 
-        case .loopWithSideQuest:
-            let mainIndices = (0..<count).filter { !nodes[$0].isSideQuest }
+        case .circuitLoop:
+            guard count >= 4 else { return (0..<(count - 1)).map { ($0, $0 + 1) } }
+            let sideIdx = nodes.firstIndex(where: \.isSideQuest) ?? (count - 2)
+            let perimeter = (0..<count).filter { $0 != sideIdx }
             var edges: [(Int, Int)] = []
-            for i in 0..<max(0, mainIndices.count - 1) {
-                edges.append((mainIndices[i], mainIndices[i + 1]))
+            for i in 0..<max(0, perimeter.count - 1) {
+                edges.append((perimeter[i], perimeter[i + 1]))
             }
-            if let sideIdx = (0..<count).first(where: { nodes[$0].isSideQuest }) {
-                let anchor = mainIndices.first ?? 0
-                let rejoin = mainIndices.last ?? (count - 1)
-                edges.append((anchor, sideIdx))
-                edges.append((sideIdx, rejoin))
-            }
+            let anchor = perimeter.first ?? 0
+            let rejoin = perimeter.last ?? (count - 1)
+            edges.append((anchor, sideIdx))
+            edges.append((sideIdx, rejoin))
             return edges
         }
     }
