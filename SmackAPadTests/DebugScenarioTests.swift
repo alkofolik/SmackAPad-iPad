@@ -128,6 +128,8 @@ final class DebugScenarioTests: XCTestCase {
                 switch scenario {
                 case .fresh:
                     XCTAssertTrue(records.isEmpty)
+                    XCTAssertEqual(BadgeStore(userDefaults: defaults).earnedCount, 0)
+                    XCTAssertFalse(FileManager.default.fileExists(atPath: progress.drummerFileURL.path))
                     XCTAssertNil(defaults.object(forKey: "smackapad.legend.shownOnce"))
                 case .introDone:
                     XCTAssertEqual(Set(records.keys), introIDs)

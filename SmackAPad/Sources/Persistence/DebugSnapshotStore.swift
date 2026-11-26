@@ -188,17 +188,8 @@ struct DebugSnapshotStore {
     }
 
     private func install(_ state: Snapshot, in profile: Profile) throws {
-        if let progress = state.progress {
-            try files.createDirectory(at: profile.progressURL.deletingLastPathComponent(),
-                                      withIntermediateDirectories: true)
-            try progress.write(to: profile.progressURL, options: .atomic)
-        } else {
-            do {
-                try files.removeItem(at: profile.progressURL)
-            } catch let error as CocoaError where error.code == .fileNoSuchFile {
-                // An absent progress file is part of the snapshot.
-            }
-        }
+        try installFile(state.progress, at: profile.progressURL)
+        try installFile(state.drummerProgress, at: Self.drummerURL(for: profile.progressURL))
 
         var domain = (profile.defaults.persistentDomain(forName: profile.domainName) ?? [:]).filter {
             !$0.key.hasPrefix(Self.settingsPrefix)
@@ -209,17 +200,38 @@ struct DebugSnapshotStore {
         guard profile.defaults.synchronize() else { throw SnapshotError.settingsWriteFailed }
     }
 
-    private func currentState(of profile: Profile) throws -> Snapshot {
-        let progress: Data?
-        do {
-            progress = try Data(contentsOf: profile.progressURL)
-        } catch let error as CocoaError where error.code == .fileReadNoSuchFile {
-            progress = nil
+    private func installFile(_ data: Data?, at url: URL) throws {
+        if let data {
+            try files.createDirectory(at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
+            try data.write(to: url, options: .atomic)
+        } else {
+            do {
+                try files.removeItem(at: url)
+            } catch let error as CocoaError where error.code == .fileNoSuchFile {
+                // An absent file is part of the snapshot.
+            }
         }
+    }
+
+    private func currentState(of profile: Profile) throws -> Snapshot {
+        let progress = try readOptionalFile(at: profile.progressURL)
+        let drummerProgress = try readOptionalFile(at: Self.drummerURL(for: profile.progressURL))
         let settings = (profile.defaults.persistentDomain(forName: profile.domainName) ?? [:]).filter {
             $0.key.hasPrefix(Self.settingsPrefix)
         }
-        return Snapshot(progress: progress, settings: settings)
+        return Snapshot(progress: progress, drummerProgress: drummerProgress, settings: settings)
+    }
+
+    private func readOptionalFile(at url: URL) throws -> Data? {
+        do {
+            return try Data(contentsOf: url)
+        } catch let error as CocoaError where error.code == .fileReadNoSuchFile {
+            return nil
+        }
+    }
+
+    private static func drummerURL(for progressURL: URL) -> URL {
+        progressURL.deletingPathExtension().appendingPathExtension("drummer.json")
     }
 
     private func customSnapshotURL(_ name: String) throws -> URL {
@@ -239,6 +251,7 @@ struct DebugSnapshotStore {
         // One atomic file keeps the exact progress bytes and settings together.
         var values: [String: Any] = ["settings": state.settings]
         values["progress.json"] = state.progress
+        values["progress.drummer.json"] = state.drummerProgress
         let data = try PropertyListSerialization.data(fromPropertyList: values, format: .binary, options: 0)
         try data.write(to: url, options: .atomic)
     }
@@ -249,13 +262,17 @@ struct DebugSnapshotStore {
         guard let values = plist as? [String: Any],
               let settings = values["settings"] as? [String: Any],
               settings.keys.allSatisfy({ $0.hasPrefix(Self.settingsPrefix) }),
-              values["progress.json"] == nil || values["progress.json"] is Data
+              values["progress.json"] == nil || values["progress.json"] is Data,
+              values["progress.drummer.json"] == nil || values["progress.drummer.json"] is Data
         else { throw SnapshotError.invalidSnapshot }
-        return Snapshot(progress: values["progress.json"] as? Data, settings: settings)
+        return Snapshot(progress: values["progress.json"] as? Data,
+                        drummerProgress: values["progress.drummer.json"] as? Data,
+                        settings: settings)
     }
 
     struct Snapshot {
         var progress: Data?
+        var drummerProgress: Data?
         var settings: [String: Any] = [:]
     }
 
