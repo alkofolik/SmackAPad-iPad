@@ -47,6 +47,7 @@ public struct TrainingScreen: View {
     @State private var showingStudioRig = false
     @State private var studioRigHighlightedKitId: String?
     @State private var selectedBonusTrack: BonusJamTrack?
+    @State private var presentedStoryCardStage: DrummerPathStageModel?
 
     @AppStorage(TodayPlan.storageKey) private var savedTodayPlan = ""
     @Namespace private var lessonNamespace
@@ -371,8 +372,40 @@ public struct TrainingScreen: View {
                 }
                 studioRigHighlightedKitId = kit.kitId
                 selectedTab = .studioRig
+            },
+            onOpenStoryCard: { stage in
+                presentedStoryCardStage = stage
             }
         )
+        .onChange(of: selectedStageIndex) { _, _ in
+            presentStoryCardIfNeeded(stages: data.pathStages)
+        }
+        .onChange(of: data.pathStages.count) { _, _ in
+            presentStoryCardIfNeeded(stages: data.pathStages)
+        }
+        .onAppear {
+            presentStoryCardIfNeeded(stages: data.pathStages)
+        }
+        .sheet(item: $presentedStoryCardStage) { stage in
+            StoryStageCardView(stage: stage) {
+                progress.markStoryCardSeen(stageId: stage.id)
+                presentedStoryCardStage = nil
+            }
+        }
+    }
+
+    private func presentStoryCardIfNeeded(stages: [DrummerPathStageModel]) {
+        guard settings.playMode == .story,
+              presentedStoryCardStage == nil,
+              !hasActiveCover,
+              stages.indices.contains(selectedStageIndex)
+        else { return }
+        let stage = stages[selectedStageIndex]
+        guard stage.id != DrummerPathEvaluator.introExamStageId,
+              stage.isStageOpen,
+              !progress.drummerPath.seenStoryCardStageIDs.contains(stage.id)
+        else { return }
+        presentedStoryCardStage = stage
     }
 
     private func rightSummaryPanel(data: TrainingData) -> some View {
@@ -1176,7 +1209,8 @@ public struct TrainingScreen: View {
             catalog: progression.catalog,
             progress: records,
             pathState: progress.drummerPath,
-            language: settings.languagePreference
+            language: settings.languagePreference,
+            openStageIDs: progression.openStageIDs
         )
 
         return TrainingData(

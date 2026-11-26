@@ -966,6 +966,38 @@ public final class ProgressStore: @unchecked Sendable {
         return result
     }
 
+    /// Records the chosen lesson for a Story mode fork.
+    public func selectStoryFork(stageId: String, nodeIndex: Int, lessonId: Int, autoSave: Bool = true) {
+        let key = StoryMap.forkChoiceKey(stageId: stageId, nodeIndex: nodeIndex)
+        lock.lock()
+        var updated = drummerPath
+        let changed = updated.storyForkChoices[key] != lessonId
+        if changed {
+            updated.storyForkChoices[key] = lessonId
+            updated.modifiedAt = AppCalendar.now()
+            drummerPath = updated
+        }
+        if changed && autoSave {
+            try? saveDrummerPathLocked()
+        }
+        lock.unlock()
+    }
+
+    /// Marks a stage's Story card as seen so it is not auto-shown again.
+    public func markStoryCardSeen(stageId: String, autoSave: Bool = true) {
+        lock.lock()
+        var updated = drummerPath
+        let inserted = updated.seenStoryCardStageIDs.insert(stageId).inserted
+        if inserted {
+            updated.modifiedAt = AppCalendar.now()
+            drummerPath = updated
+        }
+        if inserted && autoSave {
+            try? saveDrummerPathLocked()
+        }
+        lock.unlock()
+    }
+
     private func loadDrummerPathLocked() -> DrummerPathState {
         guard let data = try? Data(contentsOf: drummerFileURL) else {
             return DrummerPathState()
@@ -1024,15 +1056,28 @@ public final class ProgressStore: @unchecked Sendable {
 
     @discardableResult
     private func migrateDrummerPathLocked(catalog: LibraryCatalog) -> Bool {
-        guard !drummerPath.migratedFromLegacyProgress else { return false }
-        let migrated = DrummerPathEvaluator.migrateLegacyProgress(
-            existingState: drummerPath,
+        if !drummerPath.migratedFromLegacyProgress {
+            let migrated = DrummerPathEvaluator.migrateLegacyProgress(
+                existingState: drummerPath,
+                progress: records,
+                trainingLog: trainingLog,
+                catalog: catalog
+            )
+            let changed = migrated != drummerPath
+            drummerPath = migrated
+            return changed
+        }
+        var updated = drummerPath
+        DrummerPathEvaluator.migrateStoryForkChoices(
+            state: &updated,
             progress: records,
-            trainingLog: trainingLog,
             catalog: catalog
         )
-        let changed = migrated != drummerPath
-        drummerPath = migrated
+        let changed = updated != drummerPath
+        if changed {
+            updated.modifiedAt = AppCalendar.now()
+            drummerPath = updated
+        }
         return changed
     }
 

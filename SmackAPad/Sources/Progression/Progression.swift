@@ -562,12 +562,17 @@ public final class ProgressionManager: @unchecked Sendable {
         userDefaults.set(true, forKey: Self.completionMigrationKey)
     }
 
+    var openStageIDs: Set<String> {
+        Set(catalog.stages.filter { isStageOpen($0) }.map(\.id))
+    }
+
     func isOpenInStory(_ lesson: Lesson) -> Bool {
         DrummerPathMapBuilder.isOpenInStory(
             lesson: lesson,
             catalog: catalog,
             progress: progressStore.records,
-            pathState: progressStore.drummerPath
+            pathState: progressStore.drummerPath,
+            openStageIDs: openStageIDs
         )
     }
 

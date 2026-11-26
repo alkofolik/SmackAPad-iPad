@@ -1307,6 +1307,13 @@ struct EndOfRunCardModel: Equatable {
 }
 
 /// Modern black end-of-run card with symmetric 3-zone layout.
+struct ResultStoryChoice: Identifiable {
+    let id: String
+    let title: String
+    let hint: String?
+    let action: () -> Void
+}
+
 struct ResultCard: View {
     @Environment(SettingsManager.self) private var settings
     @Environment(ProgressStore.self) private var progress
@@ -1331,6 +1338,7 @@ struct ResultCard: View {
     var nextLocked: Bool = false
     var nextTitle: String? = nil
     var nextHint: String? = nil
+    var storyChoices: [ResultStoryChoice] = []
     var restartAction: (() -> Void)? = nil
     var restartEnabled: Bool = true
     var coachSuggestion: CoachSuggestion? = nil
@@ -1383,6 +1391,10 @@ struct ResultCard: View {
     private var isCompactWidth: Bool {
         if let cardWidth { return cardWidth < 620 }
         return false
+    }
+
+    private var showStoryChoices: Bool {
+        model.progressDetail == nil && !storyChoices.isEmpty
     }
 
     private var showNext: Bool {
@@ -1647,6 +1659,13 @@ struct ResultCard: View {
                 .accessibilityLabel(settings.localized("Again"))
                 .disabled(!restartEnabled || restartAction == nil)
                 .opacity(restartEnabled ? 1 : 0.5)
+            } else if showStoryChoices {
+                let choices = Array(storyChoices.prefix(3))
+                let buttonHeight: CGFloat = choices.count >= 3 ? 40 : 48
+                ForEach(Array(choices.enumerated()), id: \.element.id) { index, choice in
+                    storyChoiceButton(choice, isPrimary: index == 0)
+                        .frame(width: sideZoneWidth, height: buttonHeight)
+                }
             } else if showNext {
                 Button {
                     nextAction?()
@@ -1730,6 +1749,29 @@ struct ResultCard: View {
             }
         }
         .frame(width: sideZoneWidth, alignment: .trailing)
+    }
+
+    @ViewBuilder
+    private func storyChoiceButton(_ choice: ResultStoryChoice, isPrimary: Bool) -> some View {
+        let labelView = Text(choice.title)
+            .font(Theme.action)
+            .lineLimit(2)
+            .minimumScaleFactor(0.72)
+            .multilineTextAlignment(.center)
+            .padding(.horizontal, 8)
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+
+        if isPrimary {
+            Button(action: choice.action) { labelView }
+                .buttonStyle(PadPrimaryButtonStyle())
+                .accessibilityLabel(choice.title)
+                .accessibilityHint(choice.hint ?? "")
+        } else {
+            Button(action: choice.action) { labelView }
+                .buttonStyle(PadSecondaryButtonStyle(onDark: true))
+                .accessibilityLabel(choice.title)
+                .accessibilityHint(choice.hint ?? "")
+        }
     }
 
     private var compactBody: some View {
@@ -1819,6 +1861,13 @@ struct ResultCard: View {
                     .accessibilityLabel(settings.localized("Again"))
                     .disabled(!restartEnabled || restartAction == nil)
                     .opacity(restartEnabled ? 1 : 0.5)
+                } else if showStoryChoices {
+                    VStack(spacing: 8) {
+                        ForEach(Array(storyChoices.prefix(3).enumerated()), id: \.element.id) { index, choice in
+                            storyChoiceButton(choice, isPrimary: index == 0)
+                                .frame(height: 44)
+                        }
+                    }
                 } else if showNext {
                     Button {
                         nextAction?()

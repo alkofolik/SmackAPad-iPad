@@ -137,11 +137,40 @@ public struct DrummerPathNode: Identifiable, Equatable, Sendable {
     public let orderIndex: Int
     public let isBoss: Bool
     public let isSideQuest: Bool
-    /// `nil` = main trunk, `0` = upper/primary branch, `1` = lower/side branch.
+    /// `nil` = main trunk, `0` = upper/primary branch, `1` / `2` = lower/side branches.
     public let branchTrack: Int?
+    public let storyNodeIndex: Int?
+    public let forkOptionIndex: Int?
+    public let isChosenRoute: Bool
     public let stars: Int
     public let state: DrummerPathNodeState
     public let requiredKit: DrumKitDescriptor
+
+    public init(
+        lesson: Lesson,
+        orderIndex: Int,
+        isBoss: Bool,
+        isSideQuest: Bool,
+        branchTrack: Int?,
+        storyNodeIndex: Int? = nil,
+        forkOptionIndex: Int? = nil,
+        isChosenRoute: Bool = true,
+        stars: Int,
+        state: DrummerPathNodeState,
+        requiredKit: DrumKitDescriptor
+    ) {
+        self.lesson = lesson
+        self.orderIndex = orderIndex
+        self.isBoss = isBoss
+        self.isSideQuest = isSideQuest
+        self.branchTrack = branchTrack
+        self.storyNodeIndex = storyNodeIndex
+        self.forkOptionIndex = forkOptionIndex
+        self.isChosenRoute = isChosenRoute
+        self.stars = stars
+        self.state = state
+        self.requiredKit = requiredKit
+    }
 }
 
 /// Complete stage representation for the Drummer's Path signal map.
@@ -155,6 +184,13 @@ public struct DrummerPathStageModel: Identifiable, Equatable, Sendable {
     public let lockedKit: DrumKitDescriptor?
     public let nodes: [DrummerPathNode]
     public let isExamCompleted: Bool
+    public let isStageOpen: Bool
+    public let requiredMasteriesForBoss: Int
+    public let masteredLessonCount: Int
+
+    public var missingMasteriesForBoss: Int {
+        max(0, requiredMasteriesForBoss - masteredLessonCount)
+    }
 
     public var completedCount: Int {
         nodes.filter { $0.state == .completed }.count
@@ -179,7 +215,9 @@ public enum DrummerPathMapBuilder {
         catalog: LibraryCatalog,
         progress: [Int: LessonProgress],
         pathState: DrummerPathState,
-        language: AppLanguage = .english
+        language: AppLanguage = .english,
+        storyMap: StoryMap = .bundled,
+        openStageIDs: Set<String> = []
     ) -> [DrummerPathStageModel] {
         var result: [DrummerPathStageModel] = []
         var previousTopology: DrummerStageTopology?
@@ -200,7 +238,8 @@ public enum DrummerPathMapBuilder {
                     lessons: catalog.introLessons,
                     topology: introTopology,
                     progress: progress,
-                    pathState: pathState
+                    pathState: pathState,
+                    storyMap: storyMap
                 )
             )
         }
@@ -214,6 +253,14 @@ public enum DrummerPathMapBuilder {
             )
             previousTopology = topology
             let stageTitle = language.localized(stage.technique.title)
+            let hasPlayedInStage = stage.lessons.contains {
+                progress[$0.id]?.passed == true || progress[$0.id]?.hasPlayed == true
+            }
+            let stageIsOpen = (stageIndex == 1)
+                || previousPathStageCompleted
+                || openStageIDs.contains(stage.id)
+                || pathState.completedExamStageIDs.contains(stage.id)
+                || hasPlayedInStage
             let built = buildStage(
                 id: stage.id,
                 index: stageIndex,
@@ -223,7 +270,8 @@ public enum DrummerPathMapBuilder {
                 topology: topology,
                 progress: progress,
                 pathState: pathState,
-                allowActiveNodes: previousPathStageCompleted
+                allowActiveNodes: stageIsOpen,
+                storyMap: storyMap
             )
             result.append(built)
             previousPathStageCompleted = built.isExamCompleted
@@ -233,13 +281,15 @@ public enum DrummerPathMapBuilder {
     }
 
     /// Single source of truth for Story mode lesson availability:
-    /// Intro lessons are always open; otherwise a lesson is open when its node
-    /// on the Drummer's Path is completed or active.
+    /// Intro lessons are always open; otherwise a lesson is open when it is a reached
+    /// node (keystone, fork alternative, or open boss) on the Story map.
     static func isOpenInStory(
         lesson: Lesson,
         catalog: LibraryCatalog,
         progress: [Int: LessonProgress],
-        pathState: DrummerPathState
+        pathState: DrummerPathState,
+        storyMap: StoryMap = .bundled,
+        openStageIDs: Set<String> = []
     ) -> Bool {
         if lesson.cat == ProgressionConstant.introCategoryId {
             return true
@@ -247,7 +297,9 @@ public enum DrummerPathMapBuilder {
         let stages = buildStages(
             catalog: catalog,
             progress: progress,
-            pathState: pathState
+            pathState: pathState,
+            storyMap: storyMap,
+            openStageIDs: openStageIDs
         )
         return stages.contains { stage in
             stage.nodes.contains { node in
@@ -265,7 +317,8 @@ public enum DrummerPathMapBuilder {
         topology: DrummerStageTopology,
         progress: [Int: LessonProgress],
         pathState: DrummerPathState,
-        allowActiveNodes: Bool = true
+        allowActiveNodes: Bool = true,
+        storyMap: StoryMap = .bundled
     ) -> DrummerPathStageModel {
         let count = lessons.count
         let kits = lessons.map { DrumKitCatalog.requiredKit(for: $0) }
@@ -273,52 +326,159 @@ public enum DrummerPathMapBuilder {
 
         let starsList = lessons.map { LibraryStarFilter.stars(progress[$0.id]) }
         let isCompletedList = starsList.map { $0 >= 1 }
+        let masteredLessonCount = starsList.filter { $0 >= 2 }.count
+        let isIntro = (id == DrummerPathEvaluator.introExamStageId)
+        let requiredMasteriesForBoss = isIntro ? 0 : ProgressionConstant.requiredStageCompletions(lessonCount: count)
 
-        // Determine branch assignment and side quests per topology.
-        let roles = assignRoles(count: count, topology: topology)
-        let activeIndices = allowActiveNodes
-            ? computeActiveIndices(
-                count: count,
-                topology: topology,
-                roles: roles,
-                isCompleted: isCompletedList
-            )
-            : []
+        let mapNodes = storyMap.nodes(for: id)
+        let pathLessons = lessons.filter { $0.cat != ProgressionConstant.introCategoryId }
+        let useStoryMap = !isIntro
+            && !mapNodes.isEmpty
+            && Set(mapNodes.flatMap(\.lessonIds)) == Set(pathLessons.map(\.id))
 
         var nodes: [DrummerPathNode] = []
         nodes.reserveCapacity(count + 1)
 
-        for i in 0..<count {
-            let lesson = lessons[i]
-            let stars = starsList[i]
-            let role = roles[i]
-
-            let state: DrummerPathNodeState
-            if isCompletedList[i] {
-                state = .completed
-            } else if activeIndices.contains(i) {
-                state = .active
-            } else {
-                state = .locked
+        if useStoryMap {
+            let lessonsById = Dictionary(lessons.map { ($0.id, $0) }, uniquingKeysWith: { first, _ in first })
+            var isReached = Array(repeating: false, count: mapNodes.count)
+            if allowActiveNodes && !mapNodes.isEmpty {
+                isReached[0] = true
+                for k in 1..<mapNodes.count {
+                    let prevPassed = mapNodes[k - 1].lessonIds.contains {
+                        LibraryStarFilter.stars(progress[$0]) >= 1
+                    }
+                    isReached[k] = isReached[k - 1] && prevPassed
+                }
             }
 
-            nodes.append(
-                DrummerPathNode(
-                    lesson: lesson,
-                    orderIndex: i,
-                    isBoss: false,
-                    isSideQuest: role.isSideQuest,
-                    branchTrack: role.branchTrack,
-                    stars: stars,
-                    state: state,
-                    requiredKit: kits[i]
+            var orderIndex = 0
+            for (nodeIdx, mapNode) in mapNodes.enumerated() {
+                switch mapNode {
+                case .keystone(let lessonId):
+                    guard let lesson = lessonsById[lessonId] else { continue }
+                    let stars = LibraryStarFilter.stars(progress[lessonId])
+                    let state: DrummerPathNodeState = if stars >= 1 {
+                        .completed
+                    } else if isReached[nodeIdx] {
+                        .active
+                    } else {
+                        .locked
+                    }
+                    nodes.append(
+                        DrummerPathNode(
+                            lesson: lesson,
+                            orderIndex: orderIndex,
+                            isBoss: false,
+                            isSideQuest: false,
+                            branchTrack: nil,
+                            storyNodeIndex: nodeIdx,
+                            forkOptionIndex: nil,
+                            isChosenRoute: true,
+                            stars: stars,
+                            state: state,
+                            requiredKit: DrumKitCatalog.requiredKit(for: lesson)
+                        )
+                    )
+                    orderIndex += 1
+
+                case .fork(let ids):
+                    let key = StoryMap.forkChoiceKey(stageId: id, nodeIndex: nodeIdx)
+                    let chosenId: Int? = {
+                        if let saved = pathState.storyForkChoices[key], ids.contains(saved) {
+                            return saved
+                        }
+                        var bestId: Int?
+                        var bestStars = 0
+                        for candidateId in ids {
+                            let s = LibraryStarFilter.stars(progress[candidateId])
+                            if s > bestStars {
+                                bestStars = s
+                                bestId = candidateId
+                            }
+                        }
+                        return bestStars > 0 ? bestId : nil
+                    }()
+
+                    for (optIdx, lessonId) in ids.enumerated() {
+                        guard let lesson = lessonsById[lessonId] else { continue }
+                        let stars = LibraryStarFilter.stars(progress[lessonId])
+                        let state: DrummerPathNodeState = if stars >= 1 {
+                            .completed
+                        } else if isReached[nodeIdx] {
+                            .active
+                        } else {
+                            .locked
+                        }
+                        let isChosen = (chosenId == nil) ? (optIdx == 0) : (lessonId == chosenId)
+                        let isSideTrail = (chosenId != nil && lessonId != chosenId)
+                        nodes.append(
+                            DrummerPathNode(
+                                lesson: lesson,
+                                orderIndex: orderIndex,
+                                isBoss: false,
+                                isSideQuest: isSideTrail,
+                                branchTrack: optIdx,
+                                storyNodeIndex: nodeIdx,
+                                forkOptionIndex: optIdx,
+                                isChosenRoute: isChosen,
+                                stars: stars,
+                                state: state,
+                                requiredKit: DrumKitCatalog.requiredKit(for: lesson)
+                            )
+                        )
+                        orderIndex += 1
+                    }
+                }
+            }
+        } else {
+            // Fallback for Intro or synthetic test catalogs without StoryMap entries.
+            let roles = assignRoles(count: count, topology: topology)
+            let activeIndices = allowActiveNodes
+                ? computeActiveIndices(
+                    count: count,
+                    topology: topology,
+                    roles: roles,
+                    isCompleted: isCompletedList
                 )
-            )
+                : []
+
+            for i in 0..<count {
+                let lesson = lessons[i]
+                let stars = starsList[i]
+                let role = roles[i]
+
+                let state: DrummerPathNodeState
+                if isCompletedList[i] {
+                    state = .completed
+                } else if activeIndices.contains(i) {
+                    state = .active
+                } else {
+                    state = .locked
+                }
+
+                nodes.append(
+                    DrummerPathNode(
+                        lesson: lesson,
+                        orderIndex: i,
+                        isBoss: false,
+                        isSideQuest: role.isSideQuest,
+                        branchTrack: role.branchTrack,
+                        stars: stars,
+                        state: state,
+                        requiredKit: kits[i]
+                    )
+                )
+            }
         }
 
         let examDone = pathState.completedExamStageIDs.contains(id) || (count > 0 && isCompletedList.allSatisfy { $0 })
         if let examLesson = lessons.last, let examKit = kits.last {
-            let prereqsComplete = count <= 1 || isCompletedList.dropLast().allSatisfy { $0 }
+            let prereqsComplete: Bool = if isIntro {
+                count <= 1 || isCompletedList.dropLast().allSatisfy { $0 }
+            } else {
+                masteredLessonCount >= requiredMasteriesForBoss
+            }
             let bossState: DrummerPathNodeState = if examDone {
                 .completed
             } else if allowActiveNodes && prereqsComplete {
@@ -329,7 +489,7 @@ public enum DrummerPathMapBuilder {
             nodes.append(
                 DrummerPathNode(
                     lesson: examLesson,
-                    orderIndex: count,
+                    orderIndex: nodes.count,
                     isBoss: true,
                     isSideQuest: false,
                     branchTrack: nil,
@@ -349,7 +509,10 @@ public enum DrummerPathMapBuilder {
             primaryKit: primaryKit,
             lockedKit: nil,
             nodes: nodes,
-            isExamCompleted: examDone
+            isExamCompleted: examDone,
+            isStageOpen: allowActiveNodes,
+            requiredMasteriesForBoss: requiredMasteriesForBoss,
+            masteredLessonCount: masteredLessonCount
         )
     }
 

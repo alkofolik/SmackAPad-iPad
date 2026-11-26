@@ -13,6 +13,7 @@ struct DrummerPathMapView: View {
     let availableKeys: Int
     let onPlayLesson: (Lesson) -> Void
     let onUnlockKit: (DrumKitDescriptor) -> Void
+    var onOpenStoryCard: ((DrummerPathStageModel) -> Void)? = nil
 
     @State private var selectedPageByStage: [String: Int] = [:]
 
@@ -193,6 +194,28 @@ struct DrummerPathMapView: View {
                 }
 
                 Spacer()
+
+                if stage.id != DrummerPathEvaluator.introExamStageId, let onOpenStoryCard {
+                    Button {
+                        onOpenStoryCard(stage)
+                    } label: {
+                        HStack(spacing: 5) {
+                            Image(systemName: "book.closed.fill")
+                                .font(.system(size: 10, weight: .bold))
+                            Text(settings.localized("Story"))
+                                .font(.system(size: 11, weight: .bold, design: .monospaced))
+                        }
+                        .foregroundStyle(Theme.orange)
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 5)
+                        .background(Color(red: 0.078, green: 0.078, blue: 0.090), in: RoundedRectangle(cornerRadius: 6))
+                        .overlay {
+                            RoundedRectangle(cornerRadius: 6)
+                                .strokeBorder(Theme.orange.opacity(0.45), lineWidth: 1)
+                        }
+                    }
+                    .buttonStyle(.plain)
+                }
 
                 Text("\(stage.completedCount) / \(stage.totalCount) \(language == .czech ? "HOTOVO" : "DONE")")
                     .font(.system(size: 11, weight: .bold, design: .monospaced))
@@ -469,9 +492,16 @@ struct DrummerPathMapView: View {
                     }
 
                     if isLocked {
-                        Image(systemName: "lock.fill")
-                            .font(.system(size: 10))
-                            .foregroundStyle(Color.white.opacity(0.35))
+                        if node.isBoss && stage.missingMasteriesForBoss > 0 {
+                            Text(settings.localized("NEED %lld× ★2", stage.missingMasteriesForBoss))
+                                .font(.system(size: 9.5, weight: .bold, design: .monospaced))
+                                .foregroundStyle(Theme.orange.opacity(0.9))
+                                .lineLimit(1)
+                        } else {
+                            Image(systemName: "lock.fill")
+                                .font(.system(size: 10))
+                                .foregroundStyle(Color.white.opacity(0.35))
+                        }
                     } else {
                         HStack(spacing: 2) {
                             ForEach(0..<3, id: \.self) { starIdx in
@@ -494,7 +524,7 @@ struct DrummerPathMapView: View {
                         .overlay { Capsule().strokeBorder(Theme.orange.opacity(0.8), lineWidth: 1) }
                         .offset(y: -boxHeight / 2)
                 } else if node.isSideQuest {
-                    Text(language == .czech ? "TECHNIQUE" : "TECHNIQUE")
+                    Text(settings.localized("SIDE TRAIL"))
                         .font(.system(size: 8.5, weight: .black, design: .monospaced))
                         .foregroundStyle(Color.white)
                         .padding(.horizontal, 7)
@@ -568,8 +598,65 @@ struct DrummerPathMapView: View {
 
     // MARK: - Stage Pagination & Geometry
 
+    private func storyColumns(for nodes: [DrummerPathNode]) -> [[DrummerPathNode]] {
+        var columns: [[DrummerPathNode]] = []
+        var currentStoryIdx: Int?
+        var currentGroup: [DrummerPathNode] = []
+
+        for node in nodes {
+            if let sIdx = node.storyNodeIndex, !node.isBoss {
+                if currentStoryIdx == sIdx {
+                    currentGroup.append(node)
+                } else {
+                    if !currentGroup.isEmpty { columns.append(currentGroup) }
+                    currentStoryIdx = sIdx
+                    currentGroup = [node]
+                }
+            } else {
+                if !currentGroup.isEmpty {
+                    columns.append(currentGroup)
+                    currentGroup = []
+                    currentStoryIdx = nil
+                }
+                columns.append([node])
+            }
+        }
+        if !currentGroup.isEmpty { columns.append(currentGroup) }
+        return columns
+    }
+
     private func stagePages(for stage: DrummerPathStageModel) -> [(label: String, nodes: [DrummerPathNode])] {
         let all = stage.nodes
+        if all.contains(where: { $0.storyNodeIndex != nil }) {
+            let columns = storyColumns(for: all)
+            let maxCols = 5
+            guard columns.count > maxCols else {
+                return [("", all)]
+            }
+            var colRanges: [Range<Int>] = []
+            var start = 0
+            while start < columns.count {
+                let remaining = columns.count - start
+                if remaining == maxCols + 1 {
+                    colRanges.append(start..<columns.count)
+                    break
+                }
+                let end = min(columns.count, start + maxCols)
+                colRanges.append(start..<end)
+                start = end
+            }
+            return colRanges.map { range in
+                let slice = columns[range].flatMap { $0 }
+                let hasBoss = slice.contains(where: \.isBoss)
+                let lessonSlice = hasBoss ? slice.filter { !$0.isBoss } : slice
+                let firstNum = lessonSlice.first.map { $0.orderIndex + 1 } ?? 1
+                let lastNum = lessonSlice.last.map { $0.orderIndex + 1 } ?? firstNum
+                let numberPart = firstNum == lastNum ? "\(firstNum)" : "\(firstNum)–\(lastNum)"
+                let label = hasBoss ? "\(numberPart) + BOSS" : numberPart
+                return (label: label, nodes: slice)
+            }
+        }
+
         guard all.count > 6 else {
             return [("", all)]
         }
@@ -627,6 +714,11 @@ struct DrummerPathMapView: View {
         let padTrailing: CGFloat = 86
         let minCenterStep: CGFloat = 118
 
+        if nodes.contains(where: { $0.storyNodeIndex != nil }) {
+            let colCount = max(1, storyColumns(for: nodes).count)
+            return padLeading + padTrailing + CGFloat(colCount - 1) * minCenterStep
+        }
+
         switch topology {
         case .splitFork where count >= 4:
             let columns: Int = switch count {
@@ -670,6 +762,31 @@ struct DrummerPathMapView: View {
         let topY = max(54, size.height * 0.22)
         let midY = size.height * 0.45
         let botY = min(size.height - 68, size.height * 0.68)
+
+        if nodes.contains(where: { $0.storyNodeIndex != nil }) {
+            let columns = storyColumns(for: nodes)
+            let colCount = columns.count
+            var points: [CGPoint] = []
+            points.reserveCapacity(count)
+            for (colIdx, colNodes) in columns.enumerated() {
+                let t = colCount <= 1 ? 0.5 : CGFloat(colIdx) / CGFloat(colCount - 1)
+                let x = padLeading + t * usableW
+                switch colNodes.count {
+                case 1:
+                    points.append(CGPoint(x: x, y: midY))
+                case 2:
+                    points.append(CGPoint(x: x, y: topY))
+                    points.append(CGPoint(x: x, y: botY))
+                default:
+                    for (rowIdx, _) in colNodes.enumerated() {
+                        let rowT = CGFloat(rowIdx) / CGFloat(max(1, colNodes.count - 1))
+                        let y = topY + rowT * (botY - topY)
+                        points.append(CGPoint(x: x, y: y))
+                    }
+                }
+            }
+            return points
+        }
 
         switch topology {
         case .signalLine:
@@ -770,6 +887,23 @@ struct DrummerPathMapView: View {
         let count = nodes.count
         guard count > 1 else { return [] }
 
+        if nodes.contains(where: { $0.storyNodeIndex != nil }) {
+            let columns = storyColumns(for: nodes)
+            var indexByNodeId: [Int: Int] = [:]
+            for (idx, n) in nodes.enumerated() { indexByNodeId[n.id] = idx }
+            var edges: [(Int, Int)] = []
+            for colIdx in 0..<(columns.count - 1) {
+                for fromNode in columns[colIdx] {
+                    for toNode in columns[colIdx + 1] {
+                        if let fromIdx = indexByNodeId[fromNode.id], let toIdx = indexByNodeId[toNode.id] {
+                            edges.append((fromIdx, toIdx))
+                        }
+                    }
+                }
+            }
+            return edges
+        }
+
         switch topology {
         case .signalLine, .serpentine, .diagonalClimb, .chevronWave, .steppedArc:
             return (0..<(count - 1)).map { ($0, $0 + 1) }
@@ -834,6 +968,7 @@ struct DrummerModuleInspectorCard: View {
     let availableKeys: Int
     let onPlayLesson: (Lesson) -> Void
     let onUnlockKit: (DrumKitDescriptor) -> Void
+    var onOpenStoryCard: ((DrummerPathStageModel) -> Void)? = nil
 
     private var language: AppLanguage { settings.languagePreference }
 
@@ -929,6 +1064,13 @@ struct DrummerModuleInspectorCard: View {
                         .strokeBorder(Color(red: 0.149, green: 0.149, blue: 0.169), lineWidth: 1)
                 }
 
+                if node.isBoss && stage.missingMasteriesForBoss > 0 {
+                    Text(settings.localized("Earn ★2 on %lld more lessons in this stage to unlock the boss.", stage.missingMasteriesForBoss))
+                        .font(.system(size: 11.5, weight: .medium))
+                        .foregroundStyle(Theme.orange)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+
                 Button {
                     onPlayLesson(node.lesson)
                 } label: {
@@ -997,5 +1139,67 @@ struct DrummerModuleInspectorCard: View {
             RoundedRectangle(cornerRadius: 8)
                 .strokeBorder(Color(red: 0.149, green: 0.149, blue: 0.169), lineWidth: 1)
         }
+    }
+}
+
+/// Story card modal shown once on first entry to a Path stage and reopenable from the map.
+@MainActor
+struct StoryStageCardView: View {
+    @Environment(SettingsManager.self) private var settings
+
+    let stage: DrummerPathStageModel
+    let onContinue: () -> Void
+
+    private var language: AppLanguage { settings.languagePreference }
+
+    private var cardTitle: String {
+        let key = StoryMap.cardTitleKey(stageId: stage.id)
+        return language.localizedOptional(key) ?? "\(stage.title) · \(language == .czech ? "Úroveň" : "Level") \(stage.level)"
+    }
+
+    private var cardBody: String {
+        let key = StoryMap.cardBodyKey(stageId: stage.id)
+        if let localized = language.localizedOptional(key) {
+            return localized
+        }
+        if language == .czech {
+            return "Vstupuješ do etapy \(stage.title) na úrovni \(stage.level). Čekají tě klíčové lekce i rozcestí, kde si vybereš vlastní trasu. Postupuj kupředu alespoň s ★1 a sbírej ★2 pro odemčení zkoušky etapy. Vedlejší trasy zůstanou otevřené, kdykoli se k nim budeš chtít vrátit."
+        }
+        return "You are entering \(stage.title) at Level \(stage.level). Keystones and branching forks lie ahead, letting you choose your route through the stage. Earn ★1 to advance step by step, and master lessons at ★2 to unlock the stage boss. Unchosen branches remain open as side trails whenever you want to explore them."
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: Theme.Space.regular) {
+            Text("STAGE \(stage.index + 1) · \(stage.title.uppercased())")
+                .font(.system(size: 11, weight: .bold, design: .monospaced))
+                .tracking(0.8)
+                .foregroundStyle(Theme.accent)
+
+            Text(cardTitle)
+                .font(Theme.boldDisplay(26))
+                .foregroundStyle(Theme.ink)
+                .fixedSize(horizontal: false, vertical: true)
+
+            Text(cardBody)
+                .font(Theme.text(15))
+                .foregroundStyle(Theme.secondary)
+                .lineSpacing(4)
+                .fixedSize(horizontal: false, vertical: true)
+
+            Spacer(minLength: Theme.Space.small)
+
+            Button(action: onContinue) {
+                Text(settings.localized("Enter stage"))
+                    .font(Theme.action)
+                    .foregroundStyle(Color.black)
+                    .frame(maxWidth: .infinity, minHeight: 48)
+                    .background(Theme.accent, in: RoundedRectangle(cornerRadius: Theme.Radius.control, style: .continuous))
+            }
+            .buttonStyle(.plain)
+        }
+        .padding(Theme.Space.page)
+        .frame(maxWidth: 520, alignment: .leading)
+        .background(Theme.chassis)
+        .presentationDetents([.medium])
     }
 }

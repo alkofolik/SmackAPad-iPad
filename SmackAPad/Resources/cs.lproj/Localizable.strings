@@ -3682,3 +3682,16 @@
 /* Ticket 247: Story mode / Free practice switch */
 "Story mode" = "Příběhový režim";
 "Guides you along the Drummer's Path. Turn off for free practice in the Library." = "Vede tě po Cestě bubeníka. Vypnutím přepneš na volné cvičení v Knihovně.";
+
+/* Ticket 250: Story mode branching map, route choice and story cards */
+"Continue the trail" = "Pokračovat po trase";
+"Rejoin the trail" = "Zpět na hlavní trasu";
+"Other branch" = "Druhá větev";
+"Reach goal tempo" = "Dosáhnout cílového tempa";
+"Face the boss" = "Utkat se s bossem";
+"Explore side trail" = "Prozkoumat vedlejší trasu";
+"Enter stage" = "Vstoupit do etapy";
+"Story" = "Příběh";
+"SIDE TRAIL" = "VEDLEJŠÍ TRASA";
+"NEED %lld× ★2" = "CHYBÍ %lld× ★2";
+"Earn ★2 on %lld more lessons in this stage to unlock the boss." = "Získej ★2 v dalších %lld lekcích této etapy pro odemčení bosse.";

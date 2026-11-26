@@ -278,6 +278,13 @@ struct PracticeScreen: View {
                 }
             }
         }
+        .onChange(of: session.summary?.id) { _, _ in
+            guard settings.playMode == .story,
+                  (session.savedProgress?.passed == true || session.summary?.passed == true),
+                  let forkLoc = StoryRouteChoiceResolver.forkLocation(for: session.lesson.id, in: progression.catalog)
+            else { return }
+            progress.selectStoryFork(stageId: forkLoc.stageId, nodeIndex: forkLoc.nodeIndex, lessonId: session.lesson.id)
+        }
         .sheet(isPresented: Binding(get: { purchaseAccess != nil }, set: { if !$0 { purchaseAccess = nil } })) {
             PurchaseSheet(access: purchaseAccess ?? "full")
         }
@@ -1105,6 +1112,7 @@ struct PracticeScreen: View {
 
     private func practiceResult(_ summary: RunSummary, availableWidth: CGFloat, spaceAbove: CGFloat) -> some View {
         let nextTarget = resolveResultNextTarget()
+        let storyChoices = resolveStoryChoices(summary: summary)
         return ResultCard(
             summary: summary,
             runs: session.runResults,
@@ -1125,6 +1133,7 @@ struct PracticeScreen: View {
             nextLocked: nextTarget.locked,
             nextTitle: nextTarget.title,
             nextHint: nextTarget.hint,
+            storyChoices: storyChoices,
             restartAction: {
                 dismissDebugResult()
                 showingInfo = false
@@ -1523,6 +1532,80 @@ struct PracticeScreen: View {
                 hint: settings.localized("No next lesson available"),
                 action: nil
             )
+        }
+    }
+
+    private func resolveStoryChoices(summary: RunSummary) -> [ResultStoryChoice] {
+        guard settings.playMode == .story,
+              onStepResult == nil,
+              onAdvanceDailyStep == nil,
+              !session.isMix,
+              !session.afterMe,
+              !session.isSectionLoop,
+              !(session.isDueReview && !session.finishedByReview),
+              (session.savedProgress?.passed == true || summary.passed)
+        else {
+            return []
+        }
+
+        let actions = StoryRouteChoiceResolver.resolve(
+            lesson: session.lesson,
+            catalog: progression.catalog,
+            progress: progress.records,
+            pathState: progress.drummerPath,
+            openStageIDs: progression.openStageIDs,
+            language: settings.languagePreference
+        )
+
+        return actions.map { action in
+            switch action.kind {
+            case .forkOption(let target, let stageId, let nodeIndex, _, _):
+                return ResultStoryChoice(
+                    id: action.id,
+                    title: action.title,
+                    hint: settings.localized(target.title),
+                    action: {
+                        dismissDebugResult()
+                        progress.selectStoryFork(stageId: stageId, nodeIndex: nodeIndex, lessonId: target.id)
+                        openNextLesson(target)
+                    }
+                )
+            case .otherBranch(let target, let stageId, let nodeIndex, _):
+                return ResultStoryChoice(
+                    id: action.id,
+                    title: action.title,
+                    hint: settings.localized(target.title),
+                    action: {
+                        dismissDebugResult()
+                        progress.selectStoryFork(stageId: stageId, nodeIndex: nodeIndex, lessonId: target.id)
+                        openNextLesson(target)
+                    }
+                )
+            case .continueTrail(let target), .rejoinTrail(let target), .faceBoss(let target), .exploreSideTrail(let target):
+                return ResultStoryChoice(
+                    id: action.id,
+                    title: action.title,
+                    hint: settings.localized(target.title),
+                    action: {
+                        dismissDebugResult()
+                        openNextLesson(target)
+                    }
+                )
+            case .reachGoalTempo:
+                return ResultStoryChoice(
+                    id: action.id,
+                    title: action.title,
+                    hint: "\(session.lesson.targetBpm) BPM",
+                    action: {
+                        dismissDebugResult()
+                        showingInfo = false
+                        if session.bpm < session.lesson.targetBpm {
+                            session.setTempo(session.lesson.targetBpm)
+                        }
+                        session.restart()
+                    }
+                )
+            }
         }
     }
 

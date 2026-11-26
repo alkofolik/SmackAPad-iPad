@@ -255,6 +255,8 @@ public struct DrummerPathState: Codable, Equatable, Hashable, Sendable {
     public var earnedMilestoneIDs: Set<String>
     public var keysSpent: Int
     public var migratedFromLegacyProgress: Bool
+    public var storyForkChoices: [String: Int]
+    public var seenStoryCardStageIDs: Set<String>
     public var modifiedAt: Date?
 
     public init(
@@ -265,6 +267,8 @@ public struct DrummerPathState: Codable, Equatable, Hashable, Sendable {
         earnedMilestoneIDs: Set<String> = [],
         keysSpent: Int = 0,
         migratedFromLegacyProgress: Bool = false,
+        storyForkChoices: [String: Int] = [:],
+        seenStoryCardStageIDs: Set<String> = [],
         modifiedAt: Date? = nil
     ) {
         var kits = unlockedKitIds
@@ -280,6 +284,8 @@ public struct DrummerPathState: Codable, Equatable, Hashable, Sendable {
         self.earnedMilestoneIDs = earnedMilestoneIDs
         self.keysSpent = max(0, keysSpent)
         self.migratedFromLegacyProgress = migratedFromLegacyProgress
+        self.storyForkChoices = storyForkChoices
+        self.seenStoryCardStageIDs = seenStoryCardStageIDs
         self.modifiedAt = modifiedAt
     }
 
@@ -313,6 +319,8 @@ public struct DrummerPathState: Codable, Equatable, Hashable, Sendable {
         case earnedMilestoneIDs
         case keysSpent
         case migratedFromLegacyProgress
+        case storyForkChoices
+        case seenStoryCardStageIDs
         case modifiedAt
     }
 
@@ -331,6 +339,8 @@ public struct DrummerPathState: Codable, Equatable, Hashable, Sendable {
         self.earnedMilestoneIDs = try c.decodeIfPresent(Set<String>.self, forKey: .earnedMilestoneIDs) ?? []
         self.keysSpent = max(0, try c.decodeIfPresent(Int.self, forKey: .keysSpent) ?? 0)
         self.migratedFromLegacyProgress = try c.decodeIfPresent(Bool.self, forKey: .migratedFromLegacyProgress) ?? false
+        self.storyForkChoices = try c.decodeIfPresent([String: Int].self, forKey: .storyForkChoices) ?? [:]
+        self.seenStoryCardStageIDs = try c.decodeIfPresent(Set<String>.self, forKey: .seenStoryCardStageIDs) ?? []
         self.modifiedAt = try c.decodeIfPresent(Date.self, forKey: .modifiedAt)
     }
 
@@ -343,6 +353,8 @@ public struct DrummerPathState: Codable, Equatable, Hashable, Sendable {
         try c.encode(Array(earnedMilestoneIDs).sorted(), forKey: .earnedMilestoneIDs)
         try c.encode(keysSpent, forKey: .keysSpent)
         try c.encode(migratedFromLegacyProgress, forKey: .migratedFromLegacyProgress)
+        try c.encode(storyForkChoices, forKey: .storyForkChoices)
+        try c.encode(Array(seenStoryCardStageIDs).sorted(), forKey: .seenStoryCardStageIDs)
         try c.encodeIfPresent(modifiedAt, forKey: .modifiedAt)
     }
 
@@ -353,7 +365,9 @@ public struct DrummerPathState: Codable, Equatable, Hashable, Sendable {
         lhs.completedExamStageIDs == rhs.completedExamStageIDs &&
         lhs.earnedMilestoneIDs == rhs.earnedMilestoneIDs &&
         lhs.keysSpent == rhs.keysSpent &&
-        lhs.migratedFromLegacyProgress == rhs.migratedFromLegacyProgress
+        lhs.migratedFromLegacyProgress == rhs.migratedFromLegacyProgress &&
+        lhs.storyForkChoices == rhs.storyForkChoices &&
+        lhs.seenStoryCardStageIDs == rhs.seenStoryCardStageIDs
     }
 
     public func hash(into hasher: inout Hasher) {
@@ -364,5 +378,7 @@ public struct DrummerPathState: Codable, Equatable, Hashable, Sendable {
         hasher.combine(earnedMilestoneIDs)
         hasher.combine(keysSpent)
         hasher.combine(migratedFromLegacyProgress)
+        hasher.combine(storyForkChoices)
+        hasher.combine(seenStoryCardStageIDs)
     }
 }

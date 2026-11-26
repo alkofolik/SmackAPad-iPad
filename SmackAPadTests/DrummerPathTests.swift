@@ -665,4 +665,226 @@ final class DrummerPathTests: XCTestCase {
         XCTAssertTrue(progression.isLessonOpen(laterStageLesson))
         XCTAssertTrue(progression.isLessonOpen(laterNodeInFirstStage))
     }
+
+    func testStoryAvailabilityFollowsStoryMapFreshMidStageAndSideTrails() throws {
+        let catalog = LessonStore.shared.libraryCatalog
+        let storyMap = try StoryMap.loadBundled()
+        let firstStage = try XCTUnwrap(catalog.stages.first)
+        let mapNodes = storyMap.nodes(for: firstStage.id)
+        let firstKeystoneId = try XCTUnwrap(mapNodes.first?.lessonIds.first)
+        let firstForkIndex = try XCTUnwrap(mapNodes.firstIndex(where: \.isFork))
+        let forkIds = mapNodes[firstForkIndex].lessonIds
+        XCTAssertGreaterThanOrEqual(forkIds.count, 2)
+
+        let byId = Dictionary(firstStage.lessons.map { ($0.id, $0) }, uniquingKeysWith: { a, _ in a })
+        let firstKeystone = try XCTUnwrap(byId[firstKeystoneId])
+        let forkLessonA = try XCTUnwrap(byId[forkIds[0]])
+        let forkLessonB = try XCTUnwrap(byId[forkIds[1]])
+
+        // Fresh: first keystone is open, fork is locked
+        XCTAssertTrue(DrummerPathMapBuilder.isOpenInStory(
+            lesson: firstKeystone, catalog: catalog, progress: [:], pathState: DrummerPathState(), storyMap: storyMap
+        ))
+        XCTAssertFalse(DrummerPathMapBuilder.isOpenInStory(
+            lesson: forkLessonA, catalog: catalog, progress: [:], pathState: DrummerPathState(), storyMap: storyMap
+        ))
+
+        // Mid-stage: pass keystones up to the fork -> all fork alternatives open
+        var progress: [Int: LessonProgress] = [:]
+        for idx in 0..<firstForkIndex {
+            for lid in mapNodes[idx].lessonIds {
+                progress[lid] = LessonProgress(passed: true, mastery: false, memory: false, currentBpm: 80, bestScore: 0.85)
+            }
+        }
+        for fid in forkIds {
+            let fLesson = try XCTUnwrap(byId[fid])
+            XCTAssertTrue(DrummerPathMapBuilder.isOpenInStory(
+                lesson: fLesson, catalog: catalog, progress: progress, pathState: DrummerPathState(), storyMap: storyMap
+            ))
+        }
+
+        // Choosing A and passing A opens the merge keystone after the fork, while B stays open as a side trail
+        progress[forkLessonA.id] = LessonProgress(passed: true, mastery: false, memory: false, currentBpm: 80, bestScore: 0.85)
+        var pathState = DrummerPathState()
+        pathState.storyForkChoices[StoryMap.forkChoiceKey(stageId: firstStage.id, nodeIndex: firstForkIndex)] = forkLessonA.id
+
+        let built = DrummerPathMapBuilder.buildStages(
+            catalog: catalog, progress: progress, pathState: pathState, storyMap: storyMap
+        ).first { $0.id == firstStage.id }
+        let nodeA = built?.nodes.first { $0.lesson.id == forkLessonA.id }
+        let nodeB = built?.nodes.first { $0.lesson.id == forkLessonB.id }
+        XCTAssertEqual(nodeA?.isChosenRoute, true)
+        XCTAssertEqual(nodeA?.isSideQuest, false)
+        XCTAssertEqual(nodeB?.isChosenRoute, false)
+        XCTAssertEqual(nodeB?.isSideQuest, true)
+        XCTAssertEqual(nodeB?.state, .active)
+        XCTAssertTrue(DrummerPathMapBuilder.isOpenInStory(
+            lesson: forkLessonB, catalog: catalog, progress: progress, pathState: pathState, storyMap: storyMap
+        ))
+
+        if firstForkIndex + 1 < mapNodes.count, let mergeId = mapNodes[firstForkIndex + 1].lessonIds.first, let mergeLesson = byId[mergeId] {
+            XCTAssertTrue(DrummerPathMapBuilder.isOpenInStory(
+                lesson: mergeLesson, catalog: catalog, progress: progress, pathState: pathState, storyMap: storyMap
+            ))
+        }
+    }
+
+    func testStoryRouteChoiceResolverAllSituations() throws {
+        let catalog = LessonStore.shared.libraryCatalog
+        let storyMap = try StoryMap.loadBundled()
+        let firstStage = try XCTUnwrap(catalog.stages.first)
+        let mapNodes = storyMap.nodes(for: firstStage.id)
+        let byId = Dictionary(firstStage.lessons.map { ($0.id, $0) }, uniquingKeysWith: { a, _ in a })
+
+        // 1. Keystone before fork (passed at ★1) -> fork options + Reach goal tempo (max 3)
+        let firstForkIdx = try XCTUnwrap(mapNodes.firstIndex(where: \.isFork))
+        let preForkKeystoneId = try XCTUnwrap(mapNodes[firstForkIdx - 1].lessonIds.first)
+        let preForkKeystone = try XCTUnwrap(byId[preForkKeystoneId])
+        let forkIds = mapNodes[firstForkIdx].lessonIds
+
+        var progress: [Int: LessonProgress] = [
+            preForkKeystone.id: LessonProgress(passed: true, mastery: false, memory: false, currentBpm: 80, bestScore: 0.85)
+        ]
+        let forkPromptActions = StoryRouteChoiceResolver.resolve(
+            lesson: preForkKeystone, catalog: catalog, progress: progress, pathState: DrummerPathState(), storyMap: storyMap
+        )
+        XCTAssertLessThanOrEqual(forkPromptActions.count, 3)
+        XCTAssertEqual(forkPromptActions.filter {
+            if case .forkOption = $0.kind { return true }
+            return false
+        }.count, min(3, forkIds.count))
+        if forkIds.count == 2 {
+            XCTAssertTrue(forkPromptActions.contains { $0.kind == .reachGoalTempo })
+        }
+
+        // 2. Branch passed at ★1 -> Rejoin the trail / Other branch / Reach goal tempo
+        let branchA = try XCTUnwrap(byId[forkIds[0]])
+        progress[branchA.id] = LessonProgress(passed: true, mastery: false, memory: false, currentBpm: 80, bestScore: 0.85)
+        let branchActions1 = StoryRouteChoiceResolver.resolve(
+            lesson: branchA, catalog: catalog, progress: progress, pathState: DrummerPathState(), storyMap: storyMap
+        )
+        XCTAssertEqual(branchActions1.count, 3)
+        XCTAssertTrue(branchActions1.contains { if case .rejoinTrail = $0.kind { return true }; return false })
+        XCTAssertTrue(branchActions1.contains { if case .otherBranch = $0.kind { return true }; return false })
+        XCTAssertTrue(branchActions1.contains { $0.kind == .reachGoalTempo })
+
+        // Branch passed at ★2 -> no Reach goal tempo
+        progress[branchA.id] = LessonProgress(passed: true, mastery: true, memory: false, currentBpm: branchA.targetBpm, bestScore: 0.95)
+        let branchActions2 = StoryRouteChoiceResolver.resolve(
+            lesson: branchA, catalog: catalog, progress: progress, pathState: DrummerPathState(), storyMap: storyMap
+        )
+        XCTAssertFalse(branchActions2.contains { $0.kind == .reachGoalTempo })
+
+        // 3. Consecutive keystones (if present in any stage) -> Continue the trail / Reach goal tempo
+        if let seqStage = catalog.stages.first(where: { stage in
+            let nodes = storyMap.nodes(for: stage.id)
+            return zip(nodes, nodes.dropFirst()).contains { $0.isKeystone && $1.isKeystone }
+        }) {
+            let nodes = storyMap.nodes(for: seqStage.id)
+            let pairIdx = try XCTUnwrap(zip(nodes, nodes.dropFirst()).enumerated().first { $0.element.0.isKeystone && $0.element.1.isKeystone }?.offset)
+            let kLesson = try XCTUnwrap(seqStage.lessons.first { $0.id == nodes[pairIdx].lessonIds.first })
+            let seqProgress = [kLesson.id: LessonProgress(passed: true, mastery: false, memory: false, currentBpm: 80, bestScore: 0.85)]
+            let seqActions = StoryRouteChoiceResolver.resolve(
+                lesson: kLesson, catalog: catalog, progress: seqProgress, pathState: DrummerPathState(), storyMap: storyMap
+            )
+            XCTAssertTrue(seqActions.contains { if case .continueTrail = $0.kind { return true }; return false })
+            XCTAssertTrue(seqActions.contains { $0.kind == .reachGoalTempo })
+        }
+
+        // 4. Boss available -> Face the boss offered
+        let threshold = ProgressionConstant.requiredStageCompletions(lessonCount: firstStage.lessons.count)
+        var bossProgress: [Int: LessonProgress] = [:]
+        for l in firstStage.lessons.prefix(threshold) {
+            bossProgress[l.id] = LessonProgress(passed: true, mastery: true, memory: false, currentBpm: l.targetBpm, bestScore: 0.95)
+        }
+        let lastKeystoneId = try XCTUnwrap(mapNodes.last?.lessonIds.first)
+        let lastKeystone = try XCTUnwrap(byId[lastKeystoneId])
+        bossProgress[lastKeystone.id] = LessonProgress(passed: true, mastery: true, memory: false, currentBpm: lastKeystone.targetBpm, bestScore: 0.95)
+        let bossActions = StoryRouteChoiceResolver.resolve(
+            lesson: lastKeystone, catalog: catalog, progress: bossProgress, pathState: DrummerPathState(), storyMap: storyMap
+        )
+        XCTAssertTrue(bossActions.contains { if case .faceBoss = $0.kind { return true }; return false })
+    }
+
+    func testStoryBossOpensAtExistingThresholdAndShowsMissingCount() throws {
+        let catalog = LessonStore.shared.libraryCatalog
+        let storyMap = try StoryMap.loadBundled()
+        let firstStage = try XCTUnwrap(catalog.stages.first)
+        let threshold = ProgressionConstant.requiredStageCompletions(lessonCount: firstStage.lessons.count)
+
+        var progress: [Int: LessonProgress] = [:]
+        for lesson in firstStage.lessons.prefix(threshold - 1) {
+            progress[lesson.id] = LessonProgress(passed: true, mastery: true, memory: false, currentBpm: lesson.targetBpm, bestScore: 0.95)
+        }
+        let lockedModel = try XCTUnwrap(
+            DrummerPathMapBuilder.buildStages(catalog: catalog, progress: progress, pathState: DrummerPathState(), storyMap: storyMap)
+                .first { $0.id == firstStage.id }
+        )
+        XCTAssertEqual(lockedModel.missingMasteriesForBoss, 1)
+        XCTAssertEqual(lockedModel.bossNode?.state, .locked)
+
+        let nthLesson = firstStage.lessons[threshold - 1]
+        progress[nthLesson.id] = LessonProgress(passed: true, mastery: true, memory: false, currentBpm: nthLesson.targetBpm, bestScore: 0.95)
+        let openModel = try XCTUnwrap(
+            DrummerPathMapBuilder.buildStages(catalog: catalog, progress: progress, pathState: DrummerPathState(), storyMap: storyMap)
+                .first { $0.id == firstStage.id }
+        )
+        XCTAssertEqual(openModel.missingMasteriesForBoss, 0)
+        XCTAssertEqual(openModel.bossNode?.state, .active)
+    }
+
+    func testStoryMigrationPicksBestStarredAlternativeAndNeverRelocks() throws {
+        let catalog = LessonStore.shared.libraryCatalog
+        let storyMap = try StoryMap.loadBundled()
+        let firstStage = try XCTUnwrap(catalog.stages.first)
+        let mapNodes = storyMap.nodes(for: firstStage.id)
+        let forkIndices = mapNodes.enumerated().compactMap { $0.element.isFork ? $0.offset : nil }
+        XCTAssertGreaterThanOrEqual(forkIndices.count, 2)
+
+        let fork0Idx = forkIndices[0]
+        let fork0Ids = mapNodes[fork0Idx].lessonIds
+        let fork1Idx = forkIndices[1]
+        let fork1Ids = mapNodes[fork1Idx].lessonIds
+
+        var progress: [Int: LessonProgress] = [
+            // Fork 0: second alternative has more stars (★2 vs ★1) -> picks second
+            fork0Ids[0]: LessonProgress(passed: true, mastery: false, memory: false, currentBpm: 80, bestScore: 0.85),
+            fork0Ids[1]: LessonProgress(passed: true, mastery: true, memory: false, currentBpm: 100, bestScore: 0.95),
+            // Fork 1: tie (both ★1) -> picks first
+            fork1Ids[0]: LessonProgress(passed: true, mastery: false, memory: false, currentBpm: 80, bestScore: 0.85),
+            fork1Ids[1]: LessonProgress(passed: true, mastery: false, memory: false, currentBpm: 80, bestScore: 0.85)
+        ]
+
+        // Also play a lesson in stage 2 so stage 2 stays open (never relocks)
+        let secondStage = try XCTUnwrap(catalog.stages.dropFirst().first)
+        let secondStageLesson = try XCTUnwrap(secondStage.lessons.first)
+        progress[secondStageLesson.id] = LessonProgress(passed: true, mastery: false, memory: false, currentBpm: 80, bestScore: 0.85)
+
+        let migrated = DrummerPathEvaluator.migrateLegacyProgress(
+            existingState: DrummerPathState(),
+            progress: progress,
+            trainingLog: TrainingLog(),
+            catalog: catalog
+        )
+        XCTAssertEqual(migrated.storyForkChoices[StoryMap.forkChoiceKey(stageId: firstStage.id, nodeIndex: fork0Idx)], fork0Ids[1])
+        XCTAssertEqual(migrated.storyForkChoices[StoryMap.forkChoiceKey(stageId: firstStage.id, nodeIndex: fork1Idx)], fork1Ids[0])
+
+        let builtStages = DrummerPathMapBuilder.buildStages(
+            catalog: catalog,
+            progress: progress,
+            pathState: migrated,
+            storyMap: storyMap,
+            openStageIDs: [secondStage.id]
+        )
+        let builtSecond = try XCTUnwrap(builtStages.first { $0.id == secondStage.id })
+        XCTAssertTrue(builtSecond.isStageOpen)
+        XCTAssertTrue(DrummerPathMapBuilder.isOpenInStory(
+            lesson: secondStageLesson,
+            catalog: catalog,
+            progress: progress,
+            pathState: migrated,
+            storyMap: storyMap,
+            openStageIDs: [secondStage.id]
+        ))
+    }
 }

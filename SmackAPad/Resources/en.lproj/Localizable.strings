@@ -3677,3 +3677,16 @@
 /* Ticket 247: Story mode / Free practice switch */
 "Story mode" = "Story mode";
 "Guides you along the Drummer's Path. Turn off for free practice in the Library." = "Guides you along the Drummer's Path. Turn off for free practice in the Library.";
+
+/* Ticket 250: Story mode branching map, route choice and story cards */
+"Continue the trail" = "Continue the trail";
+"Rejoin the trail" = "Rejoin the trail";
+"Other branch" = "Other branch";
+"Reach goal tempo" = "Reach goal tempo";
+"Face the boss" = "Face the boss";
+"Explore side trail" = "Explore side trail";
+"Enter stage" = "Enter stage";
+"Story" = "Story";
+"SIDE TRAIL" = "SIDE TRAIL";
+"NEED %lld× ★2" = "NEED %lld× ★2";
+"Earn ★2 on %lld more lessons in this stage to unlock the boss." = "Earn ★2 on %lld more lessons in this stage to unlock the boss.";

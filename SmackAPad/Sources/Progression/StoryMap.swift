@@ -114,6 +114,35 @@ struct StoryMap: Equatable, Codable, Sendable {
         stages[stageId] ?? []
     }
 
+    static let bundled: StoryMap = {
+        (try? loadBundled()) ?? StoryMap(stages: [:])
+    }()
+
+    static func forkChoiceKey(stageId: String, nodeIndex: Int) -> String {
+        "\(stageId)#\(nodeIndex)"
+    }
+
+    static func forkOptionLetter(for optionIndex: Int) -> String {
+        switch optionIndex {
+        case 0: return "a"
+        case 1: return "b"
+        case 2: return "c"
+        default: return String(UnicodeScalar(97 + max(0, min(25, optionIndex))) ?? "a")
+        }
+    }
+
+    static func forkStringKey(stageId: String, nodeIndex: Int, optionIndex: Int) -> String {
+        "story.fork.\(stageId).\(nodeIndex).\(forkOptionLetter(for: optionIndex))"
+    }
+
+    static func cardTitleKey(stageId: String) -> String {
+        "story.card.\(stageId).title"
+    }
+
+    static func cardBodyKey(stageId: String) -> String {
+        "story.card.\(stageId).body"
+    }
+
     static func loadBundled(bundle: Bundle = .main) throws -> StoryMap {
         let url = try DataLoader.shared.findResourceURL(named: "story-map", withExtension: "json", in: bundle)
         return try load(from: url)

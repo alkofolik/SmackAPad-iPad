@@ -505,9 +505,42 @@ public enum DrummerPathEvaluator {
             state.unlockedBonusTrackIds.insert(track.id)
         }
 
+        // 5. Infer provisional story fork routes from best-starred alternatives
+        migrateStoryForkChoices(state: &state, progress: progress, catalog: catalog)
+
         state.migratedFromLegacyProgress = true
         state.modifiedAt = now
         return state
+    }
+
+    /// Populates unset story fork routes from existing lesson progress:
+    /// picks the alternative with the most stars (ties broken by lesson order in the fork).
+    static func migrateStoryForkChoices(
+        state: inout DrummerPathState,
+        progress: [Int: LessonProgress],
+        catalog: LibraryCatalog,
+        storyMap: StoryMap = .bundled
+    ) {
+        for stage in catalog.stages {
+            let nodes = storyMap.nodes(for: stage.id)
+            for (nodeIndex, node) in nodes.enumerated() {
+                guard case .fork(let ids) = node, !ids.isEmpty else { continue }
+                let key = StoryMap.forkChoiceKey(stageId: stage.id, nodeIndex: nodeIndex)
+                guard state.storyForkChoices[key] == nil else { continue }
+                var bestId: Int?
+                var bestStars = 0
+                for id in ids {
+                    let stars = LibraryStarFilter.stars(progress[id])
+                    if stars > bestStars {
+                        bestStars = stars
+                        bestId = id
+                    }
+                }
+                if let bestId, bestStars > 0 {
+                    state.storyForkChoices[key] = bestId
+                }
+            }
+        }
     }
 
     // MARK: - Backup Merge
@@ -519,6 +552,21 @@ public enum DrummerPathEvaluator {
         let mergedTracks = local.unlockedBonusTrackIds.union(incoming.unlockedBonusTrackIds)
         let mergedExams = local.completedExamStageIDs.union(incoming.completedExamStageIDs)
         let mergedMilestones = local.earnedMilestoneIDs.union(incoming.earnedMilestoneIDs)
+        let mergedSeenStoryCards = local.seenStoryCardStageIDs.union(incoming.seenStoryCardStageIDs)
+
+        let preferIncomingChoices: Bool = {
+            switch (local.modifiedAt, incoming.modifiedAt) {
+            case let (d1?, d2?): return d2 > d1
+            case (nil, _?): return true
+            default: return false
+            }
+        }()
+        var mergedForkChoices = local.storyForkChoices
+        for (key, value) in incoming.storyForkChoices {
+            if mergedForkChoices[key] == nil || preferIncomingChoices {
+                mergedForkChoices[key] = value
+            }
+        }
 
         let totalEarned = mergedExams.count + mergedMilestones.count
         let localNonStarter = local.unlockedKitIds.subtracting([DrumKitCatalog.starterKitId])
@@ -549,6 +597,8 @@ public enum DrummerPathEvaluator {
             earnedMilestoneIDs: mergedMilestones,
             keysSpent: reconciledSpent,
             migratedFromLegacyProgress: local.migratedFromLegacyProgress || incoming.migratedFromLegacyProgress,
+            storyForkChoices: mergedForkChoices,
+            seenStoryCardStageIDs: mergedSeenStoryCards,
             modifiedAt: modifiedAt
         )
     }
