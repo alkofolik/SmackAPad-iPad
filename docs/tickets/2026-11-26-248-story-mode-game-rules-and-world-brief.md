@@ -1,6 +1,6 @@
 # 248 — Story mode: game rules and world bible (brief for ChatGPT, design only, no code)
 
-Status: open
+Status: done — answer saved as docs/design/2026-11-26-story-mode-gdd-v1.md (approved with amendments 2026-11-26)
 
 ## How to run this
 

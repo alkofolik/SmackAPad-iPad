@@ -240,4 +240,10 @@ Source: Jakub, retention and memory discussion; legacy "Trénink" concept 2026-1
 | # | What | Agent | When |
 |---|---|---|---|
 | 247 | Story mode / Free practice switch (Story default), one shared availability rule, kits never block a lesson | Gemini 4 Hydrogen, medium (fallback Codex Sol 6.2, high) | now |
-| 248 | Story mode game rules + world bible (design brief for ChatGPT, no code) | ChatGPT, strongest reasoning model, high | in parallel with 247 |
+| 248 | Story mode game rules + world bible (design brief for ChatGPT, no code) | ChatGPT, strongest reasoning model, high | done (GDD approved with amendments, docs/design/2026-11-26-story-mode-gdd-v1.md) |
+| 249 | Story map data: keystones and forks for every Path stage (generator script + AI review) | Gemini 4 Argon, high (fallback Codex Sol 6.2, high) | after 247 |
+| 250 | Story mode: branching map, route choice, story cards | Gemini 4 Hydrogen, medium (fallback Codex Sol 6.2, high) | after 247, 249 |
+| 251 | Boss encounter v1 (one lesson loop, stamina, Pattern Veil) | Codex Sol 6.2, high (fallback Gemini 4 Hydrogen, high) | after 250 |
+| 252 | Key economy (7 keys), kit claim screen, skins by bosses | Gemini 4 Hydrogen, medium (fallback Codex Sol 6.2, medium) | after 251 |
+| 253 | Story texts in English (brief for ChatGPT) | ChatGPT, strongest reasoning model, medium | after 249 |
+| 254 | Czech adaptation of the story texts | Gemini 4 Argon, medium; Claude reviews tone | after 253 |
