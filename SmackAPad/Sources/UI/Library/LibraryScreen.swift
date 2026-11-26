@@ -216,6 +216,14 @@ struct LibraryScreen: View {
             .calmChassisBackground()
             .motion(Theme.Motion.standard, value: showingIntro ? "intro" : mode.id + (group?.id ?? ""))
             .toolbar {
+                PadToolbarItem(placement: .principal) {
+                    StudioHardwareTabSwitcher(activeTab: .library) { tab in
+                        guard tab != .library else { return }
+                        previewPlayer.stop(releaseAudio: true)
+                        onHome()
+                        AppNavigation.shared.openTraining(tab: tab.rawValue)
+                    }
+                }
                 PadToolbarItem(placement: .topBarTrailing) {
                     Button { showingSettings = true } label: {
                         Text(settings.localized("Settings"))

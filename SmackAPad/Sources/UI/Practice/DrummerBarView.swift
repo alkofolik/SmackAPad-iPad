@@ -4,10 +4,53 @@ import SwiftUI
 enum TrainingTabMode: String, Equatable {
     case path
     case studioRig
+    case library
+}
+
+/// Shared 3-way hardware navigation pill (`PATH · STUDIO RIG · LIBRARY`) used across Training, Studio Rig, and Library.
+@MainActor
+struct StudioHardwareTabSwitcher: View {
+    let activeTab: TrainingTabMode
+    let onSelect: (TrainingTabMode) -> Void
+
+    var body: some View {
+        HStack(spacing: 4) {
+            tabButton(title: "PATH", tab: .path)
+            tabButton(title: "STUDIO RIG", tab: .studioRig)
+            tabButton(title: "LIBRARY", tab: .library)
+        }
+        .padding(4)
+        .background(Color(red: 0.047, green: 0.047, blue: 0.055), in: RoundedRectangle(cornerRadius: 9, style: .continuous))
+        .overlay {
+            RoundedRectangle(cornerRadius: 9, style: .continuous)
+                .strokeBorder(Color(red: 0.149, green: 0.149, blue: 0.169), lineWidth: 1)
+        }
+    }
+
+    private func tabButton(title: String, tab: TrainingTabMode) -> some View {
+        let active = activeTab == tab
+        return Button {
+            onSelect(tab)
+        } label: {
+            Text(title)
+                .font(.system(size: 11.5, weight: .bold, design: .monospaced))
+                .tracking(0.5)
+                .foregroundStyle(active ? Color.black : Color.white.opacity(0.75))
+                .padding(.horizontal, 13)
+                .frame(height: 34)
+                .background(
+                    active ? Theme.orange : Color.clear,
+                    in: RoundedRectangle(cornerRadius: 6, style: .continuous)
+                )
+                .shadow(color: active ? Theme.orange.opacity(0.45) : .clear, radius: 6)
+        }
+        .buttonStyle(.plain)
+        .accessibilityAddTraits(active ? .isSelected : [])
+    }
 }
 
 /// Top studio bar matching the hardware deck mockup:
-/// `<` Back, `SMACK-A-PAD`, `LVL X · RANK XP/NEXT` + XP bar, `PATH | STUDIO RIG` switch, and `🔑 KEYS` pill.
+/// `<` Back, `SMACK-A-PAD`, `LVL X · RANK XP/NEXT` + XP bar, `PATH | STUDIO RIG | LIBRARY` switch, and `🔑 KEYS` pill.
 @MainActor
 struct DrummerTopHeaderBar: View {
     @Environment(SettingsManager.self) private var settings
@@ -16,6 +59,7 @@ struct DrummerTopHeaderBar: View {
     let availableKeys: Int
     @Binding var selectedTab: TrainingTabMode
     let isCompact: Bool
+    let onOpenLibrary: () -> Void
     let onBack: () -> Void
 
     private var language: AppLanguage { settings.languagePreference }
@@ -99,36 +143,13 @@ struct DrummerTopHeaderBar: View {
     }
 
     private var tabSwitcher: some View {
-        HStack(spacing: 4) {
-            tabButton(title: "PATH", tab: .path)
-            tabButton(title: "STUDIO RIG", tab: .studioRig)
+        StudioHardwareTabSwitcher(activeTab: selectedTab) { tab in
+            if tab == .library {
+                onOpenLibrary()
+            } else {
+                selectedTab = tab
+            }
         }
-        .padding(4)
-        .background(Color(red: 0.047, green: 0.047, blue: 0.055), in: RoundedRectangle(cornerRadius: 9, style: .continuous))
-        .overlay {
-            RoundedRectangle(cornerRadius: 9, style: .continuous)
-                .strokeBorder(Color(red: 0.149, green: 0.149, blue: 0.169), lineWidth: 1)
-        }
-    }
-
-    private func tabButton(title: String, tab: TrainingTabMode) -> some View {
-        let active = selectedTab == tab
-        return Button {
-            selectedTab = tab
-        } label: {
-            Text(title)
-                .font(.system(size: 12, weight: .bold, design: .monospaced))
-                .tracking(0.5)
-                .foregroundStyle(active ? Color.black : Color.white.opacity(0.72))
-                .padding(.horizontal, 16)
-                .frame(height: 34)
-                .background(
-                    active ? Theme.orange : Color.clear,
-                    in: RoundedRectangle(cornerRadius: 6, style: .continuous)
-                )
-                .shadow(color: active ? Theme.orange.opacity(0.45) : .clear, radius: 6)
-        }
-        .buttonStyle(.plain)
     }
 
     private var keysPill: some View {

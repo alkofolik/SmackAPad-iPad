@@ -417,12 +417,16 @@ public struct HomeScreen: View {
     }
 
     private var todayPlan: TodayPlan? {
-        if let saved = TodayPlan.decode(savedTodayPlan, today: calendarDay) {
+        if let saved = TodayPlan.decode(savedTodayPlan, today: calendarDay)?
+            .filteringLockedKits(lessons: progression.catalog.lessons, pathState: progress.drummerPath) {
             return saved.reconcilingReviews(with: progress.records)
         }
-        let lessons = progression.dailyLessons(isAvailable: store.isUnlocked)
+        let isAvailableForToday: (Lesson) -> Bool = { lesson in
+            store.isUnlocked(lesson) && progress.drummerPath.isKitUnlocked(DrumKitCatalog.requiredKitId(for: lesson))
+        }
+        let lessons = progression.dailyLessons(isAvailable: isAvailableForToday)
         let openIDs = Set(progression.catalog.lessons.filter {
-            store.isUnlocked($0) && progression.isLessonOpen($0)
+            isAvailableForToday($0) && progression.isLessonOpen($0)
         }.map(\.id))
         let padCount = midi.activeProfile.padCount
         let mix = TrainingMix.dailySelection(lessons: progression.catalog.lessons, progress: progress.records,

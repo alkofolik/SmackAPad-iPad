@@ -16,12 +16,14 @@ public final class AppNavigation {
     public static let shared = AppNavigation()
 
     public var route: AppRoute = .home
+    public var preferredTrainingTab: String = "path"
 
     public init(route: AppRoute = .home) {
         self.route = route
     }
 
-    public func openTraining() {
+    public func openTraining(tab: String = "path") {
+        preferredTrainingTab = tab
         route = .training
     }
 

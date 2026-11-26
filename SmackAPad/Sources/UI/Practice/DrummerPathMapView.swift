@@ -14,6 +14,8 @@ struct DrummerPathMapView: View {
     let onPlayLesson: (Lesson) -> Void
     let onUnlockKit: (DrumKitDescriptor) -> Void
 
+    @State private var selectedPageByStage: [String: Int] = [:]
+
     private var language: AppLanguage { settings.languagePreference }
 
     private var currentStage: DrummerPathStageModel? {
@@ -173,6 +175,9 @@ struct DrummerPathMapView: View {
         let subtitle = language == .czech
             ? "\(stage.topology.title(language: language)) · Dokonči všech \(stage.totalCount) modulů pro zvládnutí etapy"
             : "\(stage.topology.title(language: language)) · Complete all \(stage.totalCount) hardware modules to master stage"
+        let pages = stagePages(for: stage)
+        let activePageIdx = resolvedPageIndex(for: stage, pages: pages)
+        let displayNodes = pages.indices.contains(activePageIdx) ? pages[activePageIdx].nodes : stage.nodes
 
         return VStack(alignment: .leading, spacing: 10) {
             HStack(alignment: .top, spacing: 12) {
@@ -200,13 +205,17 @@ struct DrummerPathMapView: View {
                     }
             }
 
+            if pages.count > 1 {
+                stagePageSwitcher(stage: stage, pages: pages, activeIndex: activePageIdx)
+            }
+
             GeometryReader { geo in
-                let displayNodes = windowedNodes(for: stage)
                 let points = nodeCoordinates(
                     nodes: displayNodes,
                     topology: stage.topology,
                     in: geo.size
                 )
+                let labelWidths = computeLabelWidths(points: points, canvasWidth: geo.size.width)
 
                 ZStack {
                     rackGridLines
@@ -215,7 +224,8 @@ struct DrummerPathMapView: View {
 
                     ForEach(Array(displayNodes.enumerated()), id: \.element.id) { idx, node in
                         if idx < points.count {
-                            moduleNode(node: node, stage: stage)
+                            let maxLabelW = idx < labelWidths.count ? labelWidths[idx] : 104
+                            moduleNode(node: node, stage: stage, labelWidth: maxLabelW)
                                 .position(points[idx])
                         }
                     }
@@ -228,6 +238,50 @@ struct DrummerPathMapView: View {
         .overlay {
             RoundedRectangle(cornerRadius: 12, style: .continuous)
                 .strokeBorder(Color(red: 0.149, green: 0.149, blue: 0.169), lineWidth: 1.25)
+        }
+    }
+
+    private func stagePageSwitcher(
+        stage: DrummerPathStageModel,
+        pages: [(label: String, nodes: [DrummerPathNode])],
+        activeIndex: Int
+    ) -> some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 6) {
+                ForEach(Array(pages.enumerated()), id: \.offset) { idx, page in
+                    let isSelected = idx == activeIndex
+                    let completedInPage = page.nodes.filter { $0.state == .completed }.count
+                    let allDone = completedInPage == page.nodes.count
+                    Button {
+                        selectedPageByStage[stage.id] = idx
+                        if let firstPlayable = page.nodes.first(where: { $0.state == .active }) ?? page.nodes.first {
+                            selectedNodeId = firstPlayable.id
+                        }
+                    } label: {
+                        HStack(spacing: 5) {
+                            if allDone {
+                                Image(systemName: "checkmark")
+                                    .font(.system(size: 9, weight: .bold))
+                                    .foregroundStyle(isSelected ? Color.black : Color(red: 0.35, green: 0.85, blue: 0.50))
+                            }
+                            Text(page.label)
+                                .font(.system(size: 11, weight: .bold, design: .monospaced))
+                        }
+                        .foregroundStyle(isSelected ? Color.black : Color.white.opacity(0.75))
+                        .padding(.horizontal, 10)
+                        .frame(height: 28)
+                        .background(
+                            isSelected ? Theme.orange : Color(red: 0.078, green: 0.078, blue: 0.090),
+                            in: RoundedRectangle(cornerRadius: 6, style: .continuous)
+                        )
+                        .overlay {
+                            RoundedRectangle(cornerRadius: 6, style: .continuous)
+                                .strokeBorder(isSelected ? Theme.orange : Color(red: 0.149, green: 0.149, blue: 0.169), lineWidth: 1)
+                        }
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
         }
     }
 
@@ -263,7 +317,7 @@ struct DrummerPathMapView: View {
 
                 var path = Path()
                 path.move(to: start)
-                if topology == .stepSequencer && abs(start.y - end.y) > 20 {
+                if (topology == .stepSequencer || topology == .straightLine) && abs(start.y - end.y) > 20 {
                     // Sweeping curved turnaround from top row down to second row
                     let sweepX = max(start.x, end.x) + 76
                     path.addCurve(
@@ -312,7 +366,7 @@ struct DrummerPathMapView: View {
         .allowsHitTesting(false)
     }
 
-    private func moduleNode(node: DrummerPathNode, stage: DrummerPathStageModel) -> some View {
+    private func moduleNode(node: DrummerPathNode, stage: DrummerPathStageModel, labelWidth: CGFloat) -> some View {
         let isFocused = focusedNode?.id == node.id
         let isCompleted = node.state == .completed
         let isActive = node.state == .active
@@ -410,8 +464,10 @@ struct DrummerPathMapView: View {
                     .foregroundStyle(isLocked ? Color.white.opacity(0.48) : Color.white.opacity(0.92))
                     .multilineTextAlignment(.center)
                     .lineLimit(2)
-                    .frame(width: 118)
-                    .offset(y: 34)
+                    .truncationMode(.tail)
+                    .frame(width: labelWidth, alignment: .top)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .offset(y: 35)
             }
         }
         .buttonStyle(.plain)
@@ -463,20 +519,73 @@ struct DrummerPathMapView: View {
         }
     }
 
-    // MARK: - Topology Windowing & Geometry
+    // MARK: - Stage Pagination & Geometry
 
-    private func windowedNodes(for stage: DrummerPathStageModel) -> [DrummerPathNode] {
+    private func stagePages(for stage: DrummerPathStageModel) -> [(label: String, nodes: [DrummerPathNode])] {
         let all = stage.nodes
-        let maxNodes = 6
-        guard all.count > maxNodes else { return all }
-
-        let activeIdx = all.firstIndex(where: { $0.state == .active }) ?? 0
-        let start = max(0, min(activeIdx - 2, all.count - maxNodes))
-        var slice = Array(all[start..<min(start + maxNodes - 1, all.count - 1)])
-        if let boss = all.last {
-            slice.append(boss)
+        guard all.count > 6 else {
+            return [("", all)]
         }
-        return slice
+
+        let pageSize = 6
+        var ranges: [Range<Int>] = []
+        var start = 0
+        while start < all.count {
+            let remaining = all.count - start
+            // Fold a lone trailing Boss node into the previous page so no page holds only 1 node.
+            if remaining == pageSize + 1 {
+                ranges.append(start..<all.count)
+                break
+            }
+            let end = min(all.count, start + pageSize)
+            ranges.append(start..<end)
+            start = end
+        }
+
+        return ranges.map { range in
+            let slice = Array(all[range])
+            let firstNum = slice.first.map { $0.orderIndex + 1 } ?? (range.lowerBound + 1)
+            let lastNum = slice.last.map { $0.orderIndex + 1 } ?? range.upperBound
+            let hasBoss = slice.contains(where: \.isBoss)
+            let label = hasBoss ? "\(firstNum)–\(lastNum) + BOSS" : "\(firstNum)–\(lastNum)"
+            return (label: label, nodes: slice)
+        }
+    }
+
+    private func resolvedPageIndex(
+        for stage: DrummerPathStageModel,
+        pages: [(label: String, nodes: [DrummerPathNode])]
+    ) -> Int {
+        if let saved = selectedPageByStage[stage.id], pages.indices.contains(saved) {
+            // If user clicked a node programmatically or focused node is on another page, keep saved unless focusedNode changed
+            if let focusedId = selectedNodeId,
+               let matchingPage = pages.firstIndex(where: { $0.nodes.contains(where: { $0.id == focusedId }) }) {
+                return matchingPage
+            }
+            return saved
+        }
+        if let activeId = stage.activeNode?.id,
+           let activePage = pages.firstIndex(where: { $0.nodes.contains(where: { $0.id == activeId }) }) {
+            return activePage
+        }
+        return 0
+    }
+
+    private func computeLabelWidths(points: [CGPoint], canvasWidth: CGFloat) -> [CGFloat] {
+        guard !points.isEmpty else { return [] }
+        return points.indices.map { i in
+            let p = points[i]
+            var minSameRowGap: CGFloat = canvasWidth
+            for j in points.indices where i != j {
+                let q = points[j]
+                if abs(p.y - q.y) < 55 {
+                    minSameRowGap = min(minSameRowGap, abs(p.x - q.x))
+                }
+            }
+            let edgeAllowance = min(p.x, max(40, canvasWidth - p.x)) * 1.85
+            let maxPossible = min(minSameRowGap - 14, edgeAllowance)
+            return min(114, max(76, maxPossible))
+        }
     }
 
     private func nodeCoordinates(
@@ -486,17 +595,21 @@ struct DrummerPathMapView: View {
     ) -> [CGPoint] {
         let count = nodes.count
         guard count > 0 else { return [] }
-        let padLeading: CGFloat = 68
+        let padLeading: CGFloat = 70
         let padTrailing: CGFloat = 86
         let usableW = max(140, size.width - padLeading - padTrailing)
         let midY = size.height * 0.44
 
         switch topology {
         case .straightLine:
-            return (0..<count).map { i in
-                let t = count == 1 ? 0.5 : CGFloat(i) / CGFloat(count - 1)
-                return CGPoint(x: padLeading + t * usableW, y: midY)
+            if count <= 4 {
+                return (0..<count).map { i in
+                    let t = count == 1 ? 0.5 : CGFloat(i) / CGFloat(count - 1)
+                    return CGPoint(x: padLeading + t * usableW, y: midY)
+                }
             }
+            // Fall through to two-row stepped layout when a page has 5–7 nodes so labels never crowd.
+            return twoRowSnakeCoordinates(count: count, padLeading: padLeading, usableW: usableW, size: size)
 
         case .splitFork:
             guard count >= 5 else {
@@ -522,22 +635,13 @@ struct DrummerPathMapView: View {
             }
 
         case .stepSequencer:
-            let topCols = max(1, min(4, (count + 1) / 2 + (count >= 5 ? 1 : 0)))
-            let row0Y = size.height * 0.24
-            let row1Y = size.height * 0.68
-            return (0..<count).map { i in
-                if i < topCols {
-                    let t = topCols == 1 ? 0.5 : CGFloat(i) / CGFloat(topCols - 1)
-                    return CGPoint(x: padLeading + t * usableW, y: row0Y)
-                } else {
-                    let bottomIndex = i - topCols
-                    let bottomCount = max(1, count - topCols)
-                    // Right-to-left snake under columns (topCols - 2) ... 0
-                    let colIndex = max(0, (topCols - 1) - 1 - bottomIndex)
-                    let t = topCols <= 1 ? 0.5 : CGFloat(min(topCols - 1, colIndex + (bottomCount == 1 ? 1 : 0))) / CGFloat(max(1, topCols - 1))
-                    return CGPoint(x: padLeading + t * usableW, y: row1Y)
+            if count <= 4 {
+                return (0..<count).map { i in
+                    let t = count == 1 ? 0.5 : CGFloat(i) / CGFloat(count - 1)
+                    return CGPoint(x: padLeading + t * usableW, y: midY)
                 }
             }
+            return twoRowSnakeCoordinates(count: count, padLeading: padLeading, usableW: usableW, size: size)
 
         case .loopWithSideQuest:
             let mainNodes = nodes.filter { !$0.isSideQuest }
@@ -555,6 +659,39 @@ struct DrummerPathMapView: View {
                 let mIdx = mainIndexById[node.id] ?? 0
                 let t = mainCount <= 1 ? 0.5 : CGFloat(mIdx) / CGFloat(mainCount - 1)
                 return CGPoint(x: padLeading + t * usableW, y: mainY)
+            }
+        }
+    }
+
+    private func twoRowSnakeCoordinates(
+        count: Int,
+        padLeading: CGFloat,
+        usableW: CGFloat,
+        size: CGSize
+    ) -> [CGPoint] {
+        let topCols = min(4, max(3, (count + 1) / 2 + (count == 6 ? 1 : 0)))
+        let row0Y = size.height * 0.24
+        let row1Y = size.height * 0.68
+        let bottomCount = max(1, count - topCols)
+
+        return (0..<count).map { i in
+            if i < topCols {
+                let t = topCols == 1 ? 0.5 : CGFloat(i) / CGFloat(topCols - 1)
+                return CGPoint(x: padLeading + t * usableW, y: row0Y)
+            } else {
+                let bottomIndex = i - topCols
+                // Spread bottom nodes generously right-to-left so labels under node 5 and BOSS never touch.
+                let t: CGFloat
+                if bottomCount == 1 {
+                    t = 0.5
+                } else if bottomCount == 2 {
+                    t = bottomIndex == 0 ? 0.68 : 0.22
+                } else {
+                    let span: CGFloat = 0.68
+                    let step = span / CGFloat(bottomCount - 1)
+                    t = 0.80 - CGFloat(bottomIndex) * step
+                }
+                return CGPoint(x: padLeading + t * usableW, y: row1Y)
             }
         }
     }

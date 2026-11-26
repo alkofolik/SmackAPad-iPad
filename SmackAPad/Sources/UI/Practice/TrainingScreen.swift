@@ -136,7 +136,9 @@ public struct TrainingScreen: View {
     private var dueLessons: [Lesson] { data?.dueLessons ?? [] }
     private var nextLesson: Lesson? { data?.nextLesson }
     private var currentPlan: TodayPlan? {
-        let basePlan = TodayPlan.decode(savedTodayPlan, today: today) ?? data?.currentPlan
+        let basePlan = TodayPlan.decode(savedTodayPlan, today: today)?
+            .filteringLockedKits(lessons: lessonStore.lessons, pathState: progress.drummerPath)
+            ?? data?.currentPlan
         return basePlan?.reconcilingReviews(with: progress.records)
     }
     private var reviewLoad: TodayPlan.ReviewLoad {
@@ -188,12 +190,20 @@ public struct TrainingScreen: View {
             }
             .onAppear {
                 isVisible = true
+                if let tab = TrainingTabMode(rawValue: AppNavigation.shared.preferredTrainingTab) {
+                    selectedTab = tab
+                }
                 if data != nil {
                     refreshTrainingData()
                 } else {
                     refreshID = UUID()
                 }
                 TrainingOpenMeasurement.appeared()
+            }
+            .onChange(of: AppNavigation.shared.preferredTrainingTab) { _, tabName in
+                if let tab = TrainingTabMode(rawValue: tabName) {
+                    selectedTab = tab
+                }
             }
             .onDisappear { isVisible = false }
             .onChange(of: savedTodayPlan) { _, _ in refreshID = UUID() }
@@ -311,6 +321,10 @@ public struct TrainingScreen: View {
                     availableKeys: progress.drummerPath.availableKeys,
                     selectedTab: $selectedTab,
                     isCompact: !isLandscape,
+                    onOpenLibrary: {
+                        onHome()
+                        AppNavigation.shared.openLibrary(.none)
+                    },
                     onBack: onHome
                 )
 
@@ -366,6 +380,12 @@ public struct TrainingScreen: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(Color(red: 0.047, green: 0.047, blue: 0.055).ignoresSafeArea())
         .environment(\.colorScheme, .dark)
+        .onChange(of: progress.drummerPath.unlockedKitIds) { _, _ in
+            refreshTrainingData()
+        }
+        .onChange(of: selectedTab) { _, tab in
+            AppNavigation.shared.preferredTrainingTab = tab.rawValue
+        }
     }
 
     private var studioRigSheet: some View {
@@ -1939,7 +1959,10 @@ public struct TrainingScreen: View {
             guard let record = records[lesson.id] else { return false }
             return record.passed || record.mastery || record.memory
         }
-        let openIDs = Set(practiced.filter { store.isUnlocked($0) && progression.isLessonOpen($0) }.map(\.id))
+        let isAvailableForToday: (Lesson) -> Bool = { lesson in
+            store.isUnlocked(lesson) && progress.drummerPath.isKitUnlocked(DrumKitCatalog.requiredKitId(for: lesson))
+        }
+        let openIDs = Set(practiced.filter { isAvailableForToday($0) && progression.isLessonOpen($0) }.map(\.id))
 
         let playableLessons = practiced.filter { lesson in
             openIDs.contains(lesson.id) && (padCount == 16 || EightPadLayout.slots(for: lesson) != nil)
@@ -1995,8 +2018,10 @@ public struct TrainingScreen: View {
             return cmp != .orderedSame ? cmp == .orderedAscending : $0.id < $1.id
         }
 
-        let dailyLessons = progression.dailyLessons(isAvailable: store.isUnlocked)
-        let plan = TodayPlan.decode(savedTodayPlan, today: today) ?? TodayPlan.make(
+        let dailyLessons = progression.dailyLessons(isAvailable: isAvailableForToday)
+        let cachedPlan = TodayPlan.decode(savedTodayPlan, today: today)?
+            .filteringLockedKits(lessons: lessons, pathState: progress.drummerPath)
+        let plan = cachedPlan ?? TodayPlan.make(
             day: today, dueLessonIDs: due.map(\.id), nextLessonID: dailyLessons.next?.id,
             followUpLessonID: dailyLessons.followUp?.id, mixLessonIDs: mix.map(\.id))
         let afterMe = playableLessons.sorted {

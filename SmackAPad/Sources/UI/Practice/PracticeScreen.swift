@@ -367,6 +367,16 @@ struct PracticeScreen: View {
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.horizontal, 14)
+        .padding(.vertical, 10)
+        .background(
+            Color(red: 0.062, green: 0.062, blue: 0.072),
+            in: RoundedRectangle(cornerRadius: 12, style: .continuous)
+        )
+        .overlay {
+            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                .strokeBorder(Color(red: 0.149, green: 0.149, blue: 0.169), lineWidth: 1)
+        }
     }
 
     @ViewBuilder
@@ -532,6 +542,7 @@ struct PracticeScreen: View {
                 title: settings.localized("Play"),
                 appearance: .segmented,
                 selected: session.playbackMode == .play,
+                highlightSelected: false,
                 disabled: session.running || (session.isMix && session.playbackMode != .play)
             ) {
                 session.selectPlaybackMode(.play)
@@ -604,7 +615,7 @@ struct PracticeScreen: View {
                     symbol: "repeat",
                     title: settings.localized("Section loop"),
                     appearance: .segmented,
-                    selected: session.isSectionLoop || showingLoop,
+                    selected: session.isSectionLoop,
                     disabled: session.running || session.lesson.bars <= 1,
                     accessibilityValue: session.isSectionLoop
                         ? "\(session.loopStartBar + 1)–\(session.loopEndBar + 1)"

@@ -535,4 +535,89 @@ final class DrummerPathTests: XCTestCase {
         XCTAssertEqual(keyLineEn?.text, "Earned +1 key! · +40 XP")
         XCTAssertEqual(keyLineEn?.highlighted, true)
     }
+
+    func testTodayDailyLessonsSkipsLockedKitAndUnlocksImmediatelyOnKeySpend() throws {
+        let catalog = LessonStore.shared.libraryCatalog
+        let jazz = try XCTUnwrap(catalog.lessons.first {
+            DrumKitCatalog.requiredKitId(for: $0) == "jazz"
+        })
+
+        let progressURL = tempDir.appendingPathComponent("progress.json")
+        let store = ProgressStore(fileURL: progressURL, autoLoad: false)
+        // Earn keys by passing intro lessons
+        for lessonId in [10001, 10002, 10003, 10004, 10005] {
+            store.recordResult(lessonId: lessonId, passed: true, mastery: true, bpm: 95, score: 0.95, autoSave: false)
+        }
+        XCTAssertGreaterThanOrEqual(store.drummerPath.availableKeys, 1)
+        XCTAssertFalse(store.drummerPath.isKitUnlocked("jazz"))
+
+        let suiteName = "DrummerPathTests.todayKit.\(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: suiteName)!
+        let progression = ProgressionManager(lessonStore: .shared, progressStore: store, userDefaults: defaults)
+        for lesson in catalog.lessons where DrumKitCatalog.requiredKitId(for: lesson) != "jazz" {
+            store.recordResult(
+                lessonId: lesson.id,
+                passed: true,
+                mastery: true,
+                bpm: lesson.targetBpm,
+                score: 0.95,
+                memory: true,
+                autoSave: false
+            )
+        }
+
+        let lockedDaily = progression.dailyLessons { lesson in
+            progression.isLessonOpen(lesson) && store.drummerPath.isKitUnlocked(DrumKitCatalog.requiredKitId(for: lesson))
+        }
+        XCTAssertNil(lockedDaily.next)
+
+        let lockedStages = DrummerPathMapBuilder.buildStages(
+            catalog: catalog,
+            progress: store.records,
+            pathState: store.drummerPath,
+            language: .english
+        )
+        let lockedJazzStage = try XCTUnwrap(lockedStages.first { $0.lockedKit?.kitId == "jazz" })
+        let targetJazzLesson = try XCTUnwrap(lockedJazzStage.nodes.first {
+            DrumKitCatalog.requiredKitId(for: $0.lesson) == "jazz"
+        }?.lesson)
+        XCTAssertEqual(
+            lockedJazzStage.nodes.first(where: { $0.lesson.id == targetJazzLesson.id })?.state,
+            .locked
+        )
+
+        // Cached plan pointing at locked Jazz lesson is discarded when filtering locked kits
+        let stalePlan = try XCTUnwrap(
+            TodayPlan.make(day: "2026-11-26", dueLessonIDs: [], nextLessonID: jazz.id, followUpLessonID: nil, mixLessonIDs: [])
+        )
+        XCTAssertNil(stalePlan.filteringLockedKits(lessons: catalog.lessons, pathState: store.drummerPath))
+
+        // Unlock Jazz with 1 key -> Jazz stage becomes unlocked on Path and Today offers a Jazz lesson next
+        let unlockResult = store.unlockKit("jazz", autoSave: true)
+        if case .unlocked(let kit, _) = unlockResult {
+            XCTAssertEqual(kit.kitId, "jazz")
+        } else {
+            XCTFail("Expected Jazz kit to unlock, got \(unlockResult)")
+        }
+
+        let unlockedStages = DrummerPathMapBuilder.buildStages(
+            catalog: catalog,
+            progress: store.records,
+            pathState: store.drummerPath,
+            language: .english
+        )
+        let unlockedJazzStage = try XCTUnwrap(unlockedStages.first { $0.id == lockedJazzStage.id })
+        XCTAssertNotEqual(unlockedJazzStage.lockedKit?.kitId, "jazz")
+        let firstJazzNodeState = try XCTUnwrap(
+            unlockedJazzStage.nodes.first(where: { $0.lesson.id == targetJazzLesson.id })?.state
+        )
+        XCTAssertEqual(firstJazzNodeState, .active)
+
+        let unlockedDaily = progression.dailyLessons { lesson in
+            progression.isLessonOpen(lesson) && store.drummerPath.isKitUnlocked(DrumKitCatalog.requiredKitId(for: lesson))
+        }
+        let nextUnlocked = try XCTUnwrap(unlockedDaily.next)
+        XCTAssertEqual(DrumKitCatalog.requiredKitId(for: nextUnlocked), "jazz")
+        defaults.removePersistentDomain(forName: suiteName)
+    }
 }

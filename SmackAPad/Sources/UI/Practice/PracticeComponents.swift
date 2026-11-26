@@ -173,16 +173,21 @@ private struct PracticeToolbarButtonStyle: ButtonStyle {
     @Environment(\.isEnabled) private var isEnabled
     let appearance: PracticeToolbarButtonAppearance
     var selected: Bool = false
+    var highlightSelected: Bool = true
     var size: CGSize = CGSize(width: 48, height: 48)
 
     private var cornerRadius: CGFloat {
         Theme.Radius.panel
     }
 
+    private var isVisuallySelected: Bool {
+        selected && highlightSelected
+    }
+
     private var backgroundColor: Color {
         switch appearance {
         case .segmented, .outline:
-            return selected ? Theme.orange : .clear
+            return isVisuallySelected ? Theme.orange : .clear
         case .solidDark:
             return Theme.black
         }
@@ -191,7 +196,7 @@ private struct PracticeToolbarButtonStyle: ButtonStyle {
     private var foregroundColor: Color {
         switch appearance {
         case .segmented, .outline:
-            return selected ? Theme.black : Theme.ink
+            return isVisuallySelected ? Theme.black : Theme.ink
         case .solidDark:
             return Theme.white
         }
@@ -202,7 +207,7 @@ private struct PracticeToolbarButtonStyle: ButtonStyle {
         case .segmented:
             return .clear
         case .outline:
-            return selected ? .clear : Theme.ink.opacity(0.28)
+            return isVisuallySelected ? .clear : Theme.ink.opacity(0.28)
         case .solidDark:
             return Theme.ink.opacity(0.18)
         }
@@ -520,6 +525,7 @@ struct PracticeIconButton: View {
     var width: CGFloat? = nil
     var count: Int? = nil
     var selected = false
+    var highlightSelected = true
     var disabled = false
     var accessibilityValue: String? = nil
     var accessibilityHint: String? = nil
@@ -532,6 +538,7 @@ struct PracticeIconButton: View {
         width: CGFloat? = nil,
         count: Int? = nil,
         selected: Bool = false,
+        highlightSelected: Bool = true,
         disabled: Bool = false,
         accessibilityValue: String? = nil,
         accessibilityHint: String? = nil,
@@ -543,6 +550,7 @@ struct PracticeIconButton: View {
         self.width = width
         self.count = count
         self.selected = selected
+        self.highlightSelected = highlightSelected
         self.disabled = disabled
         self.accessibilityValue = accessibilityValue
         self.accessibilityHint = accessibilityHint
@@ -556,6 +564,7 @@ struct PracticeIconButton: View {
         width: CGFloat? = nil,
         count: Int? = nil,
         selected: Bool = false,
+        highlightSelected: Bool = true,
         disabled: Bool = false,
         accessibilityValue: String? = nil,
         accessibilityHint: String? = nil,
@@ -567,6 +576,7 @@ struct PracticeIconButton: View {
         self.width = width
         self.count = count
         self.selected = selected
+        self.highlightSelected = highlightSelected
         self.disabled = disabled
         self.accessibilityValue = accessibilityValue
         self.accessibilityHint = accessibilityHint
@@ -586,6 +596,7 @@ struct PracticeIconButton: View {
         .buttonStyle(PracticeToolbarButtonStyle(
             appearance: appearance,
             selected: selected,
+            highlightSelected: highlightSelected,
             size: buttonSize
         ))
         .motion(value: effectiveEnabled)
