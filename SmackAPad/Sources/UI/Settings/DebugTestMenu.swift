@@ -5,22 +5,29 @@ import SwiftUI
 @MainActor
 struct DebugDeveloperSection: View {
     var body: some View {
-        Section {
-            NavigationLink {
-                DebugTestMenu()
-            } label: {
-                Text(verbatim: "Test scenarios")
-                    .font(Theme.control)
-                    .frame(minHeight: Theme.Size.touch)
+        VStack(alignment: .leading, spacing: Theme.Space.small) {
+            HardwareSectionHeader(title: "Developer")
+
+            HardwareCard {
+                NavigationLink {
+                    DebugTestMenu()
+                } label: {
+                    HardwareRow(title: "Test scenarios") {
+                        Image(systemName: "chevron.right")
+                            .font(.system(size: 13, weight: .semibold))
+                            .foregroundStyle(Theme.secondary)
+                    }
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
             }
-        } header: {
-            SectionHeader(title: "Developer")
         }
     }
 }
 
 @MainActor
 struct DebugTestMenu: View {
+    @Environment(\.dismiss) private var dismiss
     @AppStorage("smackapad.debug.timingReadout") private var timingReadout = false
     private let store = DebugSnapshotStore.shared
     @State private var names: [String] = []
@@ -35,117 +42,204 @@ struct DebugTestMenu: View {
     }
 
     var body: some View {
-        Form {
-            Section {
-                Toggle(isOn: $timingReadout) {
-                    Text(verbatim: "Timing readout")
-                }
-            } header: {
-                Text(verbatim: "Timing")
+        VStack(spacing: 0) {
+            ScreenTopBar {
+                HardwareBackButton { dismiss() }
+            } center: {
+                Text(verbatim: "Test scenarios")
+                    .font(Theme.screenTitle)
+                    .foregroundStyle(Theme.ink)
+            } trailing: {
+                EmptyView()
             }
+            .padding(.horizontal, Theme.Space.page)
+            .padding(.vertical, Theme.Space.small)
+            .background(Theme.chassis)
 
-            Section {
-                ForEach(DebugScenario.allCases) { scenario in
-                    Button {
-                        pendingChange = .scenario(scenario)
-                    } label: {
-                        Text(verbatim: scenario.rawValue)
-                    }
-                }
-            } header: {
-                Text(verbatim: "Built-in scenarios")
-            } footer: {
-                Text(verbatim: "Built-in scenarios use the purchase access and day shift selected below.")
-            }
+            Rectangle()
+                .fill(Theme.hairline)
+                .frame(height: 1)
 
-            Section {
-                Picker(selection: $overrides.access) {
-                    ForEach(DebugAccessOverride.allCases, id: \.self) { access in
-                        Text(verbatim: access.rawValue.capitalized).tag(access)
-                    }
-                } label: {
-                    Text(verbatim: "Purchase access")
-                }
-                HStack {
-                    Text(verbatim: "Day shift")
-                    Spacer()
-                    Text(verbatim: dayLabel)
-                        .monospacedDigit()
-                }
-                HStack(spacing: Theme.Space.regular) {
-                    dayButton("−1 day", by: -1)
-                    dayButton("+1 day", by: 1)
-                    dayButton("+7 days", by: 7)
-                }
-                Button {
-                    overrides.dayOffset = 0
-                } label: {
-                    Text(verbatim: "Reset to real date")
-                }
-                .disabled(overrides.dayOffset == 0)
-
-                Button {
-                    pendingChange = .overrides
-                } label: {
-                    Text(verbatim: "Apply overrides")
-                }
-                .disabled(overrides == store.overrides)
-            } header: {
-                Text(verbatim: "Overrides")
-            } footer: {
-                Text(verbatim: "Applying overrides to your real profile starts a test copy. Saved snapshots keep their own overrides.")
-            }
-
-            Section {
-                TextField(text: $name, prompt: Text(verbatim: "Snapshot name")) {
-                    Text(verbatim: "Snapshot name")
-                }
-                Button {
-                    run {
-                        try checkSavedProgress()
-                        try store.capture(name: trimmedName)
-                        name = ""
-                        names = try store.list()
-                    }
-                } label: {
-                    Text(verbatim: "Save current state as…")
-                }
-                .disabled(trimmedName.isEmpty)
-
-                ForEach(names, id: \.self) { name in
+            ScrollView {
+                VStack(alignment: .leading, spacing: Theme.Space.page) {
                     VStack(alignment: .leading, spacing: Theme.Space.small) {
-                        Text(verbatim: name)
-                        HStack(spacing: Theme.Space.regular) {
-                            Button {
-                                pendingChange = .snapshot(name)
-                            } label: {
-                                Text(verbatim: "Apply")
-                            }
-                            Button(role: .destructive) {
-                                pendingDeletion = name
-                            } label: {
-                                Text(verbatim: "Delete")
+                        HardwareSectionHeader(title: "Timing")
+                        HardwareCard {
+                            HardwareRow(title: "Timing readout") {
+                                HardwareToggle(isOn: $timingReadout)
                             }
                         }
-                        .buttonStyle(.borderless)
+                    }
+
+                    VStack(alignment: .leading, spacing: Theme.Space.small) {
+                        HardwareSectionHeader(title: "Built-in scenarios")
+                        HardwareCard {
+                            ForEach(Array(DebugScenario.allCases.enumerated()), id: \.element.id) { index, scenario in
+                                if index > 0 {
+                                    HardwareDivider()
+                                }
+                                Button {
+                                    pendingChange = .scenario(scenario)
+                                } label: {
+                                    HardwareRow(title: scenario.rawValue) {
+                                        Image(systemName: "chevron.right")
+                                            .font(.system(size: 13, weight: .semibold))
+                                            .foregroundStyle(Theme.secondary)
+                                    }
+                                    .contentShape(Rectangle())
+                                }
+                                .buttonStyle(.plain)
+                            }
+                        }
+                        Text(verbatim: "Built-in scenarios use the purchase access and day shift selected below.")
+                            .font(Theme.meta)
+                            .foregroundStyle(Theme.secondary)
+                    }
+
+                    VStack(alignment: .leading, spacing: Theme.Space.small) {
+                        HardwareSectionHeader(title: "Overrides")
+                        HardwareCard {
+                            VStack(alignment: .leading, spacing: Theme.Space.small) {
+                                Text(verbatim: "Purchase access")
+                                    .font(Theme.control)
+                                    .foregroundStyle(Theme.ink)
+                                PlexSegmentedPicker(
+                                    title: "Purchase access",
+                                    selection: $overrides.access,
+                                    options: DebugAccessOverride.allCases.map { ($0, $0.rawValue.capitalized) },
+                                    fitsColumn: true,
+                                    size: .compact
+                                )
+                            }
+                            .padding(.horizontal, Theme.Space.regular)
+                            .padding(.vertical, 12)
+
+                            HardwareDivider()
+
+                            HardwareRow(title: "Day shift") {
+                                Text(verbatim: dayLabel)
+                                    .font(Theme.meta.monospacedDigit())
+                                    .foregroundStyle(Theme.secondary)
+                            }
+
+                            HardwareDivider()
+
+                            HStack(spacing: Theme.Space.controlGap) {
+                                dayButton("−1 day", by: -1)
+                                dayButton("+1 day", by: 1)
+                                dayButton("+7 days", by: 7)
+                            }
+                            .padding(.horizontal, Theme.Space.regular)
+                            .padding(.vertical, 12)
+
+                            HardwareDivider()
+
+                            HStack(spacing: Theme.Space.controlGap) {
+                                Button {
+                                    overrides.dayOffset = 0
+                                } label: {
+                                    Text(verbatim: "Reset to real date")
+                                        .font(Theme.control)
+                                        .frame(maxWidth: .infinity, minHeight: Theme.Size.touch)
+                                }
+                                .buttonStyle(PadSecondaryButtonStyle())
+                                .disabled(overrides.dayOffset == 0)
+
+                                Button {
+                                    pendingChange = .overrides
+                                } label: {
+                                    Text(verbatim: "Apply overrides")
+                                        .font(Theme.control)
+                                        .frame(maxWidth: .infinity, minHeight: Theme.Size.touch)
+                                }
+                                .buttonStyle(PadPrimaryButtonStyle())
+                                .disabled(overrides == store.overrides)
+                            }
+                            .padding(.horizontal, Theme.Space.regular)
+                            .padding(.vertical, 12)
+                        }
+                        Text(verbatim: "Applying overrides to your real profile starts a test copy. Saved snapshots keep their own overrides.")
+                            .font(Theme.meta)
+                            .foregroundStyle(Theme.secondary)
+                    }
+
+                    VStack(alignment: .leading, spacing: Theme.Space.small) {
+                        HardwareSectionHeader(title: "Saved snapshots")
+                        HardwareCard {
+                            VStack(alignment: .leading, spacing: Theme.Space.small) {
+                                TextField(text: $name, prompt: Text(verbatim: "Snapshot name")) {
+                                    Text(verbatim: "Snapshot name")
+                                }
+                                .font(Theme.control)
+                                .padding(.horizontal, 12)
+                                .padding(.vertical, 10)
+                                .background(Theme.recessed, in: RoundedRectangle(cornerRadius: Theme.Radius.control))
+                                .overlay {
+                                    RoundedRectangle(cornerRadius: Theme.Radius.control)
+                                        .strokeBorder(Theme.hairline, lineWidth: 1)
+                                }
+
+                                Button {
+                                    run {
+                                        try checkSavedProgress()
+                                        try store.capture(name: trimmedName)
+                                        name = ""
+                                        names = try store.list()
+                                    }
+                                } label: {
+                                    Text(verbatim: "Save current state as…")
+                                        .font(Theme.control)
+                                        .frame(maxWidth: .infinity, minHeight: Theme.Size.touch)
+                                }
+                                .buttonStyle(PadSecondaryButtonStyle())
+                                .disabled(trimmedName.isEmpty)
+                            }
+                            .padding(.horizontal, Theme.Space.regular)
+                            .padding(.vertical, 12)
+
+                            ForEach(names, id: \.self) { snapshotName in
+                                HardwareDivider()
+                                HardwareRow(title: snapshotName) {
+                                    HStack(spacing: Theme.Space.small) {
+                                        Button {
+                                            pendingChange = .snapshot(snapshotName)
+                                        } label: {
+                                            Text(verbatim: "Apply")
+                                                .font(Theme.meta)
+                                                .frame(minHeight: 36)
+                                        }
+                                        .buttonStyle(PadSecondaryButtonStyle())
+
+                                        HardwareIconButton(systemName: "trash", accessibilityLabel: "Delete", compact: true) {
+                                            pendingDeletion = snapshotName
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    HardwareCard(padding: Theme.Space.regular) {
+                        Button {
+                            pendingChange = .restore
+                        } label: {
+                            Text(verbatim: "Restore my real profile")
+                                .font(Theme.control)
+                                .frame(maxWidth: .infinity, minHeight: Theme.Size.touch)
+                        }
+                        .buttonStyle(PadSecondaryButtonStyle())
+                        .disabled(store.activeScenario == nil)
                     }
                 }
-            } header: {
-                Text(verbatim: "Saved snapshots")
-            }
-
-            Section {
-                Button {
-                    pendingChange = .restore
-                } label: {
-                    Text(verbatim: "Restore my real profile")
-                }
-                .disabled(store.activeScenario == nil)
+                .frame(maxWidth: 700, alignment: .leading)
+                .padding(Theme.Space.page)
+                .frame(maxWidth: .infinity)
             }
         }
-        .appFormStyle()
-        .navigationTitle(Text(verbatim: "Test scenarios"))
-        .navigationBarTitleDisplayMode(.inline)
+        .background(Theme.chassis.ignoresSafeArea())
+        .foregroundStyle(Theme.ink)
+        .navigationBarBackButtonHidden(true)
+        .toolbar(.hidden, for: .navigationBar)
         .onAppear { run { names = try store.list() } }
         .alert(Text(verbatim: "The app will close. Open it again."),
                isPresented: isPresenting($pendingChange), presenting: pendingChange) { change in
@@ -190,8 +284,10 @@ struct DebugTestMenu: View {
             overrides.dayOffset = min(DebugOverrides.dayRange.upperBound, max(DebugOverrides.dayRange.lowerBound, next))
         } label: {
             Text(verbatim: title)
+                .font(Theme.meta.monospacedDigit())
+                .frame(maxWidth: .infinity, minHeight: Theme.Size.touch)
         }
-        .buttonStyle(.borderless)
+        .buttonStyle(PadSecondaryButtonStyle())
         .disabled(amount < 0 ? overrides.dayOffset == DebugOverrides.dayRange.lowerBound
                             : overrides.dayOffset == DebugOverrides.dayRange.upperBound)
     }

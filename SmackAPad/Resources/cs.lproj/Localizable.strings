@@ -8,7 +8,7 @@
 "Star %lld earned" = "Získána %lld. hvězda";
 "Input" = "Vstup";
 "All connected controllers" = "Všechny připojené kontroléry";
-"Use on-screen pads in portrait (16-pad profile)." = "Na výšku můžeš hrát na dotykové pady (profil se 16 pady).";
+"Without a MIDI controller, you can play using the on-screen pads or a hardware keyboard." = "Bez MIDI ovladače můžeš hrát na dotykové pady na obrazovce nebo na hardwarové klávesnici.";
 "16 pads, notes 36–51" = "16 padů, noty 36–51";
 "Allow Bluetooth access in iPad Settings to pair a controller." = "Pro spárování kontroléru povol přístup k Bluetooth v nastavení iPadu.";
 "Bluetooth access is restricted on this iPad." = "Přístup k Bluetooth je na tomto iPadu omezený.";
@@ -186,7 +186,7 @@
 "System" = "Systém";
 "Choose light, dark or follow your system appearance." = "Zvol světlý či tmavý vzhled nebo vzhled podle systému.";
 "MIDI and controller" = "MIDI a ovladač";
-"All 8 kits are bundled with the app for practice and playback." = "Všech 8 sad je součástí aplikace. Používají se při cvičení i přehrávání.";
+"Automatic uses the lesson's sound kit or your active kit from Studio Rig." = "Volba Automaticky používá sadu podle lekce nebo aktivní sadu ze Studio Rigu.";
 "Tempo auto-step (BPM)" = "Zrychlení tempa (BPM)";
 "Tempo automatically increases by this step after each clean pass until target tempo." = "Po každém čistém průchodu se tempo automaticky zvýší o zvolený počet BPM až do cílového tempa.";
 "Small pad layout" = "Malá mapa padů";

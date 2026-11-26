@@ -32,8 +32,12 @@ public struct ControllerSetupView: View {
         self.isEmbeddedInSettings = isEmbeddedInSettings
     }
 
+    private var isConnected: Bool {
+        midi.connectedControllerName != nil
+    }
+
     private var statusTitle: String {
-        midi.connectedControllerName ?? settings.localized("Connect a controller")
+        midi.connectedControllerName ?? settings.localized("Not connected")
     }
 
     private var savedLatencyText: String {
@@ -57,119 +61,183 @@ public struct ControllerSetupView: View {
 
     public var body: some View {
         if isEmbeddedInSettings {
-            controllerForm
+            controllerScrollView
+                .background(Theme.chassis.ignoresSafeArea())
+                .foregroundStyle(Theme.ink)
         } else {
-            controllerForm
-                .navigationTitle(settings.localized("Controller"))
-                .navigationBarTitleDisplayMode(.inline)
-                .navigationBarBackButtonHidden(true)
-                .toolbar {
-                    ToolbarItem(placement: .principal) { ScreenHeader(title: settings.localized("Controller")) }
-                    PadToolbarItem(placement: .topBarLeading) {
-                        BackButton {
-                            if let onDismiss { onDismiss() } else { dismiss() }
-                        }
+            VStack(spacing: 0) {
+                ScreenTopBar {
+                    HardwareBackButton {
+                        if let onDismiss { onDismiss() } else { dismiss() }
                     }
+                } center: {
+                    Text(settings.localized("Controller"))
+                        .font(Theme.screenTitle)
+                        .foregroundStyle(Theme.ink)
+                } trailing: {
+                    EmptyView()
                 }
+                .padding(.horizontal, Theme.Space.page)
+                .padding(.vertical, Theme.Space.small)
+                .background(Theme.chassis)
+
+                Rectangle()
+                    .fill(Theme.hairline)
+                    .frame(height: 1)
+
+                controllerScrollView
+            }
+            .background(Theme.chassis.ignoresSafeArea())
+            .foregroundStyle(Theme.ink)
+            .navigationBarBackButtonHidden(true)
+            .toolbar(.hidden, for: .navigationBar)
         }
     }
 
     @ViewBuilder
-    private var controllerForm: some View {
+    private var controllerScrollView: some View {
         @Bindable var settings = settings
         @Bindable var midi = midi
 
-        Form {
-            Group {
+        ScrollView {
+            VStack(alignment: .leading, spacing: Theme.Space.page) {
                 // MARK: 1. Connection
-                Section {
-                    HStack {
-                        Text(statusTitle)
-                            .font(Theme.control)
-                            .foregroundStyle(midi.connectedControllerName != nil ? Theme.ink : Theme.secondary)
-                        Spacer()
-                    }
-                    .frame(minHeight: Theme.Size.touch)
+                VStack(alignment: .leading, spacing: Theme.Space.small) {
+                    HardwareSectionHeader(title: settings.localized("Controller"))
 
-                    Picker(settings.localized("Input"), selection: $midi.selectedSourceID) {
-                        Text(settings.localized("All connected controllers")).tag(String?.none)
-                        ForEach(midi.sources) { source in
-                            Text(source.name).tag(Optional(source.id))
+                    HardwareCard {
+                        HStack(spacing: Theme.Space.controlGap) {
+                            HStack(spacing: Theme.Space.small) {
+                                Circle()
+                                    .fill(Theme.cavity)
+                                    .frame(width: 14, height: 14)
+                                    .overlay {
+                                        Circle()
+                                            .fill(isConnected ? Theme.orange : Theme.ledOff)
+                                            .frame(width: 8, height: 8)
+                                            .shadow(color: isConnected ? Theme.accentGlow : .clear, radius: isConnected ? 5 : 0)
+                                    }
+
+                                Text(statusTitle)
+                                    .font(Theme.control)
+                                    .foregroundStyle(isConnected ? Theme.ink : Theme.secondary)
+                                    .lineLimit(1)
+                            }
+                            .frame(maxWidth: .infinity, alignment: .leading)
+
+                            Button {
+                                switch CBManager.authorization {
+                                case .denied:
+                                    bluetoothAccessMessage = "Allow Bluetooth access in iPad Settings to pair a controller."
+                                case .restricted:
+                                    bluetoothAccessMessage = "Bluetooth access is restricted on this iPad."
+                                default:
+                                    BluetoothMIDIPresenter.present()
+                                }
+                            } label: {
+                                Text(settings.localized("Connect Bluetooth MIDI"))
+                                    .font(Theme.control)
+                                    .frame(minHeight: Theme.Size.touch)
+                            }
+                            .buttonStyle(PadSecondaryButtonStyle())
+                        }
+                        .padding(.horizontal, Theme.Space.regular)
+                        .padding(.vertical, 12)
+
+                        if !midi.sources.isEmpty {
+                            HardwareDivider()
+                            VStack(alignment: .leading, spacing: Theme.Space.small) {
+                                Text(settings.localized("Input"))
+                                    .font(Theme.control)
+                                    .foregroundStyle(Theme.ink)
+                                let sourceOptions: [(String, String)] = [("", settings.localized("All connected controllers"))]
+                                    + midi.sources.map { ($0.id, $0.name) }
+                                PlexSegmentedPicker(
+                                    title: settings.localized("Input"),
+                                    selection: Binding(
+                                        get: { midi.selectedSourceID ?? "" },
+                                        set: { midi.selectedSourceID = $0.isEmpty ? nil : $0 }
+                                    ),
+                                    options: sourceOptions,
+                                    size: .compact
+                                )
+                            }
+                            .padding(.horizontal, Theme.Space.regular)
+                            .padding(.vertical, 12)
+                        }
+
+                        if let error = midi.errorMessage {
+                            HardwareDivider()
+                            VStack(alignment: .leading, spacing: Theme.Space.small) {
+                                Text(error)
+                                    .font(Theme.meta)
+                                    .foregroundStyle(Theme.destructive)
+                                Button {
+                                    midi.stop()
+                                    midi.start()
+                                } label: {
+                                    Text(settings.localized("Reconnect MIDI"))
+                                        .font(Theme.control)
+                                        .frame(minHeight: Theme.Size.touch)
+                                }
+                                .buttonStyle(PadSecondaryButtonStyle())
+                            }
+                            .padding(.horizontal, Theme.Space.regular)
+                            .padding(.vertical, 12)
                         }
                     }
 
                     if midi.sources.isEmpty {
-                        Text(settings.localized("Use on-screen pads in portrait (16-pad profile)."))
+                        Text(settings.localized("Without a MIDI controller, you can play using the on-screen pads or a hardware keyboard."))
                             .font(Theme.meta)
                             .foregroundStyle(Theme.secondary)
+                            .fixedSize(horizontal: false, vertical: true)
                     }
-
-                    Button {
-                        switch CBManager.authorization {
-                        case .denied:
-                            bluetoothAccessMessage = "Allow Bluetooth access in iPad Settings to pair a controller."
-                        case .restricted:
-                            bluetoothAccessMessage = "Bluetooth access is restricted on this iPad."
-                        default:
-                            BluetoothMIDIPresenter.present()
-                        }
-                    } label: {
-                        Text(settings.localized("Connect Bluetooth MIDI"))
-                            .font(Theme.control)
-                            .frame(minHeight: Theme.Size.touch)
-                    }
-                    .buttonStyle(PadSecondaryButtonStyle())
-
-                    if let error = midi.errorMessage {
-                        Text(error)
-                            .font(Theme.meta)
-                            .foregroundStyle(Theme.destructive)
-                        Button {
-                            midi.stop()
-                            midi.start()
-                        } label: {
-                            Text(settings.localized("Reconnect MIDI"))
-                        }
-                        .buttonStyle(PadSecondaryButtonStyle())
-                    }
-                } header: {
-                    SectionHeader(title: settings.localized("Controller"))
                 }
 
                 // MARK: 2. Calibration
-                Section {
-                    NavigationLink {
-                        CalibrationView(settings: settings, midi: midi)
-                    } label: {
-                        HStack {
-                            Text(settings.localized("Timing calibration"))
-                                .font(Theme.control)
-                            Spacer()
-                            Text(savedLatencyText)
-                                .font(Theme.meta)
-                                .foregroundStyle(Theme.secondary)
+                VStack(alignment: .leading, spacing: Theme.Space.small) {
+                    HardwareSectionHeader(title: settings.localized("Calibration"))
+
+                    HardwareCard {
+                        NavigationLink {
+                            CalibrationView(settings: settings, midi: midi)
+                        } label: {
+                            HardwareRow(title: settings.localized("Timing calibration")) {
+                                HStack(spacing: Theme.Space.small) {
+                                    Text(savedLatencyText)
+                                        .font(Theme.meta.monospacedDigit())
+                                        .foregroundStyle(Theme.secondary)
+                                    Image(systemName: "chevron.right")
+                                        .font(.system(size: 13, weight: .semibold))
+                                        .foregroundStyle(Theme.secondary)
+                                }
+                            }
+                            .contentShape(Rectangle())
                         }
-                        .frame(minHeight: Theme.Size.touch)
+                        .buttonStyle(.plain)
                     }
-                } header: {
-                    SectionHeader(title: settings.localized("Calibration"))
                 }
 
                 // MARK: 3. Controller Profiles & MIDI Learn Trigger
-                Section {
-                    ForEach(settings.allProfiles()) { profile in
-                        ProfileRow(
-                            profile: profile,
-                            isActive: profile.profileName == settings.activeProfileName,
-                            isCustom: settings.customProfiles.contains(where: { $0.profileName == profile.profileName }),
-                            onSelect: {
-                                settings.activeProfileName = profile.profileName
-                            },
-                            onDelete: {
-                                profileToDelete = profile
-                                showingDeleteAlert = true
-                            }
-                        )
+                VStack(alignment: .leading, spacing: Theme.Space.small) {
+                    HardwareSectionHeader(title: settings.localized("Controller profiles"))
+
+                    VStack(spacing: Theme.Space.small) {
+                        ForEach(settings.allProfiles()) { profile in
+                            ProfileRow(
+                                profile: profile,
+                                isActive: profile.profileName == settings.activeProfileName,
+                                isCustom: settings.customProfiles.contains(where: { $0.profileName == profile.profileName }),
+                                onSelect: {
+                                    settings.activeProfileName = profile.profileName
+                                },
+                                onDelete: {
+                                    profileToDelete = profile
+                                    showingDeleteAlert = true
+                                }
+                            )
+                        }
                     }
 
                     Button {
@@ -179,66 +247,73 @@ public struct ControllerSetupView: View {
                             Text(settings.localized("Learn a new profile (MIDI learn)"))
                                 .font(Theme.control)
                             Spacer()
-                            Text("+")
-                                .font(Theme.control)
+                            Image(systemName: "plus")
+                                .font(.system(size: 15, weight: .semibold))
                         }
-                        .frame(minHeight: Theme.Size.touch)
-                        .foregroundStyle(Theme.orange)
+                        .frame(maxWidth: .infinity, minHeight: Theme.Size.touch)
                     }
-                } header: {
-                    SectionHeader(title: settings.localized("Controller profiles"))
-                } footer: {
+                    .buttonStyle(PadSecondaryButtonStyle())
+
                     Text(settings.localized("The 16-pad preset maps notes 36–51 from the bottom-left pad. Use MIDI learn for other banks."))
                         .font(Theme.meta)
                         .foregroundStyle(Theme.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
                 }
 
                 // MARK: 4. Controller Buttons & Tempo Knob
                 ControllerMappingSections()
 
                 // MARK: 5. Input Monitor
-                Section {
-                    ControllerLivePadGrid()
-                    if let note = midi.lastNote, midi.activeProfile.target(forMidiNote: note.note) == nil {
-                        Text(settings.localized("Note %lld is not mapped", note.note))
-                            .font(Theme.meta)
-                    }
-                    LabeledContent(settings.localized("Received MIDI hits"), value: midi.noteOnCount.formatted())
-                        .font(Theme.meta)
-                    LabeledContent(settings.localized("Timestamp fallbacks"), value: midi.fallbackCount.formatted())
-                        .font(Theme.meta)
+                VStack(alignment: .leading, spacing: Theme.Space.small) {
+                    HardwareSectionHeader(title: settings.localized("Input monitor"))
 
-                    if let message = midi.lastControlMessage, message.signal.kind == .cc {
-                        LabeledContent(settings.localized("Message"), value: settings.localized("Control change"))
-                            .font(Theme.meta)
-                        LabeledContent(settings.localized("Channel"), value: message.signal.channel.formatted())
-                            .font(Theme.meta)
-                        LabeledContent(settings.localized("CC number"), value: message.signal.number.formatted())
-                            .font(Theme.meta)
-                        LabeledContent(settings.localized("Value"), value: message.value.formatted())
-                            .font(Theme.meta)
-                    } else if let note = midi.lastNote {
-                        LabeledContent(settings.localized("MIDI note"), value: note.note.formatted())
-                            .font(Theme.meta)
-                        LabeledContent(settings.localized("Channel"), value: note.channel.formatted())
-                            .font(Theme.meta)
-                        LabeledContent(settings.localized("Velocity"), value: note.velocity.formatted())
-                            .font(Theme.meta)
-                        LabeledContent(settings.localized("Message"), value: note.isNoteOn ? settings.localized("Note on") : settings.localized("Note off"))
-                            .font(Theme.meta)
-                    } else {
-                        Text(settings.localized("Play a pad to check the input."))
-                            .font(Theme.meta)
-                            .foregroundStyle(Theme.secondary)
-                    }
+                    HardwareCard {
+                        VStack(alignment: .leading, spacing: Theme.Space.small) {
+                            ControllerLivePadGrid()
+                            if let note = midi.lastNote, midi.activeProfile.target(forMidiNote: note.note) == nil {
+                                Text(settings.localized("Note %lld is not mapped", note.note))
+                                    .font(Theme.meta)
+                                    .foregroundStyle(Theme.orange)
+                            }
+                        }
+                        .padding(Theme.Space.regular)
 
-                } header: {
-                    SectionHeader(title: settings.localized("Input monitor"))
+                        HardwareDivider()
+                        monitorRow(title: settings.localized("Received MIDI hits"), value: midi.noteOnCount.formatted())
+                        HardwareDivider()
+                        monitorRow(title: settings.localized("Timestamp fallbacks"), value: midi.fallbackCount.formatted())
+
+                        if let message = midi.lastControlMessage, message.signal.kind == .cc {
+                            HardwareDivider()
+                            monitorRow(title: settings.localized("Message"), value: settings.localized("Control change"))
+                            HardwareDivider()
+                            monitorRow(title: settings.localized("Channel"), value: message.signal.channel.formatted())
+                            HardwareDivider()
+                            monitorRow(title: settings.localized("CC number"), value: message.signal.number.formatted())
+                            HardwareDivider()
+                            monitorRow(title: settings.localized("Value"), value: message.value.formatted())
+                        } else if let note = midi.lastNote {
+                            HardwareDivider()
+                            monitorRow(title: settings.localized("MIDI note"), value: note.note.formatted())
+                            HardwareDivider()
+                            monitorRow(title: settings.localized("Channel"), value: note.channel.formatted())
+                            HardwareDivider()
+                            monitorRow(title: settings.localized("Velocity"), value: note.velocity.formatted())
+                            HardwareDivider()
+                            monitorRow(title: settings.localized("Message"), value: note.isNoteOn ? settings.localized("Note on") : settings.localized("Note off"))
+                        } else {
+                            HardwareDivider()
+                            HardwareRow(title: settings.localized("Play a pad to check the input."))
+                                .foregroundStyle(Theme.secondary)
+                        }
+                    }
                 }
             }
-            .appFormRowStyle()
+            .frame(maxWidth: 700, alignment: .leading)
+            .padding(Theme.Space.page)
+            .frame(maxWidth: .infinity)
         }
-        .appFormStyle()
+        .scrollBounceBehavior(.basedOnSize)
         .sheet(isPresented: $showingMIDILearn) {
             MIDILearnView()
                 .environment(settings)
@@ -288,6 +363,14 @@ public struct ControllerSetupView: View {
         .onDisappear {
             midi.isControllerMonitorActive = false
             midi.cancelControlLearning()
+        }
+    }
+
+    private func monitorRow(title: String, value: String) -> some View {
+        HardwareRow(title: title) {
+            Text(value)
+                .font(Theme.meta.monospacedDigit())
+                .foregroundStyle(Theme.secondary)
         }
     }
 }
@@ -353,34 +436,67 @@ private struct ProfileRow: View {
     let onDelete: () -> Void
 
     var body: some View {
-        ListRow(symbol: isActive ? "checkmark.circle.fill" : "circle",
-                stateTitle: settings.localized(isActive ? "Active" : "Preset"),
-                title: settings.displayName(for: profile), titleFont: Theme.control, action: onSelect) {
-            Text("\(settings.localized(profile.padCount == 8 ? "8 pads" : "16 pads")) · \(settings.localized(isCustom ? "Custom" : "Preset"))")
-        } trailing: {
-            if isActive {
-                Text(Theme.sentenceCase(settings.localized("Active"))).font(Theme.meta).foregroundStyle(Theme.secondary)
-            }
-            if isCustom {
-                Button(role: .destructive, action: onDelete) {
-                    Image(systemName: "trash").font(Theme.control)
-                        .frame(width: Theme.Size.touch, height: Theme.Size.touch)
+        let shape = RoundedRectangle(cornerRadius: Theme.Radius.panel)
+        HStack(spacing: Theme.Space.controlGap) {
+            Button(action: onSelect) {
+                HStack(spacing: Theme.Space.controlGap) {
+                    Circle()
+                        .fill(Theme.cavity)
+                        .frame(width: 14, height: 14)
+                        .overlay {
+                            Circle()
+                                .fill(isActive ? Theme.orange : Theme.ledOff)
+                                .frame(width: 8, height: 8)
+                                .shadow(color: isActive ? Theme.accentGlow : .clear, radius: isActive ? 5 : 0)
+                        }
+
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(settings.displayName(for: profile))
+                            .font(Theme.control)
+                            .foregroundStyle(Theme.ink)
+                            .fixedSize(horizontal: false, vertical: true)
+                        Text("\(settings.localized(profile.padCount == 8 ? "8 pads" : "16 pads")) · \(settings.localized(isCustom ? "Custom" : "Preset"))")
+                            .font(Theme.caption)
+                            .foregroundStyle(Theme.secondary)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+
+                    if isActive {
+                        Text(Theme.sentenceCase(settings.localized("Active")))
+                            .font(Theme.strong(13))
+                            .foregroundStyle(Theme.orange)
+                    }
                 }
-                .buttonStyle(PadIconButtonStyle(destructive: true))
-                .accessibilityLabel(settings.localized("Delete profile"))
+                .padding(.horizontal, Theme.Space.regular)
+                .padding(.vertical, 12)
+                .frame(minHeight: Theme.Size.listRow)
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel(settings.displayName(for: profile))
+            .accessibilityAddTraits(isActive ? .isSelected : [])
+
+            if isCustom {
+                HardwareIconButton(
+                    systemName: "trash",
+                    accessibilityLabel: settings.localized("Delete profile"),
+                    compact: true,
+                    action: onDelete
+                )
+                .padding(.trailing, Theme.Space.small)
             }
         }
-        .swipeActions(edge: .trailing, allowsFullSwipe: false) {
-            if isCustom {
-                Button(role: .destructive, action: onDelete) {
-                    Label(settings.localized("Delete"), systemImage: "trash")
-                }
-            }
+        .background(isActive ? Theme.surfaceElevated : Theme.surface, in: shape)
+        .clipShape(shape)
+        .overlay {
+            shape.strokeBorder(isActive ? Theme.orange : Theme.hairline, lineWidth: isActive ? 1.5 : 1)
+                .allowsHitTesting(false)
         }
     }
 }
 
-/// Shared Form sections keep controller assignments in the existing Settings style.
+/// Shared hardware sections keep controller assignments in the hardware style.
 @MainActor
 struct ControllerMappingSections: View {
     @Environment(SettingsManager.self) private var settings
@@ -389,44 +505,114 @@ struct ControllerMappingSections: View {
 
     var body: some View {
         @Bindable var settings = settings
-        Group {
-            Section {
-                actionRow(.startStop)
-                actionRow(.peek)
-                DisclosureGroup(settings.localized("Advanced"), isExpanded: $advanced) {
-                    ForEach(MIDIPracticeAction.allCases.filter { $0 != .startStop && $0 != .peek }, id: \.self) { action in
-                        actionRow(action)
+        VStack(alignment: .leading, spacing: Theme.Space.page) {
+            VStack(alignment: .leading, spacing: Theme.Space.small) {
+                HardwareSectionHeader(title: settings.localized("Controller buttons"))
+
+                HardwareCard {
+                    actionRow(.startStop)
+                    HardwareDivider()
+                    actionRow(.peek)
+                    HardwareDivider()
+
+                    Button {
+                        withAnimation(Theme.Motion.fast) {
+                            advanced.toggle()
+                        }
+                    } label: {
+                        HardwareRow(title: settings.localized("Advanced")) {
+                            Image(systemName: advanced ? "chevron.up" : "chevron.down")
+                                .font(.system(size: 13, weight: .semibold))
+                                .foregroundStyle(Theme.secondary)
+                        }
+                        .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityValue(settings.localized(advanced ? "Expanded" : "Collapsed"))
+
+                    if advanced {
+                        ForEach(MIDIPracticeAction.allCases.filter { $0 != .startStop && $0 != .peek }, id: \.self) { action in
+                            HardwareDivider()
+                            actionRow(action)
+                        }
                     }
                 }
-            } header: {
-                SectionHeader(title: settings.localized("Controller buttons"))
-            } footer: {
+
                 Text(settings.localized("Controller actions work only with an open practice lesson. Tempo changes only while stopped."))
-                    .font(Theme.meta).foregroundStyle(Theme.secondary)
+                    .font(Theme.meta)
+                    .foregroundStyle(Theme.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
             }
-            Section {
-                mappingRow(title: "Tempo knob", signal: settings.midiControls.knob.signal, target: .knob)
-                Picker(settings.localized("Knob mode"), selection: $settings.midiControls.knob.mode) {
-                    ForEach(MIDIKnobMode.allCases, id: \.self) { mode in
-                        Text(settings.localized(mode.title)).tag(mode)
+
+            VStack(alignment: .leading, spacing: Theme.Space.small) {
+                HardwareSectionHeader(title: settings.localized("Tempo knob"))
+
+                HardwareCard {
+                    mappingRow(title: "Tempo knob", signal: settings.midiControls.knob.signal, target: .knob)
+
+                    HardwareDivider()
+
+                    VStack(alignment: .leading, spacing: Theme.Space.small) {
+                        Text(settings.localized("Knob mode"))
+                            .font(Theme.control)
+                            .foregroundStyle(Theme.ink)
+                        PlexSegmentedPicker(
+                            title: settings.localized("Knob mode"),
+                            selection: $settings.midiControls.knob.mode,
+                            options: MIDIKnobMode.allCases.map { ($0, settings.localized($0.title)) },
+                            fitsColumn: true,
+                            size: .compact
+                        )
+                    }
+                    .padding(.horizontal, Theme.Space.regular)
+                    .padding(.vertical, 12)
+
+                    if settings.midiControls.knob.mode == .absolute {
+                        HardwareDivider()
+                        bpmStepperRow(
+                            title: settings.localized("Minimum BPM: %lld", settings.midiControls.knob.minimumBpm),
+                            value: $settings.midiControls.knob.minimumBpm,
+                            range: PracticeTempo.minimumBpm...settings.midiControls.knob.maximumBpm
+                        )
+                        HardwareDivider()
+                        bpmStepperRow(
+                            title: settings.localized("Maximum BPM: %lld", settings.midiControls.knob.maximumBpm),
+                            value: $settings.midiControls.knob.maximumBpm,
+                            range: settings.midiControls.knob.minimumBpm...PracticeTempo.maximumBpm
+                        )
+                        HardwareDivider()
+                        HardwareRow(title: settings.localized("Pickup")) {
+                            HardwareToggle(isOn: $settings.midiControls.knob.pickup)
+                        }
+                    }
+
+                    HardwareDivider()
+
+                    HardwareRow(title: settings.localized("Reverse direction")) {
+                        HardwareToggle(isOn: $settings.midiControls.knob.reversed)
                     }
                 }
-                .pickerStyle(.menu)
-                if settings.midiControls.knob.mode == .absolute {
-                    Stepper(settings.localized("Minimum BPM: %lld", settings.midiControls.knob.minimumBpm),
-                            value: $settings.midiControls.knob.minimumBpm,
-                            in: PracticeTempo.minimumBpm...settings.midiControls.knob.maximumBpm)
-                    Stepper(settings.localized("Maximum BPM: %lld", settings.midiControls.knob.maximumBpm),
-                            value: $settings.midiControls.knob.maximumBpm,
-                            in: settings.midiControls.knob.minimumBpm...PracticeTempo.maximumBpm)
-                    Toggle(settings.localized("Pickup"), isOn: $settings.midiControls.knob.pickup)
-                }
-                Toggle(settings.localized("Reverse direction"), isOn: $settings.midiControls.knob.reversed)
-            } header: {
-                SectionHeader(title: settings.localized("Tempo knob"))
-            } footer: {
+
                 Text(settings.localized("Pickup waits until the knob reaches the current tempo. Relative steps change tempo by 1 BPM. Tempo changes only while stopped."))
-                    .font(Theme.meta).foregroundStyle(Theme.secondary)
+                    .font(Theme.meta)
+                    .foregroundStyle(Theme.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        }
+    }
+
+    private func bpmStepperRow(title: String, value: Binding<Int>, range: ClosedRange<Int>) -> some View {
+        HardwareRow(title: title) {
+            HStack(spacing: Theme.Space.small) {
+                HardwareIconButton(systemName: "minus", accessibilityLabel: "−", compact: true) {
+                    value.wrappedValue = max(range.lowerBound, value.wrappedValue - 1)
+                }
+                .disabled(value.wrappedValue <= range.lowerBound)
+
+                HardwareIconButton(systemName: "plus", accessibilityLabel: "+", compact: true) {
+                    value.wrappedValue = min(range.upperBound, value.wrappedValue + 1)
+                }
+                .disabled(value.wrappedValue >= range.upperBound)
             }
         }
     }
@@ -434,25 +620,40 @@ struct ControllerMappingSections: View {
     @ViewBuilder
     private func actionRow(_ action: MIDIPracticeAction) -> some View {
         let mapping = settings.midiControls.buttons[action.rawValue]
-        mappingRow(title: action.title, signal: mapping?.signal, target: .action(action))
-        if mapping?.signal.kind == .cc {
-            Picker(settings.localized("CC button behaviour"), selection: Binding(
-                get: { settings.midiControls.buttons[action.rawValue]?.behavior ?? .rising64 },
-                set: { settings.midiControls.buttons[action.rawValue]?.behavior = $0 }
-            )) {
-                ForEach(MIDICCButtonBehavior.allCases, id: \.self) { behavior in
-                    Text(settings.localized(behavior.title)).tag(behavior)
+        VStack(alignment: .leading, spacing: 0) {
+            mappingRow(title: action.title, signal: mapping?.signal, target: .action(action))
+            if mapping?.signal.kind == .cc {
+                HardwareDivider()
+                VStack(alignment: .leading, spacing: Theme.Space.small) {
+                    Text(settings.localized("CC button behaviour"))
+                        .font(Theme.control)
+                        .foregroundStyle(Theme.ink)
+                    PlexSegmentedPicker(
+                        title: settings.localized("CC button behaviour"),
+                        selection: Binding(
+                            get: { settings.midiControls.buttons[action.rawValue]?.behavior ?? .rising64 },
+                            set: { settings.midiControls.buttons[action.rawValue]?.behavior = $0 }
+                        ),
+                        options: MIDICCButtonBehavior.allCases.map { ($0, settings.localized($0.title)) },
+                        fitsColumn: true,
+                        size: .compact
+                    )
                 }
+                .padding(.horizontal, Theme.Space.regular)
+                .padding(.vertical, 12)
             }
-            .pickerStyle(.menu)
         }
     }
 
     @ViewBuilder
     private func mappingRow(title: String, signal: MIDIControlSignal?, target: MIDIControlLearnTarget) -> some View {
         let description = VStack(alignment: .leading, spacing: Theme.Space.tight) {
-            Text(settings.localized(title)).font(Theme.control)
-            Text(mappingText(signal)).font(Theme.meta).foregroundStyle(Theme.secondary)
+            Text(settings.localized(title))
+                .font(Theme.control)
+                .foregroundStyle(Theme.ink)
+            Text(mappingText(signal))
+                .font(Theme.meta.monospacedDigit())
+                .foregroundStyle(Theme.secondary)
         }
         let actions = HStack(spacing: Theme.Space.controlGap) {
             Button { midi.startControlLearning(target) } label: {
@@ -486,7 +687,8 @@ struct ControllerMappingSections: View {
             if midi.controlLearningTarget == target {
                 Text(settings.localized(midi.controlLearningNotice ?? (target == .knob
                     ? "Turn the tempo knob slightly." : "Press the controller button once.")))
-                    .font(Theme.meta).foregroundStyle(Theme.secondary)
+                    .font(Theme.meta)
+                    .foregroundStyle(Theme.secondary)
                 Button { midi.cancelControlLearning() } label: {
                     Text(settings.localized("Cancel"))
                         .frame(minHeight: Theme.Size.touch)
@@ -494,6 +696,8 @@ struct ControllerMappingSections: View {
                 .buttonStyle(PadSecondaryButtonStyle())
             }
         }
+        .padding(.horizontal, Theme.Space.regular)
+        .padding(.vertical, 12)
     }
 
     private func mappingText(_ signal: MIDIControlSignal?) -> String {

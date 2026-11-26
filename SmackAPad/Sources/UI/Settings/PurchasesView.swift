@@ -74,42 +74,70 @@ struct PurchasesSection: View {
     @State private var showingPurchase = false
 
     var body: some View {
-        Section {
-            LabeledContent(settings.localized("Access")) {
-                SettingsValue(settings.localized(store.hasFullAccess ? "Full" : "Free"))
-            }
-            if !store.hasFullAccess {
-                Button { showingPurchase = true } label: {
-                    Text(settings.localized("Full unlock"))
-                        .font(Theme.control)
-                        .frame(minHeight: Theme.Size.touch)
+        VStack(alignment: .leading, spacing: Theme.Space.small) {
+            HardwareSectionHeader(title: settings.localized("Purchases"))
+
+            HardwareCard {
+                HardwareRow(title: settings.localized("Access")) {
+                    SettingsValue(settings.localized(store.hasFullAccess ? "Full" : "Free"))
                 }
-                .buttonStyle(PadSecondaryButtonStyle())
-            }
-            ForEach(store.packIDs, id: \.self) { id in
-                let productID = StoreManager.productPrefix + ".pack." + id
-                if store.ownedProductIDs.contains(productID) || store.ownedProductIDs.contains(StoreManager.bundleID) {
-                    LabeledContent(store.products[productID]?.displayName ?? id) {
-                        SettingsValue(settings.localized("Owned"))
+
+                if !store.hasFullAccess {
+                    HardwareDivider()
+                    HStack {
+                        Button { showingPurchase = true } label: {
+                            Text(settings.localized("Full unlock"))
+                                .font(Theme.control)
+                                .frame(maxWidth: .infinity, minHeight: Theme.Size.touch)
+                        }
+                        .buttonStyle(PadSecondaryButtonStyle())
                     }
-                } else {
-                    VStack(alignment: .leading, spacing: Theme.Space.small) {
-                        Text(store.products[productID]?.displayName ?? id).font(Theme.control)
-                        PurchaseControls(access: "pack:" + id)
+                    .padding(.horizontal, Theme.Space.regular)
+                    .padding(.vertical, 12)
+                }
+
+                ForEach(store.packIDs, id: \.self) { id in
+                    let productID = StoreManager.productPrefix + ".pack." + id
+                    HardwareDivider()
+                    if store.ownedProductIDs.contains(productID) || store.ownedProductIDs.contains(StoreManager.bundleID) {
+                        HardwareRow(title: store.products[productID]?.displayName ?? id) {
+                            SettingsValue(settings.localized("Owned"))
+                        }
+                    } else {
+                        VStack(alignment: .leading, spacing: Theme.Space.small) {
+                            Text(store.products[productID]?.displayName ?? id)
+                                .font(Theme.control)
+                                .foregroundStyle(Theme.ink)
+                            PurchaseControls(access: "pack:" + id)
+                        }
+                        .padding(.horizontal, Theme.Space.regular)
+                        .padding(.vertical, 12)
                     }
                 }
+
+                HardwareDivider()
+
+                VStack(alignment: .leading, spacing: Theme.Space.small) {
+                    Button { Task { await store.restore() } } label: {
+                        Text(settings.localized("Restore Purchases"))
+                            .font(Theme.control)
+                            .frame(maxWidth: .infinity, minHeight: Theme.Size.touch)
+                    }
+                    .disabled(store.busy)
+                    .buttonStyle(PadSecondaryButtonStyle())
+
+                    if store.busy {
+                        ProgressView().tint(Theme.ink)
+                    }
+                    if let message = store.message {
+                        Text(settings.localized(message))
+                            .font(Theme.meta)
+                            .foregroundStyle(Theme.secondary)
+                    }
+                }
+                .padding(.horizontal, Theme.Space.regular)
+                .padding(.vertical, 12)
             }
-            Button { Task { await store.restore() } } label: {
-                Text(settings.localized("Restore Purchases"))
-                    .font(Theme.control)
-                    .frame(minHeight: Theme.Size.touch)
-            }
-            .disabled(store.busy)
-            .buttonStyle(PadSecondaryButtonStyle())
-            if store.busy { ProgressView().tint(Theme.ink) }
-            if let message = store.message { Text(settings.localized(message)).font(Theme.meta) }
-        } header: {
-            SectionHeader(title: settings.localized("Purchases"))
         }
         .sheet(isPresented: $showingPurchase) { PurchaseSheet() }
     }

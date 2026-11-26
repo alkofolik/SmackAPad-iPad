@@ -16,104 +16,162 @@ struct CalibrationView: View {
         _session = State(initialValue: CalibrationSession(settings: settings, midi: midi))
     }
 
+    private var inputOptions: [(String, String)] {
+        var options: [(String, String)] = [
+            ("touch", settings.localized("On-screen pads"))
+        ]
+        if midi.isKeyboardConnected {
+            options.append(("keyboard", settings.localized("Hardware keyboard")))
+        }
+        for source in midi.sources {
+            options.append((source.id, source.name))
+        }
+        return options
+    }
+
     var body: some View {
         @Bindable var session = session
-        Form {
-            Group {
-                Section {
-                    Picker(settings.localized("Calibration input"), selection: $session.deviceID) {
-                        Text(settings.localized("On-screen pads")).tag("touch")
-                        if midi.isKeyboardConnected {
-                            Text(settings.localized("Hardware keyboard")).tag("keyboard")
-                        }
-                        ForEach(midi.sources) { source in Text(source.name).font(Theme.meta).tag(source.id) }
-                    }
-                    .disabled(session.busy)
-                    LabeledContent(settings.localized("Saved offset")) {
-                        SettingsValue(signed(session.savedOffset))
-                    }
-                    Text(settings.localized("Calibrate touch separately; it differs from a controller."))
-                        .font(Theme.meta).foregroundStyle(Theme.secondary)
-                    Text(settings.localized("Listen to four clicks, then tap with each of the next ten. Follow the sound, not the screen."))
-                        .font(Theme.meta).foregroundStyle(Theme.secondary)
-                } header: { SectionHeader(title: settings.localized("Calibration input")) }
+        VStack(spacing: 0) {
+            ScreenTopBar {
+                HardwareBackButton { dismiss() }
+            } center: {
+                Text(settings.localized("Timing calibration"))
+                    .font(Theme.screenTitle)
+                    .foregroundStyle(Theme.ink)
+            } trailing: {
+                EmptyView()
+            }
+            .padding(.horizontal, Theme.Space.page)
+            .padding(.vertical, Theme.Space.small)
+            .background(Theme.chassis)
 
-                Section {
-                    SettingsValue(status)
-                        .accessibilityAddTraits(.updatesFrequently)
-                    if session.busy {
-                        ProgressView(value: Double(session.matchedClicks.count), total: 10)
-                            .tint(Theme.orange)
-                        LabeledContent(settings.localized("Recorded taps")) {
-                            SettingsValue("\(session.matchedClicks.count) / 10")
+            Rectangle()
+                .fill(Theme.hairline)
+                .frame(height: 1)
+
+            ScrollView {
+                VStack(alignment: .leading, spacing: Theme.Space.page) {
+                    // MARK: Input
+                    VStack(alignment: .leading, spacing: Theme.Space.small) {
+                        HardwareSectionHeader(title: settings.localized("Calibration input"))
+
+                        HardwareCard {
+                            PlexSegmentedPicker(
+                                title: settings.localized("Calibration input"),
+                                selection: $session.deviceID,
+                                options: inputOptions,
+                                fitsColumn: true,
+                                size: .compact
+                            )
+                            .disabled(session.busy)
+                            .padding(.horizontal, Theme.Space.regular)
+                            .padding(.vertical, 12)
+
+                            HardwareDivider()
+
+                            HardwareRow(title: settings.localized("Saved offset")) {
+                                Text(signed(session.savedOffset))
+                                    .font(Theme.meta.monospacedDigit())
+                                    .foregroundStyle(Theme.secondary)
+                            }
                         }
+
+                        Text("\(settings.localized("Calibrate touch separately; it differs from a controller.")) \(settings.localized("Listen to four clicks, then tap with each of the next ten. Follow the sound, not the screen."))")
+                            .font(Theme.meta)
+                            .foregroundStyle(Theme.secondary)
+                            .fixedSize(horizontal: false, vertical: true)
                     }
-                    if session.deviceID == "touch" {
-                        Text(settings.localized("Tap with the click"))
-                            .font(Theme.control)
-                            .frame(maxWidth: .infinity, minHeight: 140)
-                            .background { PadSurface(isActive: touching) }
-                            .contentShape(RoundedRectangle(cornerRadius: Theme.Skin.Pad.radius))
-                            .gesture(DragGesture(minimumDistance: 0)
-                                .onChanged { _ in
-                                    guard !touching else { return }
-                                    touching = true
-                                    session.touch()
+
+                    // MARK: Progress & Pad
+                    VStack(alignment: .leading, spacing: Theme.Space.small) {
+                        HardwareSectionHeader(title: settings.localized("Calibration progress"))
+
+                        HardwareCard(padding: Theme.Space.regular) {
+                            VStack(alignment: .leading, spacing: Theme.Space.regular) {
+                                HStack(spacing: Theme.Space.controlGap) {
+                                    Text(status)
+                                        .font(Theme.control)
+                                        .foregroundStyle(Theme.ink)
+                                        .accessibilityAddTraits(.updatesFrequently)
+                                        .frame(maxWidth: .infinity, alignment: .leading)
+
+                                    if session.busy {
+                                        Text("\(session.matchedClicks.count) / 10")
+                                            .font(Theme.strong(14).monospacedDigit())
+                                            .foregroundStyle(Theme.orange)
+                                    }
                                 }
-                                .onEnded { _ in touching = false })
-                            .accessibilityAddTraits(.isButton)
-                            .accessibilityAction { session.touch() }
-                    } else if session.deviceID == "keyboard" {
-                        Text(settings.localized("Press any mapped key with the click"))
-                            .font(Theme.control)
-                            .frame(maxWidth: .infinity, minHeight: 80)
-                            .background { PadSurface() }
+
+                                calibrationStepStrip
+
+                                if session.deviceID == "touch" {
+                                    touchPadSurface
+                                } else if session.deviceID == "keyboard" {
+                                    Text(settings.localized("Press any mapped key with the click"))
+                                        .font(Theme.control)
+                                        .foregroundStyle(Theme.secondary)
+                                        .frame(maxWidth: .infinity, minHeight: 100)
+                                        .background(Theme.recessed, in: RoundedRectangle(cornerRadius: Theme.Radius.panel))
+                                        .overlay {
+                                            RoundedRectangle(cornerRadius: Theme.Radius.panel)
+                                                .strokeBorder(Theme.hairline, lineWidth: 1.5)
+                                        }
+                                }
+
+                                if let result = session.result {
+                                    VStack(spacing: 0) {
+                                        HardwareDivider(inset: 0)
+                                        resultRow(title: settings.localized("Saved offset"), value: signed(session.savedOffset))
+                                        HardwareDivider(inset: 0)
+                                        resultRow(title: settings.localized("Usable taps"), value: "\(result.usableTaps) / 10")
+                                        HardwareDivider(inset: 0)
+                                        resultRow(title: settings.localized("Timing spread"), value: "\(Int(result.spreadMilliseconds.rounded())) ms")
+                                    }
+
+                                    if result.discardedTaps > 0 {
+                                        Text(settings.localized("Outlier taps were ignored"))
+                                            .font(Theme.meta)
+                                            .foregroundStyle(Theme.secondary)
+                                    }
+                                    Text(settings.localized("Play a lesson to check the result."))
+                                        .font(Theme.meta)
+                                        .foregroundStyle(Theme.secondary)
+                                }
+
+                                if let error = session.audioError {
+                                    Text(error)
+                                        .font(Theme.meta)
+                                        .foregroundStyle(Theme.destructive)
+                                }
+
+                                if session.busy {
+                                    Button(role: .cancel) { session.cancel() } label: {
+                                        Text(settings.localized("Cancel calibration"))
+                                            .font(Theme.control)
+                                            .frame(maxWidth: .infinity, minHeight: Theme.Size.rowLarge)
+                                    }
+                                    .buttonStyle(PadSecondaryButtonStyle())
+                                } else {
+                                    Button { touching = false; session.start() } label: {
+                                        Text(settings.localized("Start calibration"))
+                                            .font(Theme.action)
+                                            .frame(maxWidth: .infinity, minHeight: Theme.Size.rowLarge)
+                                    }
+                                    .buttonStyle(PadPrimaryButtonStyle())
+                                }
+                            }
+                        }
                     }
-                    if let result = session.result {
-                        LabeledContent(settings.localized("Saved offset")) {
-                            SettingsValue(signed(session.savedOffset))
-                        }
-                        LabeledContent(settings.localized("Usable taps")) {
-                            SettingsValue("\(result.usableTaps) / 10")
-                        }
-                        LabeledContent(settings.localized("Timing spread")) {
-                            SettingsValue("\(Int(result.spreadMilliseconds.rounded())) ms")
-                        }
-                        if result.discardedTaps > 0 {
-                            SettingsValue(settings.localized("Outlier taps were ignored"))
-                        }
-                        SettingsValue(settings.localized("Play a lesson to check the result."))
-                    }
-                    if let error = session.audioError { Text(error).font(Theme.meta).foregroundStyle(Theme.secondary) }
-                    if session.busy {
-                        Button(role: .cancel) { session.cancel() } label: {
-                            Text(settings.localized("Cancel calibration"))
-                                .font(Theme.control)
-                                .frame(minHeight: Theme.Size.touch)
-                        }
-                        .buttonStyle(PadSecondaryButtonStyle())
-                    } else {
-                        Button { touching = false; session.start() } label: {
-                            Text(settings.localized("Start calibration"))
-                                .font(Theme.control)
-                                .frame(minHeight: Theme.Size.touch)
-                        }
-                        .buttonStyle(PadPrimaryButtonStyle())
-                    }
-                } header: { SectionHeader(title: settings.localized("Calibration progress")) }
+                }
+                .frame(maxWidth: 700, alignment: .leading)
+                .padding(Theme.Space.page)
+                .frame(maxWidth: .infinity)
             }
-            .appFormRowStyle()
         }
-        .appFormStyle()
-        .navigationTitle(settings.localized("Timing calibration"))
-        .navigationBarTitleDisplayMode(.inline)
+        .background(Theme.chassis.ignoresSafeArea())
+        .foregroundStyle(Theme.ink)
         .navigationBarBackButtonHidden(true)
-        .toolbar {
-            ToolbarItem(placement: .principal) { ScreenHeader(title: settings.localized("Timing calibration")) }
-            PadToolbarItem(placement: .topBarLeading) {
-                BackButton { dismiss() }
-            }
-        }
+        .toolbar(.hidden, for: .navigationBar)
         .onAppear { session.attach() }
         .onDisappear { session.close() }
         .onChange(of: scenePhase) { _, phase in
@@ -134,6 +192,101 @@ struct CalibrationView: View {
                 session.deviceID = "touch"
             }
         }
+    }
+
+    @ViewBuilder
+    private var touchPadSurface: some View {
+        let shape = RoundedRectangle(cornerRadius: Theme.Radius.panel)
+        VStack(spacing: Theme.Space.small) {
+            Circle()
+                .fill(touching ? Theme.orange : Theme.ledOff)
+                .frame(width: 10, height: 10)
+                .shadow(color: touching ? Theme.accentGlow : .clear, radius: touching ? 6 : 0)
+
+            Text(settings.localized("Tap with the click"))
+                .font(Theme.rowTitle)
+                .foregroundStyle(Theme.ink)
+        }
+        .frame(maxWidth: .infinity, minHeight: 164)
+        .background {
+            shape
+                .fill(touching ? Theme.surfaceElevated : Theme.recessed)
+                .overlay {
+                    shape
+                        .fill(Theme.orange.opacity(touching ? 0.24 : 0))
+                }
+                .overlay {
+                    shape.strokeBorder(touching ? Theme.orange : Theme.hairline, lineWidth: 1.5)
+                }
+        }
+        .shadow(color: touching ? Theme.accentGlow : .clear, radius: touching ? 10 : 0)
+        .scaleEffect(touching ? 0.985 : 1)
+        .animation(Theme.Motion.padFlash, value: touching)
+        .contentShape(shape)
+        .gesture(
+            DragGesture(minimumDistance: 0)
+                .onChanged { _ in
+                    guard !touching else { return }
+                    touching = true
+                    session.touch()
+                }
+                .onEnded { _ in
+                    touching = false
+                }
+        )
+        .accessibilityAddTraits(.isButton)
+        .accessibilityAction { session.touch() }
+    }
+
+    private var calibrationStepStrip: some View {
+        let isCountIn = session.phase == .countIn
+        let isMeasuring = session.phase == .measuring
+        let isDone = session.phase == .completed
+        let countInProgress = isCountIn ? max(0, min(4, session.clickNumber)) : (isMeasuring || isDone ? 4 : 0)
+        let measuredProgress = isMeasuring ? max(0, min(10, session.clickNumber)) : (isDone ? 10 : 0)
+
+        return HStack(spacing: Theme.Space.controlGap) {
+            // 4 count-in clicks
+            HStack(spacing: 4) {
+                ForEach(1...4, id: \.self) { step in
+                    let lit = step <= countInProgress
+                    RoundedRectangle(cornerRadius: 2)
+                        .fill(lit ? Theme.orange.opacity(isCountIn && step == countInProgress ? 1 : 0.55) : Theme.ledOff)
+                        .frame(height: 6)
+                }
+            }
+            .frame(maxWidth: 96)
+
+            Rectangle()
+                .fill(Theme.hairline)
+                .frame(width: 1, height: 10)
+
+            // 10 measured taps
+            HStack(spacing: 4) {
+                ForEach(1...10, id: \.self) { step in
+                    let recorded = step <= session.matchedClicks.count
+                    let current = isMeasuring && step == measuredProgress
+                    RoundedRectangle(cornerRadius: 2)
+                        .fill((recorded || current) ? Theme.orange : Theme.ledOff)
+                        .frame(height: 6)
+                }
+            }
+            .frame(maxWidth: .infinity)
+        }
+        .accessibilityHidden(true)
+    }
+
+    private func resultRow(title: String, value: String) -> some View {
+        HStack {
+            Text(title)
+                .font(Theme.control)
+                .foregroundStyle(Theme.ink)
+            Spacer()
+            Text(value)
+                .font(Theme.meta.monospacedDigit())
+                .foregroundStyle(Theme.secondary)
+        }
+        .padding(.vertical, 10)
     }
 
     private func signed(_ value: Double) -> String { String(format: "%+.0f ms", value) }

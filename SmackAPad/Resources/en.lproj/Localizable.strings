@@ -8,7 +8,7 @@
 "Star %lld earned" = "Star %lld earned";
 "Input" = "Input";
 "All connected controllers" = "All connected controllers";
-"Use on-screen pads in portrait (16-pad profile)." = "Use on-screen pads in portrait (16-pad profile).";
+"Without a MIDI controller, you can play using the on-screen pads or a hardware keyboard." = "Without a MIDI controller, you can play using the on-screen pads or a hardware keyboard.";
 "16 pads, notes 36–51" = "16 pads, notes 36–51";
 "Allow Bluetooth access in iPad Settings to pair a controller." = "Allow Bluetooth access in iPad Settings to pair a controller.";
 "Bluetooth access is restricted on this iPad." = "Bluetooth access is restricted on this iPad.";
@@ -188,7 +188,7 @@
 "System" = "System";
 "Choose light, dark or follow your system appearance." = "Choose light, dark or follow your system appearance.";
 "MIDI and controller" = "MIDI and controller";
-"All 8 kits are bundled with the app for practice and playback." = "All 8 kits are bundled with the app for practice and playback.";
+"Automatic uses the lesson's sound kit or your active kit from Studio Rig." = "Automatic uses the lesson's sound kit or your active kit from Studio Rig.";
 "Tempo auto-step (BPM)" = "Tempo auto-step (BPM)";
 "Tempo automatically increases by this step after each clean pass until target tempo." = "Tempo automatically increases by this step after each clean pass until target tempo.";
 "Small pad layout" = "Small pad layout";

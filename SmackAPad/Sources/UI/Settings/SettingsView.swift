@@ -82,56 +82,78 @@ public struct SettingsView: View {
         GeometryReader { geometry in
             let width = geometry.size.width
             NavigationStack {
-                Group {
-                    if width >= 740 {
-                        HStack(spacing: 0) {
-                            sidebar
-                            Rectangle().fill(Theme.hairline).frame(width: 1)
-                            areaForm(selectedArea)
-                                .id(selectedArea)
-                                .frame(maxWidth: 700)
-                                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
-                        }
-                    } else {
-                        Form {
-                            ForEach(SettingsArea.allCases) { area in
-                                NavigationLink {
-                                    areaForm(area)
-                                        .navigationTitle(area.title(in: settings))
-                                        .navigationBarTitleDisplayMode(.inline)
-                                } label: {
-                                    areaLabel(area)
-                                }
-                            }
-                            .appFormRowStyle()
-                        }
-                        .appFormStyle()
-                    }
-                }
-                .calmChassisBackground()
-                .navigationTitle(settings.localized("Settings"))
-                .navigationBarTitleDisplayMode(.inline)
-                .navigationBarBackButtonHidden(true)
-                .toolbar {
-                    ToolbarItem(placement: .principal) { ScreenHeader(title: settings.localized("Settings")) }
-                    PadToolbarItem(placement: .topBarLeading) {
-                        BackButton {
+                VStack(spacing: 0) {
+                    ScreenTopBar {
+                        HardwareBackButton {
                             if let onDismiss { onDismiss() } else { dismiss() }
                         }
-                    }
-                    ToolbarItem(placement: .topBarTrailing) {
-                        Button {
+                    } center: {
+                        Text(settings.localized("Settings"))
+                            .font(Theme.screenTitle)
+                            .foregroundStyle(Theme.ink)
+                    } trailing: {
+                        HardwareIconButton(
+                            systemName: "questionmark",
+                            accessibilityLabel: settings.localized("help.title")
+                        ) {
                             helpPresentation = HelpPresentation(windowWidth: width)
-                        } label: {
-                            Text(settings.localized("help.title"))
-                                .font(Theme.control)
-                                .foregroundStyle(Theme.ink)
-                                .frame(minHeight: Theme.Size.touch)
                         }
                         .accessibilityFocused($helpFocused)
                         .helpDeck(presentation: $helpPresentation) { helpFocused = true }
                     }
+                    .padding(.horizontal, Theme.Space.page)
+                    .padding(.vertical, Theme.Space.small)
+                    .background(Theme.chassis)
+
+                    Rectangle()
+                        .fill(Theme.hairline)
+                        .frame(height: 1)
+
+                    if width >= 740 {
+                        HStack(spacing: 0) {
+                            sidebar
+                            Rectangle().fill(Theme.hairline).frame(width: 1)
+                            areaContent(selectedArea)
+                                .id(selectedArea)
+                                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+                        }
+                    } else {
+                        ScrollView {
+                            VStack(alignment: .leading, spacing: Theme.Space.page) {
+                                HardwareCard {
+                                    ForEach(Array(SettingsArea.allCases.enumerated()), id: \.element.id) { index, area in
+                                        if index > 0 {
+                                            HardwareDivider()
+                                        }
+                                        NavigationLink {
+                                            areaDetailScreen(area)
+                                        } label: {
+                                            HStack(spacing: Theme.Space.controlGap) {
+                                                areaLabel(area)
+                                                    .frame(maxWidth: .infinity, alignment: .leading)
+                                                Image(systemName: "chevron.right")
+                                                    .font(.system(size: 13, weight: .semibold))
+                                                    .foregroundStyle(Theme.secondary)
+                                            }
+                                            .padding(.horizontal, Theme.Space.regular)
+                                            .padding(.vertical, 12)
+                                            .contentShape(Rectangle())
+                                        }
+                                        .buttonStyle(.plain)
+                                    }
+                                }
+                            }
+                            .frame(maxWidth: 700, alignment: .leading)
+                            .padding(Theme.Space.page)
+                            .frame(maxWidth: .infinity)
+                        }
+                        .scrollBounceBehavior(.basedOnSize)
+                    }
                 }
+                .background(Theme.chassis.ignoresSafeArea())
+                .foregroundStyle(Theme.ink)
+                .navigationBarBackButtonHidden(true)
+                .toolbar(.hidden, for: .navigationBar)
             }
         }
         .task {
@@ -145,20 +167,30 @@ public struct SettingsView: View {
             VStack(spacing: Theme.Space.tight) {
                 ForEach(SettingsArea.allCases) { area in
                     let isSelected = area == selectedArea
+                    let shape = RoundedRectangle(cornerRadius: Theme.Radius.control)
                     Button { selectedArea = area } label: {
                         areaLabel(area)
                             .padding(.horizontal, Theme.Space.regular)
                             .frame(maxWidth: .infinity, alignment: .leading)
-                            .background(isSelected ? Theme.surface : .clear, in: Capsule())
-                            .overlay(alignment: .leading) {
+                            .background {
                                 if isSelected {
-                                    Capsule()
-                                        .fill(Theme.orange)
-                                        .frame(width: 3)
-                                        .padding(.vertical, 10)
+                                    shape
+                                        .fill(Theme.surfaceElevated)
+                                        .overlay {
+                                            shape.strokeBorder(Theme.hairline, lineWidth: 1)
+                                        }
                                 }
                             }
-                            .contentShape(Rectangle())
+                            .overlay(alignment: .leading) {
+                                if isSelected {
+                                    RoundedRectangle(cornerRadius: 1.5)
+                                        .fill(Theme.orange)
+                                        .frame(width: 3)
+                                        .padding(.vertical, 8)
+                                        .padding(.leading, 4)
+                                }
+                            }
+                            .contentShape(shape)
                     }
                     .buttonStyle(.plain)
                     .accessibilityAddTraits(isSelected ? .isSelected : [])
@@ -167,6 +199,7 @@ public struct SettingsView: View {
             .padding(Theme.Space.small)
         }
         .frame(width: 250)
+        .background(Theme.surface)
         .scrollBounceBehavior(.basedOnSize)
     }
 
@@ -186,12 +219,23 @@ public struct SettingsView: View {
     }
 
     @ViewBuilder
-    private func areaForm(_ area: SettingsArea) -> some View {
+    private func areaDetailScreen(_ area: SettingsArea) -> some View {
+        if area == .controller {
+            ControllerSetupView()
+        } else {
+            AreaDetailWrapper(title: area.title(in: settings)) {
+                areaContent(area)
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func areaContent(_ area: SettingsArea) -> some View {
         if area == .controller {
             ControllerSetupView(isEmbeddedInSettings: true)
         } else {
-            Form {
-                Group {
+            ScrollView {
+                VStack(alignment: .leading, spacing: Theme.Space.page) {
                     switch area {
                     case .sound:
                         soundSections
@@ -212,230 +256,282 @@ public struct SettingsView: View {
                     #endif
                     }
                 }
-                .appFormRowStyle()
+                .frame(maxWidth: 700, alignment: .leading)
+                .padding(Theme.Space.page)
+                .frame(maxWidth: .infinity)
             }
-            .appFormStyle()
+            .scrollBounceBehavior(.basedOnSize)
         }
     }
 
     @ViewBuilder
     private var soundSections: some View {
         @Bindable var settings = settings
-        Section {
-            NavigationLink {
-                SoundKitSelectionView(kits: kits)
-            } label: {
-                HStack {
-                    Text(settings.localized("Sound set"))
-                        .font(Theme.control)
-                        .foregroundStyle(Theme.ink)
-                    Spacer()
-                    Text(selectedKitTitle)
-                        .font(Theme.meta)
-                        .foregroundStyle(Theme.secondary)
-                }
-                .frame(minHeight: Theme.Size.touch)
-            }
-            SoundSliderRow(
-                title: settings.localized("Metronome"),
-                value: $settings.metronomeVolume
-            )
-            SoundSliderRow(
-                title: settings.localized("Pads"),
-                value: $settings.padsVolume
-            )
-            SoundSliderRow(
-                title: settings.localized("settings.sound.pattern"),
-                value: $settings.patternVolume
-            )
-            Button {
-                withAnimation(.easeOut(duration: 0.2)) {
-                    isInstrumentVolumeExpanded.toggle()
-                }
-            } label: {
-                HStack(spacing: 12) {
-                    Text(settings.localized("Instrument volume"))
-                        .font(Theme.control)
-                        .foregroundStyle(Theme.ink)
-                    Spacer()
-                    let changedCount = settings.changedInstrumentTrimCount
-                    if changedCount > 0 {
-                        Text(settings.localized("changed %lld", changedCount))
-                            .font(Theme.meta.monospacedDigit())
-                            .foregroundStyle(Theme.secondary)
-                    }
-                    Image(systemName: isInstrumentVolumeExpanded ? "chevron.up" : "chevron.down")
-                        .font(.system(size: 14, weight: .semibold))
-                        .foregroundStyle(Theme.ink)
-                }
-                .frame(minHeight: Theme.Size.touch)
-                .contentShape(Rectangle())
-            }
-            .buttonStyle(.plain)
-            .accessibilityValue(settings.localized(isInstrumentVolumeExpanded ? "Expanded" : "Collapsed"))
+        VStack(alignment: .leading, spacing: Theme.Space.small) {
+            HardwareSectionHeader(title: settings.localized("Sound"))
 
-            if isInstrumentVolumeExpanded {
-                VStack(alignment: .leading, spacing: 12) {
-                    LazyVGrid(
-                        columns: [
-                            GridItem(.flexible(), spacing: 8),
-                            GridItem(.flexible(), spacing: 8)
-                        ],
-                        spacing: 8
-                    ) {
-                        ForEach(InstrumentTrimCell.roles, id: \.self) { voice in
-                            InstrumentTrimCell(voice: voice)
+            HardwareCard {
+                NavigationLink {
+                    SoundKitSelectionView(kits: kits)
+                } label: {
+                    HardwareRow(title: settings.localized("Sound set")) {
+                        HStack(spacing: Theme.Space.small) {
+                            Text(selectedKitTitle)
+                                .font(Theme.meta)
+                                .foregroundStyle(Theme.secondary)
+                            Image(systemName: "chevron.right")
+                                .font(.system(size: 13, weight: .semibold))
+                                .foregroundStyle(Theme.secondary)
                         }
                     }
-
-                    Button {
-                        settings.resetInstrumentTrims()
-                    } label: {
-                        Text(settings.localized("Reset all to 0 dB"))
-                            .font(Theme.control)
-                            .foregroundStyle(settings.instrumentTrims.isEmpty ? Theme.secondary : Theme.ink)
-                            .padding(.horizontal, 16)
-                            .frame(height: 44)
-                            .background(Theme.background, in: RoundedRectangle(cornerRadius: 12))
-                            .overlay {
-                                RoundedRectangle(cornerRadius: 12)
-                                    .strokeBorder(Theme.ink.opacity(settings.instrumentTrims.isEmpty ? 0.12 : 0.28), lineWidth: 1.5)
-                            }
-                    }
-                    .buttonStyle(.plain)
-                    .disabled(settings.instrumentTrims.isEmpty)
+                    .contentShape(Rectangle())
                 }
-                .padding(.top, 4)
-                .padding(.bottom, 6)
-                .listRowSeparator(.hidden)
+                .buttonStyle(.plain)
+
+                HardwareDivider()
+                SoundSliderRow(
+                    title: settings.localized("Metronome"),
+                    value: $settings.metronomeVolume
+                )
+                HardwareDivider()
+                SoundSliderRow(
+                    title: settings.localized("Pads"),
+                    value: $settings.padsVolume
+                )
+                HardwareDivider()
+                SoundSliderRow(
+                    title: settings.localized("settings.sound.pattern"),
+                    value: $settings.patternVolume
+                )
+                HardwareDivider()
+
+                Button {
+                    withAnimation(Theme.Motion.fast) {
+                        isInstrumentVolumeExpanded.toggle()
+                    }
+                } label: {
+                    HardwareRow(title: settings.localized("Instrument volume")) {
+                        HStack(spacing: Theme.Space.small) {
+                            let changedCount = settings.changedInstrumentTrimCount
+                            if changedCount > 0 {
+                                Text(settings.localized("changed %lld", changedCount))
+                                    .font(Theme.meta.monospacedDigit())
+                                    .foregroundStyle(Theme.secondary)
+                            }
+                            Image(systemName: isInstrumentVolumeExpanded ? "chevron.up" : "chevron.down")
+                                .font(.system(size: 13, weight: .semibold))
+                                .foregroundStyle(Theme.secondary)
+                        }
+                    }
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .accessibilityValue(settings.localized(isInstrumentVolumeExpanded ? "Expanded" : "Collapsed"))
+
+                if isInstrumentVolumeExpanded {
+                    HardwareDivider()
+                    VStack(alignment: .leading, spacing: Theme.Space.controlGap) {
+                        LazyVGrid(
+                            columns: [
+                                GridItem(.flexible(), spacing: Theme.Space.small),
+                                GridItem(.flexible(), spacing: Theme.Space.small)
+                            ],
+                            spacing: Theme.Space.small
+                        ) {
+                            ForEach(InstrumentTrimCell.roles, id: \.self) { voice in
+                                InstrumentTrimCell(voice: voice)
+                            }
+                        }
+
+                        Button {
+                            settings.resetInstrumentTrims()
+                        } label: {
+                            Text(settings.localized("Reset all to 0 dB"))
+                                .font(Theme.control)
+                                .frame(minHeight: Theme.Size.touch)
+                        }
+                        .buttonStyle(PadSecondaryButtonStyle())
+                        .disabled(settings.instrumentTrims.isEmpty)
+                    }
+                    .padding(Theme.Space.regular)
+                }
             }
-        } header: {
-            SectionHeader(title: settings.localized("Sound"))
-        } footer: {
-            Text(settings.localized("All 8 kits are bundled with the app for practice and playback."))
+
+            Text(settings.localized("Automatic uses the lesson's sound kit or your active kit from Studio Rig."))
                 .font(Theme.meta)
                 .foregroundStyle(Theme.secondary)
+                .fixedSize(horizontal: false, vertical: true)
         }
     }
 
     @ViewBuilder
     private var practiceSections: some View {
         @Bindable var settings = settings
-        Section {
-            PlexSegmentedPicker(title: settings.localized("Tempo step"), selection: $settings.bpmStep,
-                options: BpmStep.allCases.map { ($0.rawValue, "+\($0.rawValue) BPM") })
-        } header: {
-            SectionHeader(title: settings.localized("Tempo auto-step (BPM)"))
-        } footer: {
+        VStack(alignment: .leading, spacing: Theme.Space.small) {
+            HardwareSectionHeader(title: settings.localized("Tempo auto-step (BPM)"))
+            HardwareCard(padding: Theme.Space.regular) {
+                PlexSegmentedPicker(
+                    title: settings.localized("Tempo step"),
+                    selection: $settings.bpmStep,
+                    options: BpmStep.allCases.map { ($0.rawValue, "+\($0.rawValue) BPM") },
+                    fitsColumn: true
+                )
+            }
             Text(settings.localized("Tempo automatically increases by this step after each clean pass until target tempo."))
                 .font(Theme.meta)
                 .foregroundStyle(Theme.secondary)
+                .fixedSize(horizontal: false, vertical: true)
         }
 
-        Section {
-            Picker(settings.localized("Practice mode"), selection: $settings.practiceMode) {
-                ForEach(PracticeMode.allCases, id: \.self) { mode in
-                    Text(settings.localized(mode.title)).tag(mode)
-                }
+        VStack(alignment: .leading, spacing: Theme.Space.small) {
+            HardwareSectionHeader(title: settings.localized("Practice mode"))
+            HardwareCard(padding: Theme.Space.regular) {
+                PlexSegmentedPicker(
+                    title: settings.localized("Practice mode"),
+                    selection: $settings.practiceMode,
+                    options: PracticeMode.allCases.map { ($0, settings.localized($0.title)) },
+                    fitsColumn: true
+                )
             }
-            .pickerStyle(.menu)
-            .frame(minHeight: Theme.Size.touch)
-        } header: {
-            SectionHeader(title: settings.localized("Practice mode"))
-        } footer: {
             Text(settings.localized(settings.practiceMode.explanation))
                 .font(Theme.meta)
                 .foregroundStyle(Theme.secondary)
+                .fixedSize(horizontal: false, vertical: true)
         }
 
-        Section {
-            Picker(settings.localized("Bars shown"), selection: $visibleBars) {
-                Text(settings.localized("1 bar")).tag(1)
-                Text(settings.localized("%lld bars", 2)).tag(2)
-                Text(settings.localized("%lld bars", 3)).tag(3)
-                Text(settings.localized("All bars")).tag(4)
+        VStack(alignment: .leading, spacing: Theme.Space.small) {
+            HardwareSectionHeader(title: settings.localized("Practice screen"))
+            HardwareCard {
+                VStack(alignment: .leading, spacing: Theme.Space.small) {
+                    Text(settings.localized("Bars shown"))
+                        .font(Theme.control)
+                        .foregroundStyle(Theme.ink)
+                    PlexSegmentedPicker(
+                        title: settings.localized("Bars shown"),
+                        selection: $visibleBars,
+                        options: [
+                            (1, settings.localized("1 bar")),
+                            (2, settings.localized("%lld bars", 2)),
+                            (3, settings.localized("%lld bars", 3)),
+                            (4, settings.localized("All bars"))
+                        ],
+                        fitsColumn: true,
+                        size: .compact
+                    )
+                }
+                .padding(.horizontal, Theme.Space.regular)
+                .padding(.vertical, 12)
+
+                HardwareDivider()
+                HardwareRow(title: settings.localized("Small pad layout")) {
+                    HardwareToggle(isOn: $showPads)
+                }
+                HardwareDivider()
+                HardwareRow(title: settings.localized("Touch pads in portrait")) {
+                    HardwareToggle(isOn: $touchPadsInPortrait)
+                }
+                HardwareDivider()
+                HardwareRow(title: settings.localized("Fade notes in From memory")) {
+                    HardwareToggle(isOn: $settings.fadeMemoryNotes)
+                }
+                HardwareDivider()
+                HardwareRow(title: settings.localized("Automatic peek in From memory")) {
+                    HardwareToggle(isOn: $settings.autoPeekMemory)
+                }
             }
-            Toggle(settings.localized("Small pad layout"), isOn: $showPads)
-            Toggle(settings.localized("Touch pads in portrait"), isOn: $touchPadsInPortrait)
-            Toggle(settings.localized("Fade notes in From memory"), isOn: $settings.fadeMemoryNotes)
-            Toggle(settings.localized("Automatic peek in From memory"), isOn: $settings.autoPeekMemory)
-        } header: {
-            SectionHeader(title: settings.localized("Practice screen"))
-        } footer: {
             VStack(alignment: .leading, spacing: Theme.Space.tight) {
                 Text(settings.localized("Shows a small pad layout in the lesson that lights up the pads you hit."))
                 Text(settings.localized("After two missed passes the notes show for one pass. That pass does not count."))
             }
             .font(Theme.meta)
             .foregroundStyle(Theme.secondary)
+            .fixedSize(horizontal: false, vertical: true)
         }
 
-        Section {
-            Toggle(
-                settings.localized("Review reminder"),
-                isOn: Binding(
-                    get: { settings.reviewReminderEnabled },
-                    set: { handleReminderToggle($0) }
-                )
-            )
-            .frame(minHeight: Theme.Size.touch)
+        VStack(alignment: .leading, spacing: Theme.Space.small) {
+            HardwareSectionHeader(title: settings.localized("Training"))
+            HardwareCard {
+                HardwareRow(title: settings.localized("Review reminder")) {
+                    HardwareToggle(
+                        isOn: Binding(
+                            get: { settings.reviewReminderEnabled },
+                            set: { handleReminderToggle($0) }
+                        )
+                    )
+                }
 
-            if notificationsDenied {
-                Text(settings.localized("Notifications are turned off in iPad Settings."))
-                    .font(Theme.meta)
-                    .foregroundStyle(Theme.destructive)
-            }
+                if notificationsDenied {
+                    HardwareDivider()
+                    Text(settings.localized("Notifications are turned off in iPad Settings."))
+                        .font(Theme.meta)
+                        .foregroundStyle(Theme.destructive)
+                        .padding(.horizontal, Theme.Space.regular)
+                        .padding(.vertical, 12)
+                }
 
-            if settings.reviewReminderEnabled {
-                DatePicker(
-                    settings.localized("Time"),
-                    selection: Binding(
-                        get: { settings.reviewReminderTime },
-                        set: { newTime in
-                            settings.reviewReminderTime = newTime
-                            ReviewReminderScheduler.shared.reschedule()
-                        }
-                    ),
-                    displayedComponents: .hourAndMinute
-                )
-                .font(Theme.control)
-                .frame(minHeight: Theme.Size.touch)
-            }
-        } header: {
-            SectionHeader(title: settings.localized("Training"))
-        }
-
-        Section {
-            Toggle(settings.localized("Hide completed lessons"), isOn: $settings.hideCompletedLessons)
-            Picker(settings.localized("Next lesson from"), selection: $settings.nextLessonSource) {
-                ForEach(NextLessonSource.allCases) { source in
-                    Text(settings.localized(source.title)).tag(source.id)
+                if settings.reviewReminderEnabled {
+                    HardwareDivider()
+                    HardwareRow(title: settings.localized("Time")) {
+                        DatePicker(
+                            settings.localized("Time"),
+                            selection: Binding(
+                                get: { settings.reviewReminderTime },
+                                set: { newTime in
+                                    settings.reviewReminderTime = newTime
+                                    ReviewReminderScheduler.shared.reschedule()
+                                }
+                            ),
+                            displayedComponents: .hourAndMinute
+                        )
+                        .labelsHidden()
+                        .tint(Theme.orange)
+                    }
                 }
             }
-            .frame(minHeight: Theme.Size.touch)
-        } header: {
-            SectionHeader(title: settings.localized("Library"))
+        }
+
+        VStack(alignment: .leading, spacing: Theme.Space.small) {
+            HardwareSectionHeader(title: settings.localized("Library"))
+            HardwareCard {
+                HardwareRow(title: settings.localized("Hide completed lessons")) {
+                    HardwareToggle(isOn: $settings.hideCompletedLessons)
+                }
+                HardwareDivider()
+                VStack(alignment: .leading, spacing: Theme.Space.small) {
+                    Text(settings.localized("Next lesson from"))
+                        .font(Theme.control)
+                        .foregroundStyle(Theme.ink)
+                    PlexSegmentedPicker(
+                        title: settings.localized("Next lesson from"),
+                        selection: $settings.nextLessonSource,
+                        options: NextLessonSource.allCases.map { ($0.id, settings.localized($0.title)) },
+                        fitsColumn: true,
+                        size: .compact
+                    )
+                }
+                .padding(.horizontal, Theme.Space.regular)
+                .padding(.vertical, 12)
+            }
         }
     }
 
     @ViewBuilder
     private var keyboardAndTouchPadSections: some View {
         @Bindable var settings = settings
-        Section {
-            if midi.isKeyboardConnected {
-                Toggle(settings.localized("Play pads with keyboard"), isOn: $settings.playPadsWithKeyboard)
-                    .tint(Theme.orange)
-            } else {
-                Text(settings.localized("No keyboard connected"))
-                    .font(Theme.meta)
-                    .foregroundStyle(Theme.secondary)
-            }
-
-            VStack(alignment: .leading, spacing: Theme.Space.tight) {
-                ForEach(KeyboardPadMapping.rows, id: \.rowNumber) { row in
-                    if row.rowNumber > 1 {
-                        Divider()
+        VStack(alignment: .leading, spacing: Theme.Space.small) {
+            HardwareSectionHeader(title: settings.localized("Keyboard"))
+            HardwareCard {
+                if midi.isKeyboardConnected {
+                    HardwareRow(title: settings.localized("Play pads with keyboard")) {
+                        HardwareToggle(isOn: $settings.playPadsWithKeyboard)
                     }
+                } else {
+                    HardwareRow(title: settings.localized("No keyboard connected"))
+                        .foregroundStyle(Theme.secondary)
+                }
+
+                ForEach(KeyboardPadMapping.rows, id: \.rowNumber) { row in
+                    HardwareDivider()
                     HStack {
                         Text(settings.localized(row.label))
                             .font(Theme.control)
@@ -447,52 +543,53 @@ public struct SettingsView: View {
                                     .font(Theme.meta)
                                     .foregroundStyle(Theme.secondary)
                                     .frame(width: 28, height: 28)
-                                    .background(Theme.surface, in: RoundedRectangle(cornerRadius: 6))
+                                    .background(Theme.recessed, in: RoundedRectangle(cornerRadius: Theme.Radius.control))
                                     .overlay {
-                                        RoundedRectangle(cornerRadius: 6)
+                                        RoundedRectangle(cornerRadius: Theme.Radius.control)
                                             .strokeBorder(Theme.hairline, lineWidth: 1)
                                     }
                             }
                         }
                     }
-                    .frame(minHeight: 32)
+                    .padding(.horizontal, Theme.Space.regular)
+                    .padding(.vertical, 10)
+                    .frame(minHeight: Theme.Size.row)
                 }
             }
-            .padding(.vertical, Theme.Space.tight)
-        } header: {
-            SectionHeader(title: settings.localized("Keyboard"))
         }
 
-        Section {
-            if let pads = midi.padIndices {
-                let profile = midi.activeProfile
-                PadProfileGrid(profile: profile) { slot in
-                    let padIndex = pads[profile.target(forSlot: slot)]
-                    TouchPad(
-                        number: slot + 1,
-                        sound: PadNames.name(for: padIndex),
-                        isActive: midi.pressedPadIndices.contains(padIndex)
-                    ) { pressed in
-                        midi.touch(padIndex: padIndex, isPressed: pressed)
+        VStack(alignment: .leading, spacing: Theme.Space.small) {
+            HardwareSectionHeader(title: settings.localized("Touch pads"))
+            HardwareCard(padding: Theme.Space.regular) {
+                if let pads = midi.padIndices {
+                    let profile = midi.activeProfile
+                    PadProfileGrid(profile: profile) { slot in
+                        let padIndex = pads[profile.target(forSlot: slot)]
+                        TouchPad(
+                            number: slot + 1,
+                            sound: PadNames.name(for: padIndex),
+                            isActive: midi.pressedPadIndices.contains(padIndex)
+                        ) { pressed in
+                            midi.touch(padIndex: padIndex, isPressed: pressed)
+                        }
+                        .id("\(settings.activeProfileName)/\(slot)/\(padIndex)")
                     }
-                    .id("\(settings.activeProfileName)/\(slot)/\(padIndex)")
+                } else {
+                    Text(settings.localized("This lesson requires 16 pads."))
+                        .font(Theme.meta)
+                        .foregroundStyle(Theme.secondary)
                 }
-                .padding(.vertical, Theme.Space.small)
-            } else {
-                Text(settings.localized("This lesson requires 16 pads."))
-                    .font(Theme.meta)
             }
-        } header: {
-            SectionHeader(title: settings.localized("Touch pads"))
-        } footer: {
             if midi.activeProfile.isEightPad {
                 Text(settings.localized("Eight physical slots follow the current lesson. Without a lesson, the base layout is shown."))
                     .font(Theme.meta)
                     .foregroundStyle(Theme.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
             } else {
                 Text(settings.localized("Touch pads send the same pad events as MIDI."))
                     .font(Theme.meta)
                     .foregroundStyle(Theme.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
             }
         }
     }
@@ -500,55 +597,76 @@ public struct SettingsView: View {
     @ViewBuilder
     private var aboutSections: some View {
         @Bindable var settings = settings
-        Section {
-            PlexSegmentedPicker(title: settings.localized("Appearance"), selection: $settings.appearance,
-                options: AppAppearance.allCases.map { ($0, settings.localized($0.title)) })
-        } header: {
-            SectionHeader(title: settings.localized("Appearance"))
-        } footer: {
+        VStack(alignment: .leading, spacing: Theme.Space.small) {
+            HardwareSectionHeader(title: settings.localized("Appearance"))
+            HardwareCard(padding: Theme.Space.regular) {
+                PlexSegmentedPicker(
+                    title: settings.localized("Appearance"),
+                    selection: $settings.appearance,
+                    options: AppAppearance.allCases.map { ($0, settings.localized($0.title)) },
+                    fitsColumn: true
+                )
+            }
             Text(settings.localized("Choose light, dark or follow your system appearance."))
                 .font(Theme.meta)
                 .foregroundStyle(Theme.secondary)
+                .fixedSize(horizontal: false, vertical: true)
         }
 
-        Section {
-            PlexSegmentedPicker(title: settings.localized("App language"), selection: $settings.languagePreference,
-                options: AppLanguage.allCases.map { ($0, $0.displayName) })
-        } header: {
-            SectionHeader(title: settings.localized("Language"))
-        } footer: {
+        VStack(alignment: .leading, spacing: Theme.Space.small) {
+            HardwareSectionHeader(title: settings.localized("Language"))
+            HardwareCard(padding: Theme.Space.regular) {
+                PlexSegmentedPicker(
+                    title: settings.localized("App language"),
+                    selection: $settings.languagePreference,
+                    options: AppLanguage.allCases.map { ($0, $0.displayName) },
+                    fitsColumn: true
+                )
+            }
             Text(settings.localized("Choose Czech or English. Your lesson progress and controller mappings remain preserved."))
                 .font(Theme.meta)
                 .foregroundStyle(Theme.secondary)
+                .fixedSize(horizontal: false, vertical: true)
         }
 
-        Section {
-            NavigationLink {
-                FontLicenceView()
-            } label: {
-                Text("SIL Open Font License 1.1").font(Theme.control)
-            }
-        } header: {
-            SectionHeader(title: "IBM Plex Sans")
-        }
-
-        Section {
-            NavigationLink {
-                AboutDetailView()
-            } label: {
-                HStack {
-                    Text(settings.localized("About"))
-                        .font(Theme.control)
-                    Spacer()
-                    let version = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.0"
-                    Text("v\(version)")
-                        .font(Theme.meta)
-                        .foregroundStyle(Theme.secondary)
+        VStack(alignment: .leading, spacing: Theme.Space.small) {
+            HardwareSectionHeader(title: "IBM Plex Sans")
+            HardwareCard {
+                NavigationLink {
+                    FontLicenceView()
+                } label: {
+                    HardwareRow(title: "SIL Open Font License 1.1") {
+                        Image(systemName: "chevron.right")
+                            .font(.system(size: 13, weight: .semibold))
+                            .foregroundStyle(Theme.secondary)
+                    }
+                    .contentShape(Rectangle())
                 }
-                .frame(minHeight: Theme.Size.touch)
+                .buttonStyle(.plain)
             }
-        } header: {
-            SectionHeader(title: settings.localized("About"))
+        }
+
+        VStack(alignment: .leading, spacing: Theme.Space.small) {
+            HardwareSectionHeader(title: settings.localized("About"))
+            HardwareCard {
+                NavigationLink {
+                    AboutDetailView()
+                } label: {
+                    HardwareRow(title: settings.localized("About")) {
+                        HStack(spacing: Theme.Space.small) {
+                            let version = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.0"
+                            Text("v\(version)")
+                                .font(Theme.meta.monospacedDigit())
+                                .foregroundStyle(Theme.secondary)
+                            Image(systemName: "chevron.right")
+                                .font(.system(size: 13, weight: .semibold))
+                                .foregroundStyle(Theme.secondary)
+                        }
+                    }
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+            }
         }
     }
 
@@ -620,6 +738,39 @@ public struct SettingsView: View {
     }
 }
 
+private struct AreaDetailWrapper<Content: View>: View {
+    @Environment(\.dismiss) private var dismiss
+    let title: String
+    @ViewBuilder var content: () -> Content
+
+    var body: some View {
+        VStack(spacing: 0) {
+            ScreenTopBar {
+                HardwareBackButton { dismiss() }
+            } center: {
+                Text(title)
+                    .font(Theme.screenTitle)
+                    .foregroundStyle(Theme.ink)
+            } trailing: {
+                EmptyView()
+            }
+            .padding(.horizontal, Theme.Space.page)
+            .padding(.vertical, Theme.Space.small)
+            .background(Theme.chassis)
+
+            Rectangle()
+                .fill(Theme.hairline)
+                .frame(height: 1)
+
+            content()
+        }
+        .background(Theme.chassis.ignoresSafeArea())
+        .foregroundStyle(Theme.ink)
+        .navigationBarBackButtonHidden(true)
+        .toolbar(.hidden, for: .navigationBar)
+    }
+}
+
 private struct FontLicenceView: View {
     @Environment(\.dismiss) private var dismiss
 
@@ -632,26 +783,39 @@ private struct FontLicenceView: View {
     }()
 
     var body: some View {
-        ScrollView {
-            Text(Self.licence)
-                .font(Theme.meta)
-                .lineSpacing(8)
-                .textSelection(.enabled)
-                .fixedSize(horizontal: false, vertical: true)
-                .frame(maxWidth: 760, alignment: .leading)
-                .padding(Theme.Space.page)
-                .frame(maxWidth: .infinity)
-        }
-        .calmChassisBackground().foregroundStyle(Theme.ink)
-        .navigationTitle("IBM Plex Sans")
-        .navigationBarTitleDisplayMode(.inline)
-        .navigationBarBackButtonHidden(true)
-        .toolbar {
-            ToolbarItem(placement: .principal) { ScreenHeader(title: "IBM Plex Sans") }
-            PadToolbarItem(placement: .topBarLeading) {
-                BackButton { dismiss() }
+        VStack(spacing: 0) {
+            ScreenTopBar {
+                HardwareBackButton { dismiss() }
+            } center: {
+                Text("IBM Plex Sans")
+                    .font(Theme.screenTitle)
+                    .foregroundStyle(Theme.ink)
+            } trailing: {
+                EmptyView()
+            }
+            .padding(.horizontal, Theme.Space.page)
+            .padding(.vertical, Theme.Space.small)
+            .background(Theme.chassis)
+
+            Rectangle()
+                .fill(Theme.hairline)
+                .frame(height: 1)
+
+            ScrollView {
+                Text(Self.licence)
+                    .font(Theme.meta)
+                    .lineSpacing(8)
+                    .textSelection(.enabled)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .frame(maxWidth: 760, alignment: .leading)
+                    .padding(Theme.Space.page)
+                    .frame(maxWidth: .infinity)
             }
         }
+        .background(Theme.chassis.ignoresSafeArea())
+        .foregroundStyle(Theme.ink)
+        .navigationBarBackButtonHidden(true)
+        .toolbar(.hidden, for: .navigationBar)
     }
 }
 
@@ -667,27 +831,37 @@ private struct ProgressBackupSection: View {
     @State private var showAlert = false
 
     var body: some View {
-        Section {
-            Button(settings.localized("Back up progress")) {
-                do {
-                    let data = try ProgressStore.shared.exportData()
-                    backupDocument = BackupDocument(data: data)
-                    isExporting = true
-                } catch {
-                    alertMessage = error.localizedDescription
-                    showAlert = true
+        VStack(alignment: .leading, spacing: Theme.Space.small) {
+            HardwareSectionHeader(title: settings.localized("Progress"))
+
+            HardwareCard(padding: Theme.Space.regular) {
+                VStack(alignment: .leading, spacing: Theme.Space.controlGap) {
+                    Button {
+                        do {
+                            let data = try ProgressStore.shared.exportData()
+                            backupDocument = BackupDocument(data: data)
+                            isExporting = true
+                        } catch {
+                            alertMessage = error.localizedDescription
+                            showAlert = true
+                        }
+                    } label: {
+                        Text(settings.localized("Back up progress"))
+                            .font(Theme.control)
+                            .frame(maxWidth: .infinity, minHeight: Theme.Size.touch)
+                    }
+                    .buttonStyle(PadSecondaryButtonStyle())
+
+                    Button {
+                        isImporting = true
+                    } label: {
+                        Text(settings.localized("Restore from backup"))
+                            .font(Theme.control)
+                            .frame(maxWidth: .infinity, minHeight: Theme.Size.touch)
+                    }
+                    .buttonStyle(PadSecondaryButtonStyle())
                 }
             }
-            .font(Theme.control)
-            .frame(minHeight: Theme.Size.touch)
-
-            Button(settings.localized("Restore from backup")) {
-                isImporting = true
-            }
-            .font(Theme.control)
-            .frame(minHeight: Theme.Size.touch)
-        } header: {
-            SectionHeader(title: settings.localized("Progress"))
         }
         .fileExporter(
             isPresented: $isExporting,
@@ -756,12 +930,17 @@ private struct LegacyProgressImportSection: View {
     @State private var showingResult = false
 
     var body: some View {
-        Section {
-            Button(settings.localized("Choose legacy backup JSON")) { showingImporter = true }
-                .font(Theme.control)
-                .frame(minHeight: Theme.Size.touch)
-        } header: {
-            SectionHeader(title: settings.localized("Import from legacy backup"))
+        VStack(alignment: .leading, spacing: Theme.Space.small) {
+            HardwareSectionHeader(title: settings.localized("Import from legacy backup"))
+
+            HardwareCard(padding: Theme.Space.regular) {
+                Button { showingImporter = true } label: {
+                    Text(settings.localized("Choose legacy backup JSON"))
+                        .font(Theme.control)
+                        .frame(maxWidth: .infinity, minHeight: Theme.Size.touch)
+                }
+                .buttonStyle(PadSecondaryButtonStyle())
+            }
         }
         .fileImporter(isPresented: $showingImporter, allowedContentTypes: [.json]) { result in
             do {
@@ -792,57 +971,93 @@ private struct SoundKitSelectionView: View {
     let kits: [SampleKit]
 
     var body: some View {
-        Form {
-            Section {
-                kitRow(id: "auto", title: settings.localized("Automatic"))
-                ForEach(kits) { kit in
-                    kitRow(id: kit.kitId, title: kit.name)
+        VStack(spacing: 0) {
+            ScreenTopBar {
+                HardwareBackButton { dismiss() }
+            } center: {
+                Text(settings.localized("Sound set"))
+                    .font(Theme.screenTitle)
+                    .foregroundStyle(Theme.ink)
+            } trailing: {
+                EmptyView()
+            }
+            .padding(.horizontal, Theme.Space.page)
+            .padding(.vertical, Theme.Space.small)
+            .background(Theme.chassis)
+
+            Rectangle()
+                .fill(Theme.hairline)
+                .frame(height: 1)
+
+            ScrollView {
+                VStack(spacing: Theme.Space.small) {
+                    kitRow(id: "auto", title: settings.localized("Automatic"))
+                    ForEach(kits) { kit in
+                        kitRow(id: kit.kitId, title: kit.name)
+                    }
                 }
+                .frame(maxWidth: 700, alignment: .leading)
+                .padding(Theme.Space.page)
+                .frame(maxWidth: .infinity)
             }
-            .listRowBackground(Theme.surface)
+            .scrollBounceBehavior(.basedOnSize)
         }
-        .appFormStyle()
-        .navigationTitle(settings.localized("Sound set"))
-        .navigationBarTitleDisplayMode(.inline)
+        .background(Theme.chassis.ignoresSafeArea())
+        .foregroundStyle(Theme.ink)
         .navigationBarBackButtonHidden(true)
-        .toolbar {
-            ToolbarItem(placement: .principal) { ScreenHeader(title: settings.localized("Sound set")) }
-            PadToolbarItem(placement: .topBarLeading) {
-                BackButton { dismiss() }
-            }
-        }
+        .toolbar(.hidden, for: .navigationBar)
     }
 
     private func kitRow(id: String, title: String) -> some View {
-        Button {
+        let isSelected = settings.selectedKitId == id
+        let shape = RoundedRectangle(cornerRadius: Theme.Radius.panel)
+        return Button {
             settings.selectedKitId = id
             dismiss()
         } label: {
-            HStack {
+            HStack(spacing: Theme.Space.controlGap) {
+                Circle()
+                    .fill(Theme.cavity)
+                    .frame(width: 14, height: 14)
+                    .overlay {
+                        Circle()
+                            .fill(isSelected ? Theme.orange : Theme.ledOff)
+                            .frame(width: 8, height: 8)
+                            .shadow(color: isSelected ? Theme.accentGlow : .clear, radius: isSelected ? 5 : 0)
+                    }
+
                 Text(title)
                     .font(Theme.control)
                     .foregroundStyle(Theme.ink)
                 Spacer()
-                if settings.selectedKitId == id {
-                    Image(systemName: "checkmark")
-                        .font(.system(size: 16, weight: .semibold))
+                if isSelected {
+                    Text(Theme.sentenceCase(settings.localized("Active")))
+                        .font(Theme.strong(13))
                         .foregroundStyle(Theme.orange)
                 }
             }
-            .frame(minHeight: Theme.Size.touch)
-            .contentShape(Rectangle())
+            .padding(.horizontal, Theme.Space.regular)
+            .padding(.vertical, 12)
+            .frame(minHeight: Theme.Size.row)
+            .background(isSelected ? Theme.surfaceElevated : Theme.surface, in: shape)
+            .clipShape(shape)
+            .overlay {
+                shape.strokeBorder(isSelected ? Theme.orange : Theme.hairline, lineWidth: isSelected ? 1.5 : 1)
+            }
+            .contentShape(shape)
         }
         .buttonStyle(.plain)
+        .accessibilityAddTraits(isSelected ? .isSelected : [])
     }
 }
 
-/// One-line volume row with label left, slider middle, and dB readout right.
+/// One-line volume row with label left and hardware fader + dB readout right.
 struct SoundSliderRow: View {
     let title: String
     @Binding var value: Int
 
     var body: some View {
-        HStack(spacing: 16) {
+        HStack(spacing: Theme.Space.regular) {
             Text(title)
                 .font(Theme.control)
                 .foregroundStyle(Theme.ink)
@@ -850,24 +1065,20 @@ struct SoundSliderRow: View {
                 .lineLimit(1)
                 .minimumScaleFactor(0.85)
 
-            Slider(
+            HardwareSlider(
+                title: title,
                 value: Binding(
                     get: { Double(value) },
                     set: { value = SettingsManager.clampVolume(Int($0.rounded())) }
                 ),
-                in: 0...100,
-                step: 5
+                range: 0...100,
+                step: 5,
+                valueFormatter: { Self.formatDB(fromPercent: Int($0.rounded())) }
             )
-            .tint(Theme.orange)
-            .frame(minHeight: Theme.Size.minimumTouch)
-
-            Text(Self.formatDB(fromPercent: value))
-                .font(Theme.meta.monospacedDigit())
-                .foregroundStyle(Theme.secondary)
-                .frame(width: 56, alignment: .trailing)
-                .lineLimit(1)
         }
-        .frame(minHeight: 56)
+        .padding(.horizontal, Theme.Space.regular)
+        .padding(.vertical, 8)
+        .frame(minHeight: Theme.Size.rowLarge)
     }
 
     static func formatDB(fromPercent percent: Int) -> String {
@@ -878,7 +1089,7 @@ struct SoundSliderRow: View {
     }
 }
 
-/// Compact cell per instrument role with its name, dB value, and slider.
+/// Compact cell per instrument role with its name, dB value, and hardware slider.
 private struct InstrumentTrimCell: View {
     @Environment(SettingsManager.self) private var settings
     let voice: String
@@ -895,31 +1106,24 @@ private struct InstrumentTrimCell: View {
     private var pad: Int { AudioEngine.defaultPadVoices.firstIndex(of: voice) ?? 0 }
     private var trim: Int { settings.instrumentTrims[voice] ?? 0 }
 
-    private var formattedTrim: String {
-        if trim == 0 { return "0 dB" }
-        if trim > 0 { return "+\(trim) dB" }
-        return "−\(abs(trim)) dB"
+    private static func formatTrim(_ value: Int) -> String {
+        if value == 0 { return "0 dB" }
+        if value > 0 { return "+\(value) dB" }
+        return "−\(abs(value)) dB"
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            HStack(spacing: 6) {
-                (Text(PadVoice.abbreviation(pad))
-                    + Text(" \(PadVoice.displayName(pad))"))
-                .font(Theme.control)
-                .foregroundStyle(Theme.ink)
-                .lineLimit(1)
-                .minimumScaleFactor(0.85)
+        let shape = RoundedRectangle(cornerRadius: Theme.Radius.panel)
+        VStack(alignment: .leading, spacing: Theme.Space.tight) {
+            (Text(PadVoice.abbreviation(pad))
+                + Text(" \(PadVoice.displayName(pad))"))
+            .font(Theme.control)
+            .foregroundStyle(Theme.ink)
+            .lineLimit(1)
+            .minimumScaleFactor(0.85)
 
-                Spacer(minLength: 4)
-
-                Text(formattedTrim)
-                    .font(Theme.meta.monospacedDigit())
-                    .foregroundStyle(Theme.secondary)
-                    .lineLimit(1)
-            }
-
-            Slider(
+            HardwareSlider(
+                title: PadVoice.displayName(pad),
                 value: Binding(
                     get: { Double(trim) },
                     set: {
@@ -928,15 +1132,16 @@ private struct InstrumentTrimCell: View {
                         settings.instrumentTrims = all
                     }
                 ),
-                in: Double(SampleGain.trimRange.lowerBound)...Double(SampleGain.trimRange.upperBound),
-                step: 1
+                range: Double(SampleGain.trimRange.lowerBound)...Double(SampleGain.trimRange.upperBound),
+                step: 1,
+                valueFormatter: { Self.formatTrim(Int($0.rounded())) }
             )
-            .tint(Theme.orange)
-            .frame(minHeight: 36)
-            .contentShape(Rectangle())
         }
-        .padding(.vertical, 12)
+        .padding(.vertical, 10)
         .padding(.horizontal, 14)
-        .background(Theme.background, in: RoundedRectangle(cornerRadius: 12))
+        .background(Theme.recessed, in: shape)
+        .overlay {
+            shape.strokeBorder(Theme.hairline, lineWidth: 1)
+        }
     }
 }
