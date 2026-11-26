@@ -43,11 +43,30 @@ enum Theme {
     static let black = Color(uiColor: softBlack)
     static let white = Color(uiColor: creamWhite)
     static let background = adaptive(light: creamWhite, dark: softBlack)
-    static let ink = adaptive(light: softBlack, dark: creamWhite)
-    static let secondary = adaptive(light: UIColor(hex: 0x5E5950), dark: UIColor(hex: 0xB3ADA2))
-    static let surface = adaptive(light: UIColor(hex: 0xEBE5DA), dark: UIColor(hex: 0x2A2824))
+
+    // MARK: - Hardware UI Semantic Tokens (DESIGN.md)
+    static let chassis = adaptive(light: UIColor(hex: 0xE6E6E2), dark: UIColor(hex: 0x0C0C0E))
+    static let surface = adaptive(light: UIColor(hex: 0xF4F4F0), dark: UIColor(hex: 0x141417))
+    static let surfaceElevated = adaptive(light: UIColor(hex: 0xFFFFFF), dark: UIColor(hex: 0x1B1B1F))
+    static let recessed = adaptive(light: UIColor(hex: 0xDADAD4), dark: UIColor(hex: 0x09090B))
     /// One hairline for every divider and outline in the chrome.
-    static let hairline = ink.opacity(0.15)
+    static let hairline = adaptive(light: UIColor(hex: 0xC8C8C0), dark: UIColor(hex: 0x26262B))
+    static let ink = adaptive(light: UIColor(hex: 0x141417), dark: UIColor(hex: 0xF4F4F2))
+    static let secondary = adaptive(light: UIColor(hex: 0x5C5C62), dark: UIColor(hex: 0x8E8E93))
+    static let accent = adaptive(light: UIColor(hex: 0xF25C00), dark: UIColor(hex: 0xFF6B00))
+    static let accentEnd = adaptive(light: UIColor(hex: 0xD44500), dark: UIColor(hex: 0xE04E00))
+    static let accentGradient = LinearGradient(
+        colors: [accent, accentEnd],
+        startPoint: .top,
+        endPoint: .bottom
+    )
+    static let accentGlow = adaptive(
+        light: UIColor(hex: 0xF25C00, alpha: 0.16),
+        dark: UIColor(hex: 0xFF6B00, alpha: 0.28)
+    )
+    /// Inactive LED / off segment colour.
+    static let ledOff = adaptive(light: UIColor(hex: 0xCBCBC4), dark: UIColor(hex: 0x232328))
+
     /// Two-tone bevel colours for Home pads (ticket 112, proposal A).
     static let padBevelTop = adaptive(
         light: creamWhite.withAlphaComponent(0.55),
@@ -70,11 +89,6 @@ enum Theme {
     static let disabledFill = adaptive(
         light: UIColor(hex: 0xD6D0C4),
         dark: UIColor(hex: 0x201E1B)
-    )
-    /// Inactive LED / off segment colour.
-    static let ledOff = adaptive(
-        light: UIColor(hex: 0xD6D0C4),
-        dark: UIColor(hex: 0x3E3B36)
     )
 
     /// Star progression colours: not done grey, earned star full accent.
@@ -109,6 +123,7 @@ enum Theme {
     static let rowTitle = strong(18)
     static let meta = text(14)
     static let caption = text(13)
+    static let hardwareLabel = strong(11)
     static let control = text(16)
     static let navigation = text(16)
     static let action = strong(18)
@@ -151,12 +166,16 @@ enum Theme {
     }
 
     enum Radius {
+        /// Unified control radius for buttons, filters, icon buttons, and segments (DESIGN.md).
+        static let control: CGFloat = 6
+        /// Inner-screen panel and card radius (DESIGN.md).
+        static let panel: CGFloat = 10
+        /// Modal sheet, popover, and chassis block radius (DESIGN.md).
+        static let sheet: CGFloat = 12
         /// Home pad radius (Akai MPC Tactile Rubber style, ticket 112).
         static let pad: CGFloat = 8
-        /// Inner-screen panel and card radius (ticket 230).
-        static let panel: CGFloat = 8
-        /// Button & control radius (Variant B studio precision, ticket 133).
-        static let button: CGFloat = 6
+        /// Backwards-compatible alias for `control`.
+        static let button: CGFloat = control
         /// Controller plate at the reference pad size; scaled with the Home grid.
         static let controllerPlate: CGFloat = 16
     }

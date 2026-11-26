@@ -34,6 +34,11 @@ Every ticket has: Status, Goal, Rules, Files to read, Tests, Acceptance criteria
 ## Layout
 Docs in docs/. Tickets as local files in docs/tickets/.
 
+## Design System
+`DESIGN.md` at the repository root is the binding source of truth for all UI work in `SmackAPad/Sources/UI/`:
+- Never use native iOS `Form`, `.insetGrouped`, `Toggle`, `Slider`, or rounded `SegmentedPicker`; compose settings and controls from `UI/Shared/` (`HardwareCard`, `HardwareRow`, `HardwareSlider`, `HardwareToggle`, `PlexSegmentedPicker`, `HardwareBackButton`, `HardwareIconButton`).
+- Every color, surface, border, and radius must use the semantic tokens in `Theme.swift` and support both dark and light mode.
+
 
 ## Agent skills
 

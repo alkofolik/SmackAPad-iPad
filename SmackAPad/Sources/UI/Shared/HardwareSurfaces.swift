@@ -243,3 +243,106 @@ extension View {
     func structuralPlate() -> some View { background { StructuralPlateSurface() } }
     func insetDisplay() -> some View { modifier(InsetDisplay()) }
 }
+
+// MARK: - Hardware Card, Row & Section Header (DESIGN.md)
+
+/// Uppercase hardware label placed above a `HardwareCard` or control group.
+struct HardwareSectionHeader: View {
+    let title: String
+    var subtitle: String? = nil
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: Theme.Space.tight) {
+            Text(title.uppercased())
+                .font(Theme.hardwareLabel)
+                .tracking(0.8)
+                .foregroundStyle(Theme.secondary)
+            if let subtitle {
+                Text(subtitle)
+                    .font(Theme.caption)
+                    .foregroundStyle(Theme.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .accessibilityAddTraits(.isHeader)
+    }
+}
+
+/// 10pt-radius hardware panel replacing native iOS `.insetGrouped` `Form` sections.
+struct HardwareCard<Content: View>: View {
+    var padding: CGFloat = 0
+    @ViewBuilder var content: () -> Content
+
+    var body: some View {
+        let shape = RoundedRectangle(cornerRadius: Theme.Radius.panel)
+        VStack(alignment: .leading, spacing: 0) {
+            content()
+        }
+        .padding(padding)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(Theme.surface, in: shape)
+        .clipShape(shape)
+        .overlay {
+            shape.strokeBorder(Theme.hairline, lineWidth: 1)
+                .allowsHitTesting(false)
+        }
+    }
+}
+
+/// 1pt hairline divider for separating interactive `HardwareRow` items inside a `HardwareCard`.
+struct HardwareDivider: View {
+    var inset: CGFloat = Theme.Space.regular
+
+    var body: some View {
+        Rectangle()
+            .fill(Theme.hairline)
+            .frame(height: 1)
+            .padding(.leading, inset)
+            .accessibilityHidden(true)
+    }
+}
+
+/// Interactive row inside a `HardwareCard` with title, optional subtitle/icon, and trailing control.
+struct HardwareRow<Trailing: View>: View {
+    let title: String
+    var subtitle: String? = nil
+    var icon: String? = nil
+    @ViewBuilder var trailing: () -> Trailing
+
+    var body: some View {
+        HStack(spacing: Theme.Space.controlGap) {
+            if let icon {
+                Image(systemName: icon)
+                    .font(Theme.control)
+                    .foregroundStyle(Theme.secondary)
+                    .frame(width: 24, alignment: .center)
+            }
+
+            VStack(alignment: .leading, spacing: 2) {
+                Text(title)
+                    .font(Theme.control)
+                    .foregroundStyle(Theme.ink)
+                    .fixedSize(horizontal: false, vertical: true)
+                if let subtitle {
+                    Text(subtitle)
+                        .font(Theme.caption)
+                        .foregroundStyle(Theme.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+
+            trailing()
+        }
+        .padding(.horizontal, Theme.Space.regular)
+        .padding(.vertical, 12)
+        .frame(minHeight: Theme.Size.row)
+    }
+}
+
+extension HardwareRow where Trailing == EmptyView {
+    init(title: String, subtitle: String? = nil, icon: String? = nil) {
+        self.init(title: title, subtitle: subtitle, icon: icon) { EmptyView() }
+    }
+}
