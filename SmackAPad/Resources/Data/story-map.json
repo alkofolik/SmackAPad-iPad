@@ -1,0 +1,1694 @@
+{
+  "L1-groove": [
+    {
+      "keystone": 10
+    },
+    {
+      "fork": [
+        11,
+        14
+      ]
+    },
+    {
+      "keystone": 13
+    },
+    {
+      "keystone": 15
+    },
+    {
+      "keystone": 159
+    },
+    {
+      "keystone": 20
+    },
+    {
+      "fork": [
+        160,
+        167
+      ]
+    },
+    {
+      "keystone": 12
+    },
+    {
+      "fork": [
+        16,
+        18,
+        21
+      ]
+    },
+    {
+      "keystone": 19
+    },
+    {
+      "fork": [
+        173,
+        176
+      ]
+    },
+    {
+      "keystone": 27
+    },
+    {
+      "keystone": 22
+    },
+    {
+      "keystone": 178
+    },
+    {
+      "keystone": 189
+    },
+    {
+      "fork": [
+        23,
+        28
+      ]
+    },
+    {
+      "keystone": 192
+    },
+    {
+      "keystone": 25
+    },
+    {
+      "fork": [
+        181,
+        182
+      ]
+    },
+    {
+      "keystone": 26
+    },
+    {
+      "keystone": 184
+    },
+    {
+      "fork": [
+        29,
+        31
+      ]
+    },
+    {
+      "keystone": 13001
+    },
+    {
+      "keystone": 14001
+    },
+    {
+      "keystone": 15001
+    }
+  ],
+  "L1-sixteenths": [
+    {
+      "keystone": 37
+    },
+    {
+      "keystone": 38
+    },
+    {
+      "fork": [
+        40,
+        41
+      ]
+    },
+    {
+      "keystone": 46
+    },
+    {
+      "keystone": 58
+    },
+    {
+      "keystone": 198
+    },
+    {
+      "fork": [
+        42,
+        43
+      ]
+    },
+    {
+      "keystone": 39
+    },
+    {
+      "keystone": 59
+    },
+    {
+      "keystone": 332
+    },
+    {
+      "keystone": 201
+    },
+    {
+      "keystone": 47
+    },
+    {
+      "keystone": 48
+    },
+    {
+      "keystone": 51
+    },
+    {
+      "keystone": 331
+    },
+    {
+      "keystone": 190
+    },
+    {
+      "keystone": 44
+    },
+    {
+      "keystone": 52
+    },
+    {
+      "keystone": 193
+    },
+    {
+      "keystone": 55
+    },
+    {
+      "keystone": 337
+    },
+    {
+      "keystone": 49
+    },
+    {
+      "keystone": 56
+    },
+    {
+      "keystone": 60
+    },
+    {
+      "fork": [
+        50,
+        53
+      ]
+    },
+    {
+      "fork": [
+        61,
+        62
+      ]
+    },
+    {
+      "keystone": 54
+    },
+    {
+      "keystone": 64
+    }
+  ],
+  "L1-ghost": [
+    {
+      "keystone": 204
+    },
+    {
+      "keystone": 205
+    },
+    {
+      "keystone": 208
+    },
+    {
+      "keystone": 207
+    },
+    {
+      "keystone": 328
+    },
+    {
+      "keystone": 330
+    },
+    {
+      "keystone": 206
+    },
+    {
+      "keystone": 214
+    },
+    {
+      "keystone": 213
+    },
+    {
+      "fork": [
+        209,
+        211
+      ]
+    },
+    {
+      "keystone": 210
+    },
+    {
+      "keystone": 215
+    },
+    {
+      "keystone": 212
+    }
+  ],
+  "L1-swing": [
+    {
+      "keystone": 267
+    },
+    {
+      "keystone": 268
+    },
+    {
+      "keystone": 333
+    },
+    {
+      "keystone": 269
+    },
+    {
+      "keystone": 335
+    }
+  ],
+  "L1-fills": [
+    {
+      "keystone": 17
+    },
+    {
+      "fork": [
+        24,
+        45
+      ]
+    },
+    {
+      "keystone": 63
+    },
+    {
+      "keystone": 329
+    },
+    {
+      "keystone": 30
+    },
+    {
+      "keystone": 444
+    },
+    {
+      "keystone": 445
+    },
+    {
+      "keystone": 57
+    },
+    {
+      "keystone": 266
+    },
+    {
+      "keystone": 443
+    }
+  ],
+  "L2-groove": [
+    {
+      "keystone": 32
+    },
+    {
+      "keystone": 165
+    },
+    {
+      "keystone": 33
+    },
+    {
+      "keystone": 187
+    },
+    {
+      "keystone": 13002
+    },
+    {
+      "keystone": 13003
+    },
+    {
+      "keystone": 14002
+    },
+    {
+      "keystone": 14003
+    },
+    {
+      "keystone": 15002
+    },
+    {
+      "keystone": 15003
+    }
+  ],
+  "L2-sixteenths": [
+    {
+      "keystone": 65
+    },
+    {
+      "keystone": 70
+    },
+    {
+      "fork": [
+        74,
+        88
+      ]
+    },
+    {
+      "keystone": 168
+    },
+    {
+      "fork": [
+        194,
+        196
+      ]
+    },
+    {
+      "keystone": 199
+    },
+    {
+      "keystone": 66
+    },
+    {
+      "keystone": 200
+    },
+    {
+      "keystone": 71
+    },
+    {
+      "fork": [
+        170,
+        174
+      ]
+    },
+    {
+      "keystone": 68
+    },
+    {
+      "fork": [
+        72,
+        76
+      ]
+    },
+    {
+      "fork": [
+        336,
+        339
+      ]
+    },
+    {
+      "fork": [
+        79,
+        80
+      ]
+    },
+    {
+      "keystone": 73
+    },
+    {
+      "keystone": 177
+    },
+    {
+      "keystone": 81
+    },
+    {
+      "keystone": 75
+    },
+    {
+      "keystone": 179
+    },
+    {
+      "fork": [
+        344,
+        345
+      ]
+    },
+    {
+      "keystone": 82
+    },
+    {
+      "fork": [
+        77,
+        78
+      ]
+    },
+    {
+      "keystone": 347
+    },
+    {
+      "fork": [
+        83,
+        91
+      ]
+    },
+    {
+      "keystone": 350
+    },
+    {
+      "keystone": 86
+    },
+    {
+      "keystone": 354
+    },
+    {
+      "keystone": 84
+    },
+    {
+      "fork": [
+        85,
+        89
+      ]
+    },
+    {
+      "keystone": 355
+    },
+    {
+      "keystone": 93
+    },
+    {
+      "keystone": 94
+    },
+    {
+      "keystone": 87
+    },
+    {
+      "keystone": 356
+    },
+    {
+      "keystone": 357
+    },
+    {
+      "keystone": 95
+    }
+  ],
+  "L2-ghost": [
+    {
+      "keystone": 191
+    },
+    {
+      "keystone": 216
+    },
+    {
+      "keystone": 222
+    },
+    {
+      "keystone": 218
+    },
+    {
+      "fork": [
+        219,
+        223
+      ]
+    },
+    {
+      "keystone": 340
+    },
+    {
+      "keystone": 220
+    },
+    {
+      "keystone": 221
+    },
+    {
+      "keystone": 351
+    },
+    {
+      "keystone": 342
+    },
+    {
+      "keystone": 346
+    },
+    {
+      "keystone": 348
+    },
+    {
+      "keystone": 358
+    },
+    {
+      "fork": [
+        349,
+        352
+      ]
+    },
+    {
+      "keystone": 359
+    }
+  ],
+  "L2-swing": [
+    {
+      "keystone": 270
+    },
+    {
+      "keystone": 276
+    },
+    {
+      "keystone": 288
+    },
+    {
+      "keystone": 278
+    },
+    {
+      "keystone": 338
+    },
+    {
+      "keystone": 271
+    },
+    {
+      "keystone": 353
+    },
+    {
+      "keystone": 272
+    },
+    {
+      "fork": [
+        273,
+        279
+      ]
+    },
+    {
+      "keystone": 275
+    },
+    {
+      "fork": [
+        277,
+        287
+      ]
+    },
+    {
+      "keystone": 280
+    },
+    {
+      "keystone": 281
+    },
+    {
+      "keystone": 282
+    },
+    {
+      "fork": [
+        283,
+        284
+      ]
+    },
+    {
+      "keystone": 285
+    },
+    {
+      "keystone": 286
+    },
+    {
+      "keystone": 289
+    },
+    {
+      "keystone": 290
+    }
+  ],
+  "L2-fills": [
+    {
+      "keystone": 67
+    },
+    {
+      "keystone": 69
+    },
+    {
+      "keystone": 217
+    },
+    {
+      "keystone": 334
+    },
+    {
+      "fork": [
+        448,
+        450
+      ]
+    },
+    {
+      "keystone": 274
+    },
+    {
+      "fork": [
+        90,
+        92
+      ]
+    },
+    {
+      "keystone": 341
+    },
+    {
+      "fork": [
+        453,
+        454
+      ]
+    },
+    {
+      "keystone": 343
+    },
+    {
+      "keystone": 457
+    },
+    {
+      "keystone": 451
+    },
+    {
+      "fork": [
+        449,
+        452
+      ]
+    },
+    {
+      "keystone": 446
+    },
+    {
+      "keystone": 461
+    },
+    {
+      "keystone": 456
+    },
+    {
+      "keystone": 447
+    },
+    {
+      "keystone": 464
+    },
+    {
+      "keystone": 458
+    },
+    {
+      "keystone": 455
+    },
+    {
+      "fork": [
+        459,
+        462
+      ]
+    },
+    {
+      "keystone": 460
+    },
+    {
+      "keystone": 463
+    }
+  ],
+  "L3-groove": [
+    {
+      "keystone": 35
+    },
+    {
+      "keystone": 13004
+    },
+    {
+      "keystone": 36
+    },
+    {
+      "keystone": 14004
+    },
+    {
+      "keystone": 15004
+    }
+  ],
+  "L3-sixteenths": [
+    {
+      "keystone": 96
+    },
+    {
+      "keystone": 97
+    },
+    {
+      "fork": [
+        105,
+        109
+      ]
+    },
+    {
+      "keystone": 110
+    },
+    {
+      "keystone": 180
+    },
+    {
+      "keystone": 98
+    },
+    {
+      "keystone": 202
+    },
+    {
+      "keystone": 106
+    },
+    {
+      "keystone": 111
+    },
+    {
+      "keystone": 360
+    },
+    {
+      "keystone": 203
+    },
+    {
+      "keystone": 99
+    },
+    {
+      "keystone": 114
+    },
+    {
+      "keystone": 361
+    },
+    {
+      "keystone": 367
+    },
+    {
+      "keystone": 100
+    },
+    {
+      "keystone": 197
+    },
+    {
+      "keystone": 362
+    },
+    {
+      "fork": [
+        102,
+        108
+      ]
+    },
+    {
+      "keystone": 365
+    },
+    {
+      "keystone": 113
+    },
+    {
+      "keystone": 372
+    },
+    {
+      "keystone": 116
+    },
+    {
+      "fork": [
+        369,
+        370
+      ]
+    },
+    {
+      "keystone": 371
+    },
+    {
+      "keystone": 376
+    }
+  ],
+  "L3-ghost": [
+    {
+      "keystone": 185
+    },
+    {
+      "keystone": 224
+    },
+    {
+      "keystone": 364
+    },
+    {
+      "keystone": 225
+    },
+    {
+      "fork": [
+        226,
+        227
+      ]
+    },
+    {
+      "keystone": 229
+    },
+    {
+      "keystone": 228
+    },
+    {
+      "keystone": 366
+    },
+    {
+      "keystone": 373
+    },
+    {
+      "keystone": 368
+    },
+    {
+      "keystone": 374
+    },
+    {
+      "fork": [
+        378,
+        379
+      ]
+    },
+    {
+      "keystone": 381
+    }
+  ],
+  "L3-swing": [
+    {
+      "keystone": 291
+    },
+    {
+      "fork": [
+        292,
+        302
+      ]
+    },
+    {
+      "keystone": 300
+    },
+    {
+      "keystone": 293
+    },
+    {
+      "keystone": 294
+    },
+    {
+      "keystone": 297
+    },
+    {
+      "keystone": 298
+    },
+    {
+      "fork": [
+        299,
+        301
+      ]
+    },
+    {
+      "keystone": 303
+    }
+  ],
+  "L3-fills": [
+    {
+      "keystone": 34
+    },
+    {
+      "keystone": 295
+    },
+    {
+      "fork": [
+        363,
+        375
+      ]
+    },
+    {
+      "keystone": 465
+    },
+    {
+      "keystone": 468
+    },
+    {
+      "keystone": 471
+    },
+    {
+      "keystone": 473
+    },
+    {
+      "keystone": 101
+    },
+    {
+      "keystone": 377
+    },
+    {
+      "keystone": 304
+    },
+    {
+      "keystone": 498
+    },
+    {
+      "keystone": 470
+    },
+    {
+      "keystone": 469
+    },
+    {
+      "keystone": 475
+    },
+    {
+      "keystone": 472
+    },
+    {
+      "keystone": 103
+    },
+    {
+      "keystone": 476
+    },
+    {
+      "fork": [
+        104,
+        107
+      ]
+    },
+    {
+      "keystone": 477
+    },
+    {
+      "keystone": 380
+    },
+    {
+      "keystone": 115
+    },
+    {
+      "keystone": 484
+    },
+    {
+      "keystone": 485
+    },
+    {
+      "keystone": 479
+    },
+    {
+      "keystone": 382
+    },
+    {
+      "keystone": 492
+    },
+    {
+      "keystone": 112
+    },
+    {
+      "keystone": 488
+    },
+    {
+      "keystone": 487
+    },
+    {
+      "keystone": 480
+    },
+    {
+      "keystone": 489
+    },
+    {
+      "keystone": 495
+    },
+    {
+      "keystone": 481
+    },
+    {
+      "keystone": 117
+    },
+    {
+      "fork": [
+        491,
+        497
+      ]
+    },
+    {
+      "keystone": 296
+    },
+    {
+      "fork": [
+        490,
+        494
+      ]
+    },
+    {
+      "keystone": 305
+    },
+    {
+      "keystone": 493
+    },
+    {
+      "keystone": 466
+    },
+    {
+      "keystone": 467
+    },
+    {
+      "keystone": 496
+    },
+    {
+      "keystone": 474
+    },
+    {
+      "keystone": 478
+    },
+    {
+      "keystone": 482
+    },
+    {
+      "keystone": 483
+    },
+    {
+      "keystone": 486
+    },
+    {
+      "keystone": 499
+    }
+  ],
+  "L4-sixteenths": [
+    {
+      "keystone": 118
+    },
+    {
+      "keystone": 124
+    },
+    {
+      "keystone": 125
+    },
+    {
+      "keystone": 119
+    },
+    {
+      "keystone": 129
+    },
+    {
+      "keystone": 134
+    },
+    {
+      "keystone": 397
+    },
+    {
+      "keystone": 400
+    },
+    {
+      "keystone": 130
+    },
+    {
+      "fork": [
+        128,
+        131,
+        133
+      ]
+    },
+    {
+      "keystone": 136
+    },
+    {
+      "fork": [
+        120,
+        126
+      ]
+    },
+    {
+      "keystone": 132
+    },
+    {
+      "fork": [
+        161,
+        162
+      ]
+    },
+    {
+      "keystone": 127
+    },
+    {
+      "keystone": 137
+    },
+    {
+      "fork": [
+        163,
+        164
+      ]
+    },
+    {
+      "keystone": 169
+    },
+    {
+      "fork": [
+        171,
+        172
+      ]
+    },
+    {
+      "keystone": 183
+    }
+  ],
+  "L4-ghost": [
+    {
+      "keystone": 188
+    },
+    {
+      "keystone": 230
+    },
+    {
+      "keystone": 231
+    },
+    {
+      "keystone": 232
+    },
+    {
+      "keystone": 383
+    },
+    {
+      "keystone": 233
+    },
+    {
+      "keystone": 238
+    },
+    {
+      "keystone": 234
+    },
+    {
+      "keystone": 384
+    },
+    {
+      "keystone": 386
+    },
+    {
+      "keystone": 235
+    },
+    {
+      "fork": [
+        236,
+        237
+      ]
+    },
+    {
+      "keystone": 389
+    },
+    {
+      "fork": [
+        391,
+        392
+      ]
+    },
+    {
+      "keystone": 401
+    },
+    {
+      "keystone": 403
+    }
+  ],
+  "L4-swing": [
+    {
+      "keystone": 307
+    },
+    {
+      "fork": [
+        313,
+        319
+      ]
+    },
+    {
+      "keystone": 317
+    },
+    {
+      "fork": [
+        394,
+        399
+      ]
+    },
+    {
+      "keystone": 308
+    },
+    {
+      "keystone": 310
+    },
+    {
+      "keystone": 312
+    },
+    {
+      "keystone": 321
+    },
+    {
+      "keystone": 314
+    },
+    {
+      "fork": [
+        315,
+        316
+      ]
+    },
+    {
+      "keystone": 322
+    }
+  ],
+  "L4-fills": [
+    {
+      "keystone": 121
+    },
+    {
+      "fork": [
+        122,
+        123
+      ]
+    },
+    {
+      "keystone": 385
+    },
+    {
+      "keystone": 500
+    },
+    {
+      "keystone": 506
+    },
+    {
+      "keystone": 502
+    },
+    {
+      "keystone": 306
+    },
+    {
+      "keystone": 387
+    },
+    {
+      "keystone": 388
+    },
+    {
+      "keystone": 515
+    },
+    {
+      "keystone": 501
+    },
+    {
+      "keystone": 135
+    },
+    {
+      "keystone": 503
+    },
+    {
+      "keystone": 138
+    },
+    {
+      "keystone": 393
+    },
+    {
+      "keystone": 390
+    },
+    {
+      "keystone": 504
+    },
+    {
+      "fork": [
+        509,
+        520
+      ]
+    },
+    {
+      "keystone": 518
+    },
+    {
+      "keystone": 309
+    },
+    {
+      "fork": [
+        507,
+        512
+      ]
+    },
+    {
+      "keystone": 311
+    },
+    {
+      "fork": [
+        395,
+        402
+      ]
+    },
+    {
+      "keystone": 521
+    },
+    {
+      "fork": [
+        318,
+        320
+      ]
+    },
+    {
+      "keystone": 396
+    },
+    {
+      "keystone": 513
+    },
+    {
+      "fork": [
+        524,
+        529
+      ]
+    },
+    {
+      "keystone": 398
+    },
+    {
+      "keystone": 519
+    },
+    {
+      "fork": [
+        525,
+        526
+      ]
+    },
+    {
+      "keystone": 323
+    },
+    {
+      "fork": [
+        505,
+        508
+      ]
+    },
+    {
+      "keystone": 404
+    },
+    {
+      "keystone": 405
+    },
+    {
+      "keystone": 510
+    },
+    {
+      "keystone": 523
+    },
+    {
+      "keystone": 514
+    },
+    {
+      "fork": [
+        511,
+        516
+      ]
+    },
+    {
+      "keystone": 517
+    },
+    {
+      "keystone": 522
+    },
+    {
+      "keystone": 527
+    },
+    {
+      "keystone": 528
+    }
+  ],
+  "L5-sixteenths": [
+    {
+      "keystone": 139
+    },
+    {
+      "keystone": 142
+    },
+    {
+      "keystone": 145
+    },
+    {
+      "keystone": 144
+    },
+    {
+      "keystone": 148
+    },
+    {
+      "fork": [
+        406,
+        416
+      ]
+    },
+    {
+      "keystone": 141
+    },
+    {
+      "keystone": 143
+    },
+    {
+      "fork": [
+        424,
+        426
+      ]
+    },
+    {
+      "keystone": 146
+    },
+    {
+      "keystone": 147
+    },
+    {
+      "fork": [
+        149,
+        151
+      ]
+    },
+    {
+      "keystone": 195
+    },
+    {
+      "keystone": 158
+    },
+    {
+      "keystone": 425
+    },
+    {
+      "keystone": 150
+    },
+    {
+      "fork": [
+        155,
+        175
+      ]
+    },
+    {
+      "keystone": 428
+    },
+    {
+      "keystone": 166
+    },
+    {
+      "keystone": 186
+    }
+  ],
+  "L5-ghost": [
+    {
+      "keystone": 239
+    },
+    {
+      "fork": [
+        240,
+        241
+      ]
+    },
+    {
+      "keystone": 246
+    },
+    {
+      "keystone": 247
+    },
+    {
+      "keystone": 243
+    },
+    {
+      "keystone": 258
+    },
+    {
+      "keystone": 408
+    },
+    {
+      "keystone": 250
+    },
+    {
+      "keystone": 242
+    },
+    {
+      "fork": [
+        249,
+        251
+      ]
+    },
+    {
+      "keystone": 411
+    },
+    {
+      "keystone": 252
+    },
+    {
+      "keystone": 427
+    },
+    {
+      "keystone": 412
+    },
+    {
+      "fork": [
+        244,
+        245
+      ]
+    },
+    {
+      "keystone": 257
+    },
+    {
+      "fork": [
+        255,
+        256
+      ]
+    },
+    {
+      "keystone": 414
+    },
+    {
+      "keystone": 259
+    },
+    {
+      "keystone": 418
+    },
+    {
+      "keystone": 248
+    },
+    {
+      "fork": [
+        260,
+        265
+      ]
+    },
+    {
+      "keystone": 261
+    },
+    {
+      "fork": [
+        429,
+        430
+      ]
+    },
+    {
+      "keystone": 262
+    },
+    {
+      "fork": [
+        263,
+        264
+      ]
+    },
+    {
+      "fork": [
+        431,
+        435
+      ]
+    },
+    {
+      "fork": [
+        438,
+        440
+      ]
+    },
+    {
+      "fork": [
+        439,
+        441
+      ]
+    },
+    {
+      "keystone": 442
+    }
+  ],
+  "L5-swing": [
+    {
+      "keystone": 324
+    },
+    {
+      "fork": [
+        409,
+        417
+      ]
+    },
+    {
+      "keystone": 325
+    },
+    {
+      "keystone": 415
+    },
+    {
+      "keystone": 326
+    },
+    {
+      "keystone": 327
+    }
+  ],
+  "L5-fills": [
+    {
+      "keystone": 140
+    },
+    {
+      "keystone": 154
+    },
+    {
+      "fork": [
+        152,
+        153
+      ]
+    },
+    {
+      "keystone": 407
+    },
+    {
+      "keystone": 533
+    },
+    {
+      "keystone": 537
+    },
+    {
+      "fork": [
+        532,
+        536
+      ]
+    },
+    {
+      "keystone": 531
+    },
+    {
+      "keystone": 410
+    },
+    {
+      "keystone": 535
+    },
+    {
+      "keystone": 539
+    },
+    {
+      "keystone": 546
+    },
+    {
+      "fork": [
+        413,
+        421
+      ]
+    },
+    {
+      "keystone": 156
+    },
+    {
+      "keystone": 419
+    },
+    {
+      "keystone": 157
+    },
+    {
+      "keystone": 541
+    },
+    {
+      "keystone": 420
+    },
+    {
+      "keystone": 433
+    },
+    {
+      "fork": [
+        253,
+        254
+      ]
+    },
+    {
+      "keystone": 422
+    },
+    {
+      "fork": [
+        530,
+        538
+      ]
+    },
+    {
+      "keystone": 423
+    },
+    {
+      "keystone": 432
+    },
+    {
+      "keystone": 437
+    },
+    {
+      "fork": [
+        540,
+        542
+      ]
+    },
+    {
+      "keystone": 434
+    },
+    {
+      "keystone": 534
+    },
+    {
+      "fork": [
+        543,
+        547
+      ]
+    },
+    {
+      "keystone": 436
+    },
+    {
+      "keystone": 544
+    },
+    {
+      "keystone": 545
+    }
+  ]
+}
