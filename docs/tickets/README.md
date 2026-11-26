@@ -234,3 +234,10 @@ Source: Jakub, retention and memory discussion; legacy "Trénink" concept 2026-1
 | 223 | Group `UI/` into subfolders (`Home`, `Practice`, `Library`, `Settings`, `Shared`) | Gemini 3.8 Flash, low (fallback Codex GPT-6.1 Sol, low) | after 221 and 222, or first (Group A3) |
 | 224 | Split `SettingsManager.swift` by area (persistence → full test suite) | Gemini 3.8 Flash, medium (fallback Codex GPT-6.1 Sol, medium) | any time (Group B4) |
 | 225 | Split `HomeScreen.swift` into sub-views | Gemini 3.8 Flash, medium (fallback Codex GPT-6.1 Sol, medium) | after 223 (Group B5) |
+
+## Story mode (2026-11-26)
+
+| # | What | Agent | When |
+|---|---|---|---|
+| 247 | Story mode / Free practice switch (Story default), one shared availability rule, kits never block a lesson | Gemini 4 Hydrogen, medium (fallback Codex Sol 6.2, high) | now |
+| 248 | Story mode game rules + world bible (design brief for ChatGPT, no code) | ChatGPT, strongest reasoning model, high | in parallel with 247 |
