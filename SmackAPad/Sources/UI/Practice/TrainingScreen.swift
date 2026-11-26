@@ -52,6 +52,7 @@ public struct TrainingScreen: View {
     @State private var selectedStageIndex = 0
     @State private var hasInitializedStageSelection = false
     @State private var selectedNodeId: Int?
+    @State private var selectedTab: TrainingTabMode = .path
     @State private var showingStudioRig = false
     @State private var studioRigHighlightedKitId: String?
     @State private var selectedBonusTrack: BonusJamTrack?
@@ -301,52 +302,70 @@ public struct TrainingScreen: View {
     @ViewBuilder
     private func trainingContent(in size: CGSize) -> some View {
         let isLandscape = size.width >= 768 && size.width > size.height
-        let summaryWidth: CGFloat = min(370, max(300, size.width * 0.31))
+        let summaryWidth: CGFloat = min(384, max(320, size.width * 0.32))
 
-        if isLandscape {
-            VStack(alignment: .leading, spacing: Theme.Space.controlGap) {
-                header
-                if let data {
-                    drummerTopBar(data: data, isCompact: false)
-                    HStack(alignment: .top, spacing: Theme.Space.regular) {
+        VStack(alignment: .leading, spacing: 12) {
+            if let data {
+                DrummerTopHeaderBar(
+                    card: data.drummerCard,
+                    availableKeys: progress.drummerPath.availableKeys,
+                    selectedTab: $selectedTab,
+                    isCompact: !isLandscape,
+                    onBack: onHome
+                )
+
+                if selectedTab == .studioRig {
+                    StudioRigContentView(
+                        highlightedKitId: studioRigHighlightedKitId,
+                        onOpenKitLessons: { kit in
+                            refreshTrainingData()
+                            onHome()
+                            AppNavigation.shared.openLibrary(.kit(kit.kitId))
+                        },
+                        onPlayBonusTrack: { track in
+                            guard !hasActiveCover else { return }
+                            selectedBonusTrack = track
+                        },
+                        onOpenLibrary: {
+                            onHome()
+                            AppNavigation.shared.openLibrary(.none)
+                        }
+                    )
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                } else if isLandscape {
+                    HStack(alignment: .top, spacing: 14) {
                         pathMapPanel(data: data)
                             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
 
-                        rightSummaryPanel(data: data)
-                            .frame(maxHeight: .infinity, alignment: .topLeading)
-                            .frame(width: summaryWidth)
+                        ScrollView(.vertical, showsIndicators: false) {
+                            rightSummaryPanel(data: data)
+                        }
+                        .frame(maxHeight: .infinity, alignment: .topLeading)
+                        .frame(width: summaryWidth)
                     }
                     .frame(maxHeight: .infinity, alignment: .top)
                 } else {
-                    ProgressView()
-                        .frame(maxWidth: .infinity, maxHeight: .infinity)
-                        .accessibilityLabel(settings.localized("Training"))
-                }
-            }
-            .padding(.horizontal, Theme.Space.page)
-            .padding(.vertical, Theme.Space.regular)
-            .frame(maxWidth: 1280, maxHeight: .infinity, alignment: .topLeading)
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
-        } else {
-            ScrollView {
-                VStack(alignment: .leading, spacing: Theme.Space.controlGap) {
-                    header
-                    if let data {
-                        drummerTopBar(data: data, isCompact: true)
-                        pathMapPanel(data: data)
-                        rightSummaryPanel(data: data)
-                    } else {
-                        ProgressView()
-                            .frame(maxWidth: .infinity, minHeight: 160)
-                            .accessibilityLabel(settings.localized("Training"))
+                    ScrollView {
+                        VStack(alignment: .leading, spacing: 12) {
+                            pathMapPanel(data: data)
+                            rightSummaryPanel(data: data)
+                            Spacer(minLength: Theme.Space.regular)
+                        }
                     }
-                    Spacer(minLength: Theme.Space.regular)
                 }
-                .padding(Theme.Space.regular)
-                .frame(maxWidth: 920, alignment: .leading)
-                .frame(maxWidth: .infinity)
+            } else {
+                header
+                ProgressView()
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .accessibilityLabel(settings.localized("Training"))
             }
         }
+        .padding(.horizontal, isLandscape ? Theme.Space.page : Theme.Space.regular)
+        .padding(.vertical, Theme.Space.regular)
+        .frame(maxWidth: 1320, maxHeight: .infinity, alignment: .topLeading)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(Color(red: 0.047, green: 0.047, blue: 0.055).ignoresSafeArea())
+        .environment(\.colorScheme, .dark)
     }
 
     private var studioRigSheet: some View {
@@ -364,18 +383,6 @@ public struct TrainingScreen: View {
             onOpenLibrary: {
                 onHome()
                 AppNavigation.shared.openLibrary(.none)
-            }
-        )
-    }
-
-    private func drummerTopBar(data: TrainingData, isCompact: Bool) -> some View {
-        DrummerBarView(
-            card: data.drummerCard,
-            availableKeys: progress.drummerPath.availableKeys,
-            isCompact: isCompact,
-            onOpenStudioRig: {
-                studioRigHighlightedKitId = nil
-                showingStudioRig = true
             }
         )
     }
@@ -400,18 +407,45 @@ public struct TrainingScreen: View {
                     }
                 }
                 studioRigHighlightedKitId = kit.kitId
-                showingStudioRig = true
+                selectedTab = .studioRig
             }
         )
     }
 
     private func rightSummaryPanel(data: TrainingData) -> some View {
-        VStack(alignment: .leading, spacing: Theme.Space.controlGap) {
+        let stage: DrummerPathStageModel? = data.pathStages.isEmpty
+            ? nil
+            : data.pathStages[min(max(0, selectedStageIndex), data.pathStages.count - 1)]
+        let focused = stage.flatMap { DrummerPathMapView.resolveFocusedNode(in: $0, selectedNodeId: selectedNodeId) }
+
+        return VStack(alignment: .leading, spacing: 12) {
+            DrummerModuleInspectorCard(
+                stage: stage,
+                node: focused,
+                availableKeys: progress.drummerPath.availableKeys,
+                onPlayLesson: { lesson in
+                    guard !hasActiveCover else { return }
+                    preserveTodayPlan(for: lesson.id)
+                    selectedLesson = LessonLaunch.library(lesson, progress: progress.progress(for: lesson.id), today: today)
+                },
+                onUnlockKit: { kit in
+                    if progress.drummerPath.availableKeys >= kit.unlockCost {
+                        let result = progress.unlockKit(kit.kitId)
+                        if case .unlocked = result {
+                            refreshTrainingData()
+                            return
+                        }
+                    }
+                    studioRigHighlightedKitId = kit.kitId
+                    selectedTab = .studioRig
+                }
+            )
+
+            DrummerAttributesCard(card: data.drummerCard)
+
             compactTodayBlock
-            WeeklyRhythmStrip(day: today, practiceDays: progress.trainingLog.practiceDays)
             compactAuxModesBlock
             compactToolsFooter
-            Spacer(minLength: 0)
         }
     }
 
