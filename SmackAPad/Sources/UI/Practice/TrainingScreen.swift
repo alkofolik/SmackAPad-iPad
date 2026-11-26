@@ -25,6 +25,7 @@ public struct TrainingScreen: View {
 
     @State private var lessonStore = LessonStore.shared
     @State private var selectedLesson: LessonLaunch?
+    @State private var bossPurchaseAccess: String?
     @State private var data: TrainingData?
     @State private var refreshID = UUID()
     @State private var isVisible = false
@@ -191,6 +192,9 @@ public struct TrainingScreen: View {
         }
         .environment(\.lessonNamespace, lessonNamespace)
         .practiceLessonPresentation(launch: $selectedLesson, namespace: lessonNamespace)
+        .sheet(isPresented: Binding(get: { bossPurchaseAccess != nil }, set: { if !$0 { bossPurchaseAccess = nil } })) {
+            PurchaseSheet(access: bossPurchaseAccess ?? "full")
+        }
         .onChange(of: selectedLesson?.id) { _, id in
             if id == nil {
                 isVisible = true
@@ -423,6 +427,15 @@ public struct TrainingScreen: View {
                     guard !hasActiveCover else { return }
                     preserveTodayPlan(for: lesson.id)
                     selectedLesson = LessonLaunch.library(lesson, progress: progress.progress(for: lesson.id), today: today)
+                },
+                onPlayBoss: { encounter in
+                    guard !hasActiveCover else { return }
+                    guard store.isUnlocked(encounter.lesson) else {
+                        bossPurchaseAccess = encounter.lesson.access ?? "full"
+                        return
+                    }
+                    preserveTodayPlan(for: encounter.lesson.id)
+                    selectedLesson = .boss(encounter)
                 },
                 onUnlockKit: { kit in
                     if progress.drummerPath.availableKeys >= kit.unlockCost {
@@ -1210,7 +1223,7 @@ public struct TrainingScreen: View {
             progress: records,
             pathState: progress.drummerPath,
             language: settings.languagePreference,
-            openStageIDs: progression.openStageIDs
+            openStageIDs: progression.storyOpenStageIDs
         )
 
         return TrainingData(

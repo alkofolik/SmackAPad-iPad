@@ -207,6 +207,11 @@ public struct DrummerPathStageModel: Identifiable, Equatable, Sendable {
     public var bossNode: DrummerPathNode? {
         nodes.last { $0.isBoss }
     }
+
+    var bossEncounter: BossEncounter? {
+        guard index > 0, let bossNode, bossNode.state != .locked, bossNode.stars >= 2 else { return nil }
+        return BossEncounter(stageID: id, level: level, lesson: bossNode.lesson)
+    }
 }
 
 /// Pure builder converting `LibraryCatalog`, `LessonProgress`, and `DrummerPathState` into stage maps.
@@ -303,7 +308,7 @@ public enum DrummerPathMapBuilder {
         )
         return stages.contains { stage in
             stage.nodes.contains { node in
-                node.lesson.id == lesson.id && (node.state == .completed || node.state == .active)
+                !node.isBoss && node.lesson.id == lesson.id && (node.state == .completed || node.state == .active)
             }
         }
     }
@@ -472,8 +477,9 @@ public enum DrummerPathMapBuilder {
             }
         }
 
-        let examDone = pathState.completedExamStageIDs.contains(id) || (count > 0 && isCompletedList.allSatisfy { $0 })
-        if let examLesson = lessons.last, let examKit = kits.last {
+        let examDone = pathState.completedExamStageIDs.contains(id) || (isIntro && count > 0 && isCompletedList.allSatisfy { $0 })
+        let bossPattern = isIntro ? nil : BossEncounter.pattern(in: lessons, stageID: id, progress: progress, storyMap: storyMap)
+        if let examLesson = bossPattern ?? lessons.last {
             let prereqsComplete: Bool = if isIntro {
                 count <= 1 || isCompletedList.dropLast().allSatisfy { $0 }
             } else {
@@ -493,9 +499,9 @@ public enum DrummerPathMapBuilder {
                     isBoss: true,
                     isSideQuest: false,
                     branchTrack: nil,
-                    stars: starsList.last ?? 0,
+                    stars: LibraryStarFilter.stars(progress[examLesson.id]),
                     state: bossState,
-                    requiredKit: examKit
+                    requiredKit: DrumKitCatalog.requiredKit(for: examLesson)
                 )
             )
         }

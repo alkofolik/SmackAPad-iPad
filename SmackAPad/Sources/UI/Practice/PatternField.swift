@@ -58,6 +58,12 @@ struct PatternHitFeedback {
     let struckAt: Double
 }
 
+enum PatternVeilDisplay {
+    static func hides(bar: Int, currentBar: Int, veilBars: Set<Int>) -> Bool {
+        bar <= currentBar && veilBars.contains(bar)
+    }
+}
+
 private struct PatternFeedback {
     let hitsByPass: [Int: [LessonHit: PatternHitFeedback]]
     let pass: Int
@@ -113,6 +119,8 @@ struct PatternField: View {
     var afterMe: Bool = false
     var peekNotesOpacity: Double? = nil
     var peekCycles: Range<Int>? = nil
+    var veilBars: Set<Int> = []
+    var encounterEndStep: Int? = nil
     var hidden: Bool { visibility == .hidden }
     let scrolling: Bool
     let visibleBars: Int
@@ -134,9 +142,15 @@ struct PatternField: View {
         return PadVoice.rowOrder.filter { used.contains($0) }
     }
 
+    private var activeVeilBar: Int? {
+        let playedBar = Int(tapePosition) / 16
+        return PatternVeilDisplay.hides(bar: playedBar, currentBar: playedBar, veilBars: veilBars) ? Int(position) / 16 : nil
+    }
+
     private func visiblePlayedHits(steps: Range<Int>) -> [PlayedHit] {
-        guard hidden, running else { return [] }
+        guard running, hidden || activeVeilBar != nil else { return [] }
         return playedHits.filter {
+            (hidden || $0.pass == pass && Int($0.step) / 16 == activeVeilBar) &&
             $0.isVisible(in: pass, before: position, steps: steps, totalSteps: lesson.bars * 16,
                          bpm: bpm, reduceMotion: reduceMotion)
         }
@@ -191,7 +205,8 @@ struct PatternField: View {
                                              playedHits: playedHits, scoring: scoring,
                                              missGraceSteps: missGraceSteps, layout: layout,
                                              labelLayout: labelLayout, bpm: bpm,
-                                             peekNotesOpacity: peekNotesOpacity, peekCycles: peekCycles)
+                                             peekNotesOpacity: peekNotesOpacity, peekCycles: peekCycles,
+                                             veilBars: veilBars, encounterEndStep: encounterEndStep)
                         } else {
                             let currentBar = min(lesson.bars - 1, max(0, Int(position) / 16))
                             let first = (currentBar / max(1, count)) * max(1, count)
@@ -208,7 +223,8 @@ struct PatternField: View {
                                           bpm: bpm, reduceMotion: reduceMotion,
                                           displayDate: displayDate,
                                           afterMe: afterMe,
-                                          fromMemory: fromMemory, peekNotesOpacity: peekNotesOpacity)
+                                          fromMemory: fromMemory, peekNotesOpacity: peekNotesOpacity,
+                                          activeVeilBar: activeVeilBar)
                         }
                     }
                     .frame(width: orangeFieldWidth, height: geometry.size.height)
@@ -280,6 +296,7 @@ struct PatternField: View {
                 if visibility == .hidden {
                     return settings.localized("From memory, notes hidden")
                 }
+                if activeVeilBar != nil { return settings.localized("Notes hidden") }
                 return settings.localized("%lld bars, %@", lesson.bars, rows.map { PadVoice.name($0, settings: settings) }.joined(separator: ", "))
             }()
         )
@@ -437,6 +454,7 @@ private struct StaticPattern: View {
     var afterMe: Bool = false
     var fromMemory: Bool = false
     var peekNotesOpacity: Double? = nil
+    var activeVeilBar: Int? = nil
 
     var body: some View {
         let barCount = max(1, bars.count)
@@ -482,6 +500,7 @@ private struct StaticPattern: View {
                     context.opacity = peekNotesOpacity ?? 1
                     for (row, pad) in rows.enumerated() {
                         for hit in hits where hit.padIndex == pad && hit.step >= startStep && hit.step < endStep {
+                            guard hit.step / 16 != activeVeilBar else { continue }
                             let visibleStep = hit.step - startStep
                             let x = (CGFloat(visibleStep) + 0.5) * cellWidth
                             let rect = lanes.tile(x: x, width: cellWidth, row: row)
@@ -514,7 +533,7 @@ private struct StaticPattern: View {
                 let cellWidth = max(1, (size.width - 24) / CGFloat(totalSteps))
                 let lanes = PatternLanes(geometry: layout, rows: rows)
 
-                if visibility == .hidden && running {
+                if running && (visibility == .hidden || activeVeilBar != nil) {
                     for (row, pad) in rows.enumerated() {
                         var playedContext = context
                         let visiblePosition = position - Double(startStep)
@@ -582,6 +601,12 @@ private struct ScrollingPattern: View {
     var bpm: Int = 60
     var peekNotesOpacity: Double? = nil
     var peekCycles: Range<Int>? = nil
+    var veilBars: Set<Int> = []
+    var encounterEndStep: Int? = nil
+
+    private func isVeiled(step: Int) -> Bool {
+        PatternVeilDisplay.hides(bar: step / 16, currentBar: Int(position) / 16, veilBars: veilBars)
+    }
 
     var body: some View {
         let total = max(16, lesson.bars * 16)
@@ -623,7 +648,8 @@ private struct ScrollingPattern: View {
 
                 context.opacity = peekNotesOpacity ?? 1
                 for globalStep in firstStep...lastStep {
-                    guard globalStep >= 0 else { continue }
+                    guard globalStep >= 0, encounterEndStep.map({ globalStep < $0 }) ?? true,
+                          !isVeiled(step: globalStep) else { continue }
                     let step = (globalStep % total + total) % total
                     let recordedPass = globalStep / total + 1
                     if let peekCycles, !peekCycles.contains(recordedPass) { continue }
@@ -663,14 +689,14 @@ private struct ScrollingPattern: View {
                 let lanes = PatternLanes(geometry: layout, rows: rows)
                 let rowTop = lanes.top
 
-                if visibility == .hidden && running {
+                if running && (visibility == .hidden || !veilBars.isEmpty) {
                     var playedContext = context
                     playedContext.clip(to: Path(CGRect(x: 0, y: rowTop, width: markerX, height: max(1, lanes.bottom - rowTop))))
                     for hit in playedHits {
-                        guard hit.pass == pass || hit.hidden else { continue }
-                        guard let row = rows.firstIndex(of: hit.padIndex) else { continue }
                         let step = hit.tapeStep(totalSteps: total)
-                        guard step >= 0, step < position else { continue }
+                        guard step >= 0, step < position,
+                              visibility == .hidden ? (hit.pass == pass || hit.hidden) : isVeiled(step: Int(step)),
+                              let row = rows.firstIndex(of: hit.padIndex) else { continue }
                         let x = markerX + CGFloat(step - position) * cellWidth
                         guard x + cellWidth * 0.42 >= 0 else { continue }
                         let rect = lanes.tile(x: x, width: cellWidth, row: row)

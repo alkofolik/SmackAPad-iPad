@@ -836,6 +836,9 @@ struct LibraryScreen: View {
                 }
             }
             .padding(.bottom, Theme.Space.small)
+            if settings.playMode == .free, let stage = group.stage {
+                bossStageAction(stage)
+            }
             if isSearchVisible {
                 searchBar
                     .transition(motion.transition)
@@ -1192,6 +1195,29 @@ struct LibraryScreen: View {
             guard bannerPulse > 0 else { return }
             try? await Task.sleep(for: .milliseconds(400))
             bannerPulse = 0
+        }
+    }
+
+    @ViewBuilder
+    private func bossStageAction(_ stage: LibraryStage) -> some View {
+        let mastered = stage.lessons.count { LibraryStarFilter.stars(progress.progress(for: $0.id)) >= 2 }
+        let needed = ProgressionConstant.requiredStageCompletions(lessonCount: stage.lessons.count)
+        let defeated = progress.drummerPath.completedExamStageIDs.contains(stage.id)
+        let lesson = BossEncounter.pattern(in: stage.lessons, stageID: stage.id, progress: progress.records,
+                                          eligible: store.isUnlocked)
+        if defeated || mastered >= needed, let lesson {
+            Button {
+                previewPlayer.stop(releaseAudio: true)
+                selectedLesson = .boss(BossEncounter(stageID: stage.id, level: stage.level, lesson: lesson))
+            } label: {
+                Label(settings.localized(defeated ? "Replay the boss" : "Face the boss"),
+                      systemImage: BossEncounter.emblem(for: stage.id))
+            }
+            .buttonStyle(PadSecondaryButtonStyle())
+        } else if mastered < needed && !defeated && stage.lessons.contains(where: store.isUnlocked) {
+            Text(settings.localized("Earn ★2 on %lld more lessons in this stage to unlock the boss.", needed - mastered))
+                .font(Theme.meta)
+                .foregroundStyle(Theme.secondary)
         }
     }
 

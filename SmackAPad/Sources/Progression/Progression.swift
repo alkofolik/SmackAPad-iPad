@@ -527,7 +527,8 @@ public final class ProgressionManager: @unchecked Sendable {
     private func isStageNaturallyOpen(_ stage: LibraryStage) -> Bool {
         if rememberedOpenStages.contains(stage.id) { return true }
         let requirement = unlockProgress(for: stage)
-        let open = requirement.completed >= requirement.needed || wasStagePlayed(stage)
+        let previousBossWon = requirement.previous.map { progressStore.drummerPath.completedExamStageIDs.contains($0.id) } ?? false
+        let open = requirement.completed >= requirement.needed || previousBossWon || wasStagePlayed(stage)
         if open { rememberOpenStages([stage.id]) }
         return open
     }
@@ -562,8 +563,10 @@ public final class ProgressionManager: @unchecked Sendable {
         userDefaults.set(true, forKey: Self.completionMigrationKey)
     }
 
-    var openStageIDs: Set<String> {
-        Set(catalog.stages.filter { isStageOpen($0) }.map(\.id))
+    var storyOpenStageIDs: Set<String> {
+        lock.lock()
+        defer { lock.unlock() }
+        return rememberedOpenStages.union(softUnlockedStages)
     }
 
     func isOpenInStory(_ lesson: Lesson) -> Bool {
@@ -572,7 +575,7 @@ public final class ProgressionManager: @unchecked Sendable {
             catalog: catalog,
             progress: progressStore.records,
             pathState: progressStore.drummerPath,
-            openStageIDs: openStageIDs
+            openStageIDs: storyOpenStageIDs
         )
     }
 

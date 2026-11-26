@@ -28,7 +28,7 @@ public final class ProgressStore: @unchecked Sendable {
 
     public private(set) var records: [Int: LessonProgress] = [:]
     public private(set) var trainingLog: TrainingLog = TrainingLog()
-    public private(set) var drummerPath: DrummerPathState = DrummerPathState()
+    public private(set) var drummerPath = DrummerPathState(migratedFromLegacyProgress: true)
     public private(set) var lastDrummerDelta: DrummerProgressDelta?
     public private(set) var lastDrummerKeysAwarded: Int = 0
     public private(set) var lastSaveError: Error?
@@ -136,7 +136,7 @@ public final class ProgressStore: @unchecked Sendable {
             if (error as? CocoaError)?.code == .fileReadNoSuchFile {
                 self.records = [:]
                 self.trainingLog = TrainingLog()
-                self.drummerPath = DrummerPathState()
+                self.drummerPath = DrummerPathState(migratedFromLegacyProgress: true)
                 self.lastDrummerDelta = nil
                 self.lastLoadError = nil
                 return
@@ -207,7 +207,7 @@ public final class ProgressStore: @unchecked Sendable {
         }
         records = [:]
         trainingLog = TrainingLog()
-        drummerPath = DrummerPathState()
+        drummerPath = DrummerPathState(migratedFromLegacyProgress: true)
         lastDrummerDelta = nil
         lastDrummerKeysAwarded = 0
         lastLoadError = nil
@@ -401,28 +401,22 @@ public final class ProgressStore: @unchecked Sendable {
             incoming: envelope.trainingLog
         )
 
-        var mergedDrummer = ProgressMerge.mergeDrummerPath(
-            local: drummerPath,
-            incoming: envelope.drummerPath ?? DrummerPathState()
-        )
         let catalog = LessonStore.shared.libraryCatalog
-        if !mergedDrummer.migratedFromLegacyProgress {
-            mergedDrummer = DrummerPathEvaluator.migrateLegacyProgress(
-                existingState: mergedDrummer,
-                progress: mergeResult.merged,
-                trainingLog: mergedTraining,
-                catalog: catalog
-            )
-        } else {
-            mergedDrummer = DrummerPathEvaluator.evaluateProgressUpdate(
-                previousState: mergedDrummer,
-                previousProgress: mergeResult.merged,
-                previousTrainingLog: mergedTraining,
-                currentProgress: mergeResult.merged,
-                currentTrainingLog: mergedTraining,
-                catalog: catalog
-            ).updatedState
-        }
+        let incomingDrummer = DrummerPathEvaluator.migrateLegacyProgress(
+            existingState: envelope.drummerPath ?? DrummerPathState(),
+            progress: envelope.progress,
+            trainingLog: envelope.trainingLog,
+            catalog: catalog
+        )
+        let mergedPath = ProgressMerge.mergeDrummerPath(local: drummerPath, incoming: incomingDrummer)
+        let mergedDrummer = DrummerPathEvaluator.evaluateProgressUpdate(
+            previousState: mergedPath,
+            previousProgress: mergeResult.merged,
+            previousTrainingLog: mergedTraining,
+            currentProgress: mergeResult.merged,
+            currentTrainingLog: mergedTraining,
+            catalog: catalog
+        ).updatedState
 
         // Write to temp file then atomic replace
         let parentDir = fileURL.deletingLastPathComponent()
@@ -1007,6 +1001,26 @@ public final class ProgressStore: @unchecked Sendable {
         return (try? decoder.decode(DrummerPathState.self, from: data)) ?? DrummerPathState()
     }
 
+    func recordBossVictory(stageID: String, catalog: LibraryCatalog = LessonStore.shared.libraryCatalog) throws {
+        lock.lock()
+        defer { lock.unlock() }
+        if let lastLoadError { throw lastLoadError }
+        guard catalog.stages.contains(where: { $0.id == stageID }),
+              !drummerPath.completedExamStageIDs.contains(stageID) else { return }
+
+        let previous = drummerPath
+        let outcome = evaluateDrummerPathLocked(previousRecords: records, previousLog: trainingLog,
+                                                catalog: catalog, completedBossStageID: stageID)
+        do {
+            try saveDrummerPathLocked()
+        } catch {
+            drummerPath = previous
+            throw error
+        }
+        lastDrummerDelta = outcome.delta
+        lastDrummerKeysAwarded = outcome.keysAwarded
+    }
+
     private func saveDrummerPathLocked() throws {
         guard lastLoadError == nil else { return }
         let parentDir = drummerFileURL.deletingLastPathComponent()
@@ -1084,7 +1098,8 @@ public final class ProgressStore: @unchecked Sendable {
     private func evaluateDrummerPathLocked(
         previousRecords: [Int: LessonProgress],
         previousLog: TrainingLog,
-        catalog: LibraryCatalog
+        catalog: LibraryCatalog,
+        completedBossStageID: String? = nil
     ) -> DrummerPathEvaluationOutcome {
         let outcome = DrummerPathEvaluator.evaluateProgressUpdate(
             previousState: drummerPath,
@@ -1092,7 +1107,8 @@ public final class ProgressStore: @unchecked Sendable {
             previousTrainingLog: previousLog,
             currentProgress: records,
             currentTrainingLog: trainingLog,
-            catalog: catalog
+            catalog: catalog,
+            completedBossStageID: completedBossStageID
         )
         drummerPath = outcome.updatedState
         return outcome
@@ -1103,7 +1119,7 @@ public final class ProgressStore: @unchecked Sendable {
         lock.lock()
         records.removeAll()
         trainingLog = TrainingLog()
-        drummerPath = DrummerPathState()
+        drummerPath = DrummerPathState(migratedFromLegacyProgress: true)
         lastDrummerDelta = nil
         lastDrummerKeysAwarded = 0
         lock.unlock()

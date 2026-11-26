@@ -93,6 +93,9 @@ final class PracticeSession {
     let mixLessons: [Lesson]
     let unscored: Bool
     let stopAfterSinglePass: Bool
+    let boss: BossEncounter?
+    private(set) var bossAttempt: BossAttempt?
+    @ObservationIgnored private var gentleBossAttempt = false
     @ObservationIgnored var onSinglePassEnded: (() -> Void)?
     var isMix: Bool { mixLessons.count >= LearningRules.minimumMixLessons }
     private(set) var mixIndex = 0
@@ -154,12 +157,16 @@ final class PracticeSession {
     private(set) var playbackMode: LessonPlaybackMode = .play
     var listen: Bool {
         get { playbackMode == .listen }
-        set { playbackMode = newValue ? .listen : .play }
+        set {
+            guard boss == nil else { return }
+            playbackMode = newValue ? .listen : .play
+        }
     }
     var afterMe: Bool { playbackMode == .afterMe }
     private(set) var bestResponseScore: Double?
 
     func selectPlaybackMode(_ mode: LessonPlaybackMode) {
+        guard boss == nil else { return }
         guard !running, !isMix, mode != playbackMode else { return }
         playbackMode = mode
         summary = nil
@@ -328,16 +335,17 @@ final class PracticeSession {
     init(lesson: Lesson, settings: SettingsManager, progress: ProgressStore, midi: MIDIInput,
          initialFromMemory: Bool = false, initialBpm: Int? = nil,
          mixLessons: [Lesson] = [], initialAfterMe: Bool = false,
-         unscored: Bool = false, stopAfterSinglePass: Bool = false,
+         unscored: Bool = false, stopAfterSinglePass: Bool = false, boss: BossEncounter? = nil,
          clock: @escaping () -> Double = { AVAudioTime.seconds(forHostTime: mach_absolute_time()) },
          currentDay: @escaping () -> String = { AppCalendar.today() }) {
         let activeLesson = mixLessons.count >= LearningRules.minimumMixLessons ? mixLessons[0] : lesson
         self.lesson = activeLesson
         self.mixLessons = mixLessons
-        self.unscored = unscored
-        self.stopAfterSinglePass = stopAfterSinglePass
+        self.boss = boss
+        self.unscored = unscored || boss != nil
+        self.stopAfterSinglePass = stopAfterSinglePass || boss != nil
         self.playbackMode = initialAfterMe && mixLessons.count < LearningRules.minimumMixLessons ? .afterMe : .play
-        self.starStreak = !unscored && settings.practiceMode == .learning
+        self.starStreak = !self.unscored && settings.practiceMode == .learning
             ? progress.learningCredit(lessonId: activeLesson.id, padCount: midi.activeProfile.padCount) : StarStreak()
         self.practiceMode = settings.practiceMode
         self.settings = settings
@@ -345,10 +353,10 @@ final class PracticeSession {
         self.midi = midi
         self.clock = clock
         self.currentDay = currentDay
-        self.fromMemory = initialFromMemory
+        self.fromMemory = boss == nil && initialFromMemory
         loopEndBar = activeLesson.bars - 1
         let saved = initialBpm ?? progress.progress(for: activeLesson.id)?.currentBpm ?? activeLesson.startBpm
-        bpm = PracticeTempo.clamp(mixLessons.count >= LearningRules.minimumMixLessons ? activeLesson.targetBpm : (saved > 0 ? saved : activeLesson.startBpm))
+        bpm = boss?.bpm ?? PracticeTempo.clamp(mixLessons.count >= LearningRules.minimumMixLessons ? activeLesson.targetBpm : (saved > 0 ? saved : activeLesson.startBpm))
     }
 
     public var isDueReview: Bool {
@@ -528,6 +536,7 @@ final class PracticeSession {
     }
     var isSectionLoop: Bool { loopStartBar != 0 || loopEndBar != lesson.bars - 1 }
     var repeatsPerRun: Int {
+        if let boss { return boss.repeats }
         if afterMe { return 2 }
         guard !listen, !isSectionLoop else { return 1 }
         return max(1, Int((LearningRules.practiceRunBars / Double(lesson.bars)).rounded()))
@@ -678,7 +687,8 @@ final class PracticeSession {
             // Do not clamp at the pass end: a delayed scheduler tick cannot freeze drawing.
             let distance = Double((current.number - 1) * repeatsPerRun * total)
                 + max(0, seconds - current.start) * Double(current.bpm) / 15
-            return PatternFrame(tapePosition: distance, totalSteps: total, bpm: current.bpm, hostSeconds: seconds)
+            let displayDistance = boss.map { min(distance, Double($0.bars * 16).nextDown) } ?? distance
+            return PatternFrame(tapePosition: displayDistance, totalSteps: total, bpm: current.bpm, hostSeconds: seconds)
         }
         let start = passes.first?.start ?? displayStart
         guard start > 0 else {
@@ -712,7 +722,7 @@ final class PracticeSession {
         midi.onPadEvent = { [weak self] event in self?.receive(event) }
         midi.onPracticeAction = { [weak self] action in self?.performControllerAction(action) }
         midi.stoppedPracticeTempo = { [weak self] in
-            guard let self, self.active, self.ready, !self.running else { return nil }
+            guard let self, self.active, self.ready, !self.running, self.boss == nil else { return nil }
             return self.bpm
         }
         midi.onPracticeTempo = { [weak self] bpm in
@@ -789,7 +799,7 @@ final class PracticeSession {
     }
 
     func setTempo(_ tempo: Int) {
-        guard !running else { return }
+        guard !running, boss == nil else { return }
         bpm = PracticeTempo.clamp(tempo)
         if !isMix { saveTempo() }
     }
@@ -857,6 +867,7 @@ final class PracticeSession {
             }
             errorMessage = nil
             summary = nil
+            if let boss { bossAttempt = BossAttempt(encounter: boss, gentle: gentleBossAttempt) }
             lastResult = nil
             reviewPendingReason = nil
             bestResponseScore = nil
@@ -957,8 +968,8 @@ final class PracticeSession {
         // Credit complete passes only; stopping halfway cannot earn a star.
         // An automatic star or review stop already credited the winning pass. Discard everything
         // queued after it, even if the app was delayed long enough to finish it.
-        if !stopAfterPass, !audioSessionChanged { finishCompleted(at: now) }
-        let accuracy = currentRunAccuracy
+        if boss == nil, !stopAfterPass, !audioSessionChanged { finishCompleted(at: now) }
+        let accuracy = boss == nil ? currentRunAccuracy : nil
         flushPendingProgress()
         stopAfterPass = false
         mixNeedsAdvance = false
@@ -1034,6 +1045,11 @@ final class PracticeSession {
     func restart() {
         if running { stop(restarting: true) }
         else { start() }
+    }
+
+    func retryBoss(gentle: Bool) {
+        gentleBossAttempt = gentle
+        start()
     }
 
     var coachSuggestion: CoachSuggestion? {
@@ -1269,7 +1285,14 @@ final class PracticeSession {
             callback?()
             return nil
         }
-        finishCompleted(at: time)
+        if boss != nil {
+            if let pass = passes.first, updateBossAttempt(pass: pass, at: time) {
+                stop()
+                return nil
+            }
+        } else {
+            finishCompleted(at: time)
+        }
         if stopAfterPass {
             stop()
             return nil
@@ -1365,6 +1388,33 @@ final class PracticeSession {
         }
         passes.removeAll { $0.finalTime < time && $0.scorer == nil && $0.number < passNumber }
         return nil
+    }
+
+    /// Read the same calibrated clock and scorer window used by the run; do not consume scoring state.
+    private func updateBossAttempt(pass: Pass, at time: Double) -> Bool {
+        guard var attempt = bossAttempt, let scorer = pass.scorer else { return false }
+        let secondsPerBar = 240 / Double(pass.bpm)
+        let elapsed = time - pass.start
+        guard elapsed > Double(attempt.judgedBars + 1) * secondsPerBar else { return false }
+
+        let devices = (midi.selectedSourceID.map { [$0] } ?? midi.sources.map(\.id)) + ["touch", "keyboard"]
+        let calibration = devices.map { settings.calibrationOffset(for: $0, outputRoute: runOutputRoute) }.max() ?? 0
+        let window = scorer.maximumTimingMilliseconds + scorer.currentTimingCenterMilliseconds
+        let lateWindow = max(0, (max(0, calibration) + window) / 1_000)
+        let barsPerCycle = attempt.encounter.lesson.bars
+        let expectedHits = lesson.hits(forPadCount: pass.padCount)
+        let previouslyJudged = attempt.judgedBars
+        attempt.judgeBars(elapsed: elapsed, secondsPerBar: secondsPerBar, lateWindow: lateWindow) { bar in
+            let cycle = bar / barsPerCycle + 1
+            return BossAttempt.isClean(bar: bar % barsPerCycle, cycle: cycle, hits: expectedHits,
+                                       judgments: judgmentsByPass[cycle] ?? [:], playedHits: playedHits)
+        }
+        if attempt.judgedBars != previouslyJudged { bossAttempt = attempt }
+        if attempt.won {
+            do { try progress.recordBossVictory(stageID: attempt.encounter.stageID) }
+            catch { errorMessage = error.localizedDescription }
+        }
+        return attempt.finished
     }
 
     private func finishCompleted(at time: Double) {

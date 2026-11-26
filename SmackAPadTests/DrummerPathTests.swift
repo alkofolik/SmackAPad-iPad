@@ -192,7 +192,7 @@ final class DrummerPathTests: XCTestCase {
         let catalog = LibraryCatalog(lessons: introLessons + [stage1A, stage1Boss])
 
         // Pass 5 intro lessons -> earns "intro-spark" milestone (1 key) + Intro exam (boss 10005 -> 1 key)
-        // Also pass stage1Boss (102) -> earns L1-groove stage exam (1 key)
+        // Win the Groove boss to earn the L1-groove stage exam (1 key).
         var progress: [Int: LessonProgress] = [:]
         for l in introLessons {
             progress[l.id] = LessonProgress(passed: true, currentBpm: 90, bestScore: 0.90)
@@ -205,7 +205,8 @@ final class DrummerPathTests: XCTestCase {
             previousTrainingLog: TrainingLog(),
             currentProgress: progress,
             currentTrainingLog: TrainingLog(),
-            catalog: catalog
+            catalog: catalog,
+            completedBossStageID: "L1-groove"
         )
 
         var state = outcome.updatedState
@@ -291,7 +292,8 @@ final class DrummerPathTests: XCTestCase {
             previousTrainingLog: TrainingLog(),
             currentProgress: progress,
             currentTrainingLog: TrainingLog(),
-            catalog: catalog
+            catalog: catalog,
+            completedBossStageID: "L1-groove"
         )
 
         // Default skin + ten-passed ("midnight-mpc") + ten-mastered ("cream-vintage") unlocked

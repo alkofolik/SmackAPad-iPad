@@ -41,15 +41,21 @@ enum LessonLaunch: Identifiable {
     case lesson(Lesson)
     case review(Lesson)
     case afterMe(Lesson)
+    case boss(BossEncounter)
 
     var lesson: Lesson {
         switch self {
         case .lesson(let lesson), .review(let lesson), .afterMe(let lesson):
             return lesson
+        case .boss(let encounter):
+            return encounter.lesson
         }
     }
 
-    var id: Int { lesson.id }
+    var id: Int {
+        if case .boss = self { return -(1_000_000 + lesson.id) }
+        return lesson.id
+    }
 
     static func library(_ lesson: Lesson, progress: LessonProgress?, today: String) -> Self {
         progress?.reviewSchedule.isDueReview(on: today) == true ? .review(lesson) : .lesson(lesson)
@@ -104,6 +110,9 @@ struct PracticeLessonDestination: View {
         case .afterMe(let lesson):
             PracticeScreen(lesson: lesson, settings: settings, progress: progress, midi: midi,
                            initialAfterMe: true)
+        case .boss(let encounter):
+            PracticeScreen(lesson: encounter.lesson, settings: settings, progress: progress, midi: midi,
+                           boss: encounter)
         }
     }
 }

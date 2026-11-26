@@ -142,6 +142,12 @@ final class DebugScenarioTests: XCTestCase {
                     let unlock = progression.unlockProgress(for: secondStage)
                     XCTAssertGreaterThanOrEqual(unlock.completed, unlock.needed)
                     XCTAssertTrue(progression.isStageOpen(secondStage))
+                case .bossOpen:
+                    let stages = DrummerPathMapBuilder.buildStages(catalog: catalog, progress: records,
+                                                                  pathState: progress.drummerPath)
+                    let stage = try XCTUnwrap(stages.first { $0.id == firstStage.id })
+                    XCTAssertEqual(stage.bossNode?.state, .active)
+                    XCTAssertNotNil(stage.bossEncounter)
                 case .awaitingStar3:
                     XCTAssertGreaterThanOrEqual(records.count, 3)
                     for record in records.values {

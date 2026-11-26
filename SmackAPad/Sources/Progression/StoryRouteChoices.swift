@@ -6,7 +6,7 @@ enum StoryRouteActionKind: Equatable, Sendable {
     case rejoinTrail(lesson: Lesson)
     case otherBranch(lesson: Lesson, stageId: String, nodeIndex: Int, optionIndex: Int)
     case reachGoalTempo
-    case faceBoss(lesson: Lesson)
+    case faceBoss(BossEncounter)
     case exploreSideTrail(lesson: Lesson)
 }
 
@@ -79,8 +79,7 @@ enum StoryRouteChoiceResolver {
         ).first(where: { $0.id == stage.id })
 
         let lessonsById = Dictionary(stage.lessons.map { ($0.id, $0) }, uniquingKeysWith: { first, _ in first })
-        let bossAvailable = stageModel?.bossNode?.state == .active
-        let bossLesson = stageModel?.bossNode?.lesson
+        let bossEncounter = stageModel?.bossNode?.state == .active ? stageModel?.bossEncounter : nil
         let nextNode = (nodeIndex + 1 < mapNodes.count) ? mapNodes[nodeIndex + 1] : nil
         let unfinishedSideTrail = stageModel?.nodes.first(where: {
             $0.isSideQuest && $0.state == .active && $0.lesson.id != lesson.id
@@ -115,11 +114,11 @@ enum StoryRouteChoiceResolver {
                         kind: .reachGoalTempo
                     ))
                 }
-                if bossAvailable, let bossLesson, actions.count < 3 {
+                if let bossEncounter, actions.count < 3 {
                     actions.append(StoryRouteAction(
-                        id: "face-boss-\(bossLesson.id)",
+                        id: "face-boss-\(bossEncounter.stageID)",
                         title: language.localized("Face the boss"),
-                        kind: .faceBoss(lesson: bossLesson)
+                        kind: .faceBoss(bossEncounter)
                     ))
                 }
 
@@ -138,20 +137,20 @@ enum StoryRouteChoiceResolver {
                         kind: .reachGoalTempo
                     ))
                 }
-                if bossAvailable, let bossLesson, actions.count < 3 {
+                if let bossEncounter, actions.count < 3 {
                     actions.append(StoryRouteAction(
-                        id: "face-boss-\(bossLesson.id)",
+                        id: "face-boss-\(bossEncounter.stageID)",
                         title: language.localized("Face the boss"),
-                        kind: .faceBoss(lesson: bossLesson)
+                        kind: .faceBoss(bossEncounter)
                     ))
                 }
 
             case nil:
-                if bossAvailable, let bossLesson {
+                if let bossEncounter {
                     actions.append(StoryRouteAction(
-                        id: "face-boss-\(bossLesson.id)",
+                        id: "face-boss-\(bossEncounter.stageID)",
                         title: language.localized("Face the boss"),
-                        kind: .faceBoss(lesson: bossLesson)
+                        kind: .faceBoss(bossEncounter)
                     ))
                 }
                 if lacksStar2 && actions.count < 3 {
@@ -199,11 +198,11 @@ enum StoryRouteChoiceResolver {
                     kind: .reachGoalTempo
                 ))
             }
-            if bossAvailable, let bossLesson, actions.count < 3 {
+            if let bossEncounter, actions.count < 3 {
                 actions.append(StoryRouteAction(
-                    id: "face-boss-\(bossLesson.id)",
+                    id: "face-boss-\(bossEncounter.stageID)",
                     title: language.localized("Face the boss"),
-                    kind: .faceBoss(lesson: bossLesson)
+                    kind: .faceBoss(bossEncounter)
                 ))
             }
         }

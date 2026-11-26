@@ -2,24 +2,6 @@ import Foundation
 
 // MARK: - Stage Exams, Milestones & Unlock Outcomes
 
-/// Boss lesson exam at the end of a stage/chapter that awards a Key upon completion.
-public struct StageExamDefinition: Identifiable, Equatable, Sendable {
-    public var id: String { stageId }
-    public let stageId: String
-    public let level: Int
-    public let title: String
-    public let bossLessonId: Int
-    public let rewardKeys: Int
-
-    public init(stageId: String, level: Int, title: String, bossLessonId: Int, rewardKeys: Int = 1) {
-        self.stageId = stageId
-        self.level = level
-        self.title = title
-        self.bossLessonId = bossLessonId
-        self.rewardKeys = rewardKeys
-    }
-}
-
 /// Significant progress milestone that awards a Key (and optionally unlocks skins or bonus tracks).
 public struct DrummerMilestone: Identifiable, Equatable, Sendable {
     public let id: String
@@ -112,35 +94,6 @@ public enum DrummerPathEvaluator {
             rewardKeys: 1
         )
     ]
-
-    /// Derives stage exam definitions from the catalog: the Intro boss lesson + the final boss lesson of each stage.
-    static func stageExams(in catalog: LibraryCatalog) -> [StageExamDefinition] {
-        var exams: [StageExamDefinition] = []
-        if let introBoss = catalog.introLessons.last {
-            exams.append(
-                StageExamDefinition(
-                    stageId: introExamStageId,
-                    level: 1,
-                    title: "Intro Exam",
-                    bossLessonId: introBoss.id,
-                    rewardKeys: 1
-                )
-            )
-        }
-        for stage in catalog.stages {
-            guard let boss = stage.lessons.last else { continue }
-            exams.append(
-                StageExamDefinition(
-                    stageId: stage.id,
-                    level: stage.level,
-                    title: "Level \(stage.level) · \(stage.technique.title) Exam",
-                    bossLessonId: boss.id,
-                    rewardKeys: 1
-                )
-            )
-        }
-        return exams
-    }
 
     // MARK: - XP, Level & Attributes
 
@@ -311,15 +264,9 @@ public enum DrummerPathEvaluator {
 
     // MARK: - Stage Exams, Milestones & Rewards
 
-    /// Returns all stage exam IDs currently satisfied by `progress`.
-    static func satisfiedExamStageIDs(progress: [Int: LessonProgress], catalog: LibraryCatalog) -> Set<String> {
-        var result: Set<String> = []
-        for exam in stageExams(in: catalog) {
-            if let record = progress[exam.bossLessonId], record.passed || record.mastery {
-                result.insert(exam.stageId)
-            }
-        }
-        return result
+    private static func passedExamLesson(_ lesson: Lesson?, progress: [Int: LessonProgress]) -> Bool {
+        guard let lesson, let record = progress[lesson.id] else { return false }
+        return record.passed || record.mastery
     }
 
     /// Returns all milestone IDs currently satisfied by `progress` and `trainingLog`.
@@ -364,6 +311,7 @@ public enum DrummerPathEvaluator {
         currentProgress: [Int: LessonProgress],
         currentTrainingLog: TrainingLog,
         catalog: LibraryCatalog,
+        completedBossStageID: String? = nil,
         now: Date = AppCalendar.now()
     ) -> DrummerPathEvaluationOutcome {
         let beforeCard = computeCard(
@@ -374,7 +322,13 @@ public enum DrummerPathEvaluator {
         )
 
         var nextState = previousState
-        let satisfiedExams = satisfiedExamStageIDs(progress: currentProgress, catalog: catalog)
+        var satisfiedExams: Set<String> = []
+        if passedExamLesson(catalog.introLessons.last, progress: currentProgress) {
+            satisfiedExams.insert(introExamStageId)
+        }
+        if let completedBossStageID, catalog.stages.contains(where: { $0.id == completedBossStageID }) {
+            satisfiedExams.insert(completedBossStageID)
+        }
         let newExams = satisfiedExams.subtracting(nextState.completedExamStageIDs).sorted()
         nextState.completedExamStageIDs.formUnion(newExams)
 
@@ -480,7 +434,12 @@ public enum DrummerPathEvaluator {
         }
 
         // 1. Credit completed stage exams & earned milestones
-        state.completedExamStageIDs.formUnion(satisfiedExamStageIDs(progress: progress, catalog: catalog))
+        if passedExamLesson(catalog.introLessons.last, progress: progress) {
+            state.completedExamStageIDs.insert(introExamStageId)
+        }
+        state.completedExamStageIDs.formUnion(catalog.stages.compactMap { stage in
+            passedExamLesson(stage.lessons.last, progress: progress) ? stage.id : nil
+        })
         state.earnedMilestoneIDs.formUnion(satisfiedMilestoneIDs(progress: progress, trainingLog: trainingLog, catalog: catalog))
 
         // 2. Preserve access to every kit where the player already earned stars

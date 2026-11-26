@@ -446,7 +446,8 @@ struct DrummerPathMapView: View {
 
         let boxWidth: CGFloat = node.isBoss ? 114 : (node.isSideQuest ? 70 : 64)
         let boxHeight: CGFloat = 62
-        let titleText = node.isBoss
+        let isStageBoss = node.isBoss && stage.index > 0
+        let titleText = isStageBoss ? settings.localized(BossEncounter.nameKey(for: stage.id)) : node.isBoss
             ? (language == .czech ? "Zkouška etapy · \(stage.title)" : "\(stage.title) Stage Exam")
             : "\(node.orderIndex + 1). \(settings.localized(node.lesson.title))"
 
@@ -478,12 +479,13 @@ struct DrummerPathMapView: View {
                 VStack(spacing: 4) {
                     if node.isBoss {
                         HStack(spacing: 4) {
-                            Image(systemName: "trophy.fill")
+                            Image(systemName: isStageBoss ? BossEncounter.emblem(for: stage.id) : "trophy.fill")
                                 .font(.system(size: 10, weight: .bold))
-                                .foregroundStyle(lit ? Theme.orange : Color.white.opacity(0.55))
-                            Text("BOSS EXAM")
+                                .foregroundStyle(Theme.ink)
+                            Text(isStageBoss ? titleText : settings.localized("Stage exam"))
                                 .font(.system(size: 10.5, weight: .black, design: .monospaced))
-                                .foregroundStyle(lit ? Theme.orange : Color.white.opacity(0.55))
+                                .foregroundStyle(Theme.ink)
+                                .lineLimit(2)
                         }
                     } else {
                         Text("\(node.orderIndex + 1)")
@@ -502,6 +504,10 @@ struct DrummerPathMapView: View {
                                 .font(.system(size: 10))
                                 .foregroundStyle(Color.white.opacity(0.35))
                         }
+                    } else if isStageBoss {
+                        Image(systemName: isCompleted ? "checkmark" : "play.fill")
+                            .font(.system(size: 9))
+                            .foregroundStyle(Theme.secondary)
                     } else {
                         HStack(spacing: 2) {
                             ForEach(0..<3, id: \.self) { starIdx in
@@ -514,7 +520,7 @@ struct DrummerPathMapView: View {
                 }
 
                 // Perched badge on top edge for Boss or Technique/Side Quest
-                if node.isBoss {
+                if node.isBoss && !isStageBoss {
                     Text(language == .czech ? "STAGE BOSS · +1 KEY" : "STAGE BOSS · +1 KEY")
                         .font(.system(size: 8.5, weight: .black, design: .monospaced))
                         .foregroundStyle(Color.white)
@@ -548,7 +554,7 @@ struct DrummerPathMapView: View {
             }
         }
         .buttonStyle(.plain)
-        .accessibilityLabel(nodeAccessibilityLabel(node))
+        .accessibilityLabel(nodeAccessibilityLabel(node, stage: stage))
     }
 
     // MARK: - Techniques Strip
@@ -924,11 +930,12 @@ struct DrummerPathMapView: View {
         }
     }
 
-    private func nodeAccessibilityLabel(_ node: DrummerPathNode) -> String {
-        let title = settings.localized(node.lesson.title)
+    private func nodeAccessibilityLabel(_ node: DrummerPathNode, stage: DrummerPathStageModel) -> String {
+        let isStageBoss = node.isBoss && stage.index > 0
+        let title = settings.localized(isStageBoss ? BossEncounter.nameKey(for: stage.id) : node.lesson.title)
         let role = node.isBoss ? (language == .czech ? "Zkouška etapy" : "Stage exam") : ""
         let stateText: String = switch node.state {
-        case .completed: "\(node.stars) / 3 ★"
+        case .completed: isStageBoss ? settings.localized("Boss defeated") : "\(node.stars) / 3 ★"
         case .active: language == .czech ? "Aktivní" : "Active"
         case .locked: language == .czech ? "Zamčeno" : "Locked"
         }
@@ -967,13 +974,16 @@ struct DrummerModuleInspectorCard: View {
     let node: DrummerPathNode?
     let availableKeys: Int
     let onPlayLesson: (Lesson) -> Void
+    let onPlayBoss: (BossEncounter) -> Void
     let onUnlockKit: (DrumKitDescriptor) -> Void
     var onOpenStoryCard: ((DrummerPathStageModel) -> Void)? = nil
 
     private var language: AppLanguage { settings.languagePreference }
 
     var body: some View {
-        if let stage, let node {
+        if let stage, let node, node.isBoss && stage.index > 0 {
+            bossInspector(stage)
+        } else if let stage, let node {
             let canPlay = node.state != .locked
             let ctaTitle: String = if node.state == .completed {
                 language == .czech ? "Znovu zahrát lekci" : "Replay Lesson"
@@ -1094,6 +1104,39 @@ struct DrummerModuleInspectorCard: View {
             .overlay {
                 RoundedRectangle(cornerRadius: 12, style: .continuous)
                     .strokeBorder(Color(red: 0.149, green: 0.149, blue: 0.169), lineWidth: 1.25)
+            }
+        }
+    }
+
+    private func bossInspector(_ stage: DrummerPathStageModel) -> some View {
+        HardwareCard(padding: Theme.Space.regular) {
+            VStack(alignment: .leading, spacing: Theme.Space.small) {
+                Label(settings.localized(BossEncounter.nameKey(for: stage.id)), systemImage: BossEncounter.emblem(for: stage.id))
+                    .font(Theme.rowTitle)
+                    .foregroundStyle(Theme.ink)
+                Text(settings.localized("Level %lld", stage.level))
+                    .font(Theme.meta)
+                    .foregroundStyle(Theme.secondary)
+                if let encounter = stage.bossEncounter {
+                    Text(settings.localized(encounter.lesson.title))
+                        .font(Theme.rowTitle)
+                        .foregroundStyle(Theme.ink)
+                    Text(settings.localized("%lld bars · %lld BPM", encounter.bars, encounter.bpm))
+                        .font(Theme.meta.monospacedDigit())
+                        .foregroundStyle(Theme.secondary)
+                    Button(settings.localized(stage.isExamCompleted ? "Replay the boss" : "Face the boss")) {
+                        onPlayBoss(encounter)
+                    }
+                    .buttonStyle(PadSecondaryButtonStyle())
+                } else if stage.missingMasteriesForBoss > 0 && !stage.isExamCompleted {
+                    Text(settings.localized("Earn ★2 on %lld more lessons in this stage to unlock the boss.", stage.missingMasteriesForBoss))
+                        .font(Theme.meta)
+                        .foregroundStyle(Theme.secondary)
+                } else {
+                    Text(settings.localized(stage.isExamCompleted ? "Boss defeated" : "Locked"))
+                        .font(Theme.meta)
+                        .foregroundStyle(Theme.secondary)
+                }
             }
         }
     }

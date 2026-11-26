@@ -106,7 +106,7 @@ struct PracticeScreen: View {
 
     init(lesson: Lesson, settings: SettingsManager, progress: ProgressStore, midi: MIDIInput,
          initialFromMemory: Bool = false, initialBpm: Int? = nil, mixLessons: [Lesson] = [], initialAfterMe: Bool = false,
-         unscored: Bool = false,
+         unscored: Bool = false, boss: BossEncounter? = nil,
          onStepResult: ((PracticeStepOutcome) -> Void)? = nil,
          dailyNextTitle: String? = nil,
          onAdvanceDailyStep: (() -> Void)? = nil) {
@@ -122,7 +122,8 @@ struct PracticeScreen: View {
             initialBpm: initialBpm,
             mixLessons: mixLessons,
             initialAfterMe: initialAfterMe,
-            unscored: unscored
+            unscored: unscored,
+            boss: boss
         ))
         if let initialPads = midi.padIndices {
             let initialPadCount = midi.activeProfile.padCount
@@ -155,7 +156,7 @@ struct PracticeScreen: View {
     }
 
     private var isShowingResult: Bool {
-        activeSummary != nil && !session.running
+        !session.running && (activeSummary != nil || session.bossAttempt?.finished == true)
     }
 
     private func dismissDebugResult() {
@@ -224,7 +225,7 @@ struct PracticeScreen: View {
             handleDebugLaunchArguments()
             if session.isMix && !session.unscored && session.mixIndex == 0 && session.mixResults.isEmpty {
                 session.start()
-            } else if !Task.isCancelled && !session.isMix {
+            } else if !Task.isCancelled && !session.isMix && session.boss == nil {
                 showFirstLegendIfNeeded()
             }
         }
@@ -351,11 +352,15 @@ struct PracticeScreen: View {
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .zIndex(1)
 
-                    trailingToolbar {
-                        FlowLayout(spacing: 12) {
-                            toolbarTools(width: width, screenHeight: screenHeight)
+                    if let boss = session.boss {
+                        bossHUD(boss)
+                    } else {
+                        trailingToolbar {
+                            FlowLayout(spacing: 12) {
+                                toolbarTools(width: width, screenHeight: screenHeight)
+                            }
+                            .frame(maxWidth: .infinity, alignment: .leading)
                         }
-                        .frame(maxWidth: .infinity, alignment: .leading)
                     }
                 }
             } else {
@@ -365,9 +370,13 @@ struct PracticeScreen: View {
                     if session.activeCoachDrill != nil {
                         exitCoachDrillButton
                     }
-                    trailingToolbar {
-                        HStack(spacing: 12) {
-                            toolbarTools(width: width, screenHeight: screenHeight)
+                    if let boss = session.boss {
+                        bossHUD(boss)
+                    } else {
+                        trailingToolbar {
+                            HStack(spacing: 12) {
+                                toolbarTools(width: width, screenHeight: screenHeight)
+                            }
                         }
                     }
                 }
@@ -424,12 +433,14 @@ struct PracticeScreen: View {
     }
 
     private var libraryButton: some View {
-        BackButton(onDark: true) {
-            session.stop()
-            reportStepResult()
-            if let dismissLesson { dismissLesson() } else { dismiss() }
-        }
+        BackButton(onDark: true, action: leavePractice)
         .practiceToolbarHint(settings.localized("Back"))
+    }
+
+    private func leavePractice() {
+        session.stop()
+        reportStepResult()
+        if let dismissLesson { dismissLesson() } else { dismiss() }
     }
 
     private var exitCoachDrillButton: some View {
@@ -459,17 +470,57 @@ struct PracticeScreen: View {
 
     private var titleAndSubtitle: some View {
         VStack(alignment: .leading, spacing: 2) {
-            Text(settings.localized(session.lesson.title))
+            Text(settings.localized(session.boss?.nameKey ?? session.lesson.title))
                 .font(Theme.strong(22))
                 .foregroundStyle(Theme.ink)
                 .lineLimit(2)
                 .truncationMode(.tail)
                 .fixedSize(horizontal: false, vertical: true)
                 .frame(maxWidth: .infinity, alignment: .leading)
-            lessonSubtitle
+            if let boss = session.boss {
+                Text(settings.localized("Level %lld · %@", boss.level, settings.localized(boss.lesson.title)))
+                    .font(Theme.meta)
+                    .foregroundStyle(Theme.secondary)
+                if !session.running && !isShowingResult && session.errorMessage == nil {
+                    Text(settings.localized(boss.introKey))
+                        .font(Theme.meta)
+                        .foregroundStyle(Theme.secondary)
+                }
+                if let error = session.errorMessage {
+                    Text(error).font(Theme.meta).foregroundStyle(Theme.secondary)
+                }
+            } else {
+                lessonSubtitle
+            }
         }
         .frame(minWidth: 160, maxWidth: .infinity, alignment: .leading)
         .layoutPriority(1)
+    }
+
+    private func bossHUD(_ boss: BossEncounter) -> some View {
+        let stamina = session.running || isShowingResult ? session.bossAttempt?.stamina ?? boss.stamina : boss.stamina
+        return VStack(alignment: .leading, spacing: Theme.Space.tight) {
+            Label(settings.localized("Stamina %lld / %lld", stamina, boss.stamina),
+                  systemImage: BossEncounter.emblem(for: boss.stageID))
+                .font(Theme.rowTitle.monospacedDigit())
+                .foregroundStyle(Theme.ink)
+            PracticeDisplayFrame(clock: displayClock, session: session) { frame, _ in
+                let bar = Int(frame.tapePosition) / 16
+                let warns = session.running && frame.countdown == nil && session.bossAttempt?.warnsDuring(bar: bar) == true
+                Text(session.running ? settings.localized("One bar hidden")
+                     : settings.localized("%lld bars · %lld BPM", boss.bars, boss.bpm))
+                    .font(Theme.meta.monospacedDigit())
+                    .foregroundStyle(warns ? Theme.ink : Theme.secondary)
+                    .opacity(!session.running || warns ? 1 : 0)
+                    .accessibilityHidden(session.running && !warns)
+                    .onChange(of: warns) { _, warning in
+                        if warning {
+                            UIAccessibility.post(notification: .announcement, argument: settings.localized("One bar hidden"))
+                        }
+                    }
+            }
+        }
+        .fixedSize(horizontal: false, vertical: true)
     }
 
     private var headerStars: some View {
@@ -982,6 +1033,7 @@ struct PracticeScreen: View {
         }
         let repeats = session.repeatsPerRun
         let firstCycle = (session.runNumber(for: frame.pass) - 1) * repeats + 1
+        let bossAttempt = session.running && frame.countdown == nil ? session.bossAttempt : nil
         return PatternField(session: session,
                             lesson: session.practiceLesson, hits: session.patternHits,
                      position: frame.position, tapePosition: frame.tapePosition,
@@ -991,6 +1043,8 @@ struct PracticeScreen: View {
                      afterMe: session.afterMe,
                      peekNotesOpacity: peekOpacity,
                      peekCycles: peekOpacity == nil ? nil : firstCycle..<(firstCycle + repeats),
+                     veilBars: bossAttempt?.veilBars ?? [],
+                     encounterEndStep: session.boss.map { $0.bars * 16 },
                      scrolling: scrolling, visibleBars: [1, 2, 3, 4].contains(visibleBars) ? visibleBars : 4,
                      verdicts: session.barVerdicts,
                      hitsByPass: session.patternHitFeedback,
@@ -1103,11 +1157,47 @@ struct PracticeScreen: View {
         .allowsHitTesting(!showingResult)
         .accessibilityHidden(showingResult)
         .overlay(alignment: .bottom) {
-            if showingResult, let summary = activeSummary {
+            if showingResult, let attempt = session.bossAttempt, attempt.finished {
+                bossResult(attempt)
+            } else if showingResult, let summary = activeSummary {
                 practiceResult(summary, availableWidth: availableWidth, spaceAbove: spaceAbove)
                     .fixedSize(horizontal: false, vertical: true)
             }
         }
+    }
+
+    private func bossResult(_ attempt: BossAttempt) -> some View {
+        HardwareCard(padding: Theme.Space.regular) {
+            VStack(alignment: .leading, spacing: Theme.Space.small) {
+                Text(settings.localized(attempt.won ? attempt.encounter.victoryKey : "The boss is still standing."))
+                    .font(Theme.rowTitle)
+                    .foregroundStyle(Theme.ink)
+                    .accessibilityAddTraits(.isHeader)
+                if attempt.won {
+                    Button(settings.localized("Done"), action: leavePractice)
+                        .buttonStyle(PadSecondaryButtonStyle())
+                } else {
+                    ViewThatFits(in: .horizontal) {
+                        HStack(spacing: Theme.Space.small) { bossRetryActions(attempt.encounter) }
+                            .fixedSize(horizontal: true, vertical: false)
+                        VStack(alignment: .leading, spacing: Theme.Space.small) { bossRetryActions(attempt.encounter) }
+                    }
+                }
+            }
+        }
+        .fixedSize(horizontal: false, vertical: true)
+    }
+
+    @ViewBuilder
+    private func bossRetryActions(_ boss: BossEncounter) -> some View {
+        Group {
+            Button(settings.localized("Retry the boss")) { session.retryBoss(gentle: false) }
+                .disabled(!session.ready)
+            Button(settings.localized("Gentle attempt")) { session.retryBoss(gentle: true) }
+                .disabled(!session.ready)
+            Button(settings.localized("Practice first")) { openNextLesson(boss.lesson, forcePlay: true) }
+        }
+        .buttonStyle(PadSecondaryButtonStyle())
     }
 
     private func practiceResult(_ summary: RunSummary, availableWidth: CGFloat, spaceAbove: CGFloat) -> some View {
@@ -1432,9 +1522,9 @@ struct PracticeScreen: View {
     private func tempoSquare(s: CGFloat, spaceAbove: CGFloat, expanded: Bool = false) -> some View {
         TempoTile(
             bpm: session.bpm,
-            startBpm: session.lesson.startBpm,
-            targetBpm: session.lesson.targetBpm,
-            editable: !session.running && session.ready && session.available,
+            startBpm: session.boss?.bpm ?? session.lesson.startBpm,
+            targetBpm: session.boss?.bpm ?? session.lesson.targetBpm,
+            editable: session.boss == nil && !session.running && session.ready && session.available,
             status: !session.available ? settings.localized("This lesson requires 16 pads.")
                 : (!session.ready ? settings.localized("Preparing sound…") : nil),
             side: s,
@@ -1553,7 +1643,7 @@ struct PracticeScreen: View {
             catalog: progression.catalog,
             progress: progress.records,
             pathState: progress.drummerPath,
-            openStageIDs: progression.openStageIDs,
+            openStageIDs: progression.storyOpenStageIDs,
             language: settings.languagePreference
         )
 
@@ -1581,7 +1671,17 @@ struct PracticeScreen: View {
                         openNextLesson(target)
                     }
                 )
-            case .continueTrail(let target), .rejoinTrail(let target), .faceBoss(let target), .exploreSideTrail(let target):
+            case .faceBoss(let encounter):
+                return ResultStoryChoice(
+                    id: action.id,
+                    title: action.title,
+                    hint: settings.localized(encounter.nameKey),
+                    action: {
+                        dismissDebugResult()
+                        openNextLesson(encounter.lesson, boss: encounter)
+                    }
+                )
+            case .continueTrail(let target), .rejoinTrail(let target), .exploreSideTrail(let target):
                 return ResultStoryChoice(
                     id: action.id,
                     title: action.title,
@@ -1704,7 +1804,7 @@ struct PracticeScreen: View {
                                source: NextLessonSource(rawValue: settings.nextLessonSource) ?? .path)
     }
 
-    private func openNextLesson(_ lesson: Lesson) {
+    private func openNextLesson(_ lesson: Lesson, boss: BossEncounter? = nil, forcePlay: Bool = false) {
         guard store.isUnlocked(lesson) else {
             purchaseAccess = lesson.access ?? "full"
             return
@@ -1720,14 +1820,16 @@ struct PracticeScreen: View {
         helpPresentation = nil
         didOpenHelpOrInfo = false
         session.close()
-        let launch = LessonLaunch.library(lesson, progress: progress.progress(for: lesson.id), today: AppCalendar.today())
+        let launch: LessonLaunch = boss != nil || forcePlay ? .lesson(lesson)
+            : .library(lesson, progress: progress.progress(for: lesson.id), today: AppCalendar.today())
         session = PracticeSession(
             lesson: lesson,
             settings: settings,
             progress: progress,
             midi: midi,
             initialFromMemory: launch.reviewTempo != nil,
-            initialBpm: launch.reviewTempo
+            initialBpm: launch.reviewTempo,
+            boss: boss
         )
     }
 

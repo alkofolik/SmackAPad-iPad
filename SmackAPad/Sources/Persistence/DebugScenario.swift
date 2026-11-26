@@ -2,7 +2,7 @@
 import Foundation
 
 enum DebugScenario: String, CaseIterable, Identifiable {
-    case fresh, introDone, stage1Done, awaitingStar3, reviewDueToday, advanced
+    case fresh, introDone, stage1Done, bossOpen, awaitingStar3, reviewDueToday, advanced
 
     var id: String { rawValue }
 
@@ -18,6 +18,11 @@ enum DebugScenario: String, CaseIterable, Identifiable {
         case .introDone: lessons = catalog.introLessons
         case .stage1Done:
             lessons = catalog.introLessons + (catalog.stages.first?.lessons ?? []).filter { !introIDs.contains($0.id) }
+        case .bossOpen:
+            let stageLessons = catalog.stages.first?.lessons ?? []
+            let needed = ProgressionConstant.requiredStageCompletions(lessonCount: stageLessons.count)
+            let candidates = stageLessons.dropLast().filter { !introIDs.contains($0.id) && $0.access == "free" }
+            lessons = catalog.introLessons + candidates.prefix(needed)
         case .awaitingStar3, .reviewDueToday: lessons = Array(freePath.prefix(4))
         case .advanced:
             lessons = catalog.introLessons + catalog.path.filter { !introIDs.contains($0.id) }.dropLast(5)
