@@ -11,6 +11,7 @@ Usage:
     python3 tools/story_map/generate.py > proposal.json
     python3 tools/story_map/generate.py --output path/to/proposal.json
     python3 tools/story_map/generate.py --summary
+    python3 tools/story_map/generate.py --export-forks --output tools/story_map/fork-list.md
 """
 
 from __future__ import annotations
@@ -23,6 +24,7 @@ from typing import Any
 REPO_ROOT = Path(__file__).resolve().parents[2]
 CORE_PATH = REPO_ROOT / "SmackAPad" / "Resources" / "Data" / "lessons-core.json"
 ELECTRONIC_PATH = REPO_ROOT / "SmackAPad" / "Resources" / "Data" / "electronic-path.json"
+STORY_MAP_PATH = REPO_ROOT / "SmackAPad" / "Resources" / "Data" / "story-map.json"
 
 TECHNIQUES = ("groove", "sixteenths", "ghost", "swing", "fills")
 EXTENSION_CATS = {"jersey", "footwork"}
@@ -248,34 +250,68 @@ def build_proposal() -> dict[str, list[dict[str, Any]]]:
     return story_map
 
 
+def render_fork_list() -> str:
+    story_map = json.loads(STORY_MAP_PATH.read_text(encoding="utf-8"))
+    lessons_by_id = {lesson["id"]: lesson for lesson in load_path_lessons()}
+    lines = [
+        "# Story map forks",
+        "",
+        "Fork indexes are zero-based node positions in the bundled story map.",
+        "Options follow the map order. BPM is the lesson's goal tempo.",
+    ]
+    for stage_id, nodes in story_map.items():
+        lines.extend(["", f"## {stage_id}", ""])
+        forks = [(index, node["fork"]) for index, node in enumerate(nodes) if "fork" in node]
+        if not forks:
+            lines.append("No forks.")
+            continue
+
+        lines.extend(["| Fork | Option | Lesson | Genre | BPM |", "| --- | --- | --- | --- | --- |"])
+        for index, lesson_ids in forks:
+            for option, lesson_id in zip("abc", lesson_ids):
+                lesson = lessons_by_id[lesson_id]
+                title = lesson["title"].replace("|", r"\|")
+                genre = lesson["genre"].replace("|", r"\|")
+                lines.append(f"| {index} | {option} | {title} | {genre} | {lesson['targetBpm']} |")
+    return "\n".join(lines) + "\n"
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
         "--output",
         type=Path,
         default=None,
-        help="Optional file path to write the proposal JSON instead of stdout.",
+        help="Write the proposal JSON or fork list to this path instead of stdout.",
     )
-    parser.add_argument(
+    mode = parser.add_mutually_exclusive_group()
+    mode.add_argument(
         "--summary",
         action="store_true",
         help="Print per-stage keystone and fork counts to stdout.",
     )
+    mode.add_argument(
+        "--export-forks",
+        action="store_true",
+        help="Export the bundled story map's forks as a Markdown table per stage.",
+    )
     args = parser.parse_args()
 
-    proposal = build_proposal()
+    if args.export_forks:
+        rendered = render_fork_list()
+    else:
+        proposal = build_proposal()
+        if args.summary:
+            for stage_id, nodes in proposal.items():
+                keystones = sum(1 for node in nodes if "keystone" in node)
+                forks = sum(1 for node in nodes if "fork" in node)
+                lessons_count = sum(
+                    1 if "keystone" in node else len(node["fork"]) for node in nodes
+                )
+                print(f"{stage_id}: {lessons_count} lessons -> {keystones} keystones, {forks} forks")
+            return
+        rendered = json.dumps(proposal, indent=2) + "\n"
 
-    if args.summary:
-        for stage_id, nodes in proposal.items():
-            keystones = sum(1 for node in nodes if "keystone" in node)
-            forks = sum(1 for node in nodes if "fork" in node)
-            lessons_count = sum(
-                1 if "keystone" in node else len(node["fork"]) for node in nodes
-            )
-            print(f"{stage_id}: {lessons_count} lessons -> {keystones} keystones, {forks} forks")
-        return
-
-    rendered = json.dumps(proposal, indent=2) + "\n"
     if args.output is not None:
         args.output.write_text(rendered, encoding="utf-8")
     else:
