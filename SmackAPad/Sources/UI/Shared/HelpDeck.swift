@@ -48,7 +48,7 @@ extension View {
         return self
             .popover(isPresented: helpBinding(presentation, style: .popover), arrowEdge: arrowEdge) {
                 deck()
-                    .frame(idealWidth: 660, idealHeight: 540)
+                    .frame(idealWidth: 660, idealHeight: 680)
                     .presentationCompactAdaptation(.sheet)
                     .onDisappear(perform: onDismiss)
             }
@@ -146,7 +146,7 @@ struct HelpDeck: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .foregroundStyle(Theme.ink)
         .calmChassisBackground()
-        .presentationBackground(Theme.background)
+        .presentationBackground(Theme.chassis)
         .interactiveDismissDisabled(tutorialIndex != nil)
         .task(id: currentPage) {
             await Task.yield()
@@ -157,7 +157,16 @@ struct HelpDeck: View {
 
     private func header(for page: Page) -> some View {
         HStack(alignment: .center, spacing: Theme.Space.regular) {
-            BackButton { backAction(for: page) }
+            if case .contents = page {
+                HardwareIconButton(
+                    systemName: "xmark",
+                    accessibilityLabel: settings.localized("Close")
+                ) {
+                    backAction(for: page)
+                }
+            } else {
+                HardwareBackButton { backAction(for: page) }
+            }
             Text(settings.localized(page.titleKey))
                 .font(Theme.display(headingSize))
                 .fixedSize(horizontal: false, vertical: true)
@@ -214,9 +223,15 @@ struct HelpDeck: View {
         switch page {
         case .contents:
             Button { tutorialIndex = 0 } label: {
-                controlLabel("help.tutorial.reopen").textButtonTarget(alignment: .leading)
+                HStack(spacing: Theme.Space.small) {
+                    Image(systemName: "play.fill")
+                        .font(.system(size: 13, weight: .semibold))
+                    Text(settings.localized("help.tutorial.reopen"))
+                }
+                .font(Theme.strong(controlSize))
+                .frame(minHeight: Theme.Size.touch)
             }
-            .buttonStyle(.plain)
+            .buttonStyle(PadSecondaryButtonStyle())
             .frame(maxWidth: .infinity, alignment: .leading)
         case .topic:
             Button {

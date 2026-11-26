@@ -190,43 +190,60 @@ struct PurchaseSheet: View {
     }
 
     var body: some View {
-        GeometryReader { geometry in
-            let isLandscapeLayout = geometry.size.width >= 960
-            Group {
-                if isLandscapeLayout {
-                    HStack(spacing: 40) {
-                        heroPanel(compact: false)
-                            .frame(width: 500)
-                            .frame(maxHeight: .infinity)
+        VStack(spacing: 0) {
+            ScreenTopBar {
+                HardwareBackButton {
+                    if let onDismiss { onDismiss() } else { dismiss() }
+                }
+            } center: {
+                EmptyView()
+            } trailing: {
+                EmptyView()
+            }
+            .padding(.horizontal, Theme.Space.page)
+            .padding(.top, Theme.Space.page)
+            .padding(.bottom, Theme.Space.small)
 
-                        VStack(alignment: .leading, spacing: 0) {
-                            benefitsStack(spacing: 30)
-                                .padding(.top, 96)
-                            Spacer(minLength: 24)
-                            actionsBlock
-                                .padding(.bottom, 40)
+            GeometryReader { geometry in
+                let isLandscapeLayout = geometry.size.width >= 960
+                Group {
+                    if isLandscapeLayout {
+                        HStack(spacing: 40) {
+                            heroPanel(compact: false)
+                                .frame(width: 500)
+                                .frame(maxHeight: .infinity)
+
+                            VStack(alignment: .leading, spacing: 0) {
+                                Spacer(minLength: 16)
+                                benefitsStack(spacing: 28)
+                                Spacer(minLength: 28)
+                                actionsBlock
+                                Spacer(minLength: 16)
+                            }
+                            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
+                            .padding(.trailing, 40)
                         }
-                        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
-                        .padding(.trailing, 40)
-                    }
-                    .padding(Theme.Space.page)
-                } else {
-                    ScrollView {
-                        VStack(alignment: .leading, spacing: 28) {
-                            heroPanel(compact: true)
-                                .frame(maxWidth: .infinity)
-                            benefitsStack(spacing: 22)
-                                .padding(.horizontal, 8)
-                            actionsBlock
-                                .padding(.horizontal, 8)
+                        .padding(.horizontal, Theme.Space.page)
+                        .padding(.bottom, Theme.Space.page)
+                    } else {
+                        ScrollView {
+                            VStack(alignment: .leading, spacing: 28) {
+                                heroPanel(compact: true)
+                                    .frame(maxWidth: .infinity)
+                                benefitsStack(spacing: 22)
+                                    .padding(.horizontal, 8)
+                                actionsBlock
+                                    .padding(.horizontal, 8)
+                            }
+                            .padding(.horizontal, Theme.Space.page)
+                            .padding(.bottom, Theme.Space.page)
                         }
-                        .padding(Theme.Space.page)
                     }
                 }
             }
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
-            .calmChassisBackground()
         }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .calmChassisBackground()
         .foregroundStyle(Theme.ink)
         .tint(Theme.ink)
         .navigationBarBackButtonHidden(true)
@@ -240,13 +257,7 @@ struct PurchaseSheet: View {
 
     private func heroPanel(compact: Bool) -> some View {
         VStack(alignment: .leading, spacing: 0) {
-            BackButton(onDark: true) {
-                if let onDismiss { onDismiss() } else { dismiss() }
-            }
-
-            if compact {
-                Spacer(minLength: 28)
-            } else {
+            if !compact {
                 Spacer()
             }
 
@@ -300,9 +311,13 @@ struct PurchaseSheet: View {
     private func benefitRow(icon: String, title: String, subtitle: String) -> some View {
         HStack(alignment: .top, spacing: 18) {
             ZStack {
-                RoundedRectangle(cornerRadius: 14)
+                RoundedRectangle(cornerRadius: 6)
                     .fill(Theme.surface)
                     .frame(width: 52, height: 52)
+                    .overlay {
+                        RoundedRectangle(cornerRadius: 6)
+                            .strokeBorder(Theme.hairline, lineWidth: 1)
+                    }
                 Image(systemName: icon)
                     .font(.system(size: 22, weight: .medium))
                     .foregroundStyle(Theme.ink)

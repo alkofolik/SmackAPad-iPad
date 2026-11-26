@@ -12,7 +12,7 @@ private enum AboutLinks {
     // Populate from ticket 81 once the support and privacy pages are published.
     static let supportURL: URL? = nil
     static let privacyURL: URL? = nil
-    static let copyrightAuthor = "[AUTHOR]"
+    static let copyrightAuthor = "[Kjü]"
 }
 
 public struct AboutDetailView: View {
@@ -36,7 +36,20 @@ public struct AboutDetailView: View {
     }
 
     public var body: some View {
-        ZStack(alignment: .topLeading) {
+        VStack(spacing: 0) {
+            ScreenTopBar {
+                HardwareBackButton {
+                    if let onDismiss { onDismiss() } else { dismiss() }
+                }
+            } center: {
+                EmptyView()
+            } trailing: {
+                EmptyView()
+            }
+            .padding(.horizontal, Theme.Space.page)
+            .padding(.top, Theme.Space.page)
+            .padding(.bottom, Theme.Space.small)
+
             ScrollView {
                 VStack(spacing: 0) {
                     PadLogoGrid(neutralColor: Theme.ink, gap: 10, padRadius: 5)
@@ -65,17 +78,11 @@ public struct AboutDetailView: View {
                         .padding(.top, 28)
                 }
                 .frame(maxWidth: 520)
-                .padding(.top, 70)
+                .padding(.top, Theme.Space.regular)
                 .padding(.horizontal, Theme.Space.page)
                 .padding(.bottom, Theme.Space.page)
                 .frame(maxWidth: .infinity)
             }
-
-            BackButton {
-                if let onDismiss { onDismiss() } else { dismiss() }
-            }
-            .padding(.top, Theme.Space.page)
-            .padding(.leading, Theme.Space.page)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .calmChassisBackground()
