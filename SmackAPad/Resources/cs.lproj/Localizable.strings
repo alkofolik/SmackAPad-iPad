@@ -3668,3 +3668,8 @@
 "Slow to %lld BPM" = "Zpomalit na %lld BPM";
 "Bar %lld nailed!" = "Takt %lld zvládnutý!";
 "Play full lesson" = "Zpět na celou lekci";
+
+/* Ticket 3.1: Localized top navigation tabs. */
+"PATH" = "CESTA";
+"STUDIO RIG" = "STUDIO RIG";
+"LIBRARY" = "KNIHOVNA";

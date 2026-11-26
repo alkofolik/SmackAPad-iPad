@@ -796,7 +796,7 @@ final class PracticeSessionTests: XCTestCase {
         progress.setProgress(due, for: lesson.id)
         XCTAssertTrue(progress.dueLessonIds(today: today).contains(lesson.id))
 
-        let plan = try XCTUnwrap(TodayPlan.make(day: today, dueLessonIDs: [lesson.id], nextLessonID: 10_007, mixLessonIDs: []))
+        let plan = try XCTUnwrap(TodayPlan.make(day: today, dueLessonIDs: [lesson.id], nextLessonID: 10_007))
         let coordinator = TodaySessionCoordinator(plan: plan, defaults: defaults)
         coordinator.continueSession()
 

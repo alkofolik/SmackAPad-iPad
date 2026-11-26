@@ -10,20 +10,22 @@ enum TrainingTabMode: String, Equatable {
 /// Shared 3-way hardware navigation pill (`PATH · STUDIO RIG · LIBRARY`) used across Training, Studio Rig, and Library.
 @MainActor
 struct StudioHardwareTabSwitcher: View {
+    @Environment(SettingsManager.self) private var settings
+
     let activeTab: TrainingTabMode
     let onSelect: (TrainingTabMode) -> Void
 
     var body: some View {
         HStack(spacing: 4) {
-            tabButton(title: "PATH", tab: .path)
-            tabButton(title: "STUDIO RIG", tab: .studioRig)
-            tabButton(title: "LIBRARY", tab: .library)
+            tabButton(title: settings.localized("PATH"), tab: .path)
+            tabButton(title: settings.localized("STUDIO RIG"), tab: .studioRig)
+            tabButton(title: settings.localized("LIBRARY"), tab: .library)
         }
         .padding(4)
-        .background(Color(red: 0.047, green: 0.047, blue: 0.055), in: RoundedRectangle(cornerRadius: 9, style: .continuous))
+        .background(Theme.recessed, in: RoundedRectangle(cornerRadius: Theme.Radius.control + 2, style: .continuous))
         .overlay {
-            RoundedRectangle(cornerRadius: 9, style: .continuous)
-                .strokeBorder(Color(red: 0.149, green: 0.149, blue: 0.169), lineWidth: 1)
+            RoundedRectangle(cornerRadius: Theme.Radius.control + 2, style: .continuous)
+                .strokeBorder(Theme.hairline, lineWidth: 1)
         }
     }
 
@@ -35,12 +37,12 @@ struct StudioHardwareTabSwitcher: View {
             Text(title)
                 .font(.system(size: 11.5, weight: .bold, design: .monospaced))
                 .tracking(0.5)
-                .foregroundStyle(active ? Color.black : Color.white.opacity(0.75))
+                .foregroundStyle(active ? Color.black : Theme.secondary)
                 .padding(.horizontal, 13)
                 .frame(height: 34)
                 .background(
                     active ? Theme.orange : Color.clear,
-                    in: RoundedRectangle(cornerRadius: 6, style: .continuous)
+                    in: RoundedRectangle(cornerRadius: Theme.Radius.control, style: .continuous)
                 )
                 .shadow(color: active ? Theme.orange.opacity(0.45) : .clear, radius: 6)
         }
@@ -69,7 +71,7 @@ struct DrummerTopHeaderBar: View {
             if isCompact {
                 VStack(alignment: .leading, spacing: 10) {
                     HStack(spacing: 12) {
-                        BackButton(onDark: true, action: onBack)
+                        BackButton(action: onBack)
                         brandAndLevelBlock
                         Spacer(minLength: 4)
                         keysPill
@@ -79,7 +81,7 @@ struct DrummerTopHeaderBar: View {
                 }
             } else {
                 HStack(spacing: 16) {
-                    BackButton(onDark: true, action: onBack)
+                    BackButton(action: onBack)
 
                     brandAndLevelBlock
                         .frame(maxWidth: .infinity, alignment: .leading)
@@ -92,10 +94,10 @@ struct DrummerTopHeaderBar: View {
         }
         .padding(.horizontal, 14)
         .padding(.vertical, 10)
-        .background(Color(red: 0.062, green: 0.062, blue: 0.072), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+        .background(Theme.surface, in: RoundedRectangle(cornerRadius: Theme.Radius.sheet, style: .continuous))
         .overlay {
-            RoundedRectangle(cornerRadius: 12, style: .continuous)
-                .strokeBorder(Color(red: 0.149, green: 0.149, blue: 0.169), lineWidth: 1)
+            RoundedRectangle(cornerRadius: Theme.Radius.sheet, style: .continuous)
+                .strokeBorder(Theme.hairline, lineWidth: 1)
         }
     }
 
@@ -104,7 +106,7 @@ struct DrummerTopHeaderBar: View {
             Text("SMACK-A-PAD")
                 .font(Theme.boldDisplay(20))
                 .tracking(0.6)
-                .foregroundStyle(Color.white)
+                .foregroundStyle(Theme.ink)
                 .lineLimit(1)
                 .accessibilityAddTraits(.isHeader)
 
@@ -112,23 +114,23 @@ struct DrummerTopHeaderBar: View {
                 HStack(spacing: 6) {
                     Text("LVL \(card.level)")
                         .font(.system(size: 11, weight: .bold, design: .monospaced))
-                        .foregroundStyle(Color.white)
+                        .foregroundStyle(Theme.ink)
                     Text("·")
-                        .foregroundStyle(Color.white.opacity(0.4))
+                        .foregroundStyle(Theme.secondary)
                     Text(card.rank.title.uppercased())
                         .font(.system(size: 11, weight: .bold, design: .monospaced))
                         .foregroundStyle(Theme.orange)
                         .lineLimit(1)
                     Text("\(card.xp)/\(card.nextLevelXP)")
                         .font(.system(size: 11, weight: .medium, design: .monospaced))
-                        .foregroundStyle(Color.white.opacity(0.55))
+                        .foregroundStyle(Theme.secondary)
                         .lineLimit(1)
                 }
 
                 GeometryReader { geo in
                     ZStack(alignment: .leading) {
                         Capsule()
-                            .fill(Color.white.opacity(0.12))
+                            .fill(Theme.ledOff)
                         Capsule()
                             .fill(Theme.orange)
                             .frame(width: max(8, geo.size.width * card.levelProgress))
@@ -159,18 +161,18 @@ struct DrummerTopHeaderBar: View {
             HStack(spacing: 6) {
                 Image(systemName: "key.fill")
                     .font(.system(size: 12, weight: .bold))
-                    .foregroundStyle(availableKeys > 0 ? Theme.orange : Color.white.opacity(0.55))
+                    .foregroundStyle(availableKeys > 0 ? Theme.orange : Theme.secondary)
                     .shadow(color: availableKeys > 0 ? Theme.orange.opacity(0.6) : .clear, radius: 4)
                 Text("\(availableKeys) \(keysUnit(availableKeys).uppercased())")
                     .font(.system(size: 12, weight: .bold, design: .monospaced))
-                    .foregroundStyle(Color.white)
+                    .foregroundStyle(Theme.ink)
             }
             .padding(.horizontal, 12)
             .frame(height: 38)
-            .background(Color(red: 0.078, green: 0.078, blue: 0.090), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+            .background(Theme.recessed, in: RoundedRectangle(cornerRadius: Theme.Radius.control, style: .continuous))
             .overlay {
-                RoundedRectangle(cornerRadius: 8, style: .continuous)
-                    .strokeBorder(availableKeys > 0 ? Theme.orange : Color(red: 0.149, green: 0.149, blue: 0.169), lineWidth: 1.25)
+                RoundedRectangle(cornerRadius: Theme.Radius.control, style: .continuous)
+                    .strokeBorder(availableKeys > 0 ? Theme.orange : Theme.hairline, lineWidth: 1.25)
             }
         }
         .buttonStyle(.plain)

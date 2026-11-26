@@ -18,7 +18,6 @@ public struct HomeScreen: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.scenePhase) private var scenePhase
     @AppStorage(TodayPlan.storageKey) private var savedTodayPlan = ""
-    @AppStorage("smackapad.training.dailyMixes") private var dailyMixes = "{}"
     @State private var helpPresentation: HelpPresentation?
     @AccessibilityFocusState private var helpFocused: Bool
     @State private var calendarDay = AppCalendar.today()
@@ -429,8 +428,6 @@ public struct HomeScreen: View {
             isAvailableForToday($0) && progression.isLessonOpen($0)
         }.map(\.id))
         let padCount = midi.activeProfile.padCount
-        let mix = TrainingMix.dailySelection(lessons: progression.catalog.lessons, progress: progress.records,
-            padCount: padCount, openLessonIDs: openIDs, day: calendarDay, savedJSON: dailyMixes)
         let dueCandidates = progress.dueLessonIds(today: calendarDay).compactMap { lessonStore.lesson(for: $0) }.filter { lesson in
             guard openIDs.contains(lesson.id) else { return false }
             return padCount == 16 || EightPadLayout.slots(for: lesson) != nil
@@ -438,7 +435,7 @@ public struct HomeScreen: View {
         let due = ReviewQueue.order(dueCandidates, records: progress.records, today: calendarDay)
         return TodayPlan.make(day: calendarDay,
             dueLessonIDs: due.map(\.id),
-            nextLessonID: lessons.next?.id, followUpLessonID: lessons.followUp?.id, mixLessonIDs: mix.map(\.id))
+            nextLessonID: lessons.next?.id, followUpLessonID: lessons.followUp?.id)
     }
 
     private func preserveTodayPlan(for lessonID: Int) {

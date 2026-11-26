@@ -24,7 +24,7 @@ final class TodaySessionCoordinator {
     }
 
     var nextAction: TodayContinueTarget? {
-        TodayContinueTarget.resolve(currentPlan: plan, today: plan.day, nextLessonID: nil, mixLessonIDs: [])
+        TodayContinueTarget.resolve(currentPlan: plan, today: plan.day, nextLessonID: nil)
     }
 
     func record(_ outcome: PracticeStepOutcome, at stepIndex: Int? = nil) {
@@ -69,14 +69,6 @@ final class TodaySessionCoordinator {
     func continueSession() {
         guard !plan.finished else { return }
         plan.phase = .practice
-        save()
-    }
-
-    func replaceCurrentMixLessons(_ lessons: [Lesson]) {
-        guard !plan.finished, plan.steps.indices.contains(plan.index),
-              plan.steps[plan.index].kind == .mix,
-              lessons.count >= LearningRules.minimumMixLessons else { return }
-        plan.steps[plan.index].lessonIDs = lessons.map(\.id)
         save()
     }
 
@@ -144,8 +136,7 @@ enum TodayContinueTarget: Equatable {
     static func resolve(
         currentPlan: TodayPlan?,
         today: String,
-        nextLessonID: Int?,
-        mixLessonIDs: [Int]
+        nextLessonID: Int?
     ) -> TodayContinueTarget? {
         if var plan = currentPlan {
             while !plan.finished, plan.steps.indices.contains(plan.index),
@@ -160,7 +151,7 @@ enum TodayContinueTarget: Equatable {
             }
             return .step(plan)
         }
-        return TodayPlan.make(day: today, dueLessonIDs: [], nextLessonID: nextLessonID, mixLessonIDs: mixLessonIDs)
+        return TodayPlan.make(day: today, dueLessonIDs: [], nextLessonID: nextLessonID)
             .map { .step($0) }
     }
 }

@@ -64,7 +64,7 @@ final class HomePadSubtitlesTests: XCTestCase {
 
     func testTodaySubtitleShowsTwoNewLessonsOnTheFirstDay() throws {
         let plan = try XCTUnwrap(TodayPlan.make(day: "2026-11-11", dueLessonIDs: [], nextLessonID: 10001,
-                                               followUpLessonID: 10002, mixLessonIDs: []))
+                                               followUpLessonID: 10002))
         XCTAssertEqual(HomePadSubtitles.today(plan: plan, language: .english), "2 steps · 4 min")
         XCTAssertEqual(HomePadSubtitles.today(plan: plan, language: .czech), "2 kroky · 4 min")
     }

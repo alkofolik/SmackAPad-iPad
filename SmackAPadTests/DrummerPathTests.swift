@@ -635,7 +635,7 @@ final class DrummerPathTests: XCTestCase {
 
         // Cached plan pointing at locked Jazz lesson is discarded when filtering locked kits
         let stalePlan = try XCTUnwrap(
-            TodayPlan.make(day: "2026-11-26", dueLessonIDs: [], nextLessonID: jazz.id, followUpLessonID: nil, mixLessonIDs: [])
+            TodayPlan.make(day: "2026-11-26", dueLessonIDs: [], nextLessonID: jazz.id, followUpLessonID: nil)
         )
         XCTAssertNil(stalePlan.filteringLockedKits(lessons: catalog.lessons, pathState: store.drummerPath))
 

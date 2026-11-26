@@ -3663,3 +3663,8 @@
 "Slow to %lld BPM" = "Slow to %lld BPM";
 "Bar %lld nailed!" = "Bar %lld nailed!";
 "Play full lesson" = "Play full lesson";
+
+/* Ticket 3.1: Localized top navigation tabs. */
+"PATH" = "PATH";
+"STUDIO RIG" = "STUDIO RIG";
+"LIBRARY" = "LIBRARY";

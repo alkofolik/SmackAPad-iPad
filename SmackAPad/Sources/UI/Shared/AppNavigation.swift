@@ -61,11 +61,6 @@ enum LessonLaunch: Identifiable {
     }
 }
 
-struct MixCoverItem: Identifiable {
-    let id = UUID()
-    var lessons: [Lesson]
-}
-
 /// Safe fallback shown if a full-screen cover ever resolves without playable content.
 @MainActor
 struct EmptyCoverFallbackView: View {

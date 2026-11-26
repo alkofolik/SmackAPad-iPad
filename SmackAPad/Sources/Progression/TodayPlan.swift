@@ -118,17 +118,15 @@ struct TodayPlan: Codable, Equatable {
 
     /// `dueLessonIDs` comes from `ReviewQueue.order`, already ordered by fragility (lowest reviewStep first, then most days late, then earlier masteryDay, then lesson id).
     static func make(
-        day: String, dueLessonIDs: [Int], nextLessonID: Int?, followUpLessonID: Int? = nil, mixLessonIDs: [Int]
+        day: String, dueLessonIDs: [Int], nextLessonID: Int?, followUpLessonID: Int? = nil
     ) -> TodayPlan? {
         var steps = dueLessonIDs.prefix(LearningRules.dailyReviewLimit).map { Step(kind: .review, lessonIDs: [$0]) }
-        let hasMix = mixLessonIDs.count >= LearningRules.minimumMixLessons
         if let nextLessonID {
             steps.append(Step(kind: .newLesson, lessonIDs: [nextLessonID]))
-            if dueLessonIDs.isEmpty, !hasMix, let followUpLessonID, followUpLessonID != nextLessonID {
+            if dueLessonIDs.isEmpty, let followUpLessonID, followUpLessonID != nextLessonID {
                 steps.append(Step(kind: .newLesson, lessonIDs: [followUpLessonID]))
             }
         }
-        if hasMix { steps.append(Step(kind: .mix, lessonIDs: mixLessonIDs)) }
         guard !steps.isEmpty else { return nil }
         return TodayPlan(day: day, steps: steps)
     }
