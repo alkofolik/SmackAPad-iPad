@@ -82,12 +82,12 @@ final class LibraryPatternPreviewPlayer {
     @ObservationIgnored private var playbackTask: Task<Void, Never>?
     @ObservationIgnored private var ownsAudio = false
 
-    func toggle(lesson: Lesson, settings: SettingsManager) {
+    func toggle(lesson: Lesson, settings: SettingsManager, pathState: DrummerPathState? = nil) {
         if playingLessonID == lesson.id {
             stop(releaseAudio: false)
             return
         }
-        start(lesson: lesson, settings: settings)
+        start(lesson: lesson, settings: settings, pathState: pathState)
     }
 
     func stop(releaseAudio: Bool) {
@@ -105,11 +105,11 @@ final class LibraryPatternPreviewPlayer {
         }
     }
 
-    private func start(lesson: Lesson, settings: SettingsManager) {
+    private func start(lesson: Lesson, settings: SettingsManager, pathState: DrummerPathState? = nil) {
         stop(releaseAudio: false)
         playingLessonID = lesson.id
 
-        let kitID = SoundKitResolver.resolveKitId(for: lesson, settings: settings)
+        let kitID = SoundKitResolver.resolveKitId(for: lesson, settings: settings, pathState: pathState)
         let timing = PreviewLoopTiming(bpm: lesson.targetBpm, bars: lesson.bars)
         let sortedHits = lesson.hits.sorted { $0.step < $1.step }
         let patternVolume = Float(settings.patternVolume) / 100

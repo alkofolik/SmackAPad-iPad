@@ -343,6 +343,7 @@ final class ProgressionTests: XCTestCase {
 
     func testSkippingIntroStartsAtPathAndCanBeReversed() throws {
         let (progression, _, _) = makeIsolatedEnvironment()
+        progression.settingsManager.playMode = .free
         let intro = try XCTUnwrap(progression.catalog.introLessons.first)
         let startOfPath = try XCTUnwrap(progression.catalog.path.first { $0.cat != "intro" })
         XCTAssertFalse(progression.settingsManager.introSkipped)
@@ -354,6 +355,7 @@ final class ProgressionTests: XCTestCase {
 
     func testGuidedPathContinuesFromExistingPathAnchor() throws {
         let (progression, progress, _) = makeIsolatedEnvironment()
+        progression.settingsManager.playMode = .free
         let path = progression.catalog.path.filter { $0.cat != "intro" }
         let anchor = try XCTUnwrap(path.first)
         progress.recordPass(lessonId: anchor.id)
@@ -377,6 +379,7 @@ final class ProgressionTests: XCTestCase {
         let path8 = lesson(2, category: "eighth", pads: 1)
         let progress = ProgressStore(fileURL: tempDirectory.appendingPathComponent("progress.json"), autoLoad: false)
         let settings = SettingsManager(userDefaults: testUserDefaults)
+        settings.playMode = .free
         settings.activeProfileName = ControllerProfile.standard8.profileName
         let store = LessonStore(sources: [FixtureSource(lessons: [intro16, intro8, path16, path8])])
         let progression = ProgressionManager(lessonStore: store, progressStore: progress,

@@ -502,8 +502,8 @@ final class DrummerPathTests: XCTestCase {
             )
         }
 
-        // Locked Rock kit keeps nodes locked and reports lockedKit
-        let lockedStage = DrummerPathMapBuilder.buildStage(
+        // Locked Rock kit never blocks path nodes (nodes activate normally regardless of kit unlock)
+        let stageWithLockedKit = DrummerPathMapBuilder.buildStage(
             id: "L1-groove",
             index: 1,
             level: 1,
@@ -513,8 +513,8 @@ final class DrummerPathTests: XCTestCase {
             progress: [:],
             pathState: DrummerPathState()
         )
-        XCTAssertEqual(lockedStage.lockedKit?.kitId, "rock")
-        XCTAssertTrue(lockedStage.nodes.allSatisfy { $0.state == .locked })
+        XCTAssertNil(stageWithLockedKit.lockedKit)
+        XCTAssertEqual(stageWithLockedKit.nodes[0].state, .active)
 
         // Unlocked Rock kit with first 2 trunk lessons completed activates both parallel fork branches
         var progress: [Int: LessonProgress] = [:]
@@ -583,88 +583,86 @@ final class DrummerPathTests: XCTestCase {
         XCTAssertEqual(keyLineEn?.highlighted, true)
     }
 
-    func testTodayDailyLessonsSkipsLockedKitAndUnlocksImmediatelyOnKeySpend() throws {
-        let catalog = LessonStore.shared.libraryCatalog
-        let jazz = try XCTUnwrap(catalog.lessons.first {
-            DrumKitCatalog.requiredKitId(for: $0) == "jazz"
-        })
-
-        let progressURL = tempDir.appendingPathComponent("progress.json")
-        let store = ProgressStore(fileURL: progressURL, autoLoad: false)
-        // Earn keys by passing intro lessons
-        for lessonId in [10001, 10002, 10003, 10004, 10005] {
-            store.recordResult(lessonId: lessonId, passed: true, mastery: true, bpm: 95, score: 0.95, autoSave: false)
-        }
-        XCTAssertGreaterThanOrEqual(store.drummerPath.availableKeys, 1)
-        XCTAssertFalse(store.drummerPath.isKitUnlocked("jazz"))
-
-        let suiteName = "DrummerPathTests.todayKit.\(UUID().uuidString)"
+    func testPlayModeDefaultsToStoryForFreshAndMigratedSettings() {
+        let suiteName = "DrummerPathTests.playMode.\(UUID().uuidString)"
         let defaults = UserDefaults(suiteName: suiteName)!
-        let progression = ProgressionManager(lessonStore: .shared, progressStore: store, userDefaults: defaults)
-        for lesson in catalog.lessons where DrumKitCatalog.requiredKitId(for: lesson) != "jazz" {
+        defer { defaults.removePersistentDomain(forName: suiteName) }
+
+        // Fresh settings default to .story
+        let fresh = SettingsManager(userDefaults: defaults)
+        XCTAssertEqual(fresh.playMode, .story)
+
+        // Existing/migrated settings without playMode key also default to .story
+        defaults.set("free", forKey: SettingsKey.practiceMode.rawValue)
+        defaults.removeObject(forKey: SettingsKey.playMode.rawValue)
+        let migrated = SettingsManager(userDefaults: defaults)
+        XCTAssertEqual(migrated.playMode, .story)
+
+        // Persisted .free survives reload
+        migrated.playMode = .free
+        let reloaded = SettingsManager(userDefaults: defaults)
+        XCTAssertEqual(reloaded.playMode, .free)
+    }
+
+    func testStoryGatingOpensIntroAndCompletedOrActivePathNodesAndFreeModeOpensAll() throws {
+        let catalog = LessonStore.shared.libraryCatalog
+        let introLesson = try XCTUnwrap(catalog.introLessons.first)
+        let firstStage = try XCTUnwrap(catalog.stages.first)
+        let firstActiveLesson = try XCTUnwrap(firstStage.lessons.first { $0.cat != "intro" } ?? firstStage.lessons.first)
+        let laterNodeInFirstStage = try XCTUnwrap(firstStage.lessons.last { $0.cat != "intro" && $0.id != firstActiveLesson.id })
+        let laterStage = try XCTUnwrap(catalog.stages.dropFirst().first)
+        let laterStageLesson = try XCTUnwrap(laterStage.lessons.first { $0.cat != "intro" })
+
+        let progressURL = tempDir.appendingPathComponent("story-gating.json")
+        let store = ProgressStore(fileURL: progressURL, autoLoad: false)
+        let suiteName = "DrummerPathTests.gating.\(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: suiteName)!
+        defer { defaults.removePersistentDomain(forName: suiteName) }
+        let settings = SettingsManager(userDefaults: defaults)
+        let progression = ProgressionManager(
+            lessonStore: .shared,
+            progressStore: store,
+            settingsManager: settings,
+            userDefaults: defaults
+        )
+
+        // Story mode (default): Intro is open; later locked nodes & stages are locked
+        XCTAssertEqual(settings.playMode, .story)
+        XCTAssertTrue(progression.isLessonOpen(introLesson))
+        XCTAssertFalse(progression.isLessonOpen(laterNodeInFirstStage))
+        XCTAssertFalse(progression.isLessonOpen(laterStageLesson))
+
+        // Completing all preceding lessons in firstStage opens laterNodeInFirstStage
+        for lesson in firstStage.lessons where lesson.id != laterNodeInFirstStage.id {
             store.recordResult(
                 lessonId: lesson.id,
                 passed: true,
-                mastery: true,
+                mastery: false,
                 bpm: lesson.targetBpm,
-                score: 0.95,
-                memory: true,
+                score: 0.9,
                 autoSave: false
             )
         }
+        XCTAssertTrue(progression.isLessonOpen(laterNodeInFirstStage))
 
-        let lockedDaily = progression.dailyLessons { lesson in
-            progression.isLessonOpen(lesson) && store.drummerPath.isKitUnlocked(DrumKitCatalog.requiredKitId(for: lesson))
-        }
-        XCTAssertNil(lockedDaily.next)
-
-        let lockedStages = DrummerPathMapBuilder.buildStages(
-            catalog: catalog,
-            progress: store.records,
-            pathState: store.drummerPath,
-            language: .english
+        // Locked kit never blocks a lesson on the Path
+        XCTAssertFalse(store.drummerPath.isKitUnlocked("jazz"))
+        let jazzLesson = try XCTUnwrap(catalog.lessons.first {
+            DrumKitCatalog.requiredKitId(for: $0) == "jazz"
+        })
+        store.recordResult(
+            lessonId: jazzLesson.id,
+            passed: true,
+            mastery: false,
+            bpm: jazzLesson.targetBpm,
+            score: 0.9,
+            autoSave: false
         )
-        let lockedJazzStage = try XCTUnwrap(lockedStages.first { $0.lockedKit?.kitId == "jazz" })
-        let targetJazzLesson = try XCTUnwrap(lockedJazzStage.nodes.first {
-            DrumKitCatalog.requiredKitId(for: $0.lesson) == "jazz"
-        }?.lesson)
-        XCTAssertEqual(
-            lockedJazzStage.nodes.first(where: { $0.lesson.id == targetJazzLesson.id })?.state,
-            .locked
-        )
+        XCTAssertTrue(progression.isLessonOpen(jazzLesson))
 
-        // Cached plan pointing at locked Jazz lesson is discarded when filtering locked kits
-        let stalePlan = try XCTUnwrap(
-            TodayPlan.make(day: "2026-11-26", dueLessonIDs: [], nextLessonID: jazz.id, followUpLessonID: nil)
-        )
-        XCTAssertNil(stalePlan.filteringLockedKits(lessons: catalog.lessons, pathState: store.drummerPath))
-
-        // Unlock Jazz with 1 key -> Jazz stage becomes unlocked on Path and Today offers a Jazz lesson next
-        let unlockResult = store.unlockKit("jazz", autoSave: true)
-        if case .unlocked(let kit, _) = unlockResult {
-            XCTAssertEqual(kit.kitId, "jazz")
-        } else {
-            XCTFail("Expected Jazz kit to unlock, got \(unlockResult)")
-        }
-
-        let unlockedStages = DrummerPathMapBuilder.buildStages(
-            catalog: catalog,
-            progress: store.records,
-            pathState: store.drummerPath,
-            language: .english
-        )
-        let unlockedJazzStage = try XCTUnwrap(unlockedStages.first { $0.id == lockedJazzStage.id })
-        XCTAssertNotEqual(unlockedJazzStage.lockedKit?.kitId, "jazz")
-        let firstJazzNodeState = try XCTUnwrap(
-            unlockedJazzStage.nodes.first(where: { $0.lesson.id == targetJazzLesson.id })?.state
-        )
-        XCTAssertEqual(firstJazzNodeState, .active)
-
-        let unlockedDaily = progression.dailyLessons { lesson in
-            progression.isLessonOpen(lesson) && store.drummerPath.isKitUnlocked(DrumKitCatalog.requiredKitId(for: lesson))
-        }
-        let nextUnlocked = try XCTUnwrap(unlockedDaily.next)
-        XCTAssertEqual(DrumKitCatalog.requiredKitId(for: nextUnlocked), "jazz")
-        defaults.removePersistentDomain(forName: suiteName)
+        // Free mode: no story gating, all lessons open (purchase tier checked separately by StoreManager)
+        settings.playMode = .free
+        XCTAssertTrue(progression.isLessonOpen(laterStageLesson))
+        XCTAssertTrue(progression.isLessonOpen(laterNodeInFirstStage))
     }
 }

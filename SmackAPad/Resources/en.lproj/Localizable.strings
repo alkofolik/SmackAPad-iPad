@@ -3673,3 +3673,7 @@
 "Shown %lld of %lld" = "Shown %lld of %lld";
 "Hide sidebar" = "Hide sidebar";
 "Show sidebar" = "Show sidebar";
+
+/* Ticket 247: Story mode / Free practice switch */
+"Story mode" = "Story mode";
+"Guides you along the Drummer's Path. Turn off for free practice in the Library." = "Guides you along the Drummer's Path. Turn off for free practice in the Library.";

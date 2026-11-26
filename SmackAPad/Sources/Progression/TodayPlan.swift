@@ -143,17 +143,6 @@ struct TodayPlan: Codable, Equatable {
               plan.steps.allSatisfy({ !$0.lessonIDs.isEmpty }) else { return nil }
         return plan
     }
-
-    /// Rejects cached plans that include a `.newLesson` whose required drum kit is locked.
-    func filteringLockedKits(lessons: [Lesson], pathState: DrummerPathState) -> TodayPlan? {
-        let hasLockedNewLesson = steps.contains { step in
-            step.kind == .newLesson && step.lessonIDs.contains { id in
-                guard let lesson = lessons.first(where: { $0.id == id }) else { return false }
-                return !pathState.isKitUnlocked(DrumKitCatalog.requiredKitId(for: lesson))
-            }
-        }
-        return hasLockedNewLesson ? nil : self
-    }
 }
 
 /// Full runs only, accumulated across restarts of a single daily step.

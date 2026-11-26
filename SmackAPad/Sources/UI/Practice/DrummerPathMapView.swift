@@ -41,10 +41,6 @@ struct DrummerPathMapView: View {
             stageSwitcher
 
             if let stage = currentStage {
-                if let lockedKit = stage.lockedKit {
-                    lockedKitBanner(kit: lockedKit)
-                }
-
                 signalMapChassis(stage: stage)
                     .frame(maxHeight: .infinity)
 
@@ -78,11 +74,7 @@ struct DrummerPathMapView: View {
                                     .font(.system(size: 10, weight: .bold, design: .monospaced))
                                     .foregroundStyle(isSelected ? Theme.orange : Color.white.opacity(0.55))
                                 Spacer(minLength: 4)
-                                if stage.lockedKit != nil {
-                                    Image(systemName: "lock.fill")
-                                        .font(.system(size: 10, weight: .bold))
-                                        .foregroundStyle(Color.white.opacity(0.45))
-                                } else if isDone || stage.isExamCompleted {
+                                if isDone || stage.isExamCompleted {
                                     Image(systemName: "checkmark")
                                         .font(.system(size: 10, weight: .bold))
                                         .foregroundStyle(Color(red: 0.35, green: 0.85, blue: 0.50))
@@ -848,10 +840,7 @@ struct DrummerModuleInspectorCard: View {
     var body: some View {
         if let stage, let node {
             let canPlay = node.state != .locked
-            let isKitLocked = stage.lockedKit != nil
-            let ctaTitle: String = if let lockedKit = stage.lockedKit {
-                language == .czech ? "Odemknout \(lockedKit.name) (1 klíč)" : "Unlock \(lockedKit.name) (1 key)"
-            } else if node.state == .completed {
+            let ctaTitle: String = if node.state == .completed {
                 language == .czech ? "Znovu zahrát lekci" : "Replay Lesson"
             } else {
                 language == .czech ? "Hrát lekci" : "Play Lesson"
@@ -887,7 +876,7 @@ struct DrummerModuleInspectorCard: View {
 
                     Spacer(minLength: 8)
 
-                    Text(language == .czech ? "Vyžaduje: \(node.requiredKit.name)" : "Requires: \(node.requiredKit.name) Kit")
+                    Text(language == .czech ? "Sada: \(node.requiredKit.name)" : "Kit: \(node.requiredKit.name)")
                         .font(.system(size: 10, weight: .medium))
                         .foregroundStyle(Color.white.opacity(0.68))
                         .padding(.horizontal, 9)
@@ -941,14 +930,10 @@ struct DrummerModuleInspectorCard: View {
                 }
 
                 Button {
-                    if let lockedKit = stage.lockedKit {
-                        onUnlockKit(lockedKit)
-                    } else {
-                        onPlayLesson(node.lesson)
-                    }
+                    onPlayLesson(node.lesson)
                 } label: {
                     HStack(spacing: 8) {
-                        Image(systemName: isKitLocked ? "key.fill" : "play.fill")
+                        Image(systemName: "play.fill")
                             .font(.system(size: 12, weight: .bold))
                         Text(ctaTitle)
                             .font(Theme.strong(15))
@@ -956,11 +941,11 @@ struct DrummerModuleInspectorCard: View {
                     .foregroundStyle(Color.black)
                     .frame(maxWidth: .infinity, minHeight: 46)
                     .background(Theme.orange, in: RoundedRectangle(cornerRadius: 9, style: .continuous))
-                    .shadow(color: Theme.orange.opacity(canPlay || isKitLocked ? 0.45 : 0), radius: 8, y: 2)
+                    .shadow(color: Theme.orange.opacity(canPlay ? 0.45 : 0), radius: 8, y: 2)
                 }
                 .buttonStyle(.plain)
-                .disabled(!isKitLocked && !canPlay)
-                .opacity((isKitLocked || canPlay) ? 1 : 0.45)
+                .disabled(!canPlay)
+                .opacity(canPlay ? 1 : 0.45)
             }
             .padding(14)
             .background(Color(red: 0.078, green: 0.078, blue: 0.090), in: RoundedRectangle(cornerRadius: 12, style: .continuous))

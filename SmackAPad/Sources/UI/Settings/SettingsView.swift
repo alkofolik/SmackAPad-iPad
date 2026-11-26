@@ -368,6 +368,21 @@ public struct SettingsView: View {
     private var practiceSections: some View {
         @Bindable var settings = settings
         VStack(alignment: .leading, spacing: Theme.Space.small) {
+            HardwareCard {
+                HardwareRow(title: settings.localized("Story mode")) {
+                    HardwareToggle(isOn: Binding(
+                        get: { settings.playMode == .story },
+                        set: { settings.playMode = $0 ? .story : .free }
+                    ))
+                }
+            }
+            Text(settings.localized("Guides you along the Drummer's Path. Turn off for free practice in the Library."))
+                .font(Theme.meta)
+                .foregroundStyle(Theme.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+
+        VStack(alignment: .leading, spacing: Theme.Space.small) {
             HardwareSectionHeader(title: settings.localized("Tempo auto-step (BPM)"))
             HardwareCard(padding: Theme.Space.regular) {
                 PlexSegmentedPicker(

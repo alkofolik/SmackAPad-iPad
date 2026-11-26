@@ -205,6 +205,7 @@ public enum DrummerPathMapBuilder {
             )
         }
 
+        var previousPathStageCompleted = true
         for (offset, stage) in catalog.stages.enumerated() {
             let stageIndex = offset + 1
             let topology = DrummerStageTopology.topology(
@@ -213,21 +214,46 @@ public enum DrummerPathMapBuilder {
             )
             previousTopology = topology
             let stageTitle = language.localized(stage.technique.title)
-            result.append(
-                buildStage(
-                    id: stage.id,
-                    index: stageIndex,
-                    level: stage.level,
-                    title: stageTitle,
-                    lessons: stage.lessons,
-                    topology: topology,
-                    progress: progress,
-                    pathState: pathState
-                )
+            let built = buildStage(
+                id: stage.id,
+                index: stageIndex,
+                level: stage.level,
+                title: stageTitle,
+                lessons: stage.lessons,
+                topology: topology,
+                progress: progress,
+                pathState: pathState,
+                allowActiveNodes: previousPathStageCompleted
             )
+            result.append(built)
+            previousPathStageCompleted = built.isExamCompleted
         }
 
         return result
+    }
+
+    /// Single source of truth for Story mode lesson availability:
+    /// Intro lessons are always open; otherwise a lesson is open when its node
+    /// on the Drummer's Path is completed or active.
+    static func isOpenInStory(
+        lesson: Lesson,
+        catalog: LibraryCatalog,
+        progress: [Int: LessonProgress],
+        pathState: DrummerPathState
+    ) -> Bool {
+        if lesson.cat == ProgressionConstant.introCategoryId {
+            return true
+        }
+        let stages = buildStages(
+            catalog: catalog,
+            progress: progress,
+            pathState: pathState
+        )
+        return stages.contains { stage in
+            stage.nodes.contains { node in
+                node.lesson.id == lesson.id && (node.state == .completed || node.state == .active)
+            }
+        }
     }
 
     static func buildStage(
@@ -238,26 +264,26 @@ public enum DrummerPathMapBuilder {
         lessons: [Lesson],
         topology: DrummerStageTopology,
         progress: [Int: LessonProgress],
-        pathState: DrummerPathState
+        pathState: DrummerPathState,
+        allowActiveNodes: Bool = true
     ) -> DrummerPathStageModel {
         let count = lessons.count
         let kits = lessons.map { DrumKitCatalog.requiredKit(for: $0) }
         let primaryKit = dominantKit(in: kits) ?? DrumKitCatalog.starterKit
-        let lockedKit = kits.first { !pathState.isKitUnlocked($0.kitId) }
 
         let starsList = lessons.map { LibraryStarFilter.stars(progress[$0.id]) }
         let isCompletedList = starsList.map { $0 >= 1 }
-        let isUnlockedKitList = kits.map { pathState.isKitUnlocked($0.kitId) }
 
         // Determine branch assignment and side quests per topology.
         let roles = assignRoles(count: count, topology: topology)
-        let activeIndices = computeActiveIndices(
-            count: count,
-            topology: topology,
-            roles: roles,
-            isCompleted: isCompletedList,
-            isKitUnlocked: isUnlockedKitList
-        )
+        let activeIndices = allowActiveNodes
+            ? computeActiveIndices(
+                count: count,
+                topology: topology,
+                roles: roles,
+                isCompleted: isCompletedList
+            )
+            : []
 
         var nodes: [DrummerPathNode] = []
         nodes.reserveCapacity(count + 1)
@@ -295,7 +321,7 @@ public enum DrummerPathMapBuilder {
             let prereqsComplete = count <= 1 || isCompletedList.dropLast().allSatisfy { $0 }
             let bossState: DrummerPathNodeState = if examDone {
                 .completed
-            } else if prereqsComplete && (isUnlockedKitList.last == true) {
+            } else if allowActiveNodes && prereqsComplete {
                 .active
             } else {
                 .locked
@@ -321,7 +347,7 @@ public enum DrummerPathMapBuilder {
             title: title,
             topology: topology,
             primaryKit: primaryKit,
-            lockedKit: lockedKit,
+            lockedKit: nil,
             nodes: nodes,
             isExamCompleted: examDone
         )
@@ -360,8 +386,7 @@ public enum DrummerPathMapBuilder {
         count: Int,
         topology: DrummerStageTopology,
         roles: [NodeRole],
-        isCompleted: [Bool],
-        isKitUnlocked: [Bool]
+        isCompleted: [Bool]
     ) -> Set<Int> {
         guard count > 0 else { return [] }
         var active: Set<Int> = []
@@ -369,15 +394,13 @@ public enum DrummerPathMapBuilder {
         switch topology {
         case .signalLine, .serpentine, .diagonalClimb, .chevronWave, .steppedArc:
             if let firstPending = (0..<count).first(where: { !isCompleted[$0] }) {
-                if isKitUnlocked[firstPending] {
-                    active.insert(firstPending)
-                }
+                active.insert(firstPending)
             }
 
         case .splitFork:
             let preFork = (0..<min(2, count)).filter { roles[$0].branchTrack == nil }
             if let firstTrunk = preFork.first(where: { !isCompleted[$0] }) {
-                if isKitUnlocked[firstTrunk] { active.insert(firstTrunk) }
+                active.insert(firstTrunk)
                 return active
             }
             let branch0 = (0..<count).filter { roles[$0].branchTrack == 0 }
@@ -385,15 +408,15 @@ public enum DrummerPathMapBuilder {
             var branchPending = false
             if let next0 = branch0.first(where: { !isCompleted[$0] }) {
                 branchPending = true
-                if isKitUnlocked[next0] { active.insert(next0) }
+                active.insert(next0)
             }
             if let next1 = branch1.first(where: { !isCompleted[$0] }) {
                 branchPending = true
-                if isKitUnlocked[next1] { active.insert(next1) }
+                active.insert(next1)
             }
             if !branchPending {
                 let postMerge = (2..<count).filter { roles[$0].branchTrack == nil }
-                if let nextTrunk = postMerge.first(where: { !isCompleted[$0] }), isKitUnlocked[nextTrunk] {
+                if let nextTrunk = postMerge.first(where: { !isCompleted[$0] }) {
                     active.insert(nextTrunk)
                 }
             }

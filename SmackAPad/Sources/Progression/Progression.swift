@@ -562,10 +562,22 @@ public final class ProgressionManager: @unchecked Sendable {
         userDefaults.set(true, forKey: Self.completionMigrationKey)
     }
 
+    func isOpenInStory(_ lesson: Lesson) -> Bool {
+        DrummerPathMapBuilder.isOpenInStory(
+            lesson: lesson,
+            catalog: catalog,
+            progress: progressStore.records,
+            pathState: progressStore.drummerPath
+        )
+    }
+
     func isLessonOpen(_ lesson: Lesson) -> Bool {
-        if lesson.cat == "intro" || LibraryCatalog.isExtension(lesson) { return true }
-        guard let stage = catalog.stage(for: lesson) else { return true }
-        return isStageOpen(stage)
+        switch settingsManager.playMode {
+        case .story:
+            return isOpenInStory(lesson)
+        case .free:
+            return true
+        }
     }
 
     func nextLesson(

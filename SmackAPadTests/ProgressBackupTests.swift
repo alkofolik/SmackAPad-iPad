@@ -54,6 +54,7 @@ final class ProgressBackupTests: XCTestCase {
         SettingsManager.shared.selectedKitId = "808"
         SettingsManager.shared.bpmStep = 2
         SettingsManager.shared.padsVolume = 85
+        SettingsManager.shared.playMode = .free
 
         // Export data
         let exportedData = try progressStore.exportData()
@@ -69,6 +70,7 @@ final class ProgressBackupTests: XCTestCase {
         XCTAssertEqual(envelope.settings.selectedKitId, "808")
         XCTAssertEqual(envelope.settings.bpmStep, 2)
         XCTAssertEqual(envelope.settings.padsVolume, 85)
+        XCTAssertEqual(envelope.settings.playMode, "free")
 
         // Clear everything (simulate fresh install / app deletion)
         try progressStore.resetAll(deleteFile: true)
@@ -102,6 +104,7 @@ final class ProgressBackupTests: XCTestCase {
         XCTAssertEqual(SettingsManager.shared.selectedKitId, "808")
         XCTAssertEqual(SettingsManager.shared.bpmStep, 2)
         XCTAssertEqual(SettingsManager.shared.padsVolume, 85)
+        XCTAssertEqual(SettingsManager.shared.playMode, .free)
     }
 
     // MARK: - Test 2: Old backup over newer progress loses nothing

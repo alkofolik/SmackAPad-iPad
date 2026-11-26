@@ -108,9 +108,7 @@ public struct TrainingScreen: View {
     private var dueLessons: [Lesson] { data?.dueLessons ?? [] }
     private var nextLesson: Lesson? { data?.nextLesson }
     private var currentPlan: TodayPlan? {
-        let basePlan = TodayPlan.decode(savedTodayPlan, today: today)?
-            .filteringLockedKits(lessons: lessonStore.lessons, pathState: progress.drummerPath)
-            ?? data?.currentPlan
+        let basePlan = TodayPlan.decode(savedTodayPlan, today: today) ?? data?.currentPlan
         return basePlan?.reconcilingReviews(with: progress.records)
     }
     private var reviewLoad: TodayPlan.ReviewLoad {
@@ -228,54 +226,88 @@ public struct TrainingScreen: View {
 
         VStack(alignment: .leading, spacing: 12) {
             if let data {
-                DrummerTopHeaderBar(
-                    card: data.drummerCard,
-                    availableKeys: progress.drummerPath.availableKeys,
-                    selectedTab: $selectedTab,
-                    isCompact: !isLandscape,
-                    onOpenLibrary: {
-                        onHome()
-                        AppNavigation.shared.openLibrary(.none)
-                    },
-                    onBack: onHome
-                )
-
-                if selectedTab == .studioRig {
-                    StudioRigContentView(
-                        highlightedKitId: studioRigHighlightedKitId,
-                        onOpenKitLessons: { kit in
-                            refreshTrainingData()
-                            onHome()
-                            AppNavigation.shared.openLibrary(.kit(kit.kitId))
-                        },
-                        onPlayBonusTrack: { track in
-                            guard !hasActiveCover else { return }
-                            selectedBonusTrack = track
-                        },
+                if settings.playMode == .story {
+                    DrummerTopHeaderBar(
+                        card: data.drummerCard,
+                        availableKeys: progress.drummerPath.availableKeys,
+                        selectedTab: $selectedTab,
+                        isCompact: !isLandscape,
                         onOpenLibrary: {
                             onHome()
                             AppNavigation.shared.openLibrary(.none)
-                        }
+                        },
+                        onBack: onHome
                     )
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
-                } else if isLandscape {
-                    HStack(alignment: .top, spacing: 14) {
-                        pathMapPanel(data: data)
-                            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
 
-                        ScrollView(.vertical, showsIndicators: false) {
-                            rightSummaryPanel(data: data)
-                        }
-                        .frame(maxHeight: .infinity, alignment: .topLeading)
-                        .frame(width: summaryWidth)
-                    }
-                    .frame(maxHeight: .infinity, alignment: .top)
-                } else {
-                    ScrollView {
-                        VStack(alignment: .leading, spacing: 12) {
+                    if selectedTab == .studioRig {
+                        StudioRigContentView(
+                            highlightedKitId: studioRigHighlightedKitId,
+                            onOpenKitLessons: { kit in
+                                refreshTrainingData()
+                                onHome()
+                                AppNavigation.shared.openLibrary(.kit(kit.kitId))
+                            },
+                            onPlayBonusTrack: { track in
+                                guard !hasActiveCover else { return }
+                                selectedBonusTrack = track
+                            },
+                            onOpenLibrary: {
+                                onHome()
+                                AppNavigation.shared.openLibrary(.none)
+                            }
+                        )
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    } else if isLandscape {
+                        HStack(alignment: .top, spacing: 14) {
                             pathMapPanel(data: data)
-                            rightSummaryPanel(data: data)
-                            Spacer(minLength: Theme.Space.regular)
+                                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+
+                            ScrollView(.vertical, showsIndicators: false) {
+                                rightSummaryPanel(data: data)
+                            }
+                            .frame(maxHeight: .infinity, alignment: .topLeading)
+                            .frame(width: summaryWidth)
+                        }
+                        .frame(maxHeight: .infinity, alignment: .top)
+                    } else {
+                        ScrollView {
+                            VStack(alignment: .leading, spacing: 12) {
+                                pathMapPanel(data: data)
+                                rightSummaryPanel(data: data)
+                                Spacer(minLength: Theme.Space.regular)
+                            }
+                        }
+                    }
+                } else {
+                    header
+                    if selectedTab == .studioRig {
+                        StudioRigContentView(
+                            highlightedKitId: studioRigHighlightedKitId,
+                            onOpenKitLessons: { kit in
+                                refreshTrainingData()
+                                onHome()
+                                AppNavigation.shared.openLibrary(.kit(kit.kitId))
+                            },
+                            onPlayBonusTrack: { track in
+                                guard !hasActiveCover else { return }
+                                selectedBonusTrack = track
+                            },
+                            onOpenLibrary: {
+                                onHome()
+                                AppNavigation.shared.openLibrary(.none)
+                            }
+                        )
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    } else {
+                        ScrollView {
+                            VStack(alignment: .leading, spacing: Theme.Space.page) {
+                                compactTodayBlock
+                                dueNowPanel
+                                waitingPanel
+                                settledPanel
+                                compactToolsFooter
+                                Spacer(minLength: Theme.Space.regular)
+                            }
                         }
                     }
                 }
@@ -1074,7 +1106,7 @@ public struct TrainingScreen: View {
             return record.passed || record.mastery || record.memory
         }
         let isAvailableForToday: (Lesson) -> Bool = { lesson in
-            store.isUnlocked(lesson) && progress.drummerPath.isKitUnlocked(DrumKitCatalog.requiredKitId(for: lesson))
+            store.isUnlocked(lesson)
         }
         let openIDs = Set(practiced.filter { isAvailableForToday($0) && progression.isLessonOpen($0) }.map(\.id))
 
@@ -1128,8 +1160,7 @@ public struct TrainingScreen: View {
         }
 
         let dailyLessons = progression.dailyLessons(isAvailable: isAvailableForToday)
-        let cachedPlan = TodayPlan.decode(savedTodayPlan, today: today)?
-            .filteringLockedKits(lessons: lessons, pathState: progress.drummerPath)
+        let cachedPlan = TodayPlan.decode(savedTodayPlan, today: today)
         let plan = cachedPlan ?? TodayPlan.make(
             day: today, dueLessonIDs: due.map(\.id), nextLessonID: dailyLessons.next?.id,
             followUpLessonID: dailyLessons.followUp?.id)

@@ -30,6 +30,15 @@ public enum SettingsKey: String, CaseIterable, Sendable {
     case reviewReminderEnabled = "smackapad.settings.reviewReminderEnabled"
     case reviewReminderTime = "smackapad.settings.reviewReminderTime"
     case selectedInstrumentSkinId = "smackapad.settings.selectedInstrumentSkinId"
+    case playMode = "smackapad.settings.playMode"
+}
+
+/// Top-level play mode: guided Story (Drummer's Path) or Free practice.
+public enum PlayMode: String, CaseIterable, Identifiable, Codable, Sendable {
+    case story = "story"
+    case free = "free"
+
+    public var id: String { rawValue }
 }
 
 /// Supported app appearances (Light, Dark, or follow System).

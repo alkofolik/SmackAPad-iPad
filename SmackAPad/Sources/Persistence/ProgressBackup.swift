@@ -27,6 +27,7 @@ public struct BackupSettings: Codable, Equatable, Sendable {
     public var midiControls: MIDIControlConfiguration
     public var bpmStep: Int
     public var practiceMode: String
+    public var playMode: String
     public var activeProfileName: String
     public var customProfiles: [ControllerProfile]
     public var languagePreference: String
@@ -63,6 +64,7 @@ public struct BackupSettings: Codable, Equatable, Sendable {
         midiControls: MIDIControlConfiguration? = nil,
         bpmStep: Int = SettingsManager.defaultBpmStep,
         practiceMode: String = PracticeMode.learning.rawValue,
+        playMode: String = SettingsManager.defaultPlayMode.rawValue,
         activeProfileName: String = SettingsManager.defaultProfileName,
         customProfiles: [ControllerProfile] = [],
         languagePreference: String = SettingsManager.defaultLanguage.rawValue,
@@ -98,6 +100,7 @@ public struct BackupSettings: Codable, Equatable, Sendable {
         self.midiControls = midiControls ?? MIDIControlConfiguration()
         self.bpmStep = bpmStep
         self.practiceMode = practiceMode
+        self.playMode = playMode
         self.activeProfileName = activeProfileName
         self.customProfiles = customProfiles
         self.languagePreference = languagePreference
@@ -128,7 +131,7 @@ public struct BackupSettings: Codable, Equatable, Sendable {
     }
 
     private enum CodingKeys: String, CodingKey {
-        case settingsModifiedAt, selectedKitId, selectedInstrumentSkinId, lessonKitOverrides, midiControls, bpmStep, practiceMode
+        case settingsModifiedAt, selectedKitId, selectedInstrumentSkinId, lessonKitOverrides, midiControls, bpmStep, practiceMode, playMode
         case activeProfileName, customProfiles, languagePreference, appearance, metronomeVolume, padsVolume, patternVolume, instrumentTrims
         case playPadsWithKeyboard, fadeMemoryNotes, reviewReminderEnabled, reviewReminderTime, hideCompletedLessons
         case autoPeekMemory
@@ -147,6 +150,7 @@ public struct BackupSettings: Codable, Equatable, Sendable {
         self.midiControls = try c.decodeIfPresent(MIDIControlConfiguration.self, forKey: .midiControls) ?? MIDIControlConfiguration()
         self.bpmStep = try c.decodeIfPresent(Int.self, forKey: .bpmStep) ?? SettingsManager.defaultBpmStep
         self.practiceMode = try c.decodeIfPresent(String.self, forKey: .practiceMode) ?? PracticeMode.learning.rawValue
+        self.playMode = try c.decodeIfPresent(String.self, forKey: .playMode) ?? SettingsManager.defaultPlayMode.rawValue
         self.activeProfileName = try c.decodeIfPresent(String.self, forKey: .activeProfileName) ?? SettingsManager.defaultProfileName
         self.customProfiles = try c.decodeIfPresent([ControllerProfile].self, forKey: .customProfiles) ?? []
         self.languagePreference = try c.decodeIfPresent(String.self, forKey: .languagePreference) ?? SettingsManager.defaultLanguage.rawValue

@@ -30,6 +30,7 @@ extension SettingsManager {
             self.lessonKitOverrides = [:]
             self.midiControls = MIDIControlConfiguration()
             self.practiceMode = .learning
+            self.playMode = Self.defaultPlayMode
             self.bpmStep = Self.defaultBpmStep
             self.activeProfileName = Self.defaultProfileName
             self.calibrationOffsets = [:]
@@ -77,6 +78,7 @@ extension SettingsManager {
                 midiControls: midiControls,
                 bpmStep: bpmStep,
                 practiceMode: practiceMode.rawValue,
+                playMode: playMode.rawValue,
                 activeProfileName: activeProfileName,
                 customProfiles: customProfiles,
                 languagePreference: languagePreference.rawValue,
@@ -119,6 +121,9 @@ extension SettingsManager {
             self.bpmStep = settings.bpmStep
             if let mode = PracticeMode(rawValue: settings.practiceMode) {
                 self.practiceMode = mode
+            }
+            if let mode = PlayMode(rawValue: settings.playMode) {
+                self.playMode = mode
             }
             self.activeProfileName = settings.activeProfileName
             self.customProfiles = settings.customProfiles

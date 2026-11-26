@@ -3678,3 +3678,7 @@
 "Shown %lld of %lld" = "Zobrazeno %lld z %lld";
 "Hide sidebar" = "Skrýt boční panel";
 "Show sidebar" = "Zobrazit boční panel";
+
+/* Ticket 247: Story mode / Free practice switch */
+"Story mode" = "Příběhový režim";
+"Guides you along the Drummer's Path. Turn off for free practice in the Library." = "Vede tě po Cestě bubeníka. Vypnutím přepneš na volné cvičení v Knihovně.";

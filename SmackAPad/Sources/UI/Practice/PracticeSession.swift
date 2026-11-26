@@ -488,10 +488,10 @@ final class PracticeSession {
         resolveKit(for: lesson)
     }
     private func resolveKit(for lesson: Lesson) -> String {
-        SoundKitResolver.resolveKitId(for: lesson, settings: settings, kits: availableKitsDict)
+        SoundKitResolver.resolveKitId(for: lesson, settings: settings, kits: availableKitsDict, pathState: progress.drummerPath)
     }
     var automaticKitPickerLabel: String {
-        let resolved = SoundKitResolver.resolve(for: lesson, settings: settings, kits: availableKitsDict)
+        let resolved = SoundKitResolver.resolve(for: lesson, settings: settings, kits: availableKitsDict, pathState: progress.drummerPath)
         return settings.localized("Automatic · %@", resolved.kitShortName)
     }
 

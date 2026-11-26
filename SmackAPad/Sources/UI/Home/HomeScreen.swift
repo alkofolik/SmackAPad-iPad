@@ -229,14 +229,18 @@ public struct HomeScreen: View {
     // MARK: - MIDI Reaction & Audio (Ticket 207)
 
     private var resolvedHomeKitId: String {
+        let candidate: String
         if settings.selectedKitId != SoundKitResolver.automaticKitId {
-            return settings.selectedKitId
+            candidate = settings.selectedKitId
+        } else if let lastLesson = settings.lastLessonID == 0 ? nil : lessonStore.lesson(for: settings.lastLessonID) {
+            return SoundKitResolver.resolveKitId(for: lastLesson, settings: settings, pathState: progress.drummerPath)
+        } else {
+            return SoundKitResolver.fallbackKitId
         }
-        let lastLesson = settings.lastLessonID == 0 ? nil : lessonStore.lesson(for: settings.lastLessonID)
-        if let lastLesson {
-            return SoundKitResolver.resolveKitId(for: lastLesson, settings: settings)
+        if settings.playMode == .story && !progress.drummerPath.isKitUnlocked(candidate) {
+            return DrumKitCatalog.starterKitId
         }
-        return SoundKitResolver.fallbackKitId
+        return candidate
     }
 
     private func startHomeAudioIfNeeded() async {
@@ -416,12 +420,11 @@ public struct HomeScreen: View {
     }
 
     private var todayPlan: TodayPlan? {
-        if let saved = TodayPlan.decode(savedTodayPlan, today: calendarDay)?
-            .filteringLockedKits(lessons: progression.catalog.lessons, pathState: progress.drummerPath) {
+        if let saved = TodayPlan.decode(savedTodayPlan, today: calendarDay) {
             return saved.reconcilingReviews(with: progress.records)
         }
         let isAvailableForToday: (Lesson) -> Bool = { lesson in
-            store.isUnlocked(lesson) && progress.drummerPath.isKitUnlocked(DrumKitCatalog.requiredKitId(for: lesson))
+            store.isUnlocked(lesson)
         }
         let lessons = progression.dailyLessons(isAvailable: isAvailableForToday)
         let openIDs = Set(progression.catalog.lessons.filter {

@@ -124,18 +124,20 @@ final class LibraryCatalogTests: XCTestCase {
     func testPlayedLessonAndSoftUnlockOpenWholeStageAndPersist() throws {
         let input = [lesson(1), lesson(2, tags: ["16ths"]), lesson(3, tags: ["16ths"]), lesson(4, tags: ["ghost notes"])]
         let (manager, progress, settings) = try environment(input)
+        let stage16 = try XCTUnwrap(manager.catalog.stage(for: input[2]))
+        let stageGhost = try XCTUnwrap(manager.catalog.stage(for: input[3]))
         progress.setProgress(LessonProgress(hasPlayed: true), for: 2, autoSave: false)
-        XCTAssertTrue(manager.isLessonOpen(input[2]))
-        XCTAssertFalse(manager.isLessonOpen(input[3]))
+        XCTAssertTrue(manager.isStageOpen(stage16))
+        XCTAssertFalse(manager.isStageOpen(stageGhost))
         manager.requestStageAccessChange(for: "L1-ghost", action: .unlock)
         manager.cancelStageAccessChange()
-        XCTAssertFalse(manager.isLessonOpen(input[3]))
+        XCTAssertFalse(manager.isStageOpen(stageGhost))
         manager.requestStageAccessChange(for: "L1-ghost", action: .unlock)
         manager.confirmStageAccessChange()
-        XCTAssertTrue(manager.isLessonOpen(input[3]))
+        XCTAssertTrue(manager.isStageOpen(stageGhost))
         let restored = ProgressionManager(lessonStore: manager.lessonStore, progressStore: progress,
                                           settingsManager: settings, userDefaults: manager.userDefaults)
-        XCTAssertTrue(restored.isLessonOpen(input[3]))
+        XCTAssertTrue(restored.isStageOpen(stageGhost))
     }
 
     func testCategoryMigrationPreservesManualAndAutomaticAccessOnce() throws {
@@ -172,7 +174,8 @@ final class LibraryCatalogTests: XCTestCase {
 
     func testNextLessonResumesUnpassedAnchorWrapsAndFallsBackToPath() throws {
         let input = [lesson(1, genre: "Jazz"), lesson(2), lesson(3, genre: "Jazz"), lesson(4, cat: "jersey")]
-        let (manager, progress, _) = try environment(input)
+        let (manager, progress, settings) = try environment(input)
+        settings.playMode = .free
         XCTAssertEqual(manager.nextLesson(after: input[0], source: .genre)?.id, 1)
         progress.recordPass(lessonId: 1, autoSave: false)
         XCTAssertEqual(manager.nextLesson(after: input[0], source: .genre)?.id, 3)

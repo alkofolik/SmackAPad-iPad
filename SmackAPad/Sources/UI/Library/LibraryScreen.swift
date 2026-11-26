@@ -219,11 +219,13 @@ struct LibraryScreen: View {
                     }
                 }
             } center: {
-                StudioHardwareTabSwitcher(activeTab: .library) { tab in
-                    guard tab != .library else { return }
-                    previewPlayer.stop(releaseAudio: true)
-                    onHome()
-                    AppNavigation.shared.openTraining(tab: tab.rawValue)
+                if settings.playMode == .story {
+                    StudioHardwareTabSwitcher(activeTab: .library) { tab in
+                        guard tab != .library else { return }
+                        previewPlayer.stop(releaseAudio: true)
+                        onHome()
+                        AppNavigation.shared.openTraining(tab: tab.rawValue)
+                    }
                 }
             } trailing: {
                 Button { showingSettings = true } label: {
@@ -834,10 +836,6 @@ struct LibraryScreen: View {
                 }
             }
             .padding(.bottom, Theme.Space.small)
-            if let stage = group.stage, !progression.isStageOpen(stage) || progression.canRelockStage(stage) {
-                stageBanner(stage).id("stage-lock").transition(motion.transition)
-                    .padding(.bottom, Theme.Space.small)
-            }
             if isSearchVisible {
                 searchBar
                     .transition(motion.transition)
@@ -866,7 +864,7 @@ struct LibraryScreen: View {
                                 isPreviewPlaying: previewPlayer.playingLessonID == lesson.id,
                                 previewAnchorHostTime: previewPlayer.anchorHostTime,
                                 previewSecondsPerStep: previewPlayer.secondsPerStep,
-                                onTogglePreview: { previewPlayer.toggle(lesson: lesson, settings: settings) }
+                                onTogglePreview: { previewPlayer.toggle(lesson: lesson, settings: settings, pathState: progress.drummerPath) }
                             ) {
                                 open(lesson)
                             }
@@ -1207,11 +1205,6 @@ struct LibraryScreen: View {
             selectedLesson = .library(lesson, progress: progress.progress(for: lesson.id), today: AppCalendar.today())
             return
         }
-        guard let stage = catalog.stage(for: lesson) else { return }
-        settings.libraryView = LibraryViewMode.path.id
-        selections[LibraryViewMode.path.id] = stage.id
-        expandedLevels.insert(stage.level)
-        bannerPulse += 1
     }
 
     private func applyPendingKitSelectionIfNeeded() {
