@@ -132,6 +132,10 @@ enum HomePadSubtitles {
         "\(earned) / \(total)"
     }
 
+    static func studioRig(unlockedCount: Int, totalCount: Int) -> String {
+        "\(unlockedCount) / \(totalCount)"
+    }
+
     static func fullVersion(hasFullAccess: Bool, price: String?, language: AppLanguage) -> String? {
         if hasFullAccess {
             return singleLine(language.localized("Unlocked"))
@@ -216,8 +220,7 @@ struct HomePadView: View {
                 if let padNumber {
                     Text(verbatim: String(format: "%02d", padNumber))
                         .font(Theme.canvasDisplay(9).monospacedDigit())
-                        .foregroundStyle(isHero ? Theme.black : Theme.secondary)
-                        .shadow(color: Theme.white.opacity(isHero ? 0.3 : 0.45), radius: 0, y: 0.6)
+                        .foregroundStyle(isHero ? Theme.black.opacity(0.85) : Theme.ink.opacity(0.65))
                         .padding(.leading, 8)
                         .padding(.top, 7)
                         .allowsHitTesting(false)

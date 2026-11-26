@@ -215,6 +215,7 @@ final class HomePadSubtitlesTests: XCTestCase {
         XCTAssertNil(HomePadSubtitles.library())
         XCTAssertNil(HomePadSubtitles.intro())
         XCTAssertEqual(HomePadSubtitles.badges(earned: 14, total: 55), "14 / 55")
+        XCTAssertEqual(HomePadSubtitles.studioRig(unlockedCount: 3, totalCount: 8), "3 / 8")
         XCTAssertEqual(
             HomePadSubtitles.fullVersion(hasFullAccess: true, price: "$9.99", language: .english),
             "Unlocked"

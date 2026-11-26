@@ -16,6 +16,7 @@ struct HomePadGrid: View {
 
     @Environment(StoreManager.self) private var store
     @Environment(SettingsManager.self) private var settings
+    @Environment(ProgressStore.self) private var progress
     @Environment(ProgressionManager.self) private var progression
     @Environment(BadgeStore.self) private var badgeStore
     @Environment(MIDIInput.self) private var midi
@@ -182,22 +183,38 @@ struct HomePadGrid: View {
         }
     }
 
+    @ViewBuilder
     private var pad7: some View {
-        let price = store.products[StoreManager.fullID]?.displayPrice
-        let subtitle = HomePadSubtitles.fullVersion(
-            hasFullAccess: store.hasFullAccess,
-            price: price,
-            language: settings.languagePreference
-        )
+        if store.hasFullAccess {
+            let unlockedCount = DrumKitCatalog.allKits.filter { progress.drummerPath.isKitUnlocked($0.kitId) }.count
+            HomePadView(
+                title: localizedTitle("STUDIO RIG"),
+                subtitle: HomePadSubtitles.studioRig(unlockedCount: unlockedCount, totalCount: DrumKitCatalog.allKits.count),
+                numericTransitionValue: unlockedCount,
+                padNumber: 7,
+                cellSize: cellSize,
+                isHero: false
+            ) {
+                onOpenDestination(.training)
+                AppNavigation.shared.openTraining(tab: TrainingTabMode.studioRig.rawValue)
+            }
+        } else {
+            let price = store.products[StoreManager.fullID]?.displayPrice
+            let subtitle = HomePadSubtitles.fullVersion(
+                hasFullAccess: store.hasFullAccess,
+                price: price,
+                language: settings.languagePreference
+            )
 
-        return HomePadView(
-            title: localizedTitle("Full version"),
-            subtitle: subtitle,
-            padNumber: 7,
-            cellSize: cellSize,
-            isHero: false
-        ) {
-            onOpenDestination(.purchases)
+            HomePadView(
+                title: localizedTitle("Full version"),
+                subtitle: subtitle,
+                padNumber: 7,
+                cellSize: cellSize,
+                isHero: false
+            ) {
+                onOpenDestination(.purchases)
+            }
         }
     }
 
@@ -226,31 +243,12 @@ struct HomePadGrid: View {
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .background(
                 RoundedRectangle(cornerRadius: Theme.Radius.pad)
-                    .fill(Theme.surface)
+                    .fill(Theme.recessed)
                     .opacity(plateVisible ? 1.0 : 0.0)
             )
-            .overlay {
-                // Two-tone bevel: top 1.5 pt light highlight, bottom 2 pt darker edge (ticket 112)
-                VStack(spacing: 0) {
-                    Theme.padBevelTop
-                        .frame(height: 1.5)
-                    Spacer(minLength: 0)
-                    Theme.padBevelBottom
-                        .frame(height: 2.0)
-                }
-                .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.pad))
-                .opacity(plateVisible ? 1.0 : 0.0)
-                .allowsHitTesting(false)
-            }
-            .overlay {
-                RoundedRectangle(cornerRadius: Theme.Radius.pad)
-                    .strokeBorder(Theme.hairline, lineWidth: 1)
-                    .opacity(plateVisible ? 1.0 : 0.0)
-                    .allowsHitTesting(false)
-            }
             .contentShape(RoundedRectangle(cornerRadius: Theme.Radius.pad))
         }
-        .buttonStyle(TactilePadButtonStyle())
+        .buttonStyle(.plain)
         .accessibilityLabel(settings.localized("About"))
         .accessibilityAddTraits(.isButton)
         .allowsHitTesting(animationFinished)

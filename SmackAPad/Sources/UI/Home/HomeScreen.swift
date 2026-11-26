@@ -367,24 +367,24 @@ public struct HomeScreen: View {
     }
 
     private func helpButton(containerWidth: CGFloat, layout: HomeControllerLayout) -> some View {
-        Button {
-            helpPresentation = HelpPresentation(windowWidth: containerWidth)
-        } label: {
-            Text("?")
-                .font(Theme.strong(22))
-                .foregroundStyle(Theme.white)
-                .frame(width: 36, height: 36)
-                .background(Theme.black, in: Circle())
-                .overlay { Circle().strokeBorder(Theme.white.opacity(0.12), lineWidth: 1) }
-                .shadow(color: Theme.black.opacity(0.25), radius: 2, y: 2)
-                .frame(width: Theme.Size.minimumTouch, height: Theme.Size.minimumTouch)
-                .contentShape(Circle())
-        }
-        .buttonStyle(.plain)
-        .accessibilityLabel(settings.localized("help.title"))
-        .accessibilityFocused($helpFocused)
-        .helpDeck(presentation: $helpPresentation, arrowEdge: .top) {
-            helpFocused = true
+        VStack(spacing: 4) {
+            HardwareIconButton(
+                systemName: "questionmark",
+                accessibilityLabel: settings.localized("help.title"),
+                compact: true
+            ) {
+                helpPresentation = HelpPresentation(windowWidth: containerWidth)
+            }
+            .accessibilityFocused($helpFocused)
+            .helpDeck(presentation: $helpPresentation, arrowEdge: .top) {
+                helpFocused = true
+            }
+
+            Text(settings.localized("Help").uppercased(with: Locale(identifier: settings.languagePreference.rawValue)))
+                .font(Theme.canvasDisplay(9))
+                .tracking(0.5)
+                .foregroundStyle(Theme.secondary)
+                .accessibilityHidden(true)
         }
         .position(x: layout.display.maxX + (containerWidth - layout.display.maxX) / 2,
                   y: layout.display.midY)
