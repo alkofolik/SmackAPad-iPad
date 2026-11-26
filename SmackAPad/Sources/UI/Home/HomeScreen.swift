@@ -68,7 +68,7 @@ public struct HomeScreen: View {
 
             ZStack {
                 // The chassis and unpowered display are visible from the first launch frame.
-                Theme.background
+                Theme.chassis
                     .ignoresSafeArea()
 
                 HomeControllerBody(darkAppearance: colorScheme == .dark)

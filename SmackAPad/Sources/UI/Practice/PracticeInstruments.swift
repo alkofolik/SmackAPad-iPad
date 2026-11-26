@@ -342,9 +342,12 @@ struct TimingCue: View {
     var body: some View {
         let width = min(maximumWidth ?? trackWidth, trackWidth)
         ZStack {
-            Capsule()
-                .fill(Theme.surface)
-                .overlay { Capsule().strokeBorder(Theme.hairline, lineWidth: 1) }
+            RoundedRectangle(cornerRadius: Theme.Radius.control, style: .continuous)
+                .fill(Theme.recessed)
+                .overlay {
+                    RoundedRectangle(cornerRadius: Theme.Radius.control, style: .continuous)
+                        .strokeBorder(Theme.hairline, lineWidth: 1)
+                }
 
             ForEach([-1.0, 1.0], id: \.self) { side in
                 Rectangle()
@@ -357,7 +360,7 @@ struct TimingCue: View {
                 .fill(Theme.secondary)
                 .frame(width: notchWidth, height: pipHeight)
 
-            Capsule()
+            RoundedRectangle(cornerRadius: 2, style: .continuous)
                 .fill(offset == 0 ? Theme.orange : Theme.ink)
                 .frame(width: min(pipWidth, width), height: pipHeight)
                 .offset(x: offset * max(0, width - pipWidth) / 2)
@@ -545,12 +548,12 @@ struct TempoTile<CueContent: View>: View {
                 }
             }
 
-            ZStack {
+            VStack(spacing: 6) {
                 tempoBarSlider
+                    .frame(height: 22)
                     .opacity(editable ? 1 : 0.45)
                 timingCue()
             }
-            .frame(height: 26)
         }
         .padding(.horizontal, 14)
         .padding(.vertical, 10)
@@ -699,7 +702,7 @@ struct PassProgressBar: View {
             for bar in 1..<count {
                 let x = min(size.width - 2, max(0, size.width * Double(bar) / Double(count) - 1))
                 let reached = Double(bar) / Double(count) <= fraction || oldOpacity > 0.35
-                let tickColor = reached ? Theme.background : Theme.secondary.opacity(0.65)
+                let tickColor = reached ? Theme.chassis : Theme.secondary.opacity(0.65)
                 context.fill(Path(CGRect(x: x, y: 0, width: 2, height: size.height)),
                              with: .color(tickColor))
             }

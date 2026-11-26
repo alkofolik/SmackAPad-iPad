@@ -765,7 +765,7 @@ struct PracticeScreen: View {
         .padding(Theme.Space.page)
         .frame(width: 280)
         .foregroundStyle(Theme.ink)
-        .background(Theme.background)
+        .background(Theme.chassis)
         .tint(Theme.ink)
         .disabled(session.running || session.isMix)
         .presentationCompactAdaptation(.popover)
@@ -1463,7 +1463,7 @@ struct PracticeScreen: View {
         ) {
             tempoControls
                 .padding(Theme.Space.page)
-                .background(Theme.background)
+                .background(Theme.chassis)
                 .presentationDetents([.height(300), .medium])
         }
     }
@@ -1739,7 +1739,7 @@ struct PracticeScreen: View {
             .padding(Theme.Space.page)
             .frame(idealWidth: 440, maxWidth: 480)
             .foregroundStyle(Theme.ink)
-            .background(Theme.background)
+            .background(Theme.chassis)
         }
         .frame(idealWidth: 440, maxWidth: 480, maxHeight: 600)
         .presentationDetents([.height(600), .large])
@@ -1770,7 +1770,7 @@ struct PracticeScreen: View {
             .padding(Theme.Space.page)
         }
         .frame(width: 420, height: 360)
-        .foregroundStyle(Theme.ink).background(Theme.background)
+        .foregroundStyle(Theme.ink).background(Theme.chassis)
         .presentationDetents([.height(380), .medium])
     }
 
@@ -2139,7 +2139,7 @@ private struct PracticeTools: View {
         }
         .font(Theme.control).tint(Theme.ink)
         .frame(width: 480, height: 640)
-        .scrollContentBackground(.hidden).background(Theme.background).foregroundStyle(Theme.ink)
+        .scrollContentBackground(.hidden).background(Theme.chassis).foregroundStyle(Theme.ink)
     }
 }
 
@@ -2250,6 +2250,6 @@ private struct PopoverHeightContainer<Content: View>: View {
         .frame(width: 420)
         .frame(height: measuredHeight > 0 ? min(measuredHeight, maxHeight) : nil)
         .foregroundStyle(Theme.ink)
-        .background(Theme.background)
+        .background(Theme.chassis)
     }
 }

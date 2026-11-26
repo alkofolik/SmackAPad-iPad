@@ -12,7 +12,7 @@ private enum AboutLinks {
     // Populate from ticket 81 once the support and privacy pages are published.
     static let supportURL: URL? = nil
     static let privacyURL: URL? = nil
-    static let copyrightAuthor = "[Kjü]"
+    static let copyrightAuthor = "Kjü"
 }
 
 public struct AboutDetailView: View {

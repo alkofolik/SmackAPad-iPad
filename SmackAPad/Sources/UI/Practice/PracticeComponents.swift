@@ -142,11 +142,11 @@ struct InstrumentButtonStyle: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
             .font(main || selected ? Theme.action : Theme.control)
-            .foregroundStyle(filled || selected ? Theme.background : Theme.ink)
+            .foregroundStyle(filled || selected ? Theme.chassis : Theme.ink)
             .padding(.horizontal, Theme.Space.regular)
             .frame(height: customHeight)
             .frame(minHeight: customHeight == nil ? (main ? Theme.Size.control : Theme.Size.touch) : nil)
-            .background(filled || selected ? Theme.ink : Theme.background)
+            .background(filled || selected ? Theme.ink : Theme.chassis)
             .overlay(Rectangle().stroke(Theme.ink, lineWidth: Theme.Size.border))
             .opacity(configuration.isPressed ? 0.65 : 1)
             .frame(minWidth: Theme.Size.minimumTouch)
