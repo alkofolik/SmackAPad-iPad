@@ -3673,3 +3673,8 @@
 "PATH" = "CESTA";
 "STUDIO RIG" = "STUDIO RIG";
 "LIBRARY" = "KNIHOVNA";
+
+/* Ticket 3.3: Library & Intro hardware polish */
+"Shown %lld of %lld" = "Zobrazeno %lld z %lld";
+"Hide sidebar" = "Skrýt boční panel";
+"Show sidebar" = "Zobrazit boční panel";

@@ -3668,3 +3668,8 @@
 "PATH" = "PATH";
 "STUDIO RIG" = "STUDIO RIG";
 "LIBRARY" = "LIBRARY";
+
+/* Ticket 3.3: Library & Intro hardware polish */
+"Shown %lld of %lld" = "Shown %lld of %lld";
+"Hide sidebar" = "Hide sidebar";
+"Show sidebar" = "Show sidebar";

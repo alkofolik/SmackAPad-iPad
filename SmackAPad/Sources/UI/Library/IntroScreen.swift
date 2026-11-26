@@ -48,9 +48,11 @@ public struct IntroScreen: View {
     @Environment(SettingsManager.self) private var settings
     @Environment(ProgressStore.self) private var progress
     @Environment(\.accessibilityReduceMotion) private var reduced
+    @Environment(\.scenePhase) private var scenePhase
     private var motion: Theme.Motion.Policy { .init(reduced: reduced) }
     @State private var store = LessonStore.shared
     @State private var showingRules = false
+    @State private var previewPlayer = LibraryPatternPreviewPlayer()
 
     /// Called when the user taps an exercise. The host presents the practice screen.
     let onSelect: (Lesson) -> Void
@@ -89,116 +91,133 @@ public struct IntroScreen: View {
     }
 
     public var body: some View {
-        List {
-            Section {
-                if !isAllIntroCompleted || settings.introSkipped {
-                    Button {
-                        settings.introSkipped.toggle()
-                    } label: {
-                        Text(settings.localized(settings.introSkipped
-                            ? "Basics skipped · Resume Intro"
-                            : "Already know the basics? Skip to Path"))
-                            .font(Theme.control)
-                            .multilineTextAlignment(.leading)
-                            .frame(minHeight: Theme.Size.touch)
-                    }
-                    .buttonStyle(PadSecondaryButtonStyle())
-                    .listRowSeparator(.hidden)
-                    .listRowBackground(Color.clear)
-                }
-                Button { showingRules = true } label: {
-                    Label(settings.localized("Rules"), systemImage: "info.circle")
-                        .font(Theme.control)
-                        .frame(minHeight: Theme.Size.touch, alignment: .leading)
-                }
-                .buttonStyle(.plain)
-                .popover(isPresented: $showingRules, arrowEdge: .top) {
-                    ScrollView {
-                        VStack(alignment: .leading, spacing: Theme.Space.page) {
-                            HStack {
-                                BackButton { showingRules = false }
-                                Spacer()
-                            }
-                            IntroRulesCard(passedCount: passedCount, masteredCount: masteredCount,
-                                           totalCount: introLessons.count)
-                        }
-                        .padding(Theme.Space.page)
-                    }
-                    .frame(width: 480, height: 580)
-                    .satinPlate()
-                    .foregroundStyle(Theme.ink)
-                    .tint(Theme.orange)
-                }
-                .listRowSeparator(.hidden)
-                .listRowBackground(Color.clear)
-            }
-            .listRowBackground(Color.clear)
-            if isAllIntroCompleted && settings.hideCompletedLessons {
-                Section {
+        ScrollView {
+            VStack(alignment: .leading, spacing: Theme.Space.regular) {
+                ScreenHeader(title: settings.localized("Intro Exercises"))
+
+                localActionBar
+
+                if isAllIntroCompleted && settings.hideCompletedLessons {
                     allCompletedRow
-                }
-                .listRowBackground(Color.clear)
-            } else {
-                ForEach(IntroStage.allCases) { stage in
-                    let stageLessons = introLessons.filter { $0.intro?.stage == stage.rawValue }
-                    let visibleStageLessons = stageLessons.filter { !settings.hideCompletedLessons || !progress.isCompleted(lessonId: $0.id) }
-                    if !visibleStageLessons.isEmpty {
-                        Section {
-                            LessonRowsPanel(lessons: visibleStageLessons) { exerciseRow($0) }
-                        } header: {
-                            SectionHeader(title: stage.title(language: settings.languagePreference),
-                                          subtitle: stage.subtitle(language: settings.languagePreference))
+                } else {
+                    ForEach(IntroStage.allCases) { stage in
+                        let stageLessons = introLessons.filter { $0.intro?.stage == stage.rawValue }
+                        let visibleStageLessons = stageLessons.filter { !settings.hideCompletedLessons || !progress.isCompleted(lessonId: $0.id) }
+                        if !visibleStageLessons.isEmpty {
+                            VStack(alignment: .leading, spacing: Theme.Space.small) {
+                                SectionHeader(
+                                    title: stage.title(language: settings.languagePreference),
+                                    subtitle: stage.subtitle(language: settings.languagePreference)
+                                )
                                 .padding(.top, Theme.Space.small)
-                                .listRowInsets(EdgeInsets(top: 0, leading: Theme.Space.page, bottom: 0, trailing: Theme.Space.page))
-                                .listRowBackground(Color.clear)
+                                LessonRowsPanel(lessons: visibleStageLessons) { exerciseRow($0) }
+                            }
                         }
-                        .listRowBackground(Color.clear)
                     }
-                }
-                let remaining = introLessons.filter { lesson in
-                    !IntroStage.allCases.contains { $0.rawValue == lesson.intro?.stage }
-                }
-                let visibleRemaining = remaining.filter { !settings.hideCompletedLessons || !progress.isCompleted(lessonId: $0.id) }
-                if !visibleRemaining.isEmpty {
-                    Section {
-                        LessonRowsPanel(lessons: visibleRemaining) { exerciseRow($0) }
-                    } header: {
-                        SectionHeader(title: settings.localized("Other Intro Exercises"))
-                            .listRowInsets(EdgeInsets(top: 0, leading: Theme.Space.page, bottom: 0, trailing: Theme.Space.page))
-                            .listRowBackground(Color.clear)
+                    let remaining = introLessons.filter { lesson in
+                        !IntroStage.allCases.contains { $0.rawValue == lesson.intro?.stage }
                     }
-                    .listRowBackground(Color.clear)
+                    let visibleRemaining = remaining.filter { !settings.hideCompletedLessons || !progress.isCompleted(lessonId: $0.id) }
+                    if !visibleRemaining.isEmpty {
+                        VStack(alignment: .leading, spacing: Theme.Space.small) {
+                            SectionHeader(title: settings.localized("Other Intro Exercises"))
+                                .padding(.top, Theme.Space.small)
+                            LessonRowsPanel(lessons: visibleRemaining) { exerciseRow($0) }
+                        }
+                    }
                 }
             }
+            .padding(.horizontal, Theme.Space.page)
+            .padding(.vertical, Theme.Space.regular)
         }
-        .listStyle(.plain)
-        .listSectionSeparator(.hidden)
-        .environment(\.defaultMinListRowHeight, 60)
-        .listRowInsets(EdgeInsets(top: 0, leading: Theme.Space.page, bottom: 0, trailing: Theme.Space.page))
-        .scrollContentBackground(.hidden)
-        .calmChassisBackground().foregroundStyle(Theme.ink)
-        .navigationTitle(settings.localized("Intro Exercises"))
-        .navigationBarTitleDisplayMode(.inline)
-        .toolbar {
-            ToolbarItem(placement: .principal) { ScreenHeader(title: settings.localized("Intro Exercises")) }
-            if hasAnyCompletedLesson {
-                PadToolbarItem(placement: .topBarTrailing) {
-                    Button {
-                        settings.hideCompletedLessons.toggle()
-                    } label: {
-                        Label(
-                            settings.localized(settings.hideCompletedLessons ? "Show completed" : "Hide completed"),
-                            systemImage: settings.hideCompletedLessons ? "eye" : "eye.slash"
-                        )
-                        .font(Theme.control)
-                        .frame(minHeight: Theme.Size.touch)
-                    }
-                    .buttonStyle(PadSecondaryButtonStyle())
-                    .accessibilityLabel(settings.localized(settings.hideCompletedLessons ? "Show completed" : "Hide completed"))
-                }
-            }
-        }
+        .background(Theme.chassis)
+        .foregroundStyle(Theme.ink)
         .motion(Theme.Motion.standard, value: visibleLessonIDs)
+        .onChange(of: scenePhase) { _, phase in
+            if phase != .active {
+                previewPlayer.stop(releaseAudio: true)
+            }
+        }
+        .onDisappear {
+            previewPlayer.stop(releaseAudio: true)
+        }
+    }
+
+    private var localActionBar: some View {
+        ViewThatFits(in: .horizontal) {
+            HStack(spacing: Theme.Space.small) {
+                skipToPathButton
+                rulesButton
+                Spacer(minLength: 0)
+                hideCompletedButton
+            }
+            FlowLayout(spacing: Theme.Space.small) {
+                skipToPathButton
+                rulesButton
+                hideCompletedButton
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var skipToPathButton: some View {
+        if !isAllIntroCompleted || settings.introSkipped {
+            Button {
+                settings.introSkipped.toggle()
+            } label: {
+                Text(settings.localized(settings.introSkipped
+                    ? "Basics skipped · Resume Intro"
+                    : "Already know the basics? Skip to Path"))
+                    .font(Theme.control)
+                    .multilineTextAlignment(.leading)
+                    .frame(minHeight: Theme.Size.touch)
+            }
+            .buttonStyle(PadSecondaryButtonStyle())
+        }
+    }
+
+    private var rulesButton: some View {
+        Button { showingRules = true } label: {
+            Label(settings.localized("Rules"), systemImage: "info.circle")
+                .font(Theme.control)
+                .frame(minHeight: Theme.Size.touch)
+        }
+        .buttonStyle(PadSecondaryButtonStyle())
+        .popover(isPresented: $showingRules, arrowEdge: .top) {
+            ScrollView {
+                VStack(alignment: .leading, spacing: Theme.Space.page) {
+                    HStack {
+                        BackButton { showingRules = false }
+                        Spacer()
+                    }
+                    IntroRulesCard(passedCount: passedCount, masteredCount: masteredCount,
+                                   totalCount: introLessons.count)
+                }
+                .padding(Theme.Space.page)
+            }
+            .frame(width: 480, height: 580)
+            .satinPlate()
+            .foregroundStyle(Theme.ink)
+            .tint(Theme.orange)
+        }
+    }
+
+    @ViewBuilder
+    private var hideCompletedButton: some View {
+        if hasAnyCompletedLesson {
+            Button {
+                settings.hideCompletedLessons.toggle()
+            } label: {
+                Label(
+                    settings.localized(settings.hideCompletedLessons ? "Show completed" : "Hide completed"),
+                    systemImage: settings.hideCompletedLessons ? "eye" : "eye.slash"
+                )
+                .font(Theme.control)
+                .frame(minHeight: Theme.Size.touch)
+            }
+            .buttonStyle(PadSecondaryButtonStyle())
+            .accessibilityLabel(settings.localized(settings.hideCompletedLessons ? "Show completed" : "Hide completed"))
+        }
     }
 
     private var allCompletedRow: some View {
@@ -217,16 +236,22 @@ public struct IntroScreen: View {
             .accessibilityLabel(settings.localized("Show completed"))
         }
         .padding(.vertical, Theme.Space.small)
-        .listRowInsets(EdgeInsets(top: 0, leading: Theme.Space.page, bottom: 0, trailing: Theme.Space.page))
-        .listRowSeparator(.hidden)
-        .listRowBackground(Color.clear)
     }
 
     private func exerciseRow(_ lesson: Lesson) -> some View {
-        LibraryLessonRow(lesson: lesson, settings: settings, progress: progress,
-                         number: (introLessons.firstIndex { $0.id == lesson.id } ?? 0) + 1,
-                         purchaseLocked: !purchases.isUnlocked(lesson),
-                         introGoal: (lesson.intro?.goal).map { settings.localized($0) }) {
+        LessonRow(
+            lesson: lesson,
+            settings: settings,
+            progress: progress,
+            number: (introLessons.firstIndex { $0.id == lesson.id } ?? 0) + 1,
+            purchaseLocked: !purchases.isUnlocked(lesson),
+            introGoal: (lesson.intro?.goal).map { settings.localized($0) },
+            isPreviewPlaying: previewPlayer.playingLessonID == lesson.id,
+            previewAnchorHostTime: previewPlayer.anchorHostTime,
+            previewSecondsPerStep: previewPlayer.secondsPerStep,
+            onTogglePreview: { previewPlayer.toggle(lesson: lesson, settings: settings) }
+        ) {
+            previewPlayer.stop(releaseAudio: true)
             onSelect(lesson)
         }
     }

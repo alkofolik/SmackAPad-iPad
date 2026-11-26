@@ -29,15 +29,14 @@ struct StarsView: View {
                 .buttonStyle(.plain)
                 .accessibilityLabel(settings.localized("Lesson stars"))
 
-                Button { showingRequirements.toggle() } label: {
-                    Image(systemName: "info.circle")
-                        .font(Theme.meta)
-                        .foregroundStyle(Theme.secondary)
-                        .frame(minWidth: 28)
-                        .textButtonTarget(alignment: .leading)
+                HardwareIconButton(
+                    systemName: "info.circle",
+                    accessibilityLabel: settings.localized("Star requirements"),
+                    compact: true,
+                    isActive: showingRequirements
+                ) {
+                    showingRequirements.toggle()
                 }
-                .buttonStyle(.plain)
-                .accessibilityLabel(settings.localized("Star requirements"))
                 .popover(isPresented: $showingRequirements, arrowEdge: .trailing) {
                     ScrollView {
                         VStack(alignment: .leading, spacing: Theme.Space.regular) {
