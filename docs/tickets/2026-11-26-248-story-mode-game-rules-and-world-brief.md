@@ -51,4 +51,4 @@ PROMPT END
 
 1. Claude checks the rules against the code (Path map model, keys, kits, stars, purchase tier) and lists conflicts.
 2. Jakub approves or edits.
-3. Then coding tickets: branching map, boss fight, story cards, Czech adaptation (Gemini 4 Argon, medium; Claude checks the tone).
+3. Then coding tickets: branching map, boss fight, story cards, Czech adaptation (Gemini desktop app, Argon medium; Claude checks the tone).

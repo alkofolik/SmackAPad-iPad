@@ -37,7 +37,7 @@ Produce one data file that splits every Path stage into an ordered list of **key
 
 ## Agent assignment
 
-Antigravity: **Gemini 4 Argon, thinking high** (the fork review is a judgement task). Fallback: Codex Sol 6.2, high.
+Antigravity: **Gemini 4 Hydrogen, thinking high** (the fork review is a judgement task). Fallback: Codex Sol 6.2, high.
 
 ## Done rule
 
