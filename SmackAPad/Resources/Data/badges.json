@@ -480,36 +480,6 @@
     "icon": "bounce"
   },
   {
-    "id": "mix-first",
-    "name": "Shuffle",
-    "condition": "Finish a full Mix round.",
-    "metric": "mixRounds",
-    "goal": 1,
-    "tier": 1,
-    "group": "training",
-    "icon": "shuffle"
-  },
-  {
-    "id": "mix-memory",
-    "name": "Blind mix",
-    "condition": "Finish a Mix round from memory, every run at least 80 %.",
-    "metric": "mixMemoryRounds",
-    "goal": 1,
-    "tier": 2,
-    "group": "training",
-    "icon": "shuffle"
-  },
-  {
-    "id": "mix-twenty",
-    "name": "Juggler",
-    "condition": "Finish 20 Mix rounds.",
-    "metric": "mixRounds",
-    "goal": 20,
-    "tier": 3,
-    "group": "training",
-    "icon": "shuffle"
-  },
-  {
     "id": "after-me-first",
     "name": "Echo",
     "condition": "Score at least 80 % in Play after me.",

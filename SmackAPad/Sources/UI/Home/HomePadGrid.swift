@@ -1,17 +1,5 @@
 import SwiftUI
 
-func hasAnyLessonProgress(_ records: [Int: LessonProgress]) -> Bool {
-    records.values.contains { $0.hasPlayed || $0.passed || $0.mastery || $0.memory }
-}
-
-func shouldPulseIntroPad(
-    loadSucceeded: Bool,
-    records: [Int: LessonProgress],
-    animationFinished: Bool
-) -> Bool {
-    loadSucceeded && animationFinished && !hasAnyLessonProgress(records)
-}
-
 /// 3×3 pad grid (8 outer navigation pads + centre About logo pad) on Home.
 struct HomePadGrid: View {
     let cellSize: CGFloat
@@ -19,17 +7,16 @@ struct HomePadGrid: View {
     let plateVisible: Bool
     let padVisible: [Bool]
     let animationFinished: Bool
-    let introPadShouldPulse: Bool
     let todayPlan: TodayPlan?
     let lessonStore: LessonStore
     let homeNamespace: Namespace.ID
-    @AccessibilityFocusState.Binding var introFocused: Bool
     let onSelectToday: () -> Void
     let onOpenDestination: (HomePadDestination) -> Void
     let onNavigateToLibrary: (LibraryLaunchTarget) -> Void
 
     @Environment(StoreManager.self) private var store
     @Environment(SettingsManager.self) private var settings
+    @Environment(ProgressStore.self) private var progress
     @Environment(ProgressionManager.self) private var progression
     @Environment(BadgeStore.self) private var badgeStore
     @Environment(MIDIInput.self) private var midi
@@ -150,7 +137,6 @@ struct HomePadGrid: View {
         HomePadView(
             title: localizedTitle("Intro"),
             subtitle: HomePadSubtitles.intro(),
-            isLit: introPadShouldPulse,
             padNumber: 4,
             cellSize: cellSize,
             isHero: false
@@ -159,7 +145,6 @@ struct HomePadGrid: View {
             onNavigateToLibrary(.intro)
             AppNavigation.shared.openLibrary(.intro)
         }
-        .accessibilityFocused($introFocused)
     }
 
     private var pad5: some View {
@@ -198,22 +183,38 @@ struct HomePadGrid: View {
         }
     }
 
+    @ViewBuilder
     private var pad7: some View {
-        let price = store.products[StoreManager.fullID]?.displayPrice
-        let subtitle = HomePadSubtitles.fullVersion(
-            hasFullAccess: store.hasFullAccess,
-            price: price,
-            language: settings.languagePreference
-        )
+        if store.hasFullAccess {
+            let unlockedCount = DrumKitCatalog.allKits.filter { progress.drummerPath.isKitUnlocked($0.kitId) }.count
+            HomePadView(
+                title: localizedTitle("STUDIO RIG"),
+                subtitle: HomePadSubtitles.studioRig(unlockedCount: unlockedCount, totalCount: DrumKitCatalog.allKits.count),
+                numericTransitionValue: unlockedCount,
+                padNumber: 7,
+                cellSize: cellSize,
+                isHero: false
+            ) {
+                onOpenDestination(.training)
+                AppNavigation.shared.openTraining(tab: TrainingTabMode.studioRig.rawValue)
+            }
+        } else {
+            let price = store.products[StoreManager.fullID]?.displayPrice
+            let subtitle = HomePadSubtitles.fullVersion(
+                hasFullAccess: store.hasFullAccess,
+                price: price,
+                language: settings.languagePreference
+            )
 
-        return HomePadView(
-            title: localizedTitle("Full version"),
-            subtitle: subtitle,
-            padNumber: 7,
-            cellSize: cellSize,
-            isHero: false
-        ) {
-            onOpenDestination(.purchases)
+            HomePadView(
+                title: localizedTitle("Full version"),
+                subtitle: subtitle,
+                padNumber: 7,
+                cellSize: cellSize,
+                isHero: false
+            ) {
+                onOpenDestination(.purchases)
+            }
         }
     }
 
@@ -242,31 +243,12 @@ struct HomePadGrid: View {
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .background(
                 RoundedRectangle(cornerRadius: Theme.Radius.pad)
-                    .fill(Theme.surface)
+                    .fill(Theme.recessed)
                     .opacity(plateVisible ? 1.0 : 0.0)
             )
-            .overlay {
-                // Two-tone bevel: top 1.5 pt light highlight, bottom 2 pt darker edge (ticket 112)
-                VStack(spacing: 0) {
-                    Theme.padBevelTop
-                        .frame(height: 1.5)
-                    Spacer(minLength: 0)
-                    Theme.padBevelBottom
-                        .frame(height: 2.0)
-                }
-                .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.pad))
-                .opacity(plateVisible ? 1.0 : 0.0)
-                .allowsHitTesting(false)
-            }
-            .overlay {
-                RoundedRectangle(cornerRadius: Theme.Radius.pad)
-                    .strokeBorder(Theme.hairline, lineWidth: 1)
-                    .opacity(plateVisible ? 1.0 : 0.0)
-                    .allowsHitTesting(false)
-            }
             .contentShape(RoundedRectangle(cornerRadius: Theme.Radius.pad))
         }
-        .buttonStyle(TactilePadButtonStyle())
+        .buttonStyle(.plain)
         .accessibilityLabel(settings.localized("About"))
         .accessibilityAddTraits(.isButton)
         .allowsHitTesting(animationFinished)

@@ -18,10 +18,7 @@ public struct HomeScreen: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.scenePhase) private var scenePhase
     @AppStorage(TodayPlan.storageKey) private var savedTodayPlan = ""
-    @AppStorage("smackapad.training.dailyMixes") private var dailyMixes = "{}"
     @State private var helpPresentation: HelpPresentation?
-    @State private var didFocusIntro = false
-    @AccessibilityFocusState private var introFocused: Bool
     @AccessibilityFocusState private var helpFocused: Bool
     @State private var calendarDay = AppCalendar.today()
     @State private var activeDestination: HomePadDestination?
@@ -71,7 +68,7 @@ public struct HomeScreen: View {
 
             ZStack {
                 // The chassis and unpowered display are visible from the first launch frame.
-                Theme.background
+                Theme.chassis
                     .ignoresSafeArea()
 
                 HomeControllerBody(darkAppearance: colorScheme == .dark)
@@ -114,11 +111,9 @@ public struct HomeScreen: View {
                     plateVisible: plateVisible,
                     padVisible: padVisible,
                     animationFinished: animationFinished,
-                    introPadShouldPulse: introPadShouldPulse,
                     todayPlan: todayPlan,
                     lessonStore: lessonStore,
                     homeNamespace: homeNamespace,
-                    introFocused: $introFocused,
                     onSelectToday: openToday,
                     onOpenDestination: { activeDestination = $0 },
                     onNavigateToLibrary: onNavigateToLibrary
@@ -158,12 +153,6 @@ public struct HomeScreen: View {
                 Task { await startHomeAudioIfNeeded() }
             } else {
                 stopHomeAudio()
-            }
-        }
-        .onChange(of: introFocusEligible, initial: true) { _, eligible in
-            if eligible {
-                didFocusIntro = true
-                introFocused = true
             }
         }
         #if DEBUG
@@ -240,14 +229,18 @@ public struct HomeScreen: View {
     // MARK: - MIDI Reaction & Audio (Ticket 207)
 
     private var resolvedHomeKitId: String {
+        let candidate: String
         if settings.selectedKitId != SoundKitResolver.automaticKitId {
-            return settings.selectedKitId
+            candidate = settings.selectedKitId
+        } else if let lastLesson = settings.lastLessonID == 0 ? nil : lessonStore.lesson(for: settings.lastLessonID) {
+            return SoundKitResolver.resolveKitId(for: lastLesson, settings: settings, pathState: progress.drummerPath)
+        } else {
+            return SoundKitResolver.fallbackKitId
         }
-        let lastLesson = settings.lastLessonID == 0 ? nil : lessonStore.lesson(for: settings.lastLessonID)
-        if let lastLesson {
-            return SoundKitResolver.resolveKitId(for: lastLesson, settings: settings)
+        if settings.playMode == .story && !progress.drummerPath.isKitUnlocked(candidate) {
+            return DrumKitCatalog.starterKitId
         }
-        return SoundKitResolver.fallbackKitId
+        return candidate
     }
 
     private func startHomeAudioIfNeeded() async {
@@ -378,24 +371,24 @@ public struct HomeScreen: View {
     }
 
     private func helpButton(containerWidth: CGFloat, layout: HomeControllerLayout) -> some View {
-        Button {
-            helpPresentation = HelpPresentation(windowWidth: containerWidth)
-        } label: {
-            Text("?")
-                .font(Theme.strong(22))
-                .foregroundStyle(Theme.white)
-                .frame(width: 36, height: 36)
-                .background(Theme.black, in: Circle())
-                .overlay { Circle().strokeBorder(Theme.white.opacity(0.12), lineWidth: 1) }
-                .shadow(color: Theme.black.opacity(0.25), radius: 2, y: 2)
-                .frame(width: Theme.Size.minimumTouch, height: Theme.Size.minimumTouch)
-                .contentShape(Circle())
-        }
-        .buttonStyle(.plain)
-        .accessibilityLabel(settings.localized("help.title"))
-        .accessibilityFocused($helpFocused)
-        .helpDeck(presentation: $helpPresentation, arrowEdge: .top) {
-            helpFocused = true
+        VStack(spacing: 4) {
+            HardwareIconButton(
+                systemName: "questionmark",
+                accessibilityLabel: settings.localized("help.title"),
+                compact: true
+            ) {
+                helpPresentation = HelpPresentation(windowWidth: containerWidth)
+            }
+            .accessibilityFocused($helpFocused)
+            .helpDeck(presentation: $helpPresentation, arrowEdge: .top) {
+                helpFocused = true
+            }
+
+            Text(settings.localized("Help").uppercased(with: Locale(identifier: settings.languagePreference.rawValue)))
+                .font(Theme.canvasDisplay(9))
+                .tracking(0.5)
+                .foregroundStyle(Theme.secondary)
+                .accessibilityHidden(true)
         }
         .position(x: layout.display.maxX + (containerWidth - layout.display.maxX) / 2,
                   y: layout.display.midY)
@@ -403,18 +396,6 @@ public struct HomeScreen: View {
 
     private var homeIsIdle: Bool {
         AppNavigation.shared.route == .home && activeDestination == nil && helpPresentation == nil
-    }
-
-    private var introPadShouldPulse: Bool {
-        shouldPulseIntroPad(
-            loadSucceeded: progress.loadedSuccessfully,
-            records: progress.records,
-            animationFinished: animationFinished
-        )
-    }
-
-    private var introFocusEligible: Bool {
-        introPadShouldPulse && homeIsIdle && scenePhase == .active && !didFocusIntro
     }
 
     private func syncWithNavigationRoute(_ route: AppRoute) {
@@ -440,16 +421,16 @@ public struct HomeScreen: View {
 
     private var todayPlan: TodayPlan? {
         if let saved = TodayPlan.decode(savedTodayPlan, today: calendarDay) {
-            return saved.finished ? nil : saved
+            return saved.reconcilingReviews(with: progress.records)
         }
-        let source = NextLessonSource(rawValue: settings.nextLessonSource) ?? .path
-        let next = progression.nextLesson(after: lessonStore.lesson(for: settings.lastLessonID), source: source)
+        let isAvailableForToday: (Lesson) -> Bool = { lesson in
+            store.isUnlocked(lesson)
+        }
+        let lessons = progression.dailyLessons(isAvailable: isAvailableForToday)
         let openIDs = Set(progression.catalog.lessons.filter {
-            store.isUnlocked($0) && progression.isLessonOpen($0)
+            isAvailableForToday($0) && progression.isLessonOpen($0)
         }.map(\.id))
         let padCount = midi.activeProfile.padCount
-        let mix = TrainingMix.dailySelection(lessons: progression.catalog.lessons, progress: progress.records,
-            padCount: padCount, openLessonIDs: openIDs, day: calendarDay, savedJSON: dailyMixes)
         let dueCandidates = progress.dueLessonIds(today: calendarDay).compactMap { lessonStore.lesson(for: $0) }.filter { lesson in
             guard openIDs.contains(lesson.id) else { return false }
             return padCount == 16 || EightPadLayout.slots(for: lesson) != nil
@@ -457,7 +438,7 @@ public struct HomeScreen: View {
         let due = ReviewQueue.order(dueCandidates, records: progress.records, today: calendarDay)
         return TodayPlan.make(day: calendarDay,
             dueLessonIDs: due.map(\.id),
-            nextLessonID: next?.id, mixLessonIDs: mix.map(\.id))
+            nextLessonID: lessons.next?.id, followUpLessonID: lessons.followUp?.id)
     }
 
     private func preserveTodayPlan(for lessonID: Int) {

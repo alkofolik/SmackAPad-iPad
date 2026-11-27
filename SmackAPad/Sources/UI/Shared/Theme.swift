@@ -14,20 +14,59 @@ enum Theme {
     private static let plateCreamBottom = UIColor(hex: 0xDDD5C8)
     private static let cavityBlack = UIColor(hex: 0x0C0B0A)
 
-    static let orange = Color(red: 1, green: 107.0 / 255, blue: 0)
+    private static let skinLock = NSLock()
+    private nonisolated(unsafe) static var _activeSkinId: String =
+        UserDefaults.standard.string(forKey: SettingsKey.selectedInstrumentSkinId.rawValue) ?? StudioRigCatalog.defaultSkinId
+
+    static func setActiveSkinId(_ id: String) {
+        skinLock.lock()
+        _activeSkinId = id
+        skinLock.unlock()
+    }
+
+    static var activeSkin: InstrumentSkin {
+        skinLock.lock()
+        let id = _activeSkinId
+        skinLock.unlock()
+        return StudioRigCatalog.skin(forId: id) ?? StudioRigCatalog.skins[0]
+    }
+
+    static var orange: Color {
+        let hex = activeSkin.accentHex
+        return Color(
+            red: Double((hex >> 16) & 0xFF) / 255.0,
+            green: Double((hex >> 8) & 0xFF) / 255.0,
+            blue: Double(hex & 0xFF) / 255.0
+        )
+    }
     static let cavity = Color(uiColor: cavityBlack)
     static let black = Color(uiColor: softBlack)
-    /// Result marks on the orange band: correct, off the beat, wrong or missed.
-    static let markCorrect = Color(red: 0.04, green: 0.34, blue: 0.15)
-    static let markOff = Color(red: 0.36, green: 0.26, blue: 0)
-    static let markWrong = Color(red: 0.62, green: 0.06, blue: 0.10)
     static let white = Color(uiColor: creamWhite)
     static let background = adaptive(light: creamWhite, dark: softBlack)
-    static let ink = adaptive(light: softBlack, dark: creamWhite)
-    static let secondary = adaptive(light: UIColor(hex: 0x5E5950), dark: UIColor(hex: 0xB3ADA2))
-    static let surface = adaptive(light: UIColor(hex: 0xEBE5DA), dark: UIColor(hex: 0x2A2824))
+
+    // MARK: - Hardware UI Semantic Tokens (DESIGN.md)
+    static let chassis = adaptive(light: UIColor(hex: 0xE6E6E2), dark: UIColor(hex: 0x0C0C0E))
+    static let surface = adaptive(light: UIColor(hex: 0xF4F4F0), dark: UIColor(hex: 0x141417))
+    static let surfaceElevated = adaptive(light: UIColor(hex: 0xFFFFFF), dark: UIColor(hex: 0x1B1B1F))
+    static let recessed = adaptive(light: UIColor(hex: 0xDADAD4), dark: UIColor(hex: 0x09090B))
     /// One hairline for every divider and outline in the chrome.
-    static let hairline = ink.opacity(0.15)
+    static let hairline = adaptive(light: UIColor(hex: 0xC8C8C0), dark: UIColor(hex: 0x26262B))
+    static let ink = adaptive(light: UIColor(hex: 0x141417), dark: UIColor(hex: 0xF4F4F2))
+    static let secondary = adaptive(light: UIColor(hex: 0x5C5C62), dark: UIColor(hex: 0x8E8E93))
+    static let accent = adaptive(light: UIColor(hex: 0xF25C00), dark: UIColor(hex: 0xFF6B00))
+    static let accentEnd = adaptive(light: UIColor(hex: 0xD44500), dark: UIColor(hex: 0xE04E00))
+    static let accentGradient = LinearGradient(
+        colors: [accent, accentEnd],
+        startPoint: .top,
+        endPoint: .bottom
+    )
+    static let accentGlow = adaptive(
+        light: UIColor(hex: 0xF25C00, alpha: 0.16),
+        dark: UIColor(hex: 0xFF6B00, alpha: 0.28)
+    )
+    /// Inactive LED / off segment colour.
+    static let ledOff = adaptive(light: UIColor(hex: 0xCBCBC4), dark: UIColor(hex: 0x232328))
+
     /// Two-tone bevel colours for Home pads (ticket 112, proposal A).
     static let padBevelTop = adaptive(
         light: creamWhite.withAlphaComponent(0.55),
@@ -38,7 +77,7 @@ enum Theme {
         dark: softBlack.withAlphaComponent(0.45)
     )
     /// One fill for an active or selected control.
-    static let activeFill = orange.opacity(0.24)
+    static var activeFill: Color { orange.opacity(0.24) }
     /// Unified warm brick red / terracotta for destructive actions (ticket 133).
     static let destructive = adaptive(
         light: UIColor(hex: 0xC0392B),
@@ -51,32 +90,43 @@ enum Theme {
         light: UIColor(hex: 0xD6D0C4),
         dark: UIColor(hex: 0x201E1B)
     )
-    /// Inactive LED / off segment colour.
-    static let ledOff = starColor(for: 0)
 
-    /// Star progression colours: not done grey, 1 star light orange, 2 stars medium orange, 3 stars full orange.
+    /// Star progression colours: not done grey, earned star full accent.
     static func starColor(for stars: Int) -> Color {
         switch stars {
         case 1, 2, 3:
             return orange
         default:
-            return adaptive(
-                light: UIColor(hex: 0xD6D0C4),
-                dark: UIColor(hex: 0x3E3B36)
-            )
+            return ledOff
+        }
+    }
+
+    /// Three-step progress bar segment colours: 3★ full accent, 2★ medium, 1★ light.
+    static func progressSegmentColor(for stars: Int) -> Color {
+        switch stars {
+        case 3:
+            return orange
+        case 2:
+            return orange.opacity(0.68)
+        case 1:
+            return orange.opacity(0.38)
+        default:
+            return ledOff
         }
     }
 
     static let mainValue = strong(44)
-    static let screenTitle = display(28)
+    static let screenTitle = boldDisplay(26)
     static let handoffTitle = boldDisplay(28)
     static let handoffNext = strong(20)
-    static let sectionTitle = display(22)
-    static let rowTitle = display(22)
-    static let meta = text(16)
-    static let control = text(18)
-    static let navigation = text(18)
-    static let action = strong(22)
+    static let sectionTitle = strong(19)
+    static let rowTitle = strong(18)
+    static let meta = text(14)
+    static let caption = text(13)
+    static let hardwareLabel = strong(11)
+    static let control = text(16)
+    static let navigation = text(16)
+    static let action = strong(18)
 
 
     enum Space {
@@ -116,10 +166,16 @@ enum Theme {
     }
 
     enum Radius {
+        /// Unified control radius for buttons, filters, icon buttons, and segments (DESIGN.md).
+        static let control: CGFloat = 6
+        /// Inner-screen panel and card radius (DESIGN.md).
+        static let panel: CGFloat = 10
+        /// Modal sheet, popover, and chassis block radius (DESIGN.md).
+        static let sheet: CGFloat = 12
         /// Home pad radius (Akai MPC Tactile Rubber style, ticket 112).
         static let pad: CGFloat = 8
-        /// Button & control radius (Variant B studio precision, ticket 133).
-        static let button: CGFloat = 6
+        /// Backwards-compatible alias for `control`.
+        static let button: CGFloat = control
         /// Controller plate at the reference pad size; scaled with the Home grid.
         static let controllerPlate: CGFloat = 16
     }
@@ -159,7 +215,7 @@ enum Theme {
             static let top = adaptive(light: plateCreamTop, dark: UIColor(hex: 0x272521))
             static let bottom = adaptive(light: plateCreamBottom, dark: UIColor(hex: 0x1E1C19))
             static let angle: Double = 165
-            static let radius = Radius.controllerPlate
+            static let radius = Radius.panel
             static let bevel: CGFloat = 1.5
             static let highlight = adaptive(light: creamWhite.withAlphaComponent(0.85), dark: creamWhite.withAlphaComponent(0.24))
             static let shade = adaptive(light: softBlack.withAlphaComponent(0.2), dark: softBlack.withAlphaComponent(0.7))
@@ -201,7 +257,7 @@ enum Theme {
         enum LightBar {
             static let height: CGFloat = 2
             static let glowRadius: CGFloat = 3
-            static let glow = orange.opacity(0.8)
+            static var glow: Color { orange.opacity(0.8) }
         }
 
         /// CSS angles: 0° points up, 90° points right, 180° points down.
@@ -484,22 +540,12 @@ private struct LessonPresentation<Destination: View>: ViewModifier {
     @ViewBuilder func body(content: Content) -> some View {
         if #available(iOS 18, *), !Theme.Motion.Policy(reduced: reduced).opacityOnly {
             content.fullScreenCover(item: $lesson) { item in
-                destination(item).navigationTransition(.zoom(sourceID: item.id, in: namespace))
+                destination(item)
+                    .environment(\.dismissLesson, nil)
+                    .navigationTransition(.zoom(sourceID: item.id, in: namespace))
             }
         } else {
-            let policy = Theme.Motion.Policy(reduced: reduced)
-            content
-                .allowsHitTesting(lesson == nil)
-                .accessibilityHidden(lesson != nil)
-                .overlay {
-                    if let lesson {
-                        destination(lesson)
-                            .environment(\.dismissLesson, { self.lesson = nil })
-                            .transition(policy.navigation)
-                            .zIndex(1)
-                    }
-                }
-                .animation(policy.animation(lesson != nil ? Theme.Motion.padZoom : Theme.Motion.padDismiss), value: lesson != nil)
+            content.calmCover(item: $lesson, destination: destination)
         }
     }
 }
@@ -541,6 +587,36 @@ public struct PadPresentation<Item: Identifiable & Equatable, Destination: View>
     }
 }
 
+/// In-place cover for flows without a single source view and for reduced motion.
+private struct CalmCover<Item, Destination: View>: ViewModifier {
+    @Environment(\.accessibilityReduceMotion) private var reduced
+    @Binding var item: Item?
+    let onDismiss: () -> Void
+    let destination: (Item) -> Destination
+
+    func body(content: Content) -> some View {
+        let policy = Theme.Motion.Policy(reduced: reduced)
+        content
+            .allowsHitTesting(item == nil)
+            .accessibilityHidden(item != nil)
+            .overlay {
+                if let item {
+                    ZStack {
+                        destination(item)
+                    }
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .environment(\.dismissLesson, { self.item = nil })
+                    .onDisappear {
+                        if self.item == nil { onDismiss() }
+                    }
+                    .transition(policy.navigation)
+                    .zIndex(1)
+                }
+            }
+            .animation(policy.animation(item != nil ? Theme.Motion.padZoom : Theme.Motion.padDismiss), value: item != nil)
+    }
+}
+
 private struct DismissLessonKey: EnvironmentKey {
     static let defaultValue: (() -> Void)? = nil
 }
@@ -551,6 +627,14 @@ extension EnvironmentValues {
     }
 }
 extension View {
+    func calmCover<Item, Destination: View>(
+        item: Binding<Item?>,
+        onDismiss: @escaping () -> Void = {},
+        @ViewBuilder destination: @escaping (Item) -> Destination
+    ) -> some View {
+        modifier(CalmCover(item: item, onDismiss: onDismiss, destination: destination))
+    }
+
     func lessonSource(_ id: Int) -> some View { modifier(LessonSource(id: id)) }
     func lessonPresentation<Destination: View>(lesson: Binding<Lesson?>, namespace: Namespace.ID,
                                                @ViewBuilder destination: @escaping (Lesson) -> Destination) -> some View {

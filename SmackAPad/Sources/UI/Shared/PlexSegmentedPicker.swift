@@ -1,115 +1,118 @@
 import SwiftUI
-import UIKit
 
-/// Native segmented controls ignore SwiftUI's custom font environment.
-/// Keep the native control, but give both states real Plex faces and enough height.
+enum PlexSegmentedPickerSize {
+    case regular
+    case compact
+
+    var controlHeight: CGFloat {
+        switch self {
+        case .regular: return 40
+        case .compact: return 32
+        }
+    }
+
+    var fontSize: CGFloat {
+        switch self {
+        case .regular: return 15
+        case .compact: return 13
+        }
+    }
+
+    var horizontalPadding: CGFloat {
+        switch self {
+        case .regular: return 14
+        case .compact: return 10
+        }
+    }
+
+    var trackPadding: CGFloat { 3 }
+}
+
+/// Hardware segmented control with recessed track and 6pt studio segments (DESIGN.md).
 struct PlexSegmentedPicker<Value: Hashable>: View {
     let title: String
     @Binding var selection: Value
     let options: [(Value, String)]
     var fitsColumn = false
-    @ScaledMetric(relativeTo: .body) private var pointSize: CGFloat = 24
+    var size: PlexSegmentedPickerSize = .regular
 
-    private var control: some View {
-        PlexSegments(title: title, selection: $selection, options: options, pointSize: pointSize, fitsColumn: fitsColumn)
-    }
+    @Environment(\.isEnabled) private var isEnabled
+    @Environment(\.accessibilityReduceMotion) private var reduced
 
     var body: some View {
         Group {
             if fitsColumn {
-                control.frame(maxWidth: .infinity)
+                segmentTrack(equalWidth: true)
+                    .frame(maxWidth: .infinity)
             } else {
                 ViewThatFits(in: .horizontal) {
-                    control.fixedSize()
-                    ScrollView(.horizontal) { control.fixedSize() }
-                        .fixedSize(horizontal: false, vertical: true)
-                        .scrollIndicators(.hidden)
-                        .scrollBounceBehavior(.basedOnSize)
+                    segmentTrack(equalWidth: false)
+                        .fixedSize(horizontal: true, vertical: false)
+                    ScrollView(.horizontal) {
+                        segmentTrack(equalWidth: false)
+                            .fixedSize(horizontal: true, vertical: false)
+                    }
+                    .fixedSize(horizontal: false, vertical: true)
+                    .scrollIndicators(.hidden)
+                    .scrollBounceBehavior(.basedOnSize)
                 }
             }
         }
-        .frame(minHeight: Theme.Size.touch)
+        .accessibilityElement(children: .contain)
+        .accessibilityLabel(title)
     }
-}
 
-private final class PlexSegmentedControl: UISegmentedControl {
-    var labelHeight: CGFloat = 48
-    var fittedPointSize: CGFloat?
-
-    override func layoutSubviews() {
-        if let pointSize = fittedPointSize, bounds.width > 0 {
-            let font = UIFont(name: "IBMPlexSans-Bold", size: pointSize)!
-            let textWidth = (0..<numberOfSegments).reduce(CGFloat.zero) { width, index in
-                width + ((titleForSegment(at: index) ?? "") as NSString).size(withAttributes: [.font: font]).width
-            }
-            let available = max(1, bounds.width - CGFloat(numberOfSegments) * 24)
-            let size = pointSize * min(1, available / max(1, textWidth))
-            let currentSize = (titleTextAttributes(for: .normal)?[.font] as? UIFont)?.pointSize
-            if currentSize != size {
-                setTitleTextAttributes([.font: UIFont(name: "IBMPlexSans-Regular", size: size)!], for: .normal)
-                setTitleTextAttributes([.font: UIFont(name: "IBMPlexSans-Bold", size: size)!], for: .selected)
+    private func segmentTrack(equalWidth: Bool) -> some View {
+        let trackShape = RoundedRectangle(cornerRadius: Theme.Radius.control + 2)
+        return HStack(spacing: 2) {
+            ForEach(Array(options.enumerated()), id: \.offset) { _, option in
+                segmentButton(value: option.0, label: option.1, equalWidth: equalWidth)
             }
         }
-        super.layoutSubviews()
-    }
-    override var intrinsicContentSize: CGSize {
-        let size = super.intrinsicContentSize
-        return CGSize(width: size.width, height: max(48, labelHeight))
-    }
-}
-
-private struct PlexSegments<Value: Hashable>: UIViewRepresentable {
-    @Environment(\.isEnabled) private var isEnabled
-    let title: String
-    @Binding var selection: Value
-    let options: [(Value, String)]
-    let pointSize: CGFloat
-    let fitsColumn: Bool
-
-    final class Coordinator {
-        var parent: PlexSegments
-        init(_ parent: PlexSegments) { self.parent = parent }
-    }
-
-    func makeCoordinator() -> Coordinator { Coordinator(self) }
-
-    func makeUIView(context: Context) -> PlexSegmentedControl {
-        let control = PlexSegmentedControl(items: options.map(\.1))
-        control.apportionsSegmentWidthsByContent = true
-        let coordinator = context.coordinator
-        control.addAction(UIAction { [weak control] _ in
-            guard let control, coordinator.parent.options.indices.contains(control.selectedSegmentIndex) else { return }
-            coordinator.parent.selection = coordinator.parent.options[control.selectedSegmentIndex].0
-        }, for: .valueChanged)
-        return control
-    }
-
-    func updateUIView(_ control: PlexSegmentedControl, context: Context) {
-        context.coordinator.parent = self
-        if control.numberOfSegments != options.count {
-            control.removeAllSegments()
-            for (index, option) in options.enumerated() {
-                control.insertSegment(withTitle: option.1, at: index, animated: false)
-            }
-        } else {
-            for (index, option) in options.enumerated() { control.setTitle(option.1, forSegmentAt: index) }
+        .padding(size.trackPadding)
+        .background {
+            trackShape
+                .fill(Theme.recessed)
+                .overlay {
+                    trackShape.strokeBorder(Theme.hairline, lineWidth: 1)
+                }
         }
-        let regular = UIFont(name: "IBMPlexSans-Regular", size: pointSize)!
-        let bold = UIFont(name: "IBMPlexSans-Bold", size: pointSize)!
-        control.setTitleTextAttributes([.font: regular], for: .normal)
-        control.setTitleTextAttributes([.font: bold], for: .selected)
-        control.fittedPointSize = fitsColumn ? pointSize : nil
-        control.setNeedsLayout()
-        control.labelHeight = max(regular.lineHeight, bold.lineHeight) + 16
-        control.selectedSegmentIndex = options.firstIndex { $0.0 == selection } ?? UISegmentedControl.noSegment
-        control.isEnabled = isEnabled
-        control.accessibilityLabel = title
-        control.invalidateIntrinsicContentSize()
+        .opacity(isEnabled ? 1 : 0.45)
     }
 
-    func sizeThatFits(_ proposal: ProposedViewSize, uiView: PlexSegmentedControl, context: Context) -> CGSize? {
-        let intrinsic = uiView.intrinsicContentSize
-        return CGSize(width: fitsColumn ? (proposal.width ?? intrinsic.width) : intrinsic.width,
-                      height: intrinsic.height)
+    private func segmentButton(value: Value, label: String, equalWidth: Bool) -> some View {
+        let isSelected = selection == value
+        let segmentShape = RoundedRectangle(cornerRadius: Theme.Radius.control)
+        let policy = Theme.Motion.Policy(reduced: reduced)
+
+        return Button {
+            guard selection != value else { return }
+            withAnimation(policy.animation(Theme.Motion.fast)) {
+                selection = value
+            }
+        } label: {
+            Text(label)
+                .font(isSelected ? Theme.strong(size.fontSize) : Theme.text(size.fontSize))
+                .lineLimit(1)
+                .minimumScaleFactor(0.8)
+                .foregroundStyle(isSelected ? Theme.ink : Theme.secondary)
+                .padding(.horizontal, size.horizontalPadding)
+                .frame(maxWidth: equalWidth ? .infinity : nil)
+                .frame(minHeight: size.controlHeight)
+                .background {
+                    if isSelected {
+                        segmentShape
+                            .fill(Theme.surfaceElevated)
+                            .overlay {
+                                segmentShape.strokeBorder(Theme.accent, lineWidth: 1.5)
+                            }
+                            .shadow(color: Theme.accentGlow.opacity(0.6), radius: 3)
+                    }
+                }
+                .contentShape(segmentShape)
+        }
+        .buttonStyle(.plain)
+        .frame(minHeight: Theme.Size.minimumTouch)
+        .accessibilityAddTraits(isSelected ? .isSelected : [])
     }
 }

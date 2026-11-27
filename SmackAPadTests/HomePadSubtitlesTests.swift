@@ -30,34 +30,43 @@ final class HomePadSubtitlesTests: XCTestCase {
 
     func testTodaySubtitleHandlesRemainingCountsAndDoneState() {
         XCTAssertNil(HomePadSubtitles.today(plan: nil, language: .english))
-        XCTAssertNil(HomePadSubtitles.today(plan: makePlan(stepCount: 2, finished: true), language: .english))
-        XCTAssertNil(HomePadSubtitles.today(plan: makePlan(stepCount: 2, index: 2, finished: false), language: .czech))
+        XCTAssertEqual(HomePadSubtitles.today(plan: makePlan(stepCount: 2, finished: true), language: .english),
+                       "Done for today")
+        XCTAssertEqual(HomePadSubtitles.today(plan: makePlan(stepCount: 2, index: 2), language: .czech),
+                       "Hotovo pro dnešek")
 
         XCTAssertEqual(
             HomePadSubtitles.today(plan: makePlan(stepCount: 1), language: .english),
-            "1 lesson"
+            "1 step · 2 min"
         )
         XCTAssertEqual(
             HomePadSubtitles.today(plan: makePlan(stepCount: 2), language: .english),
-            "2 lessons"
+            "2 steps · 3 min"
         )
         XCTAssertEqual(
             HomePadSubtitles.today(plan: makePlan(stepCount: 5), language: .english),
-            "5 lessons"
+            "5 steps · 8 min"
         )
 
         XCTAssertEqual(
             HomePadSubtitles.today(plan: makePlan(stepCount: 1), language: .czech),
-            "1 lekce"
+            "1 krok · 2 min"
         )
         XCTAssertEqual(
             HomePadSubtitles.today(plan: makePlan(stepCount: 3, index: 1), language: .czech),
-            "2 lekce"
+            "2 kroky · 3 min"
         )
         XCTAssertEqual(
             HomePadSubtitles.today(plan: makePlan(stepCount: 5), language: .czech),
-            "5 lekcí"
+            "5 kroků · 8 min"
         )
+    }
+
+    func testTodaySubtitleShowsTwoNewLessonsOnTheFirstDay() throws {
+        let plan = try XCTUnwrap(TodayPlan.make(day: "2026-11-11", dueLessonIDs: [], nextLessonID: 10001,
+                                               followUpLessonID: 10002))
+        XCTAssertEqual(HomePadSubtitles.today(plan: plan, language: .english), "2 steps · 4 min")
+        XCTAssertEqual(HomePadSubtitles.today(plan: plan, language: .czech), "2 kroky · 4 min")
     }
 
     func testContinueSubtitleAndTargetForEmptyProfileAndPlayedLesson() {
@@ -206,6 +215,7 @@ final class HomePadSubtitlesTests: XCTestCase {
         XCTAssertNil(HomePadSubtitles.library())
         XCTAssertNil(HomePadSubtitles.intro())
         XCTAssertEqual(HomePadSubtitles.badges(earned: 14, total: 55), "14 / 55")
+        XCTAssertEqual(HomePadSubtitles.studioRig(unlockedCount: 3, totalCount: 8), "3 / 8")
         XCTAssertEqual(
             HomePadSubtitles.fullVersion(hasFullAccess: true, price: "$9.99", language: .english),
             "Unlocked"

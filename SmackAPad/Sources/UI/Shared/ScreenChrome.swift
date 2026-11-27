@@ -41,6 +41,19 @@ struct SectionHeader: View {
     }
 }
 
+extension View {
+    func instrumentPanel(border: Color = Theme.hairline) -> some View {
+        let shape = RoundedRectangle(cornerRadius: Theme.Radius.panel)
+        return self
+            .background(Theme.surface, in: shape)
+            .clipShape(shape)
+            .overlay {
+                shape.strokeBorder(border, lineWidth: 1)
+                    .allowsHitTesting(false)
+            }
+    }
+}
+
 /// SwiftUI owns the text so confirmation copy uses the same scalable family.
 struct AppConfirmation<Actions: View>: View {
     let title: String
@@ -77,6 +90,7 @@ struct ListRow<Meta: View, Trailing: View>: View {
     var number: Int? = nil
     let title: String
     var dimmed = false
+    var titleFont = Theme.rowTitle
     let action: () -> Void
     @ViewBuilder var meta: Meta
     @ViewBuilder var trailing: Trailing
@@ -109,7 +123,7 @@ struct ListRow<Meta: View, Trailing: View>: View {
                     Text(number.formatted()).font(Theme.meta).frame(minWidth: 24)
                 }
                 VStack(alignment: .leading, spacing: Theme.Space.tight) {
-                    Text(title).font(Theme.rowTitle).fixedSize(horizontal: false, vertical: true)
+                    Text(title).font(titleFont).fixedSize(horizontal: false, vertical: true)
                     meta.font(Theme.meta).foregroundStyle(Theme.secondary)
                         .fixedSize(horizontal: false, vertical: true)
                 }
@@ -352,5 +366,130 @@ extension MIDIInput {
             return sources.first(where: { $0.id == selectedID })?.name ?? sources.first?.name
         }
         return sources.first?.name
+    }
+}
+
+// MARK: - Hardware Chrome Controls (DESIGN.md)
+
+private struct HardwareSquareButtonStyle: ButtonStyle {
+    var size: CGFloat = 40
+    var isActive: Bool = false
+    var onDark: Bool = false
+    @Environment(\.accessibilityReduceMotion) private var reduced
+    @Environment(\.isEnabled) private var enabled
+
+    func makeBody(configuration: Configuration) -> some View {
+        let policy = Theme.Motion.Policy(reduced: reduced)
+        let pressed = configuration.isPressed
+        let shape = RoundedRectangle(cornerRadius: Theme.Radius.control)
+        let darkSurface = Color(red: 0x1B / 255.0, green: 0x1B / 255.0, blue: 0x1F / 255.0)
+        let darkBorder = Color(red: 0x26 / 255.0, green: 0x26 / 255.0, blue: 0x2B / 255.0)
+        let foreground = onDark ? Theme.white : Theme.ink
+        let fill = isActive ? Theme.activeFill : (onDark ? darkSurface : Theme.surfaceElevated)
+        let border = isActive ? Theme.accent : (onDark ? darkBorder : Theme.hairline)
+
+        configuration.label
+            .foregroundStyle(enabled ? foreground : foreground.opacity(0.35))
+            .frame(width: size, height: size)
+            .background {
+                shape
+                    .fill(enabled ? fill : Theme.disabledFill)
+                    .overlay {
+                        shape.strokeBorder(border, lineWidth: isActive ? 1.5 : 1)
+                    }
+                    .allowsHitTesting(false)
+            }
+            .overlay {
+                if enabled {
+                    shape
+                        .fill(policy.reduced ? Color.black : Color.white)
+                        .opacity(pressed ? (policy.reduced ? Theme.Skin.Pad.reducedPressOpacity : Theme.Skin.Pad.flashOpacity) : 0)
+                        .animation(policy.reduced ? nil : policy.animation(Theme.Motion.padFlash), value: pressed)
+                        .allowsHitTesting(false)
+                }
+            }
+            .scaleEffect(enabled ? policy.scale(pressed ? Theme.Skin.Pad.pressedScale : 1) : 1)
+            .offset(y: enabled ? policy.offset(pressed ? Theme.Skin.Pad.pressedY : 0) : 0)
+            .animation(enabled ? policy.animation(pressed ? Theme.Motion.padFlash : Theme.Motion.padPress) : nil, value: pressed)
+            .frame(minWidth: Theme.Size.minimumTouch, minHeight: Theme.Size.minimumTouch)
+            .contentShape(Rectangle())
+    }
+}
+
+/// Unified 6pt-radius hardware back button (40×40, or 36×36 compact) with Esc and ⌘[ shortcuts.
+struct HardwareBackButton: View {
+    @Environment(SettingsManager.self) private var settings
+    var onDark: Bool = false
+    var compact: Bool = false
+    let action: () -> Void
+
+    var body: some View {
+        let size: CGFloat = compact ? 36 : 40
+        ZStack {
+            // Secondary hidden trigger so both Esc and ⌘[ invoke back from a hardware keyboard.
+            Button("", action: action)
+                .keyboardShortcut("[", modifiers: .command)
+                .frame(width: 1, height: 1)
+                .opacity(0)
+                .allowsHitTesting(false)
+                .accessibilityHidden(true)
+
+            Button(action: action) {
+                Image(systemName: "chevron.left")
+                    .font(.system(size: compact ? 15 : 16, weight: .semibold))
+            }
+            .buttonStyle(HardwareSquareButtonStyle(size: size, onDark: onDark))
+            .accessibilityLabel(settings.localized("Back"))
+            .keyboardShortcut(.escape, modifiers: [])
+        }
+        .frame(minWidth: Theme.Size.minimumTouch, minHeight: Theme.Size.minimumTouch)
+    }
+}
+
+typealias BackButton = HardwareBackButton
+
+/// Unified 6pt-radius hardware icon button (40×40, or 36×36 compact) for navigation and toolbars.
+struct HardwareIconButton: View {
+    let systemName: String
+    let accessibilityLabel: String
+    var compact: Bool = false
+    var isActive: Bool = false
+    var onDark: Bool = false
+    let action: () -> Void
+
+    var body: some View {
+        let size: CGFloat = compact ? 36 : 40
+        Button(action: action) {
+            Image(systemName: systemName)
+                .font(.system(size: compact ? 15 : 17, weight: .semibold))
+        }
+        .buttonStyle(HardwareSquareButtonStyle(size: size, isActive: isActive, onDark: onDark))
+        .accessibilityLabel(accessibilityLabel)
+        .accessibilityAddTraits(isActive ? .isSelected : [])
+    }
+}
+
+/// Standard top navigation bar with leading back/secondary controls, centered title or picker, and trailing settings.
+struct ScreenTopBar<Leading: View, Center: View, Trailing: View>: View {
+    @ViewBuilder var leading: () -> Leading
+    @ViewBuilder var center: () -> Center
+    @ViewBuilder var trailing: () -> Trailing
+
+    var body: some View {
+        ZStack {
+            center()
+                .frame(maxWidth: .infinity, alignment: .center)
+
+            HStack(spacing: Theme.Space.small) {
+                HStack(spacing: Theme.Space.small) {
+                    leading()
+                }
+                Spacer(minLength: Theme.Space.regular)
+                HStack(spacing: Theme.Space.small) {
+                    trailing()
+                }
+            }
+        }
+        .frame(minHeight: Theme.Size.touch)
     }
 }

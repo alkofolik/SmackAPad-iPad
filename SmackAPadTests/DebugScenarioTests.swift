@@ -128,6 +128,8 @@ final class DebugScenarioTests: XCTestCase {
                 switch scenario {
                 case .fresh:
                     XCTAssertTrue(records.isEmpty)
+                    XCTAssertEqual(BadgeStore(userDefaults: defaults).earnedCount, 0)
+                    XCTAssertFalse(FileManager.default.fileExists(atPath: progress.drummerFileURL.path))
                     XCTAssertNil(defaults.object(forKey: "smackapad.legend.shownOnce"))
                 case .introDone:
                     XCTAssertEqual(Set(records.keys), introIDs)
@@ -140,6 +142,12 @@ final class DebugScenarioTests: XCTestCase {
                     let unlock = progression.unlockProgress(for: secondStage)
                     XCTAssertGreaterThanOrEqual(unlock.completed, unlock.needed)
                     XCTAssertTrue(progression.isStageOpen(secondStage))
+                case .bossOpen:
+                    let stages = DrummerPathMapBuilder.buildStages(catalog: catalog, progress: records,
+                                                                  pathState: progress.drummerPath)
+                    let stage = try XCTUnwrap(stages.first { $0.id == firstStage.id })
+                    XCTAssertEqual(stage.bossNode?.state, .active)
+                    XCTAssertNotNil(stage.bossEncounter)
                 case .awaitingStar3:
                     XCTAssertGreaterThanOrEqual(records.count, 3)
                     for record in records.values {

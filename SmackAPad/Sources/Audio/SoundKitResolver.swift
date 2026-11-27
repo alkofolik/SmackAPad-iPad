@@ -127,11 +127,13 @@ public struct SoundKitResolver: Sendable {
     /// 1. Per-lesson override (if specified and not "auto")
     /// 2. Global setting (`settings.selectedKitId`)
     /// 3. If the result is "auto", genre mapping table
-    /// 4. Safety check: if the resolved kit lacks any voice required by the lesson, fall back to "acoustic".
+    /// 4. Story mode kit lock fallback: if in Story mode and the resolved kit is locked, fall back to Starter ("acoustic").
+    /// 5. Safety check: if the resolved kit lacks any voice required by the lesson, fall back to "acoustic".
     public static func resolve(
         for lesson: Lesson,
         settings: SettingsManager,
-        kits: [String: SampleKit]? = nil
+        kits: [String: SampleKit]? = nil,
+        pathState: DrummerPathState? = nil
     ) -> SoundKitResolution {
         let override = settings.kitOverride(for: lesson.id)
         let candidateRaw: String
@@ -148,12 +150,19 @@ public struct SoundKitResolver: Sendable {
             isAuto = true
         }
 
+        let candidateUnlocked: String
+        if settings.playMode == .story, let pathState, !pathState.isKitUnlocked(candidateRaw) {
+            candidateUnlocked = DrumKitCatalog.starterKitId
+        } else {
+            candidateUnlocked = candidateRaw
+        }
+
         let kitsDict = (kits != nil && !kits!.isEmpty) ? kits! : bundledKits
         let needed = requiredVoices(for: lesson)
 
         let finalKitId: String
-        if kitHasVoices(kitId: candidateRaw, neededVoices: needed, kits: kitsDict) {
-            finalKitId = candidateRaw
+        if kitHasVoices(kitId: candidateUnlocked, neededVoices: needed, kits: kitsDict) {
+            finalKitId = candidateUnlocked
         } else {
             finalKitId = fallbackKitId
         }
@@ -173,8 +182,9 @@ public struct SoundKitResolver: Sendable {
     public static func resolveKitId(
         for lesson: Lesson,
         settings: SettingsManager,
-        kits: [String: SampleKit]? = nil
+        kits: [String: SampleKit]? = nil,
+        pathState: DrummerPathState? = nil
     ) -> String {
-        resolve(for: lesson, settings: settings, kits: kits).kitId
+        resolve(for: lesson, settings: settings, kits: kits, pathState: pathState).kitId
     }
 }

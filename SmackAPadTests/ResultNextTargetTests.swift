@@ -132,5 +132,18 @@ final class ResultNextTargetTests: XCTestCase {
             nextPathLesson: pathLesson
         )
         XCTAssertEqual(ordinaryTarget, .lesson(pathLesson))
+
+        let dailyMixTarget = ResultNextTarget.resolve(
+            isStepResult: true,
+            isMix: true,
+            afterMe: false,
+            finishedByReview: false,
+            isDueReview: false,
+            reviewFeedback: nil,
+            lessonPassed: false,
+            nextDueReview: nil,
+            nextPathLesson: nil
+        )
+        XCTAssertEqual(dailyMixTarget, .stepResult)
     }
 }

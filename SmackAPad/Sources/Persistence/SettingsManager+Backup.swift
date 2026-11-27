@@ -26,9 +26,11 @@ extension SettingsManager {
                 userDefaults.removeObject(forKey: key.rawValue)
             }
             self.selectedKitId = Self.defaultKitId
+            self.selectedInstrumentSkinId = StudioRigCatalog.defaultSkinId
             self.lessonKitOverrides = [:]
             self.midiControls = MIDIControlConfiguration()
             self.practiceMode = .learning
+            self.playMode = Self.defaultPlayMode
             self.bpmStep = Self.defaultBpmStep
             self.activeProfileName = Self.defaultProfileName
             self.calibrationOffsets = [:]
@@ -46,6 +48,7 @@ extension SettingsManager {
             userDefaults.removeObject(forKey: "smackapad.training.dueStepFilter")
             userDefaults.removeObject(forKey: "smackapad.library.hideCompleted")
             self.hideCompletedLessons = true
+            self.introSkipped = false
             for mode in ["path", "genre", "technique"] {
                 userDefaults.removeObject(forKey: "smackapad.library.hiddenCategories.\(mode)")
             }
@@ -70,10 +73,12 @@ extension SettingsManager {
             return BackupSettings(
                 settingsModifiedAt: modifiedAt,
                 selectedKitId: selectedKitId,
+                selectedInstrumentSkinId: selectedInstrumentSkinId,
                 lessonKitOverrides: lessonKitOverrides,
                 midiControls: midiControls,
                 bpmStep: bpmStep,
                 practiceMode: practiceMode.rawValue,
+                playMode: playMode.rawValue,
                 activeProfileName: activeProfileName,
                 customProfiles: customProfiles,
                 languagePreference: languagePreference.rawValue,
@@ -88,6 +93,7 @@ extension SettingsManager {
                 reviewReminderEnabled: reviewReminderEnabled,
                 reviewReminderTime: reviewReminderTime,
                 hideCompletedLessons: hideCompletedLessons,
+                introSkipped: introSkipped,
                 hiddenCategoryIDsByMode: hiddenCategoryIDsByMode,
                 libraryView: libraryView,
                 libraryStarFilters: libraryStarFilters,
@@ -109,11 +115,15 @@ extension SettingsManager {
     public func applyImportedSettings(_ settings: BackupSettings) {
         withLock {
             self.selectedKitId = settings.selectedKitId
+            self.selectedInstrumentSkinId = settings.selectedInstrumentSkinId
             self.lessonKitOverrides = settings.lessonKitOverrides
             self.midiControls = settings.midiControls
             self.bpmStep = settings.bpmStep
             if let mode = PracticeMode(rawValue: settings.practiceMode) {
                 self.practiceMode = mode
+            }
+            if let mode = PlayMode(rawValue: settings.playMode) {
+                self.playMode = mode
             }
             self.activeProfileName = settings.activeProfileName
             self.customProfiles = settings.customProfiles
@@ -135,6 +145,7 @@ extension SettingsManager {
                 self.reviewReminderTime = time
             }
             self.hideCompletedLessons = settings.hideCompletedLessons
+            self.introSkipped = settings.introSkipped
             self.hiddenCategoryIDsByMode = settings.hiddenCategoryIDsByMode
             self.libraryView = settings.libraryView
             self.libraryStarFilters = settings.libraryStarFilters

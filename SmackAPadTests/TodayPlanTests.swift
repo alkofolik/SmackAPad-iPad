@@ -119,18 +119,18 @@ final class TodayPlanTests: XCTestCase {
             .init(kind: .mix, lessonIDs: [7, 8], outcome: .init(bestScore: 1, reviewFeedback: nil))
         ]
         let plan = TodayPlan(day: "2026-11-08", steps: steps)
-        XCTAssertEqual(steps[0].status, .didNotCount(.unfinishedReview))
+        XCTAssertEqual(steps[0].status, .inProgress(.unfinishedReview))
         XCTAssertEqual(steps[1].status, .passed)
         XCTAssertEqual(steps[2].status, .triedNotMet)
-        XCTAssertEqual(steps[3].status, .didNotCount(.requirements(goalBpm: 120)))
+        XCTAssertEqual(steps[3].status, .inProgress(.requirements(goalBpm: 120)))
         XCTAssertEqual(steps[4].status, .passed)
         XCTAssertNil(steps[5].status)
         XCTAssertEqual(plan.reviewSummary.played, 5)
         XCTAssertEqual(plan.reviewSummary.passed, 2)
-        XCTAssertEqual(plan.reviewSummary.didNotCount, 2)
+        XCTAssertEqual(plan.reviewSummary.inProgress, 2)
         XCTAssertEqual(plan.reviewSummary.triedNotMet, 1)
         XCTAssertEqual(plan.reviewSummary.notPlayed, 1)
-        XCTAssertEqual(plan.reviewSummary.passed + plan.reviewSummary.didNotCount + plan.reviewSummary.triedNotMet + plan.reviewSummary.notPlayed,
+        XCTAssertEqual(plan.reviewSummary.passed + plan.reviewSummary.inProgress + plan.reviewSummary.triedNotMet + plan.reviewSummary.notPlayed,
                        plan.reviewCount)
     }
 
@@ -141,7 +141,8 @@ final class TodayPlanTests: XCTestCase {
                                    outcome: .init(bestScore: 1, reviewPendingReason: .notesVisible))
         XCTAssertEqual(lesson.status, .played)
         XCTAssertEqual(passingLesson.status, .passed)
-        XCTAssertEqual(warmup.status, .didNotCount(.notesVisible))
+        XCTAssertEqual(warmup.status, .inProgress(.notesVisible))
+        XCTAssertEqual(warmup.status?.titleKey, "Warm-up complete")
     }
 
     func testReviewFailureReason() {
@@ -195,7 +196,7 @@ final class TodayPlanTests: XCTestCase {
     func testReviewLoadSeparatesTodaysTwoFromTheRemainingQueue() throws {
         let due = Array(1...29)
         let plan = try XCTUnwrap(TodayPlan.make(day: "2026-11-08", dueLessonIDs: due,
-                                               nextLessonID: nil, mixLessonIDs: []))
+                                               nextLessonID: nil))
         let load = TodayPlan.ReviewLoad(dueLessonIDs: due, plan: plan)
         XCTAssertEqual(load.todayIDs, [1, 2])
         XCTAssertEqual(load.queueIDs, Array(3...29))
@@ -213,28 +214,54 @@ final class TodayPlanTests: XCTestCase {
          "index":1,"finished":true,"phase":"summary"}
         """
         let plan = try XCTUnwrap(TodayPlan.decode(json, today: "2026-11-08"))
-        XCTAssertEqual(plan.steps[0].status, .didNotCount(.unfinishedReview))
+        XCTAssertEqual(plan.steps[0].status, .inProgress(.unfinishedReview))
     }
 
-    func testThreeDueReviewsTakeTwoOldestThenNewLessonAndMix() {
+    func testThreeDueReviewsTakeTwoOldestThenNewLesson() {
         let plan = TodayPlan.make(day: "2026-11-05", dueLessonIDs: [30, 10, 20],
-                                  nextLessonID: 40, mixLessonIDs: [50, 60])
-        XCTAssertEqual(plan?.steps.map(\.kind), [.review, .review, .newLesson, .mix])
-        XCTAssertEqual(plan?.steps.map(\.lessonIDs), [[30], [10], [40], [50, 60]])
+                                  nextLessonID: 40)
+        XCTAssertEqual(plan?.steps.map(\.kind), [.review, .review, .newLesson])
+        XCTAssertEqual(plan?.steps.map(\.lessonIDs), [[30], [10], [40]])
     }
 
-    func testNoNewLessonAndMixBelowTwoAreOmitted() {
-        for mix in [[], [50]] {
-            let plan = TodayPlan.make(day: "2026-11-05", dueLessonIDs: [30],
-                                      nextLessonID: nil, mixLessonIDs: mix)
-            XCTAssertEqual(plan?.steps.map(\.kind), [.review])
-            XCTAssertEqual(plan?.steps.map(\.lessonIDs), [[30]])
-        }
+    func testNoNewLessonOmitsNewLessonStep() {
+        let plan = TodayPlan.make(day: "2026-11-05", dueLessonIDs: [30],
+                                  nextLessonID: nil)
+        XCTAssertEqual(plan?.steps.map(\.kind), [.review])
+        XCTAssertEqual(plan?.steps.map(\.lessonIDs), [[30]])
     }
 
-    func testNoDueReviewsMeansNoTodayPlan() {
-        XCTAssertNil(TodayPlan.make(day: "2026-11-05", dueLessonIDs: [],
-                                   nextLessonID: 40, mixLessonIDs: [50, 60]))
+    func testFirstDayWithoutReviewsOffersTwoNewLessons() throws {
+        var plan = try XCTUnwrap(TodayPlan.make(day: "2026-11-05", dueLessonIDs: [], nextLessonID: 40,
+                                               followUpLessonID: 41))
+        XCTAssertEqual(plan.steps.map(\.kind), [.newLesson, .newLesson])
+        XCTAssertEqual(plan.steps.map(\.lessonIDs), [[40], [41]])
+        XCTAssertEqual(plan.estimatedMinutes, 4)
+
+        plan.steps[0].outcome = .init(bestScore: 0.8)
+        XCTAssertEqual(plan.estimatedMinutes, 2)
+        plan.steps[1].outcome = .init(bestScore: 0.7)
+        XCTAssertEqual(plan.estimatedMinutes, 0)
+        XCTAssertTrue(plan.isFinished)
+    }
+
+    func testNoReviewsOmitsDuplicateFollowUpAndReturnsNilWithoutLessons() {
+        let day = "2026-11-05"
+        let duplicateFollowUp = TodayPlan.make(day: day, dueLessonIDs: [], nextLessonID: 40,
+                                               followUpLessonID: 40)
+        XCTAssertEqual(duplicateFollowUp?.steps.map(\.kind), [.newLesson])
+        XCTAssertEqual(duplicateFollowUp?.steps.map(\.lessonIDs), [[40]])
+        XCTAssertNil(TodayPlan.make(day: day, dueLessonIDs: [], nextLessonID: nil))
+    }
+
+    func testEstimateUsesRemainingReviewsAndRoundsToWholeMinutes() throws {
+        var plan = try XCTUnwrap(TodayPlan.make(day: "2026-11-05", dueLessonIDs: [30, 31],
+                                               nextLessonID: 40))
+        XCTAssertEqual(plan.estimatedMinutes, 5)
+        plan.index = 1
+        XCTAssertEqual(plan.estimatedMinutes, 4)
+        plan.finished = true
+        XCTAssertEqual(plan.estimatedMinutes, 0)
     }
 
     func testPostponeMovesDueDayToTomorrowAndPreservesStep() {
@@ -296,7 +323,7 @@ final class TodayPlanTests: XCTestCase {
             LessonProgress(passed: true, mastery: true, masteryDay: yesterday, reviewStep: 0, reviewDueDay: today),
             for: 1
         )
-        let plan1 = TodayPlan.make(day: today, dueLessonIDs: [1], nextLessonID: 99, mixLessonIDs: [])!
+        let plan1 = TodayPlan.make(day: today, dueLessonIDs: [1], nextLessonID: 99)!
 
         let firstQueueOutcome = completeReviewRun(for: 1, in: progress1)
         XCTAssertNotNil(firstQueueOutcome?.feedback)
@@ -321,7 +348,7 @@ final class TodayPlanTests: XCTestCase {
             LessonProgress(passed: true, mastery: true, masteryDay: yesterday, reviewStep: 0, reviewDueDay: today),
             for: 2
         )
-        let plan2 = TodayPlan.make(day: today, dueLessonIDs: [2], nextLessonID: 99, mixLessonIDs: [])!
+        let plan2 = TodayPlan.make(day: today, dueLessonIDs: [2], nextLessonID: 99)!
 
         let coordinator2 = TodaySessionCoordinator(plan: plan2, defaults: defaults)
         coordinator2.continueSession()
@@ -357,7 +384,7 @@ final class TodayPlanTests: XCTestCase {
                                     lastReviewedDay: today)
         progress.setProgress(passed, for: 6)
 
-        let plan = TodayPlan.make(day: today, dueLessonIDs: [6], nextLessonID: 7, mixLessonIDs: [])!
+        let plan = TodayPlan.make(day: today, dueLessonIDs: [6], nextLessonID: 7)!
         let reconciled = plan.reconcilingReviews(with: progress.records)
         XCTAssertEqual(reconciled.reviewSummary.passed, 1)
         XCTAssertEqual(reconciled.steps[0].outcome?.reviewFeedback, .passed(nextStep: 2, gapDays: 7))
@@ -391,8 +418,7 @@ final class TodayPlanTests: XCTestCase {
         if case .step(let resolved) = TodayContinueTarget.resolve(
             currentPlan: activePlan,
             today: day,
-            nextLessonID: 99,
-            mixLessonIDs: [10, 11]
+            nextLessonID: 99
         ) {
             XCTAssertEqual(resolved.day, day)
             XCTAssertEqual(resolved.steps.count, 2)
@@ -408,13 +434,12 @@ final class TodayPlanTests: XCTestCase {
         if case .summary(let resolved) = TodayContinueTarget.resolve(
             currentPlan: finishedPlan,
             today: day,
-            nextLessonID: nil,
-            mixLessonIDs: []
+            nextLessonID: nil
         ) {
             XCTAssertTrue(resolved.finished)
             XCTAssertEqual(resolved.phase, .summary)
         } else {
-            XCTFail("Expected finished plan to open the day summary")
+            XCTFail("Expected finished plan to resolve to finished state")
         }
 
         var exhaustedPlan = activePlan
@@ -423,97 +448,90 @@ final class TodayPlanTests: XCTestCase {
         if case .summary(let resolved) = TodayContinueTarget.resolve(
             currentPlan: exhaustedPlan,
             today: day,
-            nextLessonID: nil,
-            mixLessonIDs: []
+            nextLessonID: nil
         ) {
             XCTAssertTrue(resolved.finished)
             XCTAssertEqual(resolved.phase, .summary)
         } else {
-            XCTFail("Expected exhausted plan to normalize to the day summary")
+            XCTFail("Expected exhausted plan to normalize to finished state")
         }
 
         if case .summary(let resolved) = TodayContinueTarget.resolve(
             currentPlan: TodayPlan(day: day, steps: []),
             today: day,
-            nextLessonID: nil,
-            mixLessonIDs: []
+            nextLessonID: nil
         ) {
             XCTAssertTrue(resolved.finished)
             XCTAssertEqual(resolved.phase, .summary)
         } else {
-            XCTFail("Expected empty plan to open the day summary")
+            XCTFail("Expected empty plan to resolve to finished state")
         }
 
         if case .step(let fallback) = TodayContinueTarget.resolve(
             currentPlan: nil,
             today: day,
-            nextLessonID: 5,
-            mixLessonIDs: [10, 11]
+            nextLessonID: 5
         ) {
-            XCTAssertEqual(fallback.steps.map(\.kind), [.newLesson, .mix])
-            XCTAssertEqual(fallback.steps.map(\.lessonIDs), [[5], [10, 11]])
+            XCTAssertEqual(fallback.steps.map(\.kind), [.newLesson])
+            XCTAssertEqual(fallback.steps.map(\.lessonIDs), [[5]])
         } else {
-            XCTFail("Expected no-plan fallback with next lesson and mix to offer a daily step")
+            XCTFail("Expected no-plan fallback with next lesson to offer a daily step")
         }
 
         XCTAssertNil(TodayContinueTarget.resolve(
             currentPlan: nil,
             today: day,
-            nextLessonID: nil,
-            mixLessonIDs: [10]
+            nextLessonID: nil
         ))
     }
 
     @MainActor
-    func testAfterLastMixLessonOutcomeRecordedTodayStateReportsMixDoneAndNextActionDaySummary() throws {
-        let suite = "today-mix-done-\(UUID().uuidString)"
+    func testAfterLastLessonOutcomeRecordedTodayStateReportsFinished() throws {
+        let suite = "today-last-done-\(UUID().uuidString)"
         let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))
         defer { defaults.removePersistentDomain(forName: suite) }
         let today = AppCalendar.today()
 
         let plan = TodayPlan(day: today, steps: [
             .init(kind: .review, lessonIDs: [1], outcome: PracticeStepOutcome(bestScore: 0.9, reviewFeedback: .settled)),
-            .init(kind: .newLesson, lessonIDs: [2], outcome: PracticeStepOutcome(bestScore: 0.85)),
-            .init(kind: .mix, lessonIDs: [1, 2])
-        ], index: 2, finished: false, phase: .practice)
+            .init(kind: .newLesson, lessonIDs: [2])
+        ], index: 1, finished: false, phase: .practice)
 
         let coordinator = TodaySessionCoordinator(plan: plan, defaults: defaults)
-        // Record the last mix lesson's outcome
+        // Record the last lesson's outcome
         coordinator.record(PracticeStepOutcome(bestScore: 0.9))
 
-        // 1. In coordinator.plan, mix is done
-        let mixStep = try XCTUnwrap(coordinator.plan.steps.first(where: { $0.kind == .mix }))
-        XCTAssertEqual(mixStep.status, .passed)
+        // 1. In coordinator.plan, newLesson is done
+        let lastStep = try XCTUnwrap(coordinator.plan.steps.last)
+        XCTAssertEqual(lastStep.status, .passed)
 
-        // 2. Next action is day summary without any extra reload call
+        // 2. Next action is finished without any extra reload call
         let target = TodayContinueTarget.resolve(
             currentPlan: coordinator.plan,
             today: today,
-            nextLessonID: nil,
-            mixLessonIDs: [1, 2]
+            nextLessonID: nil
         )
         if case .summary(let summaryPlan) = target {
             XCTAssertTrue(summaryPlan.finished)
         } else {
-            XCTFail("Expected next action to be day summary, but got: \(String(describing: target))")
+            XCTFail("Expected next action to be finished, but got: \(String(describing: target))")
         }
 
-        // 3. Saved day state in defaults also reports mix done and summary
+        // 3. Saved day state in defaults also reports done
         let savedJson = try XCTUnwrap(defaults.string(forKey: TodayPlan.storageKey))
         let savedPlan = try XCTUnwrap(TodayPlan.decode(savedJson, today: today))
-        let savedMixStep = try XCTUnwrap(savedPlan.steps.first(where: { $0.kind == .mix }))
-        XCTAssertEqual(savedMixStep.status, .passed)
+        let savedLastStep = try XCTUnwrap(savedPlan.steps.last)
+        XCTAssertEqual(savedLastStep.status, .passed)
 
         let savedTarget = TodayContinueTarget.resolve(
             currentPlan: savedPlan,
             today: today,
-            nextLessonID: nil,
-            mixLessonIDs: [1, 2]
+            nextLessonID: nil
         )
         if case .summary(let summaryPlan) = savedTarget {
             XCTAssertTrue(summaryPlan.finished)
         } else {
-            XCTFail("Expected saved plan next action to be day summary, but got: \(String(describing: savedTarget))")
+            XCTFail("Expected saved plan next action to be finished, but got: \(String(describing: savedTarget))")
         }
     }
 
@@ -527,7 +545,7 @@ final class TodayPlanTests: XCTestCase {
         let plan = TodayPlan(day: "2026-11-23", steps: [step])
         XCTAssertEqual(plan.reviewSummary.played, 1)
         XCTAssertEqual(plan.reviewSummary.passed, 0)
-        XCTAssertEqual(plan.reviewSummary.didNotCount, 0)
+        XCTAssertEqual(plan.reviewSummary.inProgress, 0)
         XCTAssertEqual(plan.reviewSummary.triedNotMet, 1)
 
         // Reconciliation with open failure without lastReviewedDay
@@ -536,5 +554,44 @@ final class TodayPlanTests: XCTestCase {
             1: .init(reviewStep: 0, lastReviewFailDay: "2026-11-23")
         ])
         XCTAssertEqual(reconciled.steps[0].status, .triedNotMet)
+    }
+
+    @MainActor
+    func testDirectDailyStepAdvanceProtectsNextStepFromStaleRecordCallbacks() throws {
+        let suite = "today-direct-advance-\(UUID().uuidString)"
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))
+        defer { defaults.removePersistentDomain(forName: suite) }
+        let file = FileManager.default.temporaryDirectory.appendingPathComponent("\(suite).json")
+        defer { try? FileManager.default.removeItem(at: file) }
+        let progress = ProgressStore(fileURL: file, autoLoad: false)
+        let today = AppCalendar.today()
+        let plan = TodayPlan(day: today, steps: [
+            .init(kind: .review, lessonIDs: [1]),
+            .init(kind: .newLesson, lessonIDs: [2]),
+            .init(kind: .mix, lessonIDs: [1, 2])
+        ])
+        let coordinator = TodaySessionCoordinator(plan: plan, defaults: defaults)
+
+        coordinator.continueSession()
+        coordinator.record(.init(bestScore: 0.92, reviewFeedback: .passed(nextStep: 1, gapDays: 3)), at: 0)
+        coordinator.leavePractice(progress: progress)
+        XCTAssertEqual(coordinator.plan.index, 1)
+
+        // Simulate Step 1 opening while Step 0's onDisappear fires a stale record callback.
+        coordinator.continueSession()
+        coordinator.record(.init(bestScore: 0.92, reviewFeedback: .passed(nextStep: 1, gapDays: 3)), at: 0)
+        XCTAssertNil(coordinator.plan.steps[1].outcome)
+
+        coordinator.record(.init(bestScore: 0.85), at: 1)
+        coordinator.leavePractice(progress: progress)
+        XCTAssertEqual(coordinator.currentStep?.kind, .mix)
+
+        coordinator.continueSession()
+        coordinator.record(.init(bestScore: 0.90), at: 2)
+        if case .summary(let donePlan) = coordinator.nextAction {
+            XCTAssertTrue(donePlan.finished)
+        } else {
+            XCTFail("Expected summary after final mix step")
+        }
     }
 }

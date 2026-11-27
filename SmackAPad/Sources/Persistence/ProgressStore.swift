@@ -26,8 +26,28 @@ public final class ProgressStore: @unchecked Sendable {
         5: 10011, 7: 10016, 8: 10013, 9: 10014
     ]
 
-    public private(set) var records: [Int: LessonProgress] = [:]
+    public private(set) var records: [Int: LessonProgress] = [:] {
+        didSet { bumpStoryStateGeneration() }
+    }
     public private(set) var trainingLog: TrainingLog = TrainingLog()
+    public private(set) var drummerPath = DrummerPathState(migratedFromLegacyProgress: true) {
+        didSet { bumpStoryStateGeneration() }
+    }
+    @ObservationIgnored private let storyStateGenerationLock = NSLock()
+    @ObservationIgnored private var _storyStateGeneration: UInt64 = 0
+    var storyStateGeneration: UInt64 {
+        storyStateGenerationLock.lock()
+        defer { storyStateGenerationLock.unlock() }
+        return _storyStateGeneration
+    }
+    private func bumpStoryStateGeneration() {
+        storyStateGenerationLock.lock()
+        _storyStateGeneration &+= 1
+        storyStateGenerationLock.unlock()
+    }
+    public private(set) var lastDrummerDelta: DrummerProgressDelta?
+    public private(set) var lastDrummerKeysAwarded: Int = 0
+    public private(set) var lastDrummerKeySources: [String] = []
     public private(set) var lastSaveError: Error?
     public private(set) var lastLoadError: Error?
     private var hasFinishedLoading = false
@@ -37,6 +57,10 @@ public final class ProgressStore: @unchecked Sendable {
     public var hasUnreadableProgressBackup: Bool { unreadableProgressBackupURL != nil }
 
     public let fileURL: URL
+    /// Companion storage file for Drummer's Path & Studio Rig RPG state, keeping `progress.json` byte-compatible.
+    public var drummerFileURL: URL {
+        fileURL.deletingPathExtension().appendingPathExtension("drummer.json")
+    }
     private let lock = NSRecursiveLock()
     private var lifecycleObservers: [Any] = []
     private var unreadableProgressBackupURL: URL?
@@ -104,6 +128,8 @@ public final class ProgressStore: @unchecked Sendable {
             let root = try decoder.decode(ProgressRoot.self, from: data)
             self.records = root.lessons
             self.trainingLog = root.trainingLog
+            self.drummerPath = loadDrummerPathLocked()
+            self.lastDrummerDelta = nil
             self.lastLoadError = nil
             var didMigrate = migrateDuplicateIntroProgress()
             if migrateLegacyMasteredReviewSchedule() {
@@ -120,10 +146,15 @@ public final class ProgressStore: @unchecked Sendable {
                 // progress in memory for the next normal save; do not treat it as a decode error.
                 try? save()
             }
+            if migrateDrummerPathLocked(catalog: LessonStore.shared.libraryCatalog) {
+                try? saveDrummerPathLocked()
+            }
         } catch {
             if (error as? CocoaError)?.code == .fileReadNoSuchFile {
                 self.records = [:]
                 self.trainingLog = TrainingLog()
+                self.drummerPath = DrummerPathState(migratedFromLegacyProgress: true)
+                self.lastDrummerDelta = nil
                 self.lastLoadError = nil
                 return
             }
@@ -136,6 +167,8 @@ public final class ProgressStore: @unchecked Sendable {
             print("SmackAPad.ProgressStore: Warning - failed to read progress from \(fileURL.path): \(error). Saving is blocked.")
             self.records = [:]
             self.trainingLog = TrainingLog()
+            self.drummerPath = DrummerPathState()
+            self.lastDrummerDelta = nil
             self.lastLoadError = error
         }
     }
@@ -191,6 +224,10 @@ public final class ProgressStore: @unchecked Sendable {
         }
         records = [:]
         trainingLog = TrainingLog()
+        drummerPath = DrummerPathState(migratedFromLegacyProgress: true)
+        lastDrummerDelta = nil
+        lastDrummerKeysAwarded = 0
+        lastDrummerKeySources = []
         lastLoadError = nil
     }
 
@@ -309,6 +346,7 @@ public final class ProgressStore: @unchecked Sendable {
         lock.lock()
         let currentLessons = records
         let currentTraining = trainingLog
+        let currentDrummerPath = drummerPath
         lock.unlock()
 
         let badges = BadgeStore.shared.records
@@ -330,7 +368,8 @@ public final class ProgressStore: @unchecked Sendable {
             progress: currentLessons,
             trainingLog: currentTraining,
             badges: badges,
-            settings: settings
+            settings: settings,
+            drummerPath: currentDrummerPath
         )
     }
 
@@ -380,13 +419,34 @@ public final class ProgressStore: @unchecked Sendable {
             incoming: envelope.trainingLog
         )
 
+        let catalog = LessonStore.shared.libraryCatalog
+        let incomingDrummer = DrummerPathEvaluator.migrateLegacyProgress(
+            existingState: envelope.drummerPath ?? DrummerPathState(),
+            progress: envelope.progress,
+            trainingLog: envelope.trainingLog,
+            catalog: catalog
+        )
+        let mergedPath = ProgressMerge.mergeDrummerPath(local: drummerPath, incoming: incomingDrummer)
+        let mergedDrummer = DrummerPathEvaluator.evaluateProgressUpdate(
+            previousState: mergedPath,
+            previousProgress: mergeResult.merged,
+            previousTrainingLog: mergedTraining,
+            currentProgress: mergeResult.merged,
+            currentTrainingLog: mergedTraining,
+            catalog: catalog
+        ).updatedState
+
         // Write to temp file then atomic replace
         let parentDir = fileURL.deletingLastPathComponent()
         if !FileManager.default.fileExists(atPath: parentDir.path) {
             try FileManager.default.createDirectory(at: parentDir, withIntermediateDirectories: true)
         }
         let tempURL = parentDir.appendingPathComponent("progress.json.tmp")
-        let root = ProgressRoot(formatVersion: ProgressBackup.currentFormatVersion, lessons: mergeResult.merged, trainingLog: mergedTraining)
+        let root = ProgressRoot(
+            formatVersion: ProgressBackup.currentFormatVersion,
+            lessons: mergeResult.merged,
+            trainingLog: mergedTraining
+        )
         let encoder = JSONEncoder()
         encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
         encoder.dateEncodingStrategy = .iso8601
@@ -403,6 +463,9 @@ public final class ProgressStore: @unchecked Sendable {
         // Reload in place without app restart
         self.records = mergeResult.merged
         self.trainingLog = mergedTraining
+        self.drummerPath = mergedDrummer
+        self.lastDrummerDelta = nil
+        try saveDrummerPathLocked()
 
         // Update badges and silently award any newly earned badges
         BadgeStore.shared.importBadges(envelope.badges)
@@ -469,7 +532,11 @@ public final class ProgressStore: @unchecked Sendable {
             try FileManager.default.createDirectory(at: parentDir, withIntermediateDirectories: true)
         }
 
-        let root = ProgressRoot(formatVersion: ProgressBackup.currentFormatVersion, lessons: records, trainingLog: trainingLog)
+        let root = ProgressRoot(
+            formatVersion: ProgressBackup.currentFormatVersion,
+            lessons: records,
+            trainingLog: trainingLog
+        )
 
         do {
             let encoder = JSONEncoder()
@@ -477,6 +544,9 @@ public final class ProgressStore: @unchecked Sendable {
             encoder.dateEncodingStrategy = .iso8601
             let data = try encoder.encode(root)
             try data.write(to: fileURL, options: .atomic)
+            if drummerPath != DrummerPathState() || FileManager.default.fileExists(atPath: drummerFileURL.path) {
+                try saveDrummerPathLocked()
+            }
             self.lastSaveError = nil
         } catch {
             self.lastSaveError = error
@@ -574,6 +644,8 @@ public final class ProgressStore: @unchecked Sendable {
         today: String = AppCalendar.today()
     ) {
         lock.lock()
+        let previousRecords = records
+        let previousLog = trainingLog
         let hadStar = (records[lessonId]?.passed == true) || (records[lessonId]?.mastery == true) || (records[lessonId]?.memory == true)
 
         var record = records[lessonId] ?? LessonProgress(
@@ -585,6 +657,7 @@ public final class ProgressStore: @unchecked Sendable {
 
         record.hasPlayed = true
         record.lastPlayedDay = today
+        trainingLog.practiceDays.insert(today)
         record.passed = record.passed || passed
         let wasMastered = record.mastery
         record.mastery = record.mastery || mastery
@@ -609,6 +682,14 @@ public final class ProgressStore: @unchecked Sendable {
         record.modifiedAt = AppCalendar.now()
 
         records[lessonId] = record
+        let outcome = evaluateDrummerPathLocked(
+            previousRecords: previousRecords,
+            previousLog: previousLog,
+            catalog: LessonStore.shared.libraryCatalog
+        )
+        lastDrummerDelta = outcome.delta
+        lastDrummerKeysAwarded = outcome.keysAwarded
+        lastDrummerKeySources = outcome.newlyAwardedKeySourceIDs
         lock.unlock()
 
         if autoSave {
@@ -634,6 +715,15 @@ public final class ProgressStore: @unchecked Sendable {
         today: String = AppCalendar.today()
     ) {
         recordResult(lessonId: lessonId, passed: true, mastery: mastery, bpm: bpm, score: score, autoSave: autoSave, today: today)
+    }
+
+    /// Tracks a completed full run that does not update lesson results. The session saves it on stop.
+    func recordPracticeDay(_ day: String) {
+        lock.lock()
+        defer { lock.unlock() }
+        if !trainingLog.practiceDays.contains(day) {
+            trainingLog.practiceDays.insert(day)
+        }
     }
 
     /// Directly sets or replaces the progress record for a lesson.
@@ -759,8 +849,11 @@ public final class ProgressStore: @unchecked Sendable {
         autoSave: Bool = true
     ) {
         lock.lock()
+        let previousRecords = records
+        let previousLog = trainingLog
         var record = records[lessonId] ?? LessonProgress()
         trainingLog.trainingDays.insert(today)
+        trainingLog.practiceDays.insert(today)
         if passed {
             trainingLog.reviewsPassed += 1
             if let failDay = record.lastReviewFailDay,
@@ -773,6 +866,16 @@ public final class ProgressStore: @unchecked Sendable {
         }
         record.modifiedAt = AppCalendar.now()
         records[lessonId] = record
+        let outcome = evaluateDrummerPathLocked(
+            previousRecords: previousRecords,
+            previousLog: previousLog,
+            catalog: LessonStore.shared.libraryCatalog
+        )
+        if !outcome.delta.isEmpty { lastDrummerDelta = outcome.delta }
+        if outcome.keysAwarded > 0 {
+            lastDrummerKeysAwarded = outcome.keysAwarded
+            lastDrummerKeySources = outcome.newlyAwardedKeySourceIDs
+        }
         lock.unlock()
 
         if autoSave {
@@ -787,11 +890,24 @@ public final class ProgressStore: @unchecked Sendable {
         autoSave: Bool = true
     ) {
         lock.lock()
+        let previousRecords = records
+        let previousLog = trainingLog
         trainingLog.mixRounds += 1
         if isMemoryRound {
             trainingLog.mixMemoryRounds += 1
         }
         trainingLog.trainingDays.insert(today)
+        trainingLog.practiceDays.insert(today)
+        let outcome = evaluateDrummerPathLocked(
+            previousRecords: previousRecords,
+            previousLog: previousLog,
+            catalog: LessonStore.shared.libraryCatalog
+        )
+        if !outcome.delta.isEmpty { lastDrummerDelta = outcome.delta }
+        if outcome.keysAwarded > 0 {
+            lastDrummerKeysAwarded = outcome.keysAwarded
+            lastDrummerKeySources = outcome.newlyAwardedKeySourceIDs
+        }
         lock.unlock()
 
         if autoSave {
@@ -807,9 +923,22 @@ public final class ProgressStore: @unchecked Sendable {
         autoSave: Bool = true
     ) {
         lock.lock()
+        let previousRecords = records
+        let previousLog = trainingLog
         trainingLog.trainingDays.insert(today)
+        trainingLog.practiceDays.insert(today)
         if score >= Scoring.passMark {
             trainingLog.afterMeLessons.insert(lessonId)
+        }
+        let outcome = evaluateDrummerPathLocked(
+            previousRecords: previousRecords,
+            previousLog: previousLog,
+            catalog: LessonStore.shared.libraryCatalog
+        )
+        if !outcome.delta.isEmpty { lastDrummerDelta = outcome.delta }
+        if outcome.keysAwarded > 0 {
+            lastDrummerKeysAwarded = outcome.keysAwarded
+            lastDrummerKeySources = outcome.newlyAwardedKeySourceIDs
         }
         lock.unlock()
 
@@ -818,16 +947,219 @@ public final class ProgressStore: @unchecked Sendable {
         }
     }
 
+    // MARK: - Drummer's Path & Studio Rig
+
+    /// Returns the computed Drummer Card (XP, level, rank, 4 attributes).
+    func drummerCard(catalog: LibraryCatalog = LessonStore.shared.libraryCatalog) -> DrummerCardSnapshot {
+        lock.lock()
+        defer { lock.unlock() }
+        return DrummerPathEvaluator.computeCard(
+            progress: records,
+            catalog: catalog,
+            trainingLog: trainingLog,
+            state: drummerPath
+        )
+    }
+
+    /// Checks whether a lesson's required drum kit is unlocked, or returns a clear unlock prompt.
+    public func kitAccessStatus(for lesson: Lesson, language: AppLanguage? = nil) -> LessonKitAccessStatus {
+        lock.lock()
+        let state = drummerPath
+        lock.unlock()
+        let resolvedLanguage = language ?? SettingsManager.shared.languagePreference
+        return DrumKitCatalog.accessStatus(for: lesson, state: state, language: resolvedLanguage)
+    }
+
+    /// Spends 1 key to unlock any locked drum kit and saves immediately by default.
+    @discardableResult
+    public func unlockKit(_ kitId: String, autoSave: Bool = true) -> KitUnlockResult {
+        lock.lock()
+        var updated = drummerPath
+        let result = DrummerPathEvaluator.unlockKit(kitId, in: &updated)
+        if case .unlocked = result {
+            drummerPath = updated
+        }
+        lock.unlock()
+        if case .unlocked = result, autoSave {
+            lock.lock()
+            try? saveDrummerPathLocked()
+            lock.unlock()
+        }
+        return result
+    }
+
+    /// Records the chosen lesson for a Story mode fork.
+    public func selectStoryFork(stageId: String, nodeIndex: Int, lessonId: Int, autoSave: Bool = true) {
+        let key = StoryMap.forkChoiceKey(stageId: stageId, nodeIndex: nodeIndex)
+        lock.lock()
+        var updated = drummerPath
+        let changed = updated.storyForkChoices[key] != lessonId
+        if changed {
+            updated.storyForkChoices[key] = lessonId
+            updated.modifiedAt = AppCalendar.now()
+            drummerPath = updated
+        }
+        if changed && autoSave {
+            try? saveDrummerPathLocked()
+        }
+        lock.unlock()
+    }
+
+    /// Marks a stage's Story card as seen so it is not auto-shown again.
+    public func markStoryCardSeen(stageId: String, autoSave: Bool = true) {
+        lock.lock()
+        var updated = drummerPath
+        let inserted = updated.seenStoryCardStageIDs.insert(stageId).inserted
+        if inserted {
+            updated.modifiedAt = AppCalendar.now()
+            drummerPath = updated
+        }
+        if inserted && autoSave {
+            try? saveDrummerPathLocked()
+        }
+        lock.unlock()
+    }
+
+    private func loadDrummerPathLocked() -> DrummerPathState {
+        guard let data = try? Data(contentsOf: drummerFileURL) else {
+            return DrummerPathState()
+        }
+        let decoder = JSONDecoder()
+        decoder.dateDecodingStrategy = .iso8601
+        return (try? decoder.decode(DrummerPathState.self, from: data)) ?? DrummerPathState()
+    }
+
+    func recordBossVictory(stageID: String, catalog: LibraryCatalog = LessonStore.shared.libraryCatalog) throws {
+        lock.lock()
+        defer { lock.unlock() }
+        if let lastLoadError { throw lastLoadError }
+        guard catalog.stages.contains(where: { $0.id == stageID }),
+              !drummerPath.completedExamStageIDs.contains(stageID) else { return }
+
+        let previous = drummerPath
+        let outcome = evaluateDrummerPathLocked(previousRecords: records, previousLog: trainingLog,
+                                                catalog: catalog, completedBossStageID: stageID)
+        do {
+            try saveDrummerPathLocked()
+        } catch {
+            drummerPath = previous
+            throw error
+        }
+        lastDrummerDelta = outcome.delta
+        lastDrummerKeysAwarded = outcome.keysAwarded
+        lastDrummerKeySources = outcome.newlyAwardedKeySourceIDs
+    }
+
+    private func saveDrummerPathLocked() throws {
+        guard lastLoadError == nil else { return }
+        let parentDir = drummerFileURL.deletingLastPathComponent()
+        if !FileManager.default.fileExists(atPath: parentDir.path) {
+            try FileManager.default.createDirectory(at: parentDir, withIntermediateDirectories: true)
+        }
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+        encoder.dateEncodingStrategy = .iso8601
+        let data = try encoder.encode(drummerPath)
+        try data.write(to: drummerFileURL, options: .atomic)
+    }
+
+    /// Migrates pre-RPG saved progress (earned stars & stages) into initial XP, keys, kits, skins, and tracks.
+    @discardableResult
+    func migrateDrummerPathIfNeeded(
+        catalog: LibraryCatalog = LessonStore.shared.libraryCatalog,
+        autoSave: Bool = true
+    ) -> Bool {
+        lock.lock()
+        let changed = migrateDrummerPathLocked(catalog: catalog)
+        if changed && autoSave {
+            try? saveDrummerPathLocked()
+        }
+        lock.unlock()
+        return changed
+    }
+
+    /// Re-evaluates Drummer's Path rewards against an explicit lesson catalog (used by app and tests).
+    @discardableResult
+    func refreshDrummerPath(
+        catalog: LibraryCatalog = LessonStore.shared.libraryCatalog,
+        autoSave: Bool = false
+    ) -> DrummerPathEvaluationOutcome {
+        lock.lock()
+        let outcome = evaluateDrummerPathLocked(
+            previousRecords: records,
+            previousLog: trainingLog,
+            catalog: catalog
+        )
+        lock.unlock()
+        if autoSave {
+            try? save()
+        }
+        return outcome
+    }
+
+    @discardableResult
+    private func migrateDrummerPathLocked(catalog: LibraryCatalog) -> Bool {
+        if !drummerPath.migratedFromLegacyProgress {
+            let migrated = DrummerPathEvaluator.migrateLegacyProgress(
+                existingState: drummerPath,
+                progress: records,
+                trainingLog: trainingLog,
+                catalog: catalog
+            )
+            let changed = migrated != drummerPath
+            drummerPath = migrated
+            return changed
+        }
+        var updated = drummerPath
+        DrummerPathEvaluator.migrateStoryForkChoices(
+            state: &updated,
+            progress: records,
+            catalog: catalog
+        )
+        let changed = updated != drummerPath
+        if changed {
+            updated.modifiedAt = AppCalendar.now()
+            drummerPath = updated
+        }
+        return changed
+    }
+
+    private func evaluateDrummerPathLocked(
+        previousRecords: [Int: LessonProgress],
+        previousLog: TrainingLog,
+        catalog: LibraryCatalog,
+        completedBossStageID: String? = nil
+    ) -> DrummerPathEvaluationOutcome {
+        let outcome = DrummerPathEvaluator.evaluateProgressUpdate(
+            previousState: drummerPath,
+            previousProgress: previousRecords,
+            previousTrainingLog: previousLog,
+            currentProgress: records,
+            currentTrainingLog: trainingLog,
+            catalog: catalog,
+            completedBossStageID: completedBossStageID
+        )
+        drummerPath = outcome.updatedState
+        return outcome
+    }
+
     /// Clears all progress records in memory and resets or deletes the file.
     public func resetAll(deleteFile: Bool = false) throws {
         lock.lock()
         records.removeAll()
         trainingLog = TrainingLog()
+        drummerPath = DrummerPathState(migratedFromLegacyProgress: true)
+        lastDrummerDelta = nil
+        lastDrummerKeysAwarded = 0
+        lastDrummerKeySources = []
         lock.unlock()
 
         if deleteFile {
             if FileManager.default.fileExists(atPath: fileURL.path) {
                 try FileManager.default.removeItem(at: fileURL)
+            }
+            if FileManager.default.fileExists(atPath: drummerFileURL.path) {
+                try FileManager.default.removeItem(at: drummerFileURL)
             }
         } else {
             try save()

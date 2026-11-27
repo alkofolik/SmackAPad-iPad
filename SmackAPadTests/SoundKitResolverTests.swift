@@ -258,4 +258,35 @@ final class SoundKitResolverTests: XCTestCase {
         afterClearSettings.setKitOverride(nil, for: 10)
         XCTAssertNil(afterClearSettings.kitOverride(for: 10))
     }
+
+    // MARK: - Story vs Free Mode Kit Lock Fallback
+
+    func testStoryModeFallsBackToStarterForLockedKitAndFreeModePlaysNormally() {
+        let lesson = makeLesson(id: 77, genre: "Jazz") // "Jazz" maps to "jazz"
+        let (settings, defaults) = createSettings(selectedKit: "auto")
+        defer { defaults.removePersistentDomain(forName: defaults.dictionaryRepresentation().keys.first ?? "") }
+
+        let lockedState = DrummerPathState(unlockedKitIds: [DrumKitCatalog.starterKitId])
+
+        // Story mode: locked "jazz" kit falls back to Starter ("acoustic")
+        settings.playMode = .story
+        XCTAssertEqual(
+            SoundKitResolver.resolveKitId(for: lesson, settings: settings, pathState: lockedState),
+            DrumKitCatalog.starterKitId
+        )
+
+        // Story mode with unlocked "jazz" kit plays "jazz"
+        let unlockedState = DrummerPathState(unlockedKitIds: [DrumKitCatalog.starterKitId, "jazz"])
+        XCTAssertEqual(
+            SoundKitResolver.resolveKitId(for: lesson, settings: settings, pathState: unlockedState),
+            "jazz"
+        )
+
+        // Free mode: locked "jazz" kit still plays "jazz"
+        settings.playMode = .free
+        XCTAssertEqual(
+            SoundKitResolver.resolveKitId(for: lesson, settings: settings, pathState: lockedState),
+            "jazz"
+        )
+    }
 }

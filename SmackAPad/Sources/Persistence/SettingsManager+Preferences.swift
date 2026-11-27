@@ -8,6 +8,8 @@ import Foundation
 // MARK: - Localization, Appearance, BPM & Reminders
 
 extension SettingsManager {
+    static let introSkippedKey = "smackapad.progression.introSkipped"
+
     public var bundle: Bundle {
         languagePreference.bundle
     }

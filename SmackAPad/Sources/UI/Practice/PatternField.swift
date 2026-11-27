@@ -39,6 +39,7 @@ struct PlayedHit {
     let pass: Int
     let mark: HitMark?
     var hidden: Bool = true
+    var struckAt: Double? = nil
 
     func tapeStep(totalSteps: Int) -> Double { Double((pass - 1) * totalSteps) + step }
 
@@ -52,18 +53,52 @@ struct PlayedHit {
     }
 }
 
+struct PatternHitFeedback {
+    let mark: HitMark
+    let struckAt: Double
+}
+
+enum PatternVeilDisplay {
+    static func hides(bar: Int, currentBar: Int, veilBars: Set<Int>) -> Bool {
+        bar <= currentBar && veilBars.contains(bar)
+    }
+}
+
 private struct PatternFeedback {
-    let judgments: [Int: [LessonHit: HitJudgment]]
+    let hitsByPass: [Int: [LessonHit: PatternHitFeedback]]
     let pass: Int
     let position: Double
     let totalSteps: Int
     let bpm: Int
     let reduceMotion: Bool
+    let hostSeconds: Double?
 
     func strength(offset: Int, step: Double) -> Double {
         FeedbackWindow.strength(recordedPass: pass + offset, step: step, pass: pass,
                                 position: position, totalSteps: totalSteps, bpm: bpm,
                                 reduceMotion: reduceMotion)
+    }
+
+    static let strikeDuration = 0.22
+
+    static func correctPopScale(struckAt: Double?, hostSeconds: Double?, reduceMotion: Bool) -> CGFloat {
+        guard let progress = correctPulseProgress(struckAt: struckAt, hostSeconds: hostSeconds,
+                                                  reduceMotion: reduceMotion) else { return 1 }
+        let age = progress * strikeDuration
+        let riseDuration = 0.08
+        if age < riseDuration {
+            let rise = age / riseDuration
+            return 1 + 0.12 * CGFloat(1 - pow(1 - rise, 3))
+        }
+        let release = (age - riseDuration) / (strikeDuration - riseDuration)
+        return 1 + 0.12 * CGFloat(pow(1 - release, 2) * cos(release * 1.5 * .pi))
+    }
+
+    static func correctPulseProgress(struckAt: Double?, hostSeconds: Double?, reduceMotion: Bool) -> Double? {
+        guard !reduceMotion, let struckAt, let hostSeconds else { return nil }
+        let age = hostSeconds - struckAt
+        guard age >= 0, age < strikeDuration else { return nil }
+        return age / strikeDuration
     }
 }
 
@@ -84,18 +119,21 @@ struct PatternField: View {
     var afterMe: Bool = false
     var peekNotesOpacity: Double? = nil
     var peekCycles: Range<Int>? = nil
+    var veilBars: Set<Int> = []
+    var encounterEndStep: Int? = nil
     var hidden: Bool { visibility == .hidden }
     let scrolling: Bool
     let visibleBars: Int
     let verdicts: [Int: BarVerdict]
-    let judgments: [Int: [LessonHit: HitJudgment]]
+    let hitsByPass: [Int: [LessonHit: PatternHitFeedback]]
+    var hostSeconds: Double? = nil
+    var displayDate: Date = .now
     let bpm: Int
     let playedHits: [PlayedHit]
     let pass: Int
     let scoring: Bool
     let missGraceSteps: Double
     let countdown: Int?
-    var band: Color = PracticeBandStyle.orange
     var runBars: Int = 4
     var starMomentBeamActive: Bool = false
 
@@ -104,18 +142,27 @@ struct PatternField: View {
         return PadVoice.rowOrder.filter { used.contains($0) }
     }
 
+    private var activeVeilBar: Int? {
+        let playedBar = Int(tapePosition) / 16
+        return PatternVeilDisplay.hides(bar: playedBar, currentBar: playedBar, veilBars: veilBars) ? Int(position) / 16 : nil
+    }
+
     private func visiblePlayedHits(steps: Range<Int>) -> [PlayedHit] {
-        guard hidden, running else { return [] }
+        guard running, hidden || activeVeilBar != nil else { return [] }
         return playedHits.filter {
+            (hidden || $0.pass == pass && Int($0.step) / 16 == activeVeilBar) &&
             $0.isVisible(in: pass, before: position, steps: steps, totalSteps: lesson.bars * 16,
                          bpm: bpm, reduceMotion: reduceMotion)
         }
     }
 
     private var feedback: PatternFeedback {
-        PatternFeedback(judgments: FeedbackWindow.visibleJudgments(judgments, pass: pass,
-            position: position, totalSteps: lesson.bars * 16, bpm: bpm, reduceMotion: reduceMotion),
-            pass: pass, position: position, totalSteps: lesson.bars * 16, bpm: bpm, reduceMotion: reduceMotion)
+        PatternFeedback(
+            hitsByPass: FeedbackWindow.visibleJudgments(hitsByPass, pass: pass,
+                position: position, totalSteps: lesson.bars * 16, bpm: bpm, reduceMotion: reduceMotion),
+            pass: pass, position: position, totalSteps: lesson.bars * 16, bpm: bpm,
+            reduceMotion: reduceMotion, hostSeconds: hostSeconds
+        )
     }
 
     var body: some View {
@@ -140,18 +187,26 @@ struct PatternField: View {
                         session: session
                     )
                     .frame(width: gutter, height: geometry.size.height)
+                    .background(PracticeHardware.panel)
+                    .overlay(alignment: .trailing) {
+                        Rectangle()
+                            .fill(PracticeHardware.border)
+                            .frame(width: 1)
+                    }
                 }
 
                 ZStack(alignment: .topLeading) {
                     Group {
                         if scrolling {
-                            ScrollingPattern(lesson: lesson, hits: hits, rows: rows, position: tapePosition,
+                            ScrollingPattern(session: session, lesson: lesson, hits: hits, rows: rows, position: tapePosition,
                                              running: running, visibility: visibility, fromMemory: fromMemory, afterMe: afterMe,
-                                             verdicts: verdicts, judgments: judgments, pass: pass,
+                                             verdicts: verdicts, hitsByPass: hitsByPass,
+                                             hostSeconds: hostSeconds, displayDate: displayDate, pass: pass,
                                              playedHits: playedHits, scoring: scoring,
-                                             missGraceSteps: missGraceSteps, band: band, layout: layout,
-                                             labelLayout: labelLayout,
-                                             peekNotesOpacity: peekNotesOpacity, peekCycles: peekCycles)
+                                             missGraceSteps: missGraceSteps, layout: layout,
+                                             labelLayout: labelLayout, bpm: bpm,
+                                             peekNotesOpacity: peekNotesOpacity, peekCycles: peekCycles,
+                                             veilBars: veilBars, encounterEndStep: encounterEndStep)
                         } else {
                             let currentBar = min(lesson.bars - 1, max(0, Int(position) / 16))
                             let first = (currentBar / max(1, count)) * max(1, count)
@@ -159,15 +214,17 @@ struct PatternField: View {
                             let startStep = first * 16
                             let endStep = min(first + count, lesson.bars) * 16
                             let staticPlayed = visiblePlayedHits(steps: startStep..<endStep)
-                            StaticPattern(lesson: lesson, hits: hits, rows: rows, bars: bars, firstBar: first,
+                            StaticPattern(session: session, lesson: lesson, hits: hits, rows: rows, bars: bars, firstBar: first,
                                           position: position, running: running, visibility: visibility,
                                           verdicts: verdicts, feedback: feedback,
                                           playedHits: staticPlayed,
                                           scoring: scoring, missGraceSteps: missGraceSteps,
-                                          band: band, layout: layout, labelLayout: labelLayout,
+                                          layout: layout, labelLayout: labelLayout,
                                           bpm: bpm, reduceMotion: reduceMotion,
+                                          displayDate: displayDate,
                                           afterMe: afterMe,
-                                          fromMemory: fromMemory, peekNotesOpacity: peekNotesOpacity)
+                                          fromMemory: fromMemory, peekNotesOpacity: peekNotesOpacity,
+                                          activeVeilBar: activeVeilBar)
                         }
                     }
                     .frame(width: orangeFieldWidth, height: geometry.size.height)
@@ -183,11 +240,20 @@ struct PatternField: View {
                 }
                 .frame(width: orangeFieldWidth, height: geometry.size.height)
                 .background {
-                    ZStack(alignment: .top) {
-                        band
-                        Theme.black.opacity(0.10).frame(height: layout.headerTintHeight)
+                    LinearGradient(colors: [PracticeHardware.orange, PracticeHardware.displayBottom],
+                                   startPoint: .top, endPoint: .bottom)
+                }
+                .overlay {
+                    VStack(spacing: 0) {
+                        LinearGradient(colors: [.black.opacity(0.45), .clear],
+                                       startPoint: .top, endPoint: .bottom)
+                            .frame(height: 18)
+                        Spacer(minLength: 0)
+                        LinearGradient(colors: [.clear, .black.opacity(0.45)],
+                                       startPoint: .top, endPoint: .bottom)
+                            .frame(height: 18)
                     }
-                    .animation(reduceMotion ? nil : .easeInOut(duration: 1.2), value: band)
+                    .allowsHitTesting(false)
                 }
                 .clipShape(Rectangle())
             }
@@ -202,7 +268,21 @@ struct PatternField: View {
                 }
             }
         }
-        .clipShape(Rectangle())
+        .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+        .overlay {
+            RoundedRectangle(cornerRadius: 8, style: .continuous)
+                .strokeBorder(Theme.black.opacity(0.65), lineWidth: 1)
+        }
+        .padding(8)
+        .background {
+            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                .fill(PracticeHardware.panel)
+                .overlay {
+                    RoundedRectangle(cornerRadius: 14, style: .continuous)
+                        .strokeBorder(PracticeHardware.border, lineWidth: 1)
+                }
+        }
+        .shadow(color: Theme.black.opacity(0.32), radius: 8, y: 4)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(settings.localized("Rhythm pattern"))
         .accessibilityValue(
@@ -216,6 +296,7 @@ struct PatternField: View {
                 if visibility == .hidden {
                     return settings.localized("From memory, notes hidden")
                 }
+                if activeVeilBar != nil { return settings.localized("Notes hidden") }
                 return settings.localized("%lld bars, %@", lesson.bars, rows.map { PadVoice.name($0, settings: settings) }.joined(separator: ", "))
             }()
         )
@@ -283,35 +364,75 @@ private struct PatternLanes {
     }
 
     func drawRows(context: inout GraphicsContext) {
-        let radius = min(12, height * 0.4)
         for row in rows.indices {
-            let rect = CGRect(x: -10, y: y(row) - height / 2, width: size.width + 20, height: height)
-            context.fill(Path(roundedRect: rect, cornerRadius: radius), with: .color(Theme.white.opacity(0.16)))
+            let boundary = y(row) - (height + rowGap) / 2
+            let divider = CGRect(x: 0, y: boundary, width: size.width, height: 1)
+            context.fill(Path(divider), with: .color(.black.opacity(0.22)))
         }
     }
 
 }
 
-private func drawBeat(step: Int, x: CGFloat, lanes: PatternLanes, context: inout GraphicsContext) {
+private func drawBeat(
+    step: Int,
+    x: CGFloat,
+    lanes: PatternLanes,
+    beatOnePulse: Double = 0,
+    reduceMotion: Bool = false,
+    context: inout GraphicsContext
+) {
     if step.isMultiple(of: 4) {
-        context.draw(Text(String(step % 16 / 4 + 1)).font(Theme.canvasDisplay(lanes.beatFontSize)).monospacedDigit().foregroundColor(Theme.black),
-                     at: CGPoint(x: x, y: lanes.countY))
         let bar = step.isMultiple(of: 16)
+        if bar && beatOnePulse > 0 {
+            let haloRadius = lanes.beatFontSize * 0.50
+            let haloRect = CGRect(
+                x: x - haloRadius,
+                y: lanes.countY - haloRadius * 0.9,
+                width: haloRadius * 2,
+                height: haloRadius * 1.8
+            )
+            context.fill(
+                Path(ellipseIn: haloRect),
+                with: .color(Theme.white.opacity((reduceMotion ? 0.34 : 0.48) * beatOnePulse))
+            )
+        }
+        let digitSize = (bar && beatOnePulse > 0 && !reduceMotion)
+            ? lanes.beatFontSize * (1 + 0.08 * beatOnePulse)
+            : lanes.beatFontSize
+        context.draw(Text(String(step % 16 / 4 + 1)).font(Theme.canvasDisplay(digitSize)).monospacedDigit().foregroundColor(Theme.black),
+                     at: CGPoint(x: x, y: lanes.countY))
         var path = Path()
         path.move(to: CGPoint(x: x, y: lanes.beatLineTop))
         path.addLine(to: CGPoint(x: x, y: lanes.bottom))
-        context.stroke(path, with: .color(Theme.black.opacity(bar ? 0.38 : 0.18)), lineWidth: bar ? 1.2 : 0.65)
+        context.stroke(path, with: .color(Theme.black.opacity(bar ? 0.68 : 0.38)), lineWidth: bar ? 2.0 : 1.25)
         if bar {
-            context.fill(Path(roundedRect: CGRect(x: x - lanes.tickWidth / 2, y: lanes.tickY, width: lanes.tickWidth, height: lanes.tickHeight), cornerRadius: 1),
-                         with: .color(Theme.black.opacity(0.7)))
+            var highlight = Path()
+            highlight.move(to: CGPoint(x: x + 1.25, y: lanes.beatLineTop))
+            highlight.addLine(to: CGPoint(x: x + 1.25, y: lanes.bottom))
+            context.stroke(highlight, with: .color(Theme.white.opacity(0.12)), lineWidth: 0.75)
+
+            let tickRect = CGRect(x: x - lanes.tickWidth / 2, y: lanes.tickY, width: lanes.tickWidth, height: lanes.tickHeight)
+            context.fill(Path(roundedRect: tickRect, cornerRadius: 1),
+                         with: .color(Theme.black.opacity(0.85)))
+            if beatOnePulse > 0 {
+                context.fill(Path(roundedRect: tickRect, cornerRadius: 1),
+                             with: .color(Theme.white.opacity((reduceMotion ? 0.70 : 0.95) * beatOnePulse)))
+            }
         }
     } else {
-        context.fill(Path(ellipseIn: CGRect(x: x - 2.1, y: lanes.countY - 2.1, width: 4.2, height: 4.2)),
-                     with: .color(Theme.black.opacity(0.5)))
+        let isEighth = step.isMultiple(of: 2)
+        var subPath = Path()
+        subPath.move(to: CGPoint(x: x, y: lanes.top))
+        subPath.addLine(to: CGPoint(x: x, y: lanes.bottom))
+        context.stroke(subPath, with: .color(Theme.black.opacity(isEighth ? 0.16 : 0.07)), lineWidth: isEighth ? 0.85 : 0.55)
+        let dotRadius: CGFloat = isEighth ? 2.2 : 1.7
+        context.fill(Path(ellipseIn: CGRect(x: x - dotRadius, y: lanes.countY - dotRadius, width: dotRadius * 2, height: dotRadius * 2)),
+                     with: .color(Theme.black.opacity(isEighth ? 0.58 : 0.36)))
     }
 }
 
 private struct StaticPattern: View {
+    var session: PracticeSession? = nil
     let lesson: Lesson
     let hits: [LessonHit]
     let rows: [Int]
@@ -325,14 +446,15 @@ private struct StaticPattern: View {
     let playedHits: [PlayedHit]
     let scoring: Bool
     let missGraceSteps: Double
-    let band: Color
     let layout: BandGeometry
     let labelLayout: BandLabelLayout
     var bpm: Int = 60
     var reduceMotion: Bool = false
+    var displayDate: Date = .now
     var afterMe: Bool = false
     var fromMemory: Bool = false
     var peekNotesOpacity: Double? = nil
+    var activeVeilBar: Int? = nil
 
     var body: some View {
         let barCount = max(1, bars.count)
@@ -347,12 +469,25 @@ private struct StaticPattern: View {
                 lanes.drawRows(context: &context)
 
                 // Beat division marks and numbers for each bar
+                let pulseSteps = max(0.75, 0.18 * Double(max(1, bpm)) / 15.0)
                 for (barIndex, _) in bars.enumerated() {
                     let barOffsetSteps = barIndex * 16
+                    let barGlobalStep = (firstBar + barIndex) * 16
+                    let delta = position - Double(barGlobalStep)
+                    let beatOnePulse = (running && delta >= 0 && delta < pulseSteps)
+                        ? pow(1.0 - delta / pulseSteps, 1.5)
+                        : 0
                     for step in 0..<16 {
                         let visibleStep = barOffsetSteps + step
                         let x = (CGFloat(visibleStep) + 0.5) * cellWidth
-                        drawBeat(step: step, x: x, lanes: lanes, context: &context)
+                        drawBeat(
+                            step: step,
+                            x: x,
+                            lanes: lanes,
+                            beatOnePulse: step == 0 ? beatOnePulse : 0,
+                            reduceMotion: reduceMotion,
+                            context: &context
+                        )
                     }
                 }
             }
@@ -365,14 +500,26 @@ private struct StaticPattern: View {
                     context.opacity = peekNotesOpacity ?? 1
                     for (row, pad) in rows.enumerated() {
                         for hit in hits where hit.padIndex == pad && hit.step >= startStep && hit.step < endStep {
+                            guard hit.step / 16 != activeVeilBar else { continue }
                             let visibleStep = hit.step - startStep
                             let x = (CGFloat(visibleStep) + 0.5) * cellWidth
                             let rect = lanes.tile(x: x, width: cellWidth, row: row)
-                            let tail = !fromMemory && feedback.position < Double(hit.step) ? feedback.strength(offset: -1, step: Double(hit.step)) : 0
-                            let mark = hitMark(hit, judgments: feedback.judgments[feedback.pass + (tail > 0 ? -1 : 0)] ?? [:],
-                                               scoring: scoring, elapsedSteps: tail > 0 ? Double(feedback.totalSteps) : position - Double(hit.step),
+                            let currentHit = feedback.hitsByPass[feedback.pass]?[hit]
+                            let tail = currentHit == nil && !fromMemory && feedback.position < Double(hit.step)
+                                ? feedback.strength(offset: -1, step: Double(hit.step)) : 0
+                            let result = tail > 0 ? feedback.hitsByPass[feedback.pass - 1]?[hit] : currentHit
+                            let mark = hitMark(result, scoring: scoring,
+                                               elapsedSteps: tail > 0 ? Double(feedback.totalSteps) : position - Double(hit.step),
                                                grace: missGraceSteps)
+                            let popScale = mark == .correct
+                                ? PatternFeedback.correctPopScale(struckAt: result?.struckAt, hostSeconds: feedback.hostSeconds, reduceMotion: reduceMotion)
+                                : 1
+                            let pulse = mark == .correct
+                                ? PatternFeedback.correctPulseProgress(struckAt: result?.struckAt, hostSeconds: feedback.hostSeconds, reduceMotion: reduceMotion)
+                                : nil
                             drawHit(hit, in: rect, mark: mark, strength: tail > 0 ? tail : 1,
+                                    popScale: popScale,
+                                    correctPulse: pulse,
                                     visibility: afterMe || peekNotesOpacity != nil ? .shown : visibility,
                                     fontSize: lanes.fontSize, context: &context)
                         }
@@ -386,7 +533,7 @@ private struct StaticPattern: View {
                 let cellWidth = max(1, (size.width - 24) / CGFloat(totalSteps))
                 let lanes = PatternLanes(geometry: layout, rows: rows)
 
-                if visibility == .hidden && running {
+                if running && (visibility == .hidden || activeVeilBar != nil) {
                     for (row, pad) in rows.enumerated() {
                         var playedContext = context
                         let visiblePosition = position - Double(startStep)
@@ -405,7 +552,13 @@ private struct StaticPattern: View {
                             if hit.pass != feedback.pass {
                                 hitContext.opacity = feedback.strength(offset: hit.pass - feedback.pass, step: hit.step)
                             }
-                            drawPlayedHit(hit, in: rect, fontSize: lanes.fontSize, context: &hitContext, hits: hits)
+                            let popScale = hit.mark == .correct
+                                ? PatternFeedback.correctPopScale(struckAt: hit.struckAt, hostSeconds: feedback.hostSeconds, reduceMotion: reduceMotion)
+                                : 1
+                            let pulse = hit.mark == .correct
+                                ? PatternFeedback.correctPulseProgress(struckAt: hit.struckAt, hostSeconds: feedback.hostSeconds, reduceMotion: reduceMotion)
+                                : nil
+                            drawPlayedHit(hit, in: rect, popScale: popScale, correctPulse: pulse, fontSize: lanes.fontSize, context: &hitContext, hits: hits)
                         }
                     }
                 }
@@ -414,7 +567,9 @@ private struct StaticPattern: View {
                 let visiblePosition = position - Double(startStep)
                 if running && visiblePosition >= 0 && visiblePosition <= Double(totalSteps) {
                     let markerX = CGFloat(visiblePosition) * cellWidth
-                    drawMarker(x: markerX, top: lanes.top - 4 * lanes.scale, bottom: lanes.bottom + 4, context: &context)
+                    drawPlayheadRowFlashes(session: session, rows: rows, lanes: lanes, markerX: markerX,
+                                           cellWidth: cellWidth, now: displayDate, canvasWidth: size.width, context: &context)
+                    drawMarker(x: markerX, size: size, context: &context)
                 }
             }
         }
@@ -424,6 +579,7 @@ private struct StaticPattern: View {
 private struct ScrollingPattern: View {
     @Environment(SettingsManager.self) private var settings
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    var session: PracticeSession? = nil
     let lesson: Lesson
     let hits: [LessonHit]
     let rows: [Int]
@@ -433,16 +589,24 @@ private struct ScrollingPattern: View {
     var fromMemory: Bool = false
     var afterMe: Bool = false
     let verdicts: [Int: BarVerdict]
-    let judgments: [Int: [LessonHit: HitJudgment]]
+    let hitsByPass: [Int: [LessonHit: PatternHitFeedback]]
+    var hostSeconds: Double? = nil
+    var displayDate: Date = .now
     let pass: Int
     let playedHits: [PlayedHit]
     let scoring: Bool
     let missGraceSteps: Double
-    let band: Color
     let layout: BandGeometry
     let labelLayout: BandLabelLayout
+    var bpm: Int = 60
     var peekNotesOpacity: Double? = nil
     var peekCycles: Range<Int>? = nil
+    var veilBars: Set<Int> = []
+    var encounterEndStep: Int? = nil
+
+    private func isVeiled(step: Int) -> Bool {
+        PatternVeilDisplay.hides(bar: step / 16, currentBar: Int(position) / 16, veilBars: veilBars)
+    }
 
     var body: some View {
         let total = max(16, lesson.bars * 16)
@@ -454,12 +618,24 @@ private struct ScrollingPattern: View {
                 let lanes = PatternLanes(geometry: layout, rows: rows)
                 let firstStep = Int(floor(position - Double(markerX / cellWidth))) - 1
                 let lastStep = Int(ceil(position + Double((size.width - markerX) / cellWidth))) + 1
+                let pulseSteps = max(0.75, 0.18 * Double(max(1, bpm)) / 15.0)
                 lanes.drawRows(context: &context)
                 for globalStep in firstStep...lastStep {
                     guard globalStep >= 0 else { continue }
                     let step = (globalStep % total + total) % total
                     let x = markerX + CGFloat(Double(globalStep) - position) * cellWidth
-                    drawBeat(step: step, x: x, lanes: lanes, context: &context)
+                    let delta = position - Double(globalStep)
+                    let beatOnePulse = (running && step.isMultiple(of: 16) && delta >= 0 && delta < pulseSteps)
+                        ? pow(1.0 - delta / pulseSteps, 1.5)
+                        : 0
+                    drawBeat(
+                        step: step,
+                        x: x,
+                        lanes: lanes,
+                        beatOnePulse: beatOnePulse,
+                        reduceMotion: reduceMotion,
+                        context: &context
+                    )
                 }
             }
 
@@ -472,7 +648,8 @@ private struct ScrollingPattern: View {
 
                 context.opacity = peekNotesOpacity ?? 1
                 for globalStep in firstStep...lastStep {
-                    guard globalStep >= 0 else { continue }
+                    guard globalStep >= 0, encounterEndStep.map({ globalStep < $0 }) ?? true,
+                          !isVeiled(step: globalStep) else { continue }
                     let step = (globalStep % total + total) % total
                     let recordedPass = globalStep / total + 1
                     if let peekCycles, !peekCycles.contains(recordedPass) { continue }
@@ -482,11 +659,23 @@ private struct ScrollingPattern: View {
                         for hit in hits where hit.step == step {
                             guard let row = rows.firstIndex(of: hit.padIndex) else { continue }
                             let rect = lanes.tile(x: x, width: cellWidth, row: row)
-                            let strength = min(1, max(0, rect.maxX / rect.width))
-                            let mark = hitMark(hit, judgments: judgments[recordedPass] ?? [:], scoring: scoring,
+                            let edgeOpacity = min(1, max(0, rect.maxX / rect.width))
+                            guard edgeOpacity > 0 else { continue }
+                            let result = hitsByPass[recordedPass]?[hit]
+                            let mark = hitMark(result, scoring: scoring,
                                                elapsedSteps: position - Double(globalStep), grace: missGraceSteps)
-                            drawHit(hit, in: rect, mark: mark, strength: strength, visibility: afterMe ? .shown : stepVisibility,
-                                    fontSize: lanes.fontSize, context: &context)
+                            let popScale = mark == .correct
+                                ? PatternFeedback.correctPopScale(struckAt: result?.struckAt, hostSeconds: hostSeconds, reduceMotion: reduceMotion)
+                                : 1
+                            let pulse = mark == .correct
+                                ? PatternFeedback.correctPulseProgress(struckAt: result?.struckAt, hostSeconds: hostSeconds, reduceMotion: reduceMotion)
+                                : nil
+                            var noteContext = context
+                            noteContext.opacity *= edgeOpacity
+                            drawHit(hit, in: rect, mark: mark, strength: 1, popScale: popScale,
+                                    correctPulse: pulse,
+                                    visibility: afterMe ? .shown : stepVisibility,
+                                    fontSize: lanes.fontSize, context: &noteContext)
                         }
                     }
                 }
@@ -499,139 +688,238 @@ private struct ScrollingPattern: View {
                 let markerX = size.width / 3
                 let lanes = PatternLanes(geometry: layout, rows: rows)
                 let rowTop = lanes.top
-                let rowBottom = lanes.bottom
 
-                if visibility == .hidden && running {
+                if running && (visibility == .hidden || !veilBars.isEmpty) {
                     var playedContext = context
-                    playedContext.clip(to: Path(CGRect(x: 0, y: rowTop, width: markerX, height: max(1, rowBottom - rowTop))))
+                    playedContext.clip(to: Path(CGRect(x: 0, y: rowTop, width: markerX, height: max(1, lanes.bottom - rowTop))))
                     for hit in playedHits {
-                        guard hit.pass == pass || hit.hidden else { continue }
-                        guard let row = rows.firstIndex(of: hit.padIndex) else { continue }
                         let step = hit.tapeStep(totalSteps: total)
-                        guard step >= 0, step < position else { continue }
+                        guard step >= 0, step < position,
+                              visibility == .hidden ? (hit.pass == pass || hit.hidden) : isVeiled(step: Int(step)),
+                              let row = rows.firstIndex(of: hit.padIndex) else { continue }
                         let x = markerX + CGFloat(step - position) * cellWidth
                         guard x + cellWidth * 0.42 >= 0 else { continue }
                         let rect = lanes.tile(x: x, width: cellWidth, row: row)
                         var hitContext = playedContext
                         hitContext.opacity = min(1, max(0, rect.maxX / rect.width))
-                        drawPlayedHit(hit, in: rect, fontSize: lanes.fontSize, context: &hitContext, hits: hits)
+                        let popScale = hit.mark == .correct
+                            ? PatternFeedback.correctPopScale(struckAt: hit.struckAt, hostSeconds: hostSeconds, reduceMotion: reduceMotion)
+                            : 1
+                        let pulse = hit.mark == .correct
+                            ? PatternFeedback.correctPulseProgress(struckAt: hit.struckAt, hostSeconds: hostSeconds, reduceMotion: reduceMotion)
+                            : nil
+                        drawPlayedHit(hit, in: rect, popScale: popScale, correctPulse: pulse, fontSize: lanes.fontSize, context: &hitContext, hits: hits)
                     }
                 }
-                drawMarker(x: markerX, top: lanes.top - 4 * lanes.scale, bottom: rowBottom + 4, context: &context)
+                if running {
+                    drawPlayheadRowFlashes(session: session, rows: rows, lanes: lanes, markerX: markerX,
+                                           cellWidth: cellWidth, now: displayDate, canvasWidth: size.width, context: &context)
+                    drawMarker(x: markerX, size: size, context: &context)
+                }
             }
         }
     }
 }
 
-private func drawPlayedHit(_ hit: PlayedHit, in rect: CGRect, fontSize: CGFloat,
+@MainActor
+private func drawPlayheadRowFlashes(
+    session: PracticeSession?,
+    rows: [Int],
+    lanes: PatternLanes,
+    markerX: CGFloat,
+    cellWidth: CGFloat,
+    now: Date,
+    canvasWidth: CGFloat,
+    context: inout GraphicsContext
+) {
+    guard let flashes = session?.padFlashes, !flashes.isEmpty else { return }
+    let flashWidth = max(cellWidth * 1.6, 72 * lanes.scale)
+    let radius = min(12, lanes.height * 0.4)
+    for (row, pad) in rows.enumerated() {
+        guard let flash = flashes[pad] else { continue }
+        let age = max(0, now.timeIntervalSince(flash.date))
+        let strike = 1 - age / BandRowDotSchedule.fadeDuration
+        guard strike > 0 else { continue }
+        let minX = max(0, markerX - flashWidth / 2)
+        let maxX = min(canvasWidth, markerX + flashWidth / 2)
+        guard maxX > minX else { continue }
+        let rect = CGRect(x: minX, y: lanes.y(row) - lanes.height / 2, width: maxX - minX, height: lanes.height)
+        context.fill(Path(roundedRect: rect, cornerRadius: radius),
+                     with: .color(Theme.white.opacity(0.24 * strike)))
+    }
+}
+
+private func drawPlayedHit(_ hit: PlayedHit, in rect: CGRect, popScale: CGFloat = 1,
+                           correctPulse: Double? = nil, fontSize: CGFloat,
                            context: inout GraphicsContext, hits: [LessonHit]? = nil) {
     let hand = hits?.first(where: { $0.padIndex == hit.padIndex && abs(Double($0.step) - hit.step) < 0.75 })?.hand ?? "R"
     let note = LessonHit(step: Int(hit.step), padIndex: hit.padIndex, hand: hand, velocity: 0)
-    drawHit(note, in: rect, mark: hit.mark, strength: 1, visibility: .shown, fontSize: fontSize, context: &context)
+    drawHit(note, in: rect, mark: hit.mark, strength: 1, popScale: popScale, correctPulse: correctPulse, visibility: .shown, fontSize: fontSize, context: &context)
 }
 
-private func hitMark(_ hit: LessonHit, judgments: [LessonHit: HitJudgment], scoring: Bool,
+private func hitMark(_ feedback: PatternHitFeedback?, scoring: Bool,
                      elapsedSteps: Double, grace: Double) -> HitMark? {
     guard scoring else { return nil }
-    if let judgment = judgments[hit] { return judgment == .off ? .off : .correct }
-    return elapsedSteps > grace ? .wrong : nil
+    return feedback?.mark ?? (elapsedSteps > grace ? .wrong : nil)
 }
 
-private func drawHit(_ hit: LessonHit, in rect: CGRect, mark: HitMark?, strength: Double = 1,
-                     visibility: NoteVisibility = .shown,
-                     fontSize: CGFloat, context: inout GraphicsContext) {
+func drawHit(_ hit: LessonHit, in rect: CGRect, mark: HitMark?, strength: Double = 1,
+             popScale: CGFloat = 1,
+             correctPulse: Double? = nil,
+             visibility: NoteVisibility = .shown,
+             fontSize: CGFloat, context: inout GraphicsContext) {
+    guard visibility != .hidden else { return }
     if mark != nil, strength < 1 {
-        drawHit(hit, in: rect, mark: nil, strength: 1, visibility: visibility, fontSize: fontSize, context: &context)
+        var base = context
+        base.opacity *= 1 - strength
+        drawHit(hit, in: rect, mark: nil, visibility: visibility, fontSize: fontSize, context: &base)
         if strength > 0 {
-            var coloured = context
-            coloured.opacity *= strength
-            drawHit(hit, in: rect, mark: mark, strength: 1, visibility: visibility, fontSize: fontSize, context: &coloured)
+            var marked = context
+            marked.opacity *= strength
+            drawHit(hit, in: rect, mark: mark, popScale: popScale, correctPulse: correctPulse, visibility: visibility,
+                    fontSize: fontSize, context: &marked)
         }
         return
     }
-    let cornerRadius = min(7, min(rect.width, rect.height) * 0.25)
-    let innerRadius = max(1, cornerRadius - 1)
-    let hitFontSize = min(fontSize, max(7, min(rect.width * 0.65, rect.height * 0.68)))
+
+    let drawRect = rect.insetBy(dx: rect.width * (1 - popScale) / 2,
+                               dy: rect.height * (1 - popScale) / 2)
+    let cornerRadius = min(7, min(drawRect.width, drawRect.height) * 0.25)
+    let tilePath = Path(roundedRect: drawRect, cornerRadius: cornerRadius)
+    if mark == .wrong {
+        context.fill(tilePath, with: .color(Theme.black.opacity(0.14)))
+        context.stroke(Path(roundedRect: drawRect.insetBy(dx: 0.75, dy: 0.75),
+                            cornerRadius: max(0, cornerRadius - 0.75)),
+                       with: .color(Theme.black.opacity(0.55)), lineWidth: 1.5)
+        let slashInset = min(4, min(drawRect.width, drawRect.height) * 0.2)
+        var slash = Path()
+        slash.move(to: CGPoint(x: drawRect.minX + slashInset, y: drawRect.maxY - slashInset))
+        slash.addLine(to: CGPoint(x: drawRect.maxX - slashInset, y: drawRect.minY + slashInset))
+        context.stroke(slash, with: .color(Theme.black), style: StrokeStyle(lineWidth: 1.75, lineCap: .round))
+        return
+    }
 
     let isLeft = hit.hand.uppercased() == "L"
     let baseColor = isLeft ? Theme.black : Theme.white
-    let textColor = isLeft ? Theme.white : Theme.black
-
-    switch visibility {
-    case .shown:
-        var fillContext = context
-        fillContext.opacity *= strength
-        fillContext.fill(Path(roundedRect: rect, cornerRadius: cornerRadius), with: .color(baseColor))
+    if visibility == .faded && mark == nil {
+        let innerRadius = max(1, cornerRadius - 1)
+        let interior = Path(roundedRect: drawRect.insetBy(dx: 1.5, dy: 1.5), cornerRadius: innerRadius)
+        context.fill(interior, with: .color(baseColor.opacity(isLeft ? 0.35 : 0.20)))
         if isLeft {
-            fillContext.stroke(Path(roundedRect: rect, cornerRadius: cornerRadius), with: .color(Theme.white), lineWidth: 1)
+            context.stroke(interior, with: .color(Theme.white.opacity(0.35)), lineWidth: 1)
         }
-        if let mark {
-            fillContext.fill(Path(roundedRect: rect.insetBy(dx: 1.5, dy: 1.5), cornerRadius: innerRadius),
-                             with: .color(PracticeBandStyle.hitColor(mark)))
-            if isLeft {
-                fillContext.stroke(Path(roundedRect: rect, cornerRadius: cornerRadius), with: .color(Theme.white), lineWidth: 1)
-            }
-            var accent = Path()
-            let padInset = min(4, rect.width * 0.25)
-            let vPad = min(5, rect.height * 0.2)
-            if mark == .wrong {
-                accent.move(to: CGPoint(x: rect.minX + padInset, y: rect.minY + vPad))
-                accent.addLine(to: CGPoint(x: rect.minX + padInset, y: rect.maxY - vPad))
-            } else if mark == .off {
-                accent.move(to: CGPoint(x: rect.minX + padInset, y: rect.maxY - vPad))
-                accent.addLine(to: CGPoint(x: rect.maxX - padInset, y: rect.maxY - vPad))
-            }
-            fillContext.stroke(accent, with: .color(Theme.black), lineWidth: 1.4)
-        }
-        if PracticeBandStyle.showPadLabels {
-            let fgColor = mark != nil ? Theme.black : textColor
-            fillContext.draw(Text(PadVoice.abbreviation(hit.padIndex)).font(Theme.canvasDisplay(hitFontSize))
-                .foregroundColor(fgColor), at: CGPoint(x: rect.midX, y: rect.midY))
-        }
+        context.stroke(Path(roundedRect: drawRect.insetBy(dx: 1, dy: 1), cornerRadius: innerRadius),
+                       with: .color(PatternField.ghostOutline.opacity(0.4)), lineWidth: 1.5)
+        return
+    }
 
-    case .faded:
-        var fadedContext = context
-        fadedContext.opacity *= strength
-        let interior = Path(roundedRect: rect.insetBy(dx: 1.5, dy: 1.5), cornerRadius: innerRadius)
-        if let mark {
-            fadedContext.fill(interior, with: .color(PracticeBandStyle.hitColor(mark)))
-            var accent = Path()
-            let padInset = min(4, rect.width * 0.25)
-            let vPad = min(5, rect.height * 0.2)
-            if mark == .wrong {
-                accent.move(to: CGPoint(x: rect.minX + padInset, y: rect.minY + vPad))
-                accent.addLine(to: CGPoint(x: rect.minX + padInset, y: rect.maxY - vPad))
-            } else if mark == .off {
-                accent.move(to: CGPoint(x: rect.minX + padInset, y: rect.maxY - vPad))
-                accent.addLine(to: CGPoint(x: rect.maxX - padInset, y: rect.maxY - vPad))
+    let shadowPath = tilePath.offsetBy(dx: 0, dy: 1.5)
+    context.fill(shadowPath, with: .color(Theme.black.opacity(0.28)))
+
+    context.fill(tilePath, with: .color(baseColor))
+
+    var bevelContext = context
+    bevelContext.clip(to: tilePath)
+    var topEdge = Path()
+    topEdge.move(to: CGPoint(x: drawRect.minX + 1.5, y: drawRect.minY + 0.75))
+    topEdge.addLine(to: CGPoint(x: drawRect.maxX - 1.5, y: drawRect.minY + 0.75))
+    bevelContext.stroke(
+        topEdge,
+        with: .color(Theme.white.opacity(isLeft ? 0.28 : 0.95)),
+        style: StrokeStyle(lineWidth: 1.25, lineCap: .round)
+    )
+    if !isLeft {
+        var bottomEdge = Path()
+        bottomEdge.move(to: CGPoint(x: drawRect.minX + 1.5, y: drawRect.maxY - 0.75))
+        bottomEdge.addLine(to: CGPoint(x: drawRect.maxX - 1.5, y: drawRect.maxY - 0.75))
+        bevelContext.stroke(
+            bottomEdge,
+            with: .color(Theme.black.opacity(0.14)),
+            style: StrokeStyle(lineWidth: 1, lineCap: .round)
+        )
+        context.stroke(tilePath, with: .color(Theme.black.opacity(0.16)), lineWidth: 0.75)
+    } else {
+        context.stroke(tilePath, with: .color(Theme.white.opacity(0.85)), lineWidth: 1)
+    }
+
+    var labelRect = drawRect
+    switch mark {
+    case .correct:
+        if let pulse = correctPulse {
+            let expansion = 14 * pulse
+            let waveRect = rect.insetBy(dx: -expansion, dy: -expansion)
+            let wave = Path(roundedRect: waveRect, cornerRadius: cornerRadius + expansion * 0.45)
+            context.stroke(wave, with: .linearGradient(
+                Gradient(colors: [.white.opacity(1 - pulse), PracticeHardware.strikeGlow.opacity(1 - pulse)]),
+                startPoint: CGPoint(x: waveRect.midX, y: waveRect.minY),
+                endPoint: CGPoint(x: waveRect.midX, y: waveRect.maxY)
+            ), lineWidth: 3)
+
+            let flash = max(0, 1 - pulse * PatternFeedback.strikeDuration / 0.08)
+            if flash > 0 {
+                var glow = context
+                glow.blendMode = .plusLighter
+                glow.addFilter(.shadow(color: PracticeHardware.strikeGlow.opacity(flash), radius: 6))
+                glow.fill(tilePath, with: .color(PracticeHardware.strikeGlow.opacity(0.5 * flash)))
             }
-            fadedContext.stroke(accent, with: .color(Theme.black), lineWidth: 1.4)
+        }
+        let inset = min(2.5, min(drawRect.width, drawRect.height) * 0.22)
+        context.stroke(Path(roundedRect: drawRect.insetBy(dx: inset, dy: inset),
+                            cornerRadius: max(0, cornerRadius - inset)),
+                       with: .color(Theme.orange), lineWidth: 2)
+    case .early, .late:
+        let direction: CGFloat = mark == .early ? 1 : -1
+        let edge = mark == .early ? drawRect.minX : drawRect.maxX
+        let ink = isLeft ? Theme.orange : Theme.black
+        var clipped = context
+        clipped.clip(to: tilePath)
+
+        let reservedWidth: CGFloat
+        if drawRect.width >= 24 {
+            let tip = edge + direction * 3
+            let outer = tip + direction * 5
+            let halfHeight = min(7, drawRect.height * 0.23)
+            var chevron = Path()
+            chevron.move(to: CGPoint(x: outer, y: drawRect.midY - halfHeight))
+            chevron.addLine(to: CGPoint(x: tip, y: drawRect.midY))
+            chevron.addLine(to: CGPoint(x: outer, y: drawRect.midY + halfHeight))
+            clipped.stroke(chevron, with: .color(ink),
+                           style: StrokeStyle(lineWidth: 2.4, lineCap: .round, lineJoin: .round))
+            reservedWidth = 10
         } else {
-            if isLeft {
-                fadedContext.fill(interior, with: .color(Theme.black.opacity(0.35)))
-                fadedContext.stroke(interior, with: .color(Theme.white.opacity(0.35)), lineWidth: 1)
-            } else {
-                fadedContext.fill(interior, with: .color(Theme.white.opacity(0.20)))
-            }
+            let barWidth = min(2.5, drawRect.width / 3)
+            let barX = mark == .early ? drawRect.minX : drawRect.maxX - barWidth
+            clipped.fill(Path(CGRect(x: barX, y: drawRect.minY, width: barWidth, height: drawRect.height)),
+                         with: .color(ink))
+            reservedWidth = barWidth
         }
-        fadedContext.stroke(Path(roundedRect: rect.insetBy(dx: 1, dy: 1), cornerRadius: innerRadius),
-                            with: .color(PatternField.ghostOutline.opacity(0.4)), lineWidth: 1.5)
-
-    case .hidden:
+        labelRect.size.width -= reservedWidth
+        if mark == .early { labelRect.origin.x += reservedWidth }
+    default:
         break
+    }
+
+    if visibility == .shown && PracticeBandStyle.showPadLabels {
+        let hitFontSize = min(fontSize, max(7, min(labelRect.width * 0.65, drawRect.height * 0.68)))
+        var labelContext = context
+        if mark == .early || mark == .late { labelContext.clip(to: Path(labelRect)) }
+        labelContext.draw(Text(PadVoice.abbreviation(hit.padIndex)).font(Theme.canvasDisplay(hitFontSize))
+            .foregroundColor(isLeft ? Theme.white : Theme.black),
+            at: CGPoint(x: labelRect.midX, y: labelRect.midY))
     }
 }
 
-private func drawMarker(x: CGFloat, top: CGFloat, bottom: CGFloat, context: inout GraphicsContext) {
-    var path = Path()
-    path.move(to: CGPoint(x: x, y: top)); path.addLine(to: CGPoint(x: x, y: bottom))
-    context.stroke(path, with: .color(Theme.white), lineWidth: 5)
-    context.stroke(path, with: .color(Theme.black), lineWidth: 1.7)
-    var cap = Path()
-    cap.move(to: CGPoint(x: x - 5, y: top - 3))
-    cap.addLines([CGPoint(x: x + 5, y: top - 3), CGPoint(x: x, y: top + 3)])
-    cap.closeSubpath()
-    context.fill(cap, with: .color(Theme.black))
+private func drawMarker(x: CGFloat, size: CGSize, context: inout GraphicsContext) {
+    let width: CGFloat = 3
+    let center = max(width / 2, min(x, size.width - width / 2))
+    let line = CGRect(x: center - width / 2, y: 0, width: width, height: size.height)
+    var outerGlow = context
+    outerGlow.blendMode = .plusLighter
+    outerGlow.addFilter(.shadow(color: PracticeHardware.playheadGlow, radius: 8, x: 0, y: 0))
+    outerGlow.fill(Path(line), with: .color(PracticeHardware.playheadGlow.opacity(0.65)))
+    var coreGlow = context
+    coreGlow.addFilter(.shadow(color: PracticeHardware.playheadGlow, radius: 8, x: 0, y: 0))
+    coreGlow.fill(Path(line), with: .color(.white))
 }
 
 /// A thin ruler (8 pt high) along the top edge of the orange band, spanning the band width.
@@ -802,7 +1090,7 @@ struct HelpPatternBand: View {
     var passed = false
     var height: CGFloat = 80
     var bars = 1
-    var showHitColours = false
+    var showHitMarks = false
 
     var body: some View {
         Canvas { context, size in
@@ -826,7 +1114,7 @@ struct HelpPatternBand: View {
                 drawBeat(step: step, x: x(Double(step)), lanes: lanes, context: &context)
             }
             if let position {
-                drawMarker(x: x(position), top: lanes.top - 4 * scale, bottom: lanes.bottom, context: &context)
+                drawMarker(x: x(position), size: size, context: &context)
             }
             if visibility != .hidden {
                 for bar in 0..<bars {
@@ -837,11 +1125,12 @@ struct HelpPatternBand: View {
                         let rect = lanes.tile(x: x(Double(step)), width: width, row: row)
                         let matchesPlayhead = position.map { (0..<3).contains($0 - Double(step)) } ?? false
                         let mark: HitMark?
-                        if showHitColours && hit.padIndex == Self.hiHat {
+                        if showHitMarks && hit.padIndex == Self.hiHat {
                             mark = switch hit.step {
                             case 0: .correct
-                            case 4: .off
-                            case 8: .wrong
+                            case 4: .early
+                            case 8: .late
+                            case 12: .wrong
                             default: nil
                             }
                         } else {
@@ -877,12 +1166,12 @@ struct HelpPatternBand: View {
     }
 }
 
-// MARK: - Margin & Hit Indicator (Ticket 218 & 229)
+// MARK: - Margin & Hit Indicator (Ticket 218, 229 & 231)
 
 private struct BandRowDotSchedule: TimelineSchedule {
     let flashDate: Date?
-    private static let fadeDuration: TimeInterval = 0.15
-    private static let frameInterval: TimeInterval = 1.0 / 30.0
+    static let fadeDuration: TimeInterval = 0.25
+    private static let frameInterval: TimeInterval = 1.0 / 60.0
 
     func entries(from startDate: Date, mode: TimelineScheduleMode) -> [Date] {
         guard let flashDate else { return [startDate] }
@@ -899,22 +1188,76 @@ private struct BandRowDotSchedule: TimelineSchedule {
     }
 }
 
-/// A leaf view reading pad flashes only for its own padIndex to avoid re-rendering PatternField or PracticeScreen (Tickets 209, 229).
-private struct BandRowDot: View {
+private struct BandVelocityMeter: View {
+    let velocity: Int
+    let intensity: Double
+
+    var body: some View {
+        let colors = [PracticeHardware.color(0xFF7A00), PracticeHardware.color(0xFF7A00),
+                      PracticeHardware.color(0xFFB800), Color.white]
+        let lit = (velocity + 31) / 32
+
+        VStack(spacing: 2) {
+            ForEach(colors.indices.reversed(), id: \.self) { index in
+                let brightness = index < lit ? intensity : 0
+                RoundedRectangle(cornerRadius: 1)
+                    .fill(PracticeHardware.border)
+                    .overlay {
+                        RoundedRectangle(cornerRadius: 1)
+                            .fill(colors[index].opacity(brightness))
+                            .shadow(color: colors[index].opacity(index == 3 ? brightness : 0), radius: 4)
+                    }
+            }
+        }
+        .frame(width: 4, height: 22)
+        .accessibilityHidden(true)
+    }
+}
+
+/// Observes pad input in the gutter without invalidating the pattern or the practice screen.
+private struct BandMarginRowIndicator: View {
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     let session: PracticeSession?
     let padIndex: Int
+    let iconSize: CGFloat
+    let rowHeight: CGFloat
+    let name: String
+    let onTap: () -> Void
 
     var body: some View {
         let flash = session?.padFlashes[padIndex]
         TimelineView(BandRowDotSchedule(flashDate: flash?.date)) { timeline in
-            let age = flash.map { timeline.date.timeIntervalSince($0.date) } ?? 1.0
-            let strike = max(0, min(1, 1 - age / 0.15))
-            let color = flash?.color ?? Theme.orange
-            let opacity = max(0.25, strike)
-            Circle()
-                .fill(color)
-                .opacity(opacity)
-                .frame(width: 6, height: 6)
+            let age = flash.map { max(0, timeline.date.timeIntervalSince($0.date)) } ?? .infinity
+            let phase = age / BandRowDotSchedule.fadeDuration
+            let isStriking = phase < 1
+            let intensity = isStriking ? (reduceMotion ? 1 : 1 - phase) : 0
+            let press = isStriking ? (phase < 0.22 ? phase / 0.22 : (1 - phase) / 0.78) : 0
+            let glyphScale: CGFloat = (!reduceMotion && isStriking) ? (1.0 - 0.12 * CGFloat(press)) : 1.0
+            let badgeSize = max(iconSize + 6, min(rowHeight - 6, iconSize + 10))
+
+            HStack(spacing: 6) {
+                Button(action: onTap) {
+                    DrumGlyph(kind: DrumKind.forPad(padIndex))
+                        .frame(width: iconSize, height: iconSize)
+                        .scaleEffect(glyphScale)
+                        .foregroundStyle(isStriking ? Color.white : Color.white.opacity(0.92))
+                        .frame(width: badgeSize, height: badgeSize)
+                        .background(
+                            RoundedRectangle(cornerRadius: 6, style: .continuous)
+                                .fill(isStriking ? PracticeHardware.orange.opacity(0.28) : PracticeHardware.padFill)
+                        )
+                        .overlay {
+                            RoundedRectangle(cornerRadius: 6, style: .continuous)
+                                .strokeBorder(isStriking ? PracticeHardware.orange : PracticeHardware.padBorder, lineWidth: 1)
+                        }
+                        .shadow(color: PracticeHardware.orange.opacity(isStriking ? 0.55 : 0), radius: 5)
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel(name)
+
+                BandVelocityMeter(velocity: flash?.velocity ?? 0, intensity: intensity)
+            }
         }
     }
 }
@@ -940,10 +1283,16 @@ private struct BandMarginView: View {
                     let rowY = lanes.y(row)
                     let name = labelLayout.labels[pad] ?? PadVoice.displayName(pad)
 
-                    HStack(spacing: 6) {
+                    HStack(spacing: 0) {
                         Spacer(minLength: 0)
 
-                        Button {
+                        BandMarginRowIndicator(
+                            session: session,
+                            padIndex: pad,
+                            iconSize: iconSize,
+                            rowHeight: layout.rowHeight,
+                            name: name
+                        ) {
                             withAnimation(Theme.Motion.fast) {
                                 activeBubblePad = pad
                             }
@@ -958,16 +1307,7 @@ private struct BandMarginView: View {
                                     }
                                 }
                             }
-                        } label: {
-                            DrumGlyph(kind: DrumKind.forPad(pad))
-                                .frame(width: iconSize, height: iconSize)
-                                .foregroundStyle(Theme.ink)
-                                .contentShape(Rectangle())
                         }
-                        .buttonStyle(.plain)
-                        .accessibilityLabel(name)
-
-                        BandRowDot(session: session, padIndex: pad)
                     }
                     .padding(.trailing, 8)
                     .padding(.leading, 8)

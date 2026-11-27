@@ -112,4 +112,28 @@ final class PatternBandLayoutTests: XCTestCase {
         XCTAssertEqual(orderedRows, [openHiHat, hiHat, snare, kick])
         XCTAssertEqual(orderedRows.map(PadVoice.displayName), ["Open hi-hat", "Hi-hat", "Snare", "Kick"])
     }
+
+    func testAnchoredPracticeBandReservesSpaceForControlsAcrossRowsAndOrientations() {
+        for middleHeight in [CGFloat(560), 420, 300] {
+            for rows in 1...8 {
+                for isMix in [false, true] {
+                    for isAfterMe in [false, true] {
+                        let layout = PracticeScreenLayout(
+                            middleZoneHeight: middleHeight,
+                            rows: rows,
+                            isMix: isMix,
+                            isAfterMe: isAfterMe
+                        )
+                        let stackBottom = layout.stackTop + layout.bandHeight
+                            + PracticeScreenLayout.passProgressReserve
+                            + (isMix ? PracticeScreenLayout.mixHeaderReserve : 0)
+                        let promptBottom = isAfterMe ? PracticeScreenLayout.afterMePromptHeight + Theme.Space.small : 0
+                        XCTAssertGreaterThan(layout.bandHeight, 0)
+                        XCTAssertGreaterThanOrEqual(layout.stackTop, promptBottom)
+                        XCTAssertEqual(layout.stackTop - promptBottom, middleHeight - stackBottom, accuracy: 0.01)
+                    }
+                }
+            }
+        }
+    }
 }

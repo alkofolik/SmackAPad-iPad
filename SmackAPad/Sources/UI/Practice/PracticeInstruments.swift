@@ -1,20 +1,69 @@
 import SwiftUI
 import UIKit
 
+enum PracticeHardware {
+    static let chassis = color(0x0C0C0E)
+    static let panel = color(0x141417)
+    static let border = color(0x26262B)
+    static var orange: Color { Theme.orange }
+    static let displayBottom = color(0xE04E00)
+    static let playheadGlow = color(0xFF9E44)
+    static let strikeGlow = color(0xFFD1A6)
+    static let padFill = color(0x1E1E24)
+    static let padBorder = color(0x34343D)
+    static let padFadeDuration: TimeInterval = 0.18
+
+    static func color(_ hex: UInt32) -> Color {
+        Color(red: Double((hex >> 16) & 0xFF) / 255,
+              green: Double((hex >> 8) & 0xFF) / 255,
+              blue: Double(hex & 0xFF) / 255)
+    }
+}
+
+struct PracticeTransportPadStyle: ButtonStyle {
+    let primary: Bool
+
+    func makeBody(configuration: Configuration) -> some View {
+        let shape = RoundedRectangle(cornerRadius: 8, style: .continuous)
+        let top = primary ? PracticeHardware.color(0xFF9447) : PracticeHardware.color(0x454552)
+        let edge = primary ? PracticeHardware.displayBottom : PracticeHardware.padBorder
+
+        configuration.label
+            .foregroundStyle(.white)
+            .background {
+                shape
+                    .fill(
+                        LinearGradient(
+                            colors: primary
+                                ? [PracticeHardware.color(0xFF7B1A), PracticeHardware.orange]
+                                : [PracticeHardware.padFill, PracticeHardware.color(0x18181D)],
+                            startPoint: .top,
+                            endPoint: .bottom
+                        )
+                    )
+                    .shadow(color: PracticeHardware.orange.opacity(primary && !configuration.isPressed ? 0.65 : 0),
+                            radius: 10, y: 2)
+            }
+            .overlay {
+                shape.fill(.black.opacity(configuration.isPressed ? 0.24 : 0))
+            }
+            .overlay {
+                shape.strokeBorder(
+                    LinearGradient(colors: [top, edge], startPoint: .top, endPoint: .bottom),
+                    lineWidth: 1.5
+                )
+            }
+            .scaleEffect(configuration.isPressed ? 0.98 : 1.0)
+            .contentShape(shape)
+    }
+}
+
 /// Measurements and colours from the approved Cut Tape B source.
 /// Kept local to practice so the library and settings retain their own styling.
 enum PracticeBandStyle {
     static let showPadLabels = true
     static let rowGap: CGFloat = 8
-    static let orange = Color(red: 1, green: 120.0 / 255, blue: 0)
-
-    static func hitColor(_ mark: HitMark) -> Color {
-        switch mark {
-        case .correct: return Color(red: 1, green: 224.0 / 255, blue: 194.0 / 255)
-        case .off: return Color(red: 1, green: 181.0 / 255, blue: 116.0 / 255)
-        case .wrong: return Color(red: 212.0 / 255, green: 79.0 / 255, blue: 0)
-        }
-    }
+    static var orange: Color { PracticeHardware.orange }
 
     static let minRowHeight: CGFloat = 36
     static let maxRowHeight: CGFloat = 74
@@ -73,7 +122,7 @@ enum PracticeBandStyle {
 
     static func bandMarginWidth(rowHeight: CGFloat) -> CGFloat {
         let icon = bandMarginIconSize(rowHeight: rowHeight)
-        return ceil(icon + 28)
+        return ceil(icon + 38)
     }
 
     static func bandMarginIconSize(rowHeight: CGFloat) -> CGFloat {
@@ -275,6 +324,7 @@ struct TimingCue: View {
 
     let offset: Double
     var active = true
+    var maximumWidth: CGFloat? = nil
 
     @ScaledMetric(relativeTo: .body) private var trackWidth: CGFloat = 180
     @ScaledMetric(relativeTo: .body) private var trackHeight: CGFloat = 30
@@ -290,30 +340,34 @@ struct TimingCue: View {
     }
 
     var body: some View {
+        let width = min(maximumWidth ?? trackWidth, trackWidth)
         ZStack {
-            Capsule()
-                .fill(Theme.surface)
-                .overlay { Capsule().strokeBorder(Theme.hairline, lineWidth: 1) }
+            RoundedRectangle(cornerRadius: Theme.Radius.control, style: .continuous)
+                .fill(Theme.recessed)
+                .overlay {
+                    RoundedRectangle(cornerRadius: Theme.Radius.control, style: .continuous)
+                        .strokeBorder(Theme.hairline, lineWidth: 1)
+                }
 
             ForEach([-1.0, 1.0], id: \.self) { side in
                 Rectangle()
                     .fill(Theme.hairline)
                     .frame(width: 1, height: markHeight)
-                    .offset(x: side * trackWidth / 9)
+                    .offset(x: side * width / 9)
             }
 
             Rectangle()
                 .fill(Theme.secondary)
                 .frame(width: notchWidth, height: pipHeight)
 
-            Capsule()
+            RoundedRectangle(cornerRadius: 2, style: .continuous)
                 .fill(offset == 0 ? Theme.orange : Theme.ink)
-                .frame(width: pipWidth, height: pipHeight)
-                .offset(x: offset * (trackWidth - pipWidth) / 2)
+                .frame(width: min(pipWidth, width), height: pipHeight)
+                .offset(x: offset * max(0, width - pipWidth) / 2)
                 .animation(reduceMotion ? nil : .spring(response: 0.35, dampingFraction: 0.78),
                            value: offset)
         }
-        .frame(width: trackWidth, height: trackHeight)
+        .frame(width: width, height: trackHeight)
         .opacity(active ? 1 : 0.35)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(settings.localized("Hit timing"))
@@ -322,46 +376,282 @@ struct TimingCue: View {
     }
 }
 
-/// Large tappable tempo readout. Opens the tempo controls while stopped.
-struct TempoTile: View {
+/// Large tappable OLED tempo readout. Opens the tempo controls while stopped.
+struct TempoTile<CueContent: View>: View {
     @Environment(SettingsManager.self) private var settings
     @Environment(\.accessibilityReduceMotion) private var reduced
     private var motion: Theme.Motion.Policy { .init(reduced: reduced) }
     let bpm: Int
+    let startBpm: Int
     let targetBpm: Int
     let editable: Bool
+    let status: String?
+    let side: CGFloat
+    var expanded: Bool = false
+    var onStepTempo: ((Int) -> Void)? = nil
+    var onSetTempo: ((Int) -> Void)? = nil
     let action: () -> Void
+    @ViewBuilder var timingCue: () -> CueContent
+
+    init(
+        bpm: Int,
+        startBpm: Int = 60,
+        targetBpm: Int,
+        editable: Bool,
+        status: String?,
+        side: CGFloat,
+        expanded: Bool = false,
+        onStepTempo: ((Int) -> Void)? = nil,
+        onSetTempo: ((Int) -> Void)? = nil,
+        action: @escaping () -> Void,
+        @ViewBuilder timingCue: @escaping () -> CueContent = { EmptyView() }
+    ) {
+        self.bpm = bpm
+        self.startBpm = startBpm
+        self.targetBpm = targetBpm
+        self.editable = editable
+        self.status = status
+        self.side = side
+        self.expanded = expanded
+        self.onStepTempo = onStepTempo
+        self.onSetTempo = onSetTempo
+        self.action = action
+        self.timingCue = timingCue
+    }
+
+    private var sliderMinBpm: Int { min(40, min(startBpm, bpm)) }
+    private var sliderMaxBpm: Int { max(180, max(targetBpm + 20, bpm)) }
 
     var body: some View {
-        Button(action: action) {
-            HStack(alignment: .center, spacing: Theme.Space.small + 2) {
-                Text("\(bpm)")
-                    .font(Theme.mainValue).monospacedDigit()
-                    .contentTransition(motion.numeric).motion(value: bpm)
-                VStack(alignment: .leading, spacing: 0) {
-                    Text("BPM").font(Theme.text(22))
-                    Text("→ \(targetBpm)").font(Theme.meta).monospacedDigit().foregroundStyle(Theme.secondary)
-                }
-                Image(systemName: "chevron.down")
+        Group {
+            if let status {
+                Text(status)
                     .font(Theme.meta)
-                    .foregroundStyle(Theme.secondary)
-                    .opacity(editable ? 1 : 0)
+                    .foregroundStyle(Theme.Skin.Display.secondary)
+                    .multilineTextAlignment(.center)
+                    .minimumScaleFactor(0.7)
+                    .padding(Theme.Space.small)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+            } else if expanded {
+                expandedBody
+            } else {
+                compactBody
             }
-            .padding(.horizontal, Theme.Space.regular - 2)
-            .padding(.vertical, Theme.Space.tight)
-            .frame(minHeight: InstrumentTile.height)
-            .overlay(Rectangle().strokeBorder(Theme.ink.opacity(editable ? 1 : 0.35), lineWidth: Theme.Size.border))
+        }
+        .frame(maxWidth: expanded ? .infinity : side, minHeight: side, maxHeight: side)
+        .background {
+            RoundedRectangle(cornerRadius: Theme.Radius.panel, style: .continuous)
+                .fill(PracticeHardware.panel.shadow(.inner(color: .black.opacity(0.8), radius: 6, y: 3)))
+                .overlay {
+                    RoundedRectangle(cornerRadius: Theme.Radius.panel, style: .continuous)
+                        .strokeBorder(PracticeHardware.border, lineWidth: 1)
+                }
+        }
+        .contentShape(RoundedRectangle(cornerRadius: Theme.Radius.panel))
+    }
+
+    private var expandedBody: some View {
+        VStack(spacing: 6) {
+            HStack(spacing: 8) {
+                Button(action: action) {
+                    HStack(spacing: 5) {
+                        Circle()
+                            .fill(editable ? PracticeHardware.orange : Color.white.opacity(0.3))
+                            .frame(width: 6, height: 6)
+                            .shadow(color: editable ? PracticeHardware.orange.opacity(0.8) : .clear, radius: 4)
+                        Text("TEMPO")
+                            .font(Theme.strong(11))
+                            .tracking(0.8)
+                            .foregroundStyle(Color.white.opacity(editable ? 0.92 : 0.45))
+                        if editable {
+                            Image(systemName: "chevron.down")
+                                .font(.system(size: 9, weight: .bold))
+                                .foregroundStyle(Color.white.opacity(0.65))
+                        }
+                    }
+                    .padding(.horizontal, 9)
+                    .padding(.vertical, 4)
+                    .background(PracticeHardware.chassis, in: Capsule())
+                    .overlay {
+                        Capsule().strokeBorder(PracticeHardware.border, lineWidth: 1)
+                    }
+                }
+                .buttonStyle(.plain)
+                .disabled(!editable)
+                .accessibilityLabel(settings.localized("Tempo"))
+
+                Spacer(minLength: 4)
+
+                HStack(spacing: 5) {
+                    Text(settings.localized("Goal").uppercased())
+                        .font(Theme.strong(10))
+                        .tracking(0.6)
+                        .foregroundStyle(Color.white.opacity(0.6))
+                    Text("\(targetBpm)")
+                        .font(Theme.strong(13))
+                        .monospacedDigit()
+                        .foregroundStyle(bpm >= targetBpm ? PracticeHardware.orange : Color.white)
+                }
+                .padding(.horizontal, 9)
+                .padding(.vertical, 4)
+                .background(
+                    (bpm >= targetBpm ? PracticeHardware.orange.opacity(0.18) : PracticeHardware.chassis),
+                    in: Capsule()
+                )
+                .overlay {
+                    Capsule().strokeBorder(
+                        bpm >= targetBpm ? PracticeHardware.orange : PracticeHardware.border,
+                        lineWidth: 1
+                    )
+                }
+            }
+
+            HStack(spacing: Theme.Space.regular) {
+                if let onStepTempo {
+                    stepButton(symbol: "minus", label: settings.localized("Decrease tempo")) {
+                        onStepTempo(-1)
+                    }
+                    .opacity(editable ? 1 : 0.32)
+                    .disabled(!editable)
+                }
+
+                Button(action: action) {
+                    HStack(alignment: .firstTextBaseline, spacing: 6) {
+                        Text("\(bpm)")
+                            .font(Theme.boldDisplay(min(54, max(34, side * 0.36))))
+                            .monospacedDigit()
+                            .foregroundStyle(Color.white)
+                            .shadow(color: PracticeHardware.orange.opacity(0.60), radius: 10)
+                            .shadow(color: PracticeHardware.playheadGlow.opacity(0.30), radius: 3)
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.65)
+                            .contentTransition(motion.numeric)
+                            .motion(value: bpm)
+                        Text("BPM")
+                            .font(Theme.strong(13))
+                            .tracking(0.6)
+                            .foregroundStyle(PracticeHardware.orange)
+                    }
+                    .frame(maxWidth: .infinity)
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .disabled(!editable)
+                .accessibilityLabel(settings.localized("Tempo %lld BPM, goal %lld", bpm, targetBpm))
+
+                if let onStepTempo {
+                    stepButton(symbol: "plus", label: settings.localized("Increase tempo")) {
+                        onStepTempo(1)
+                    }
+                    .opacity(editable ? 1 : 0.32)
+                    .disabled(!editable)
+                }
+            }
+
+            VStack(spacing: 6) {
+                tempoBarSlider
+                    .frame(height: 22)
+                    .opacity(editable ? 1 : 0.45)
+                timingCue()
+            }
+        }
+        .padding(.horizontal, 14)
+        .padding(.vertical, 10)
+    }
+
+    private var compactBody: some View {
+        Button(action: action) {
+            VStack(spacing: 3) {
+                HStack(alignment: .firstTextBaseline, spacing: 4) {
+                    Text("\(bpm)")
+                        .font(Theme.boldDisplay(min(44, side * 0.42)))
+                        .monospacedDigit()
+                        .foregroundStyle(Color.white)
+                        .shadow(color: PracticeHardware.orange.opacity(0.55), radius: 8)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.7)
+                        .contentTransition(motion.numeric)
+                        .motion(value: bpm)
+                    Text("BPM")
+                        .font(Theme.strong(11))
+                        .foregroundStyle(PracticeHardware.orange)
+                }
+                Text("\(settings.localized("Goal")) \(targetBpm)")
+                    .font(Theme.meta)
+                    .monospacedDigit()
+                    .foregroundStyle(bpm >= targetBpm ? PracticeHardware.orange : Color.white.opacity(0.65))
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
         .disabled(!editable)
-        .accessibilityLabel(settings.localized("Tempo"))
-        .accessibilityValue("\(bpm) BPM, \(settings.localized("Goal tempo")) \(targetBpm)")
+        .accessibilityLabel(settings.localized("Tempo %lld BPM, goal %lld", bpm, targetBpm))
     }
-}
 
-enum InstrumentTile {
-    static let height: CGFloat = 80
+    private var tempoBarSlider: some View {
+        GeometryReader { geo in
+            let width = max(1, geo.size.width)
+            let span = Double(max(1, sliderMaxBpm - sliderMinBpm))
+            let fraction = min(1, max(0, Double(bpm - sliderMinBpm) / span))
+            let goalFraction = min(1, max(0, Double(targetBpm - sliderMinBpm) / span))
+            let segmentCount = 24
+            let gap: CGFloat = 2
+            let segWidth = max(1, (width - CGFloat(segmentCount - 1) * gap) / CGFloat(segmentCount))
+
+            ZStack(alignment: .leading) {
+                HStack(spacing: gap) {
+                    ForEach(0..<segmentCount, id: \.self) { index in
+                        let threshold = Double(index) / Double(segmentCount)
+                        let lit = threshold <= fraction
+                        RoundedRectangle(cornerRadius: 1.5)
+                            .fill(lit ? PracticeHardware.orange : PracticeHardware.padBorder.opacity(0.65))
+                            .frame(width: segWidth, height: lit ? 10 : 7)
+                            .shadow(color: lit ? PracticeHardware.orange.opacity(0.55) : .clear, radius: 3)
+                    }
+                }
+                .frame(maxHeight: .infinity)
+
+                // Goal marker tick
+                Rectangle()
+                    .fill(Color.white.opacity(0.9))
+                    .frame(width: 2, height: 16)
+                    .offset(x: max(0, min(width - 2, width * goalFraction - 1)))
+            }
+            .contentShape(Rectangle())
+            .gesture(
+                DragGesture(minimumDistance: 0)
+                    .onChanged { value in
+                        guard editable, let onSetTempo else { return }
+                        let ratio = min(1, max(0, value.location.x / width))
+                        let newBpm = Int((Double(sliderMinBpm) + ratio * span).rounded())
+                        onSetTempo(newBpm)
+                    }
+            )
+        }
+        .frame(height: 18)
+        .accessibilityHidden(true)
+    }
+
+    private func stepButton(symbol: String, label: String, onTap: @escaping () -> Void) -> some View {
+        Button(action: onTap) {
+            Image(systemName: symbol)
+                .font(.system(size: 16, weight: .bold))
+                .foregroundStyle(Color.white)
+                .frame(width: 44, height: 42)
+                .background {
+                    RoundedRectangle(cornerRadius: Theme.Radius.button, style: .continuous)
+                        .fill(PracticeHardware.padFill)
+                        .overlay {
+                            RoundedRectangle(cornerRadius: Theme.Radius.button, style: .continuous)
+                                .strokeBorder(PracticeHardware.padBorder, lineWidth: 1)
+                        }
+                        .shadow(color: Color.black.opacity(0.45), radius: 3, y: 2)
+                }
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(label)
+    }
 }
 
 /// Thin pass-progress bar displayed below the orange band across its full width.
@@ -412,7 +702,7 @@ struct PassProgressBar: View {
             for bar in 1..<count {
                 let x = min(size.width - 2, max(0, size.width * Double(bar) / Double(count) - 1))
                 let reached = Double(bar) / Double(count) <= fraction || oldOpacity > 0.35
-                let tickColor = reached ? Theme.background : Theme.secondary.opacity(0.65)
+                let tickColor = reached ? Theme.chassis : Theme.secondary.opacity(0.65)
                 context.fill(Path(CGRect(x: x, y: 0, width: 2, height: size.height)),
                              with: .color(tickColor))
             }
@@ -490,6 +780,7 @@ struct PracticeProgressMeter: View {
     let verdict: RunVerdict?
     let starMomentActive: Bool
     let currentAccuracy: Double?
+    var listenProgress: Double? = nil
 
     private var accuracyText: String {
         guard let currentAccuracy else { return "—\u{00a0}%" }
@@ -504,6 +795,17 @@ struct PracticeProgressMeter: View {
     }
 
     var body: some View {
+        if let listenProgress {
+            ProgressView(value: min(1, max(0, listenProgress)))
+                .tint(Theme.orange)
+                .frame(width: 120, height: blockHeight)
+                .accessibilityLabel(settings.localized("Position in the current pass"))
+        } else {
+            scoredMeter
+        }
+    }
+
+    private var scoredMeter: some View {
         HStack(spacing: Theme.Space.regular) {
             if showWarmUps {
                 warmUpEyes
@@ -659,6 +961,11 @@ struct EndOfRunCardModel: Equatable {
     let showsStars: Bool
     let earnedStars: [Bool]
     let status: EndOfRunStatus
+    let progressDetail: String?
+    let growthLine: String?
+    let growthLineHighlighted: Bool
+    let rpgLine: String?
+    let rpgLineHighlighted: Bool
     let reviewLine: EndOfRunLine?
     let runsLine: EndOfRunLine?
     let badgeLine: EndOfRunLine?
@@ -678,24 +985,39 @@ struct EndOfRunCardModel: Equatable {
         bestResponseScore: Double?,
         language: AppLanguage,
         isDueReview: Bool = false,
-        reviewPendingReason: PracticeStepOutcome.Reason? = nil
+        reviewPendingReason: PracticeStepOutcome.Reason? = nil,
+        reviewSuccesses: Int? = nil,
+        completedCoachDrillBarIndex: Int? = nil,
+        drummerDelta: DrummerProgressDelta? = nil,
+        keysAwarded: Int = 0
     ) -> EndOfRunCardModel {
         let scorePercent = Int((summary.score * 100).rounded())
         let earnedStars = [saved?.passed == true, saved?.mastery == true, saved?.memory == true]
 
         let status: EndOfRunStatus
+        let progressDetail: String?
         if reviewPendingReason == .peeked {
-            status = EndOfRunStatus(icon: "exclamationmark.circle", tintOrange: false, title: language.localized("Not counted"))
+            status = EndOfRunStatus(
+                icon: "eye",
+                tintOrange: false,
+                title: PracticeStepOutcome.Reason.peeked.title(language: language)
+            )
+            progressDetail = PracticeStepOutcome.Reason.peeked.message(language: language)
         } else if let reviewFeedback {
             switch reviewFeedback {
             case .passed:
                 status = EndOfRunStatus(icon: "checkmark", tintOrange: true, title: language.localized("Review passed"))
+                progressDetail = nil
             case .settled:
                 status = EndOfRunStatus(icon: "checkmark", tintOrange: true, title: language.localized("Lesson settled"))
+                progressDetail = nil
             case .failed:
                 status = EndOfRunStatus(icon: "xmark", tintOrange: false, title: language.localized("Review not passed"))
-            case .doesNotCount:
-                status = EndOfRunStatus(icon: "exclamationmark.circle", tintOrange: false, title: language.localized("Not counted"))
+                progressDetail = nil
+            case .doesNotCount(let goalBpm):
+                let reason = PracticeStepOutcome.Reason.requirements(goalBpm: goalBpm)
+                status = EndOfRunStatus(icon: "metronome", tintOrange: false, title: reason.title(language: language))
+                progressDetail = reason.message(language: language)
             }
         } else if isAfterMe {
             status = EndOfRunStatus(
@@ -703,23 +1025,76 @@ struct EndOfRunCardModel: Equatable {
                 tintOrange: summary.score >= Scoring.passMark,
                 title: language.localized("Practice only · no stars")
             )
+            progressDetail = nil
+        } else if let completedBarIndex = completedCoachDrillBarIndex {
+            status = EndOfRunStatus(
+                icon: "checkmark.circle.fill",
+                tintOrange: true,
+                title: language.localized("Bar %lld nailed!", completedBarIndex + 1)
+            )
+            progressDetail = nil
         } else if isSectionLoop {
             status = EndOfRunStatus(icon: "repeat", tintOrange: false, title: language.localized("Section loop"))
+            progressDetail = nil
         } else if isDueReview {
             if saved?.lastReviewFailDay == AppCalendar.today() || saved?.reviewSchedule.lastReviewFailDay == AppCalendar.today() {
                 status = EndOfRunStatus(icon: "xmark", tintOrange: false, title: language.localized("Review not passed"))
+                progressDetail = nil
             } else {
                 // An undecided due review must never report a regular "Passed" card (ticket 189).
-                status = EndOfRunStatus(icon: "exclamationmark.circle", tintOrange: false, title: language.localized("Not counted"))
+                let reason = reviewPendingReason ?? .unfinishedReview
+                let icon: String
+                switch reason {
+                case .notesVisible, .peeked: icon = "eye"
+                case .unfinishedReview: icon = "eye.slash"
+                case .requirements: icon = "metronome"
+                case .reviewNotPassed: icon = "xmark"
+                }
+                status = EndOfRunStatus(
+                    icon: icon,
+                    tintOrange: false,
+                    title: reason.title(language: language, reviewSuccesses: reviewSuccesses)
+                )
+                progressDetail = reason.message(language: language)
             }
         } else if summary.passes == 0 {
-            status = EndOfRunStatus(icon: "exclamationmark.circle", tintOrange: false, title: language.localized("Not counted"))
+            status = EndOfRunStatus(icon: "stop.circle", tintOrange: false, title: language.localized("Stopped early"))
+            progressDetail = language.localized("Finish one full pass to see your score")
         } else if summary.passed || runs.last?.passed == true || summary.score >= Scoring.passMark {
             status = EndOfRunStatus(icon: "checkmark", tintOrange: true, title: language.localized("Passed"))
+            progressDetail = nil
         } else {
             let notPassed = language.localized("not passed")
             let title = notPassed.prefix(1).uppercased(with: Locale(identifier: language == .czech ? "cs" : "en")) + notPassed.dropFirst()
             status = EndOfRunStatus(icon: "xmark", tintOrange: false, title: title)
+            progressDetail = nil
+        }
+
+        let growthLine: String?
+        let growthLineHighlighted: Bool
+        if summary.passes > 0, !isAfterMe, reviewPendingReason != .peeked, completedCoachDrillBarIndex == nil {
+            let previousPercent = summary.previousBestScore.map { Int(($0 * 100).rounded()) }
+            let isClean = summary.isCleanRun || (summary.totalBars > 0 && summary.cleanBars == summary.totalBars)
+            if let previousPercent, scorePercent - previousPercent >= 1 {
+                growthLine = language.localized("+%lld%% personal best", scorePercent - previousPercent)
+                growthLineHighlighted = true
+            } else if isClean, let previousBpm = summary.previousBpm, summary.bpm > previousBpm {
+                growthLine = language.localized("New clean tempo best · %lld BPM", summary.bpm)
+                growthLineHighlighted = true
+            } else if summary.totalBars >= 2, summary.cleanBars > 0, let weakestBar = summary.weakestBar {
+                growthLine = language.localized("%lld of %lld bars clean · watch bar %lld",
+                                                summary.cleanBars, summary.totalBars, weakestBar)
+                growthLineHighlighted = false
+            } else if summary.totalBars > 0, summary.cleanBars == summary.totalBars {
+                growthLine = language.localized("All bars clean")
+                growthLineHighlighted = true
+            } else {
+                growthLine = nil
+                growthLineHighlighted = false
+            }
+        } else {
+            growthLine = nil
+            growthLineHighlighted = false
         }
 
         let reviewLine: EndOfRunLine?
@@ -748,7 +1123,7 @@ struct EndOfRunCardModel: Equatable {
                 reviewLine = EndOfRunLine(
                     kind: .review,
                     icon: "calendar",
-                    text: "\(language.localized("From memory")) · \(goalBpm) BPM",
+                    text: PracticeStepOutcome.Reason.requirements(goalBpm: goalBpm).message(language: language),
                     isOrange: false
                 )
             }
@@ -778,6 +1153,8 @@ struct EndOfRunCardModel: Equatable {
             } else {
                 reviewLine = nil
             }
+        } else if completedCoachDrillBarIndex != nil {
+            reviewLine = nil
         } else if isSectionLoop {
             reviewLine = EndOfRunLine(
                 kind: .review,
@@ -822,16 +1199,68 @@ struct EndOfRunCardModel: Equatable {
             badgeLine = nil
         }
 
+        let rpgSummary: (text: String, highlighted: Bool)?
+        if summary.passes > 0, !isAfterMe, !isSectionLoop, reviewPendingReason != .peeked, completedCoachDrillBarIndex == nil {
+            rpgSummary = formattedRpgLine(delta: drummerDelta, keysAwarded: keysAwarded, language: language)
+        } else {
+            rpgSummary = nil
+        }
+
         return EndOfRunCardModel(
             scorePercent: scorePercent,
             bpm: summary.bpm,
-            showsStars: !isAfterMe,
+            showsStars: !isAfterMe && completedCoachDrillBarIndex == nil,
             earnedStars: earnedStars,
             status: status,
+            progressDetail: progressDetail,
+            growthLine: growthLine,
+            growthLineHighlighted: growthLineHighlighted,
+            rpgLine: rpgSummary?.text,
+            rpgLineHighlighted: rpgSummary?.highlighted ?? false,
             reviewLine: reviewLine,
             runsLine: runsLine,
             badgeLine: badgeLine
         )
+    }
+
+    static func formattedRpgLine(
+        delta: DrummerProgressDelta?,
+        keysAwarded: Int,
+        language: AppLanguage
+    ) -> (text: String, highlighted: Bool)? {
+        if keysAwarded > 0 {
+            let keyText: String
+            switch language {
+            case .czech:
+                if keysAwarded == 1 {
+                    keyText = "Získán +1 klíč!"
+                } else if (2...4).contains(keysAwarded) {
+                    keyText = "Získány +\(keysAwarded) klíče!"
+                } else {
+                    keyText = "Získáno +\(keysAwarded) klíčů!"
+                }
+            case .english:
+                keyText = keysAwarded == 1 ? "Earned +1 key!" : "Earned +\(keysAwarded) keys!"
+            }
+            if let xp = delta?.xpGained, xp > 0 {
+                return ("\(keyText) · +\(xp) XP", true)
+            }
+            return (keyText, true)
+        }
+
+        guard let delta, !delta.isEmpty else { return nil }
+        var parts: [String] = []
+        if delta.didLevelUp {
+            parts.append("Lvl \(delta.newLevel)")
+        }
+        if !delta.formattedAttributeDeltas.isEmpty {
+            parts.append(delta.formattedAttributeDeltas)
+        }
+        if delta.xpGained > 0 {
+            parts.append("+\(delta.xpGained) XP")
+        }
+        guard !parts.isEmpty else { return nil }
+        return (parts.joined(separator: " · "), delta.didLevelUp)
     }
 
     static func nextReviewGapText(days: Int, language: AppLanguage) -> String {
@@ -878,8 +1307,16 @@ struct EndOfRunCardModel: Equatable {
 }
 
 /// Modern black end-of-run card with symmetric 3-zone layout.
+struct ResultStoryChoice: Identifiable {
+    let id: String
+    let title: String
+    let hint: String?
+    let action: () -> Void
+}
+
 struct ResultCard: View {
     @Environment(SettingsManager.self) private var settings
+    @Environment(ProgressStore.self) private var progress
     @Environment(\.accessibilityReduceMotion) private var reduced
 
     let summary: RunSummary
@@ -890,6 +1327,7 @@ struct ResultCard: View {
     var reviewFeedback: ReviewScheduler.ReviewFeedback? = nil
     var isDueReview: Bool = false
     var reviewPendingReason: PracticeStepOutcome.Reason? = nil
+    var reviewSuccesses: Int? = nil
     var badgeCount: Int = 0
     var isAfterMe: Bool = false
     var isSectionLoop: Bool = false
@@ -898,9 +1336,15 @@ struct ResultCard: View {
     var nextAction: (() -> Void)? = nil
     var nextEnabled: Bool = false
     var nextLocked: Bool = false
+    var nextTitle: String? = nil
     var nextHint: String? = nil
+    var storyChoices: [ResultStoryChoice] = []
     var restartAction: (() -> Void)? = nil
     var restartEnabled: Bool = true
+    var coachSuggestion: CoachSuggestion? = nil
+    var coachAction: ((CoachSuggestion) -> Void)? = nil
+    var completedCoachDrillBarIndex: Int? = nil
+    var finishCoachDrillAction: (() -> Void)? = nil
     let openRules: () -> Void
     let openSessionResults: () -> Void
     var starRulesAttachment: AnyView? = nil
@@ -920,33 +1364,17 @@ struct ResultCard: View {
             bestResponseScore: bestResponseScore,
             language: settings.languagePreference,
             isDueReview: isDueReview,
-            reviewPendingReason: reviewPendingReason
+            reviewPendingReason: reviewPendingReason,
+            reviewSuccesses: reviewSuccesses,
+            completedCoachDrillBarIndex: completedCoachDrillBarIndex,
+            drummerDelta: progress.lastDrummerDelta,
+            keysAwarded: progress.lastDrummerKeysAwarded
         )
     }
 
-    private var isNotCounted: Bool {
-        reviewPendingReason != nil
-            || summary.passes == 0
-            || model.status.icon == "exclamationmark.circle"
-            || model.status.title == settings.localized("Not counted")
-    }
-
-    private var notCountedReason: String {
-        if let reviewPendingReason {
-            return reviewPendingReason.message(language: settings.languagePreference)
-        }
-        if let reviewLine = model.reviewLine {
-            return reviewLine.text
-        }
-        if summary.passes == 0 {
-            return settings.localized("Run stopped before the first pass finished.")
-        }
-        return model.status.title
-    }
-
     private var verdictText: String {
-        if isNotCounted {
-            return settings.localized("Not counted")
+        if model.progressDetail != nil {
+            return model.status.title
         }
         if let reviewLine = model.reviewLine, model.runsLine != nil {
             return "\(model.status.title) · \(reviewLine.text)"
@@ -965,8 +1393,33 @@ struct ResultCard: View {
         return false
     }
 
+    private var showStoryChoices: Bool {
+        model.progressDetail == nil && !storyChoices.isEmpty
+    }
+
     private var showNext: Bool {
-        !isNotCounted && nextEnabled && nextAction != nil
+        model.progressDetail == nil && nextEnabled && nextAction != nil
+    }
+
+    private var showFinishCoachDrill: Bool {
+        completedCoachDrillBarIndex != nil && finishCoachDrillAction != nil
+    }
+
+    private var showCoachSuggestion: Bool {
+        !showFinishCoachDrill && !showNext && coachSuggestion != nil && coachAction != nil
+    }
+
+    private func coachSuggestionLabel(_ suggestion: CoachSuggestion) -> String {
+        switch suggestion {
+        case let .drillBar(barIndex, _):
+            return settings.localized("Drill bar %lld", barIndex + 1)
+        case let .slowDown(targetBpm):
+            return settings.localized("Slow to %lld BPM", targetBpm)
+        }
+    }
+
+    private var primaryNextLabel: String {
+        nextTitle ?? settings.localized("Next lesson")
     }
 
     private var sideZoneWidth: CGFloat {
@@ -1004,7 +1457,7 @@ struct ResultCard: View {
         .frame(width: cardWidth)
         .frame(minHeight: 168)
         .foregroundStyle(Theme.white)
-        .background(Theme.black, in: RoundedRectangle(cornerRadius: 20))
+        .background(Theme.black, in: RoundedRectangle(cornerRadius: Theme.Radius.panel))
         .task(id: event?.id ?? summary.id) {
             await animateFreshStars()
             if event == nil, !announcement.isEmpty {
@@ -1076,9 +1529,8 @@ struct ResultCard: View {
         }
     }
 
-    private var notCountedIcon: some View {
-        let iconName = reviewPendingReason == .peeked ? "eye" : model.status.icon
-        return Image(systemName: iconName)
+    private var progressIcon: some View {
+        Image(systemName: model.status.icon)
             .font(.system(size: isCompactWidth ? 30 : 36, weight: .regular))
             .foregroundStyle(Theme.white.opacity(0.85))
             .frame(height: 52)
@@ -1087,14 +1539,14 @@ struct ResultCard: View {
 
     private var middleZone: some View {
         VStack(alignment: .center, spacing: 6) {
-            if isNotCounted {
-                notCountedIcon
+            if model.progressDetail != nil {
+                progressIcon
             } else if model.showsStars {
                 starsRow
             } else {
                 Image(systemName: model.status.icon)
                     .font(.system(size: 36, weight: .regular))
-                    .foregroundStyle(Theme.white.opacity(0.85))
+                    .foregroundStyle(model.status.tintOrange ? Theme.orange : Theme.white.opacity(0.85))
                     .frame(height: 52)
                     .accessibilityHidden(true)
             }
@@ -1106,20 +1558,40 @@ struct ResultCard: View {
                 .minimumScaleFactor(0.8)
                 .multilineTextAlignment(.center)
 
-            if isNotCounted {
-                Text(notCountedReason)
+            if let detail = model.progressDetail {
+                Text(detail)
                     .font(Theme.text(14).weight(.medium))
                     .foregroundStyle(Theme.white.opacity(0.8))
-                    .lineLimit(1)
+                    .lineLimit(2)
                     .minimumScaleFactor(0.8)
                     .multilineTextAlignment(.center)
                     .frame(minHeight: 44, alignment: .center)
-            } else if let runsLine = model.runsLine {
-                summaryRowButton(runsLine)
-            } else if let reviewLine = model.reviewLine {
-                summaryRowButton(reviewLine)
             } else {
-                Color.clear.frame(height: 44)
+                if let growthLine = model.growthLine {
+                    Text(growthLine)
+                        .font(Theme.meta)
+                        .foregroundStyle(model.growthLineHighlighted ? Theme.orange : Theme.white.opacity(0.78))
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.8)
+                        .multilineTextAlignment(.center)
+                }
+
+                if let rpgLine = model.rpgLine {
+                    Text(rpgLine)
+                        .font(Theme.meta.monospacedDigit())
+                        .foregroundStyle(model.rpgLineHighlighted ? Theme.orange : Theme.white.opacity(0.72))
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.8)
+                        .multilineTextAlignment(.center)
+                }
+
+                if let runsLine = model.runsLine {
+                    summaryRowButton(runsLine)
+                } else if let reviewLine = model.reviewLine {
+                    summaryRowButton(reviewLine)
+                } else if model.growthLine == nil && model.rpgLine == nil {
+                    Color.clear.frame(height: 44)
+                }
             }
         }
         .frame(maxWidth: .infinity, alignment: .center)
@@ -1154,19 +1626,61 @@ struct ResultCard: View {
 
     private var buttonsColumn: some View {
         VStack(spacing: 10) {
-            if showNext {
+            if showFinishCoachDrill {
+                let label = settings.localized("Play full lesson")
                 Button {
-                    nextAction?()
+                    finishCoachDrillAction?()
                 } label: {
-                    Text(settings.localized("Next lesson"))
+                    Text(label)
+                        .font(Theme.action)
+                        .lineLimit(2)
+                        .minimumScaleFactor(0.72)
+                        .multilineTextAlignment(.center)
+                        .padding(.horizontal, 8)
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                }
+                .buttonStyle(PadPrimaryButtonStyle())
+                .frame(width: sideZoneWidth, height: 48)
+                .accessibilityLabel(label)
+                .disabled(!restartEnabled || finishCoachDrillAction == nil)
+                .opacity(restartEnabled ? 1 : 0.5)
+
+                Button {
+                    restartAction?()
+                } label: {
+                    Text(settings.localized("Again"))
                         .font(Theme.action)
                         .lineLimit(1)
                         .minimumScaleFactor(0.8)
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
                 }
-                .buttonStyle(ResultPrimaryButtonStyle())
+                .buttonStyle(PadSecondaryButtonStyle(onDark: true))
                 .frame(width: sideZoneWidth, height: 48)
-                .accessibilityLabel(settings.localized("Next lesson"))
+                .accessibilityLabel(settings.localized("Again"))
+                .disabled(!restartEnabled || restartAction == nil)
+                .opacity(restartEnabled ? 1 : 0.5)
+            } else if showStoryChoices {
+                let choices = Array(storyChoices.prefix(3))
+                let buttonHeight: CGFloat = choices.count >= 3 ? 40 : 48
+                ForEach(Array(choices.enumerated()), id: \.element.id) { index, choice in
+                    storyChoiceButton(choice, isPrimary: index == 0)
+                        .frame(width: sideZoneWidth, height: buttonHeight)
+                }
+            } else if showNext {
+                Button {
+                    nextAction?()
+                } label: {
+                    Text(primaryNextLabel)
+                        .font(Theme.action)
+                        .lineLimit(2)
+                        .minimumScaleFactor(0.72)
+                        .multilineTextAlignment(.center)
+                        .padding(.horizontal, 8)
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                }
+                .buttonStyle(PadPrimaryButtonStyle())
+                .frame(width: sideZoneWidth, height: 48)
+                .accessibilityLabel(primaryNextLabel)
                 .accessibilityHint(nextHint ?? "")
                 .disabled(!nextEnabled || nextAction == nil)
 
@@ -1179,7 +1693,40 @@ struct ResultCard: View {
                         .minimumScaleFactor(0.8)
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
                 }
-                .buttonStyle(ResultSecondaryButtonStyle())
+                .buttonStyle(PadSecondaryButtonStyle(onDark: true))
+                .frame(width: sideZoneWidth, height: 48)
+                .accessibilityLabel(settings.localized("Again"))
+                .disabled(!restartEnabled || restartAction == nil)
+                .opacity(restartEnabled ? 1 : 0.5)
+            } else if showCoachSuggestion, let suggestion = coachSuggestion {
+                let label = coachSuggestionLabel(suggestion)
+                Button {
+                    coachAction?(suggestion)
+                } label: {
+                    Text(label)
+                        .font(Theme.action)
+                        .lineLimit(2)
+                        .minimumScaleFactor(0.72)
+                        .multilineTextAlignment(.center)
+                        .padding(.horizontal, 8)
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                }
+                .buttonStyle(PadPrimaryButtonStyle())
+                .frame(width: sideZoneWidth, height: 48)
+                .accessibilityLabel(label)
+                .disabled(!restartEnabled || coachAction == nil)
+                .opacity(restartEnabled ? 1 : 0.5)
+
+                Button {
+                    restartAction?()
+                } label: {
+                    Text(settings.localized("Again"))
+                        .font(Theme.action)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.8)
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                }
+                .buttonStyle(PadSecondaryButtonStyle(onDark: true))
                 .frame(width: sideZoneWidth, height: 48)
                 .accessibilityLabel(settings.localized("Again"))
                 .disabled(!restartEnabled || restartAction == nil)
@@ -1194,7 +1741,7 @@ struct ResultCard: View {
                         .minimumScaleFactor(0.8)
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
                 }
-                .buttonStyle(ResultPrimaryButtonStyle())
+                .buttonStyle(PadPrimaryButtonStyle())
                 .frame(width: sideZoneWidth, height: 52)
                 .accessibilityLabel(settings.localized("Again"))
                 .disabled(!restartEnabled || restartAction == nil)
@@ -1204,15 +1751,44 @@ struct ResultCard: View {
         .frame(width: sideZoneWidth, alignment: .trailing)
     }
 
+    @ViewBuilder
+    private func storyChoiceButton(_ choice: ResultStoryChoice, isPrimary: Bool) -> some View {
+        let labelView = Text(choice.title)
+            .font(Theme.action)
+            .lineLimit(2)
+            .minimumScaleFactor(0.72)
+            .multilineTextAlignment(.center)
+            .padding(.horizontal, 8)
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+
+        if isPrimary {
+            Button(action: choice.action) { labelView }
+                .buttonStyle(PadPrimaryButtonStyle())
+                .accessibilityLabel(choice.title)
+                .accessibilityHint(choice.hint ?? "")
+        } else {
+            Button(action: choice.action) { labelView }
+                .buttonStyle(PadSecondaryButtonStyle(onDark: true))
+                .accessibilityLabel(choice.title)
+                .accessibilityHint(choice.hint ?? "")
+        }
+    }
+
     private var compactBody: some View {
         VStack(spacing: Theme.Space.regular) {
             HStack(alignment: .center, spacing: Theme.Space.regular) {
                 scoreColumn
                 Spacer(minLength: 0)
-                if isNotCounted {
-                    notCountedIcon
+                if model.progressDetail != nil {
+                    progressIcon
                 } else if model.showsStars {
                     starsRow
+                } else if model.status.tintOrange {
+                    Image(systemName: model.status.icon)
+                        .font(.system(size: 30, weight: .regular))
+                        .foregroundStyle(Theme.orange)
+                        .frame(height: 44)
+                        .accessibilityHidden(true)
                 }
             }
 
@@ -1224,36 +1800,89 @@ struct ResultCard: View {
                     .minimumScaleFactor(0.8)
                     .multilineTextAlignment(.center)
 
-                if isNotCounted {
-                    Text(notCountedReason)
+                if let detail = model.progressDetail {
+                    Text(detail)
                         .font(Theme.text(14).weight(.medium))
                         .foregroundStyle(Theme.white.opacity(0.8))
-                        .lineLimit(1)
+                        .lineLimit(2)
                         .minimumScaleFactor(0.8)
                         .multilineTextAlignment(.center)
                         .frame(minHeight: 44, alignment: .center)
-                } else if let runsLine = model.runsLine {
-                    summaryRowButton(runsLine)
-                } else if let reviewLine = model.reviewLine {
-                    summaryRowButton(reviewLine)
+                } else {
+                    if let growthLine = model.growthLine {
+                        Text(growthLine)
+                            .font(Theme.meta)
+                            .foregroundStyle(model.growthLineHighlighted ? Theme.orange : Theme.white.opacity(0.78))
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.8)
+                            .multilineTextAlignment(.center)
+                    }
+
+                    if let runsLine = model.runsLine {
+                        summaryRowButton(runsLine)
+                    } else if let reviewLine = model.reviewLine {
+                        summaryRowButton(reviewLine)
+                    }
                 }
             }
             .frame(maxWidth: .infinity, alignment: .center)
 
             HStack(spacing: Theme.Space.controlGap) {
-                if showNext {
+                if showFinishCoachDrill {
+                    let label = settings.localized("Play full lesson")
                     Button {
-                        nextAction?()
+                        finishCoachDrillAction?()
                     } label: {
-                        Text(settings.localized("Next lesson"))
+                        Text(label)
+                            .font(Theme.action)
+                            .lineLimit(2)
+                            .minimumScaleFactor(0.72)
+                            .multilineTextAlignment(.center)
+                            .padding(.horizontal, 8)
+                            .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    }
+                    .buttonStyle(PadPrimaryButtonStyle())
+                    .frame(height: 48)
+                    .accessibilityLabel(label)
+                    .disabled(!restartEnabled || finishCoachDrillAction == nil)
+                    .opacity(restartEnabled ? 1 : 0.5)
+
+                    Button {
+                        restartAction?()
+                    } label: {
+                        Text(settings.localized("Again"))
                             .font(Theme.action)
                             .lineLimit(1)
                             .minimumScaleFactor(0.8)
                             .frame(maxWidth: .infinity, maxHeight: .infinity)
                     }
-                    .buttonStyle(ResultPrimaryButtonStyle())
+                    .buttonStyle(PadSecondaryButtonStyle(onDark: true))
                     .frame(height: 48)
-                    .accessibilityLabel(settings.localized("Next lesson"))
+                    .accessibilityLabel(settings.localized("Again"))
+                    .disabled(!restartEnabled || restartAction == nil)
+                    .opacity(restartEnabled ? 1 : 0.5)
+                } else if showStoryChoices {
+                    VStack(spacing: 8) {
+                        ForEach(Array(storyChoices.prefix(3).enumerated()), id: \.element.id) { index, choice in
+                            storyChoiceButton(choice, isPrimary: index == 0)
+                                .frame(height: 44)
+                        }
+                    }
+                } else if showNext {
+                    Button {
+                        nextAction?()
+                    } label: {
+                        Text(primaryNextLabel)
+                            .font(Theme.action)
+                            .lineLimit(2)
+                            .minimumScaleFactor(0.72)
+                            .multilineTextAlignment(.center)
+                            .padding(.horizontal, 8)
+                            .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    }
+                    .buttonStyle(PadPrimaryButtonStyle())
+                    .frame(height: 48)
+                    .accessibilityLabel(primaryNextLabel)
                     .accessibilityHint(nextHint ?? "")
                     .disabled(!nextEnabled || nextAction == nil)
 
@@ -1266,7 +1895,40 @@ struct ResultCard: View {
                             .minimumScaleFactor(0.8)
                             .frame(maxWidth: .infinity, maxHeight: .infinity)
                     }
-                    .buttonStyle(ResultSecondaryButtonStyle())
+                    .buttonStyle(PadSecondaryButtonStyle(onDark: true))
+                    .frame(height: 48)
+                    .accessibilityLabel(settings.localized("Again"))
+                    .disabled(!restartEnabled || restartAction == nil)
+                    .opacity(restartEnabled ? 1 : 0.5)
+                } else if showCoachSuggestion, let suggestion = coachSuggestion {
+                    let label = coachSuggestionLabel(suggestion)
+                    Button {
+                        coachAction?(suggestion)
+                    } label: {
+                        Text(label)
+                            .font(Theme.action)
+                            .lineLimit(2)
+                            .minimumScaleFactor(0.72)
+                            .multilineTextAlignment(.center)
+                            .padding(.horizontal, 8)
+                            .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    }
+                    .buttonStyle(PadPrimaryButtonStyle())
+                    .frame(height: 48)
+                    .accessibilityLabel(label)
+                    .disabled(!restartEnabled || coachAction == nil)
+                    .opacity(restartEnabled ? 1 : 0.5)
+
+                    Button {
+                        restartAction?()
+                    } label: {
+                        Text(settings.localized("Again"))
+                            .font(Theme.action)
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.8)
+                            .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    }
+                    .buttonStyle(PadSecondaryButtonStyle(onDark: true))
                     .frame(height: 48)
                     .accessibilityLabel(settings.localized("Again"))
                     .disabled(!restartEnabled || restartAction == nil)
@@ -1281,7 +1943,7 @@ struct ResultCard: View {
                             .minimumScaleFactor(0.8)
                             .frame(maxWidth: .infinity, maxHeight: .infinity)
                     }
-                    .buttonStyle(ResultPrimaryButtonStyle())
+                    .buttonStyle(PadPrimaryButtonStyle())
                     .frame(height: 52)
                     .accessibilityLabel(settings.localized("Again"))
                     .disabled(!restartEnabled || restartAction == nil)
@@ -1319,39 +1981,6 @@ struct ResultCard: View {
         UIAccessibility.post(notification: .announcement, argument: announcement)
     }
 }
-
-struct ResultPrimaryButtonStyle: ButtonStyle {
-    func makeBody(configuration: Configuration) -> some View {
-        configuration.label
-            .foregroundStyle(Theme.black)
-            .background {
-                RoundedRectangle(cornerRadius: 12)
-                    .fill(Theme.orange)
-                    .opacity(configuration.isPressed ? 0.85 : 1.0)
-            }
-            .scaleEffect(configuration.isPressed ? 0.98 : 1.0)
-            .animation(.easeOut(duration: 0.12), value: configuration.isPressed)
-    }
-}
-
-struct ResultSecondaryButtonStyle: ButtonStyle {
-    func makeBody(configuration: Configuration) -> some View {
-        configuration.label
-            .foregroundStyle(Theme.white)
-            .background {
-                RoundedRectangle(cornerRadius: 12)
-                    .fill(configuration.isPressed ? Theme.white.opacity(0.12) : Color.clear)
-                    .overlay {
-                        RoundedRectangle(cornerRadius: 12)
-                            .strokeBorder(Theme.white.opacity(configuration.isPressed ? 0.6 : 0.35), lineWidth: 1.5)
-                    }
-            }
-            .scaleEffect(configuration.isPressed ? 0.98 : 1.0)
-            .animation(.easeOut(duration: 0.12), value: configuration.isPressed)
-    }
-}
-
-
 
 private struct RunMeterBadge: View {
     @ScaledMetric(relativeTo: .body) private var height: CGFloat = 40
@@ -1479,7 +2108,7 @@ struct RunMeterView: View {
         .animation(verdict?.passed == true ? Theme.Motion.fast : .easeOut(duration: 0.20),
                    value: verdict?.id)
         .overlay {
-            Rectangle().strokeBorder(flashingOutline ? Theme.markWrong : Theme.hairline, lineWidth: 1)
+            Rectangle().strokeBorder(flashingOutline ? Theme.destructive : Theme.hairline, lineWidth: 1)
         }
     }
 }

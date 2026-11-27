@@ -17,14 +17,14 @@ struct TodayPlan: Codable, Equatable {
             switch outcome.reviewFeedback {
             case .passed, .settled: return .passed
             case .failed: return .triedNotMet
-            case .doesNotCount(let bpm): return .didNotCount(.requirements(goalBpm: bpm))
-            case nil: return .didNotCount(outcome.reviewPendingReason ?? .unfinishedReview)
+            case .doesNotCount(let bpm): return .inProgress(.requirements(goalBpm: bpm))
+            case nil: return .inProgress(outcome.reviewPendingReason ?? .unfinishedReview)
             }
         }
 
         var markerSymbol: String? {
             switch status {
-            case .didNotCount: return "exclamationmark.circle"
+            case .inProgress: return "exclamationmark.circle"
             case .triedNotMet: return "xmark"
             default: return nil
             }
@@ -42,19 +42,27 @@ struct TodayPlan: Codable, Equatable {
     var reviewCount: Int { steps.filter { $0.kind == .review }.count }
     var hasNewLesson: Bool { steps.contains { $0.kind == .newLesson } }
 
-    var isFinished: Bool {
-        if finished || steps.isEmpty || index >= steps.count { return true }
-        return !steps.dropFirst(index).contains { step in
-            if step.kind == .review, step.outcome?.hasDecidedReview == true { return false }
-            if step.outcome?.played == true { return false }
-            return true
+    private var remainingSteps: [Step] {
+        guard !finished else { return [] }
+        return steps.dropFirst(index).filter { $0.outcome?.played != true }
+    }
+
+    var remainingStepCount: Int { remainingSteps.count }
+    var isFinished: Bool { remainingStepCount == 0 }
+
+    var estimatedMinutes: Int {
+        let remaining = remainingSteps
+        guard !remaining.isEmpty else { return 0 }
+        let minutes = remaining.reduce(0.0) { total, step in
+            total + (step.kind == .review ? 1.5 : 2.0)
         }
+        return max(2, Int(minutes.rounded()))
     }
 
     struct ReviewSummary: Equatable {
         var played = 0
         var passed = 0
-        var didNotCount = 0
+        var inProgress = 0
         var notPlayed = 0
         var triedNotMet = 0
     }
@@ -63,7 +71,7 @@ struct TodayPlan: Codable, Equatable {
         steps.filter { $0.kind == .review }.reduce(into: ReviewSummary()) { summary, step in
             switch step.status {
             case .passed: summary.passed += 1; summary.played += 1
-            case .didNotCount: summary.didNotCount += 1; summary.played += 1
+            case .inProgress: summary.inProgress += 1; summary.played += 1
             case .triedNotMet: summary.triedNotMet += 1; summary.played += 1
             case .played: summary.played += 1
             case nil: summary.notPlayed += 1
@@ -109,11 +117,17 @@ struct TodayPlan: Codable, Equatable {
     }
 
     /// `dueLessonIDs` comes from `ReviewQueue.order`, already ordered by fragility (lowest reviewStep first, then most days late, then earlier masteryDay, then lesson id).
-    static func make(day: String, dueLessonIDs: [Int], nextLessonID: Int?, mixLessonIDs: [Int]) -> TodayPlan? {
-        guard !dueLessonIDs.isEmpty else { return nil }
+    static func make(
+        day: String, dueLessonIDs: [Int], nextLessonID: Int?, followUpLessonID: Int? = nil
+    ) -> TodayPlan? {
         var steps = dueLessonIDs.prefix(LearningRules.dailyReviewLimit).map { Step(kind: .review, lessonIDs: [$0]) }
-        if let nextLessonID { steps.append(Step(kind: .newLesson, lessonIDs: [nextLessonID])) }
-        if mixLessonIDs.count >= LearningRules.minimumMixLessons { steps.append(Step(kind: .mix, lessonIDs: mixLessonIDs)) }
+        if let nextLessonID {
+            steps.append(Step(kind: .newLesson, lessonIDs: [nextLessonID]))
+            if dueLessonIDs.isEmpty, let followUpLessonID, followUpLessonID != nextLessonID {
+                steps.append(Step(kind: .newLesson, lessonIDs: [followUpLessonID]))
+            }
+        }
+        guard !steps.isEmpty else { return nil }
         return TodayPlan(day: day, steps: steps)
     }
 
@@ -138,19 +152,19 @@ struct PracticeStepOutcome: Codable, Equatable {
     var reviewPendingReason: Reason?
 
     enum Status: Equatable {
-        case played, passed, didNotCount(Reason), triedNotMet
+        case played, passed, inProgress(Reason), triedNotMet
 
         var titleKey: String {
             switch self {
             case .played: return "Played"
             case .passed: return "Passed"
-            case .didNotCount: return "Did not count"
+            case .inProgress(let reason): return reason.titleKey
             case .triedNotMet: return "Tried today · not met yet"
             }
         }
 
         var reason: Reason? {
-            if case .didNotCount(let reason) = self { return reason }
+            if case .inProgress(let reason) = self { return reason }
             return nil
         }
     }
@@ -158,25 +172,38 @@ struct PracticeStepOutcome: Codable, Equatable {
     enum Reason: Codable, Equatable {
         case notesVisible, peeked, unfinishedReview, reviewNotPassed, requirements(goalBpm: Int)
 
+        var titleKey: String {
+            switch self {
+            case .notesVisible: return "Warm-up complete"
+            case .peeked: return "Peek used"
+            case .unfinishedReview: return "1 of 2 from memory"
+            case .reviewNotPassed: return "Review not passed"
+            case .requirements: return "Practice tempo"
+            }
+        }
+
+        func title(language: AppLanguage, reviewSuccesses: Int? = nil) -> String {
+            switch self {
+            case .unfinishedReview where reviewSuccesses == 0:
+                return language.localized("Warmed up")
+            default:
+                return language.localized(titleKey)
+            }
+        }
+
         func message(language: AppLanguage) -> String {
             switch self {
             case .notesVisible:
-                return language == .czech
-                    ? "Průchod s nápovědou · započítají se až průchody bez not."
-                    : "Warm-up with notes · only hidden passes count."
+                return language.localized("Now play 2 passes from memory")
             case .peeked:
-                return language.localized("Peeked · only passes from memory count.")
+                return language.localized("Try the next pass from memory")
             case .unfinishedReview:
-                return language == .czech
-                    ? "Opakování není dokončené · jsou potřeba dva úspěšné průchody bez not."
-                    : "Review unfinished · two successful hidden passes are needed."
+                return language.localized("One more clean memory pass to finish")
             case .reviewNotPassed:
                 return PracticeStepOutcome.reviewFailureReason(feedback: .failed(newStep: 0), language: language)
                     ?? (language == .czech ? "Opakování zatím nesplněno · dnes ho ještě můžeš splnit" : "Review not met yet · you can still pass it today")
             case .requirements(let bpm):
-                return language == .czech
-                    ? "Hraj zpaměti alespoň při \(bpm) BPM."
-                    : "Play from memory at \(bpm) BPM or faster."
+                return language.localized("For review credit, play from memory at %lld BPM", bpm)
             }
         }
     }

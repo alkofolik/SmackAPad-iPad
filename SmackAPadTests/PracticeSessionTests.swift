@@ -7,6 +7,56 @@ final class PracticeSessionTests: XCTestCase {
     override func setUp() { super.setUp(); StarStreak.forgetAll() }
 
     @MainActor
+    func testOffBeatHitsRecordEarlyAndLateMarksInSessionAndPlayedHits() async throws {
+        let suite = "signed-hit-marks-\(UUID().uuidString)"
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))
+        defer { defaults.removePersistentDomain(forName: suite) }
+        let settings = SettingsManager(userDefaults: defaults)
+        let file = FileManager.default.temporaryDirectory.appendingPathComponent("\(suite).json")
+        defer { try? FileManager.default.removeItem(at: file) }
+        let progress = ProgressStore(fileURL: file, autoLoad: false)
+        let midi = MIDIInput(settings: settings)
+        let note = LessonHit(step: 4, padIndex: 12, hand: "L", velocity: 100)
+        let lesson = Lesson(
+            id: 40_232,
+            cat: "test",
+            title: "Signed off-beat marks",
+            genre: "",
+            tags: [],
+            text: "",
+            division: 16,
+            bars: 4,
+            startBpm: 120,
+            targetBpm: 120,
+            level: 5,
+            src: "test",
+            hits: [note]
+        )
+
+        // Each direction runs in a fresh session, so the learned timing centre starts at zero.
+        // Step 4 at 120 BPM is at +0.5 s; ±80 ms is an .off judgment at level 5.
+        for (offset, expected) in [(-0.080, HitMark.early), (0.080, HitMark.late)] {
+            var time = AVAudioTime.seconds(forHostTime: mach_absolute_time())
+            let session = PracticeSession(lesson: lesson, settings: settings, progress: progress, midi: midi, clock: { time })
+            session.metronome = false
+            await session.prepare()
+            XCTAssertTrue(session.ready, session.errorMessage ?? "Sound preparation failed")
+
+            time = AVAudioTime.seconds(forHostTime: mach_absolute_time())
+            let start = time + 2.6
+            session.start()
+            time = start + 0.5 + offset
+            session.tick()
+            midi.onPadEvent?(PadInputEvent(padIndex: 12, velocity: 100, isNoteOn: true,
+                                           timestamp: AVAudioTime.hostTime(forSeconds: time), deviceID: "test"))
+            XCTAssertEqual(session.hitJudgments[1]?[note], .off, "offset \(offset)")
+            XCTAssertEqual(session.patternHitFeedback[1]?[note]?.mark, expected, "offset \(offset)")
+            XCTAssertEqual(session.playedHits.last?.mark, expected, "offset \(offset)")
+            session.close()
+        }
+    }
+
+    @MainActor
     func testPeekedPassKeepsThePriorReviewSuccessAndCannotEarnTheMemoryStar() async throws {
         let suite = "memory-peek-review-\(UUID().uuidString)"
         let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))
@@ -312,8 +362,8 @@ final class PracticeSessionTests: XCTestCase {
                 step.outcome = try XCTUnwrap(session.todayStepOutcome)
                 XCTAssertEqual(step.outcome?.bestScore, 1)
                 XCTAssertEqual(session.completedWarmUps, min(pass + 1, LearningRules.warmUpPassesNeeded))
-                XCTAssertEqual(step.status, pass < 2 ? .didNotCount(.notesVisible)
-                               : (pass == 2 ? .didNotCount(.unfinishedReview) : .passed))
+                XCTAssertEqual(step.status, pass < 2 ? .inProgress(.notesVisible)
+                               : (pass == 2 ? .inProgress(.unfinishedReview) : .passed))
                 if pass < 3 { XCTAssertEqual(progress.progress(for: lesson.id)?.reviewStep, 0) }
             }
             XCTAssertEqual(progress.progress(for: lesson.id)?.reviewSchedule,
@@ -746,7 +796,7 @@ final class PracticeSessionTests: XCTestCase {
         progress.setProgress(due, for: lesson.id)
         XCTAssertTrue(progress.dueLessonIds(today: today).contains(lesson.id))
 
-        let plan = try XCTUnwrap(TodayPlan.make(day: today, dueLessonIDs: [lesson.id], nextLessonID: 10_007, mixLessonIDs: []))
+        let plan = try XCTUnwrap(TodayPlan.make(day: today, dueLessonIDs: [lesson.id], nextLessonID: 10_007))
         let coordinator = TodaySessionCoordinator(plan: plan, defaults: defaults)
         coordinator.continueSession()
 

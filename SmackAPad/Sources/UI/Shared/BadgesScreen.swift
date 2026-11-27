@@ -1,5 +1,12 @@
 import SwiftUI
 
+/// Filter category for `BadgesView`.
+private enum BadgeFilter: Hashable {
+    case all
+    case training
+    case lessons
+}
+
 /// Badges sheet displaying long-term achievements grouped by category.
 struct BadgesView: View {
     @Environment(BadgeStore.self) private var badgeStore
@@ -9,12 +16,18 @@ struct BadgesView: View {
     @Environment(\.dismiss) private var dismiss
     let initialGroup: BadgeGroup?
     var onDismiss: (() -> Void)? = nil
-    @State private var selectedGroup: BadgeGroup?
+    @State private var selectedFilter: BadgeFilter
 
     init(initialGroup: BadgeGroup? = nil, onDismiss: (() -> Void)? = nil) {
         self.initialGroup = initialGroup
         self.onDismiss = onDismiss
-        _selectedGroup = State(initialValue: initialGroup)
+        if initialGroup == .training {
+            _selectedFilter = State(initialValue: .training)
+        } else if initialGroup != nil {
+            _selectedFilter = State(initialValue: .lessons)
+        } else {
+            _selectedFilter = State(initialValue: .all)
+        }
     }
 
     private var stats: BadgeProgressStats {
@@ -28,13 +41,19 @@ struct BadgesView: View {
     }
 
     private var visibleGroups: [BadgeGroup] {
-        if let selectedGroup { return [selectedGroup] }
-        return BadgeGroup.allCases
+        switch selectedFilter {
+        case .all:
+            return BadgeGroup.allCases
+        case .training:
+            return [.training]
+        case .lessons:
+            return BadgeGroup.allCases.filter { $0 != .training }
+        }
     }
 
     private var displayedBadges: [BadgeDefinition] {
-        guard let selectedGroup else { return badgeStore.definitions }
-        return badgeStore.definitions.filter { $0.group == selectedGroup }
+        let allowed = Set(visibleGroups)
+        return badgeStore.definitions.filter { allowed.contains($0.group) }
     }
 
     private var displayedEarnedCount: Int {
@@ -52,30 +71,39 @@ struct BadgesView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            header
-                .padding(.horizontal, Theme.Space.page)
-                .padding(.top, Theme.Space.page)
-                .padding(.bottom, initialGroup == nil ? 20 : 12)
-
-            if let initialGroup {
-                HStack(spacing: 8) {
-                    FilterChip(
-                        title: settings.localized(initialGroup.title),
-                        selected: selectedGroup == initialGroup
-                    ) {
-                        selectedGroup = initialGroup
-                    }
-                    FilterChip(
-                        title: settings.localized("All"),
-                        selected: selectedGroup == nil
-                    ) {
-                        selectedGroup = nil
-                    }
-                    Spacer()
+            ScreenTopBar {
+                HardwareBackButton {
+                    if let onDismiss { onDismiss() } else { dismiss() }
                 }
-                .padding(.horizontal, Theme.Space.page)
-                .padding(.bottom, 16)
+
+                Text(settings.localized("Badges"))
+                    .font(Theme.boldDisplay(28))
+                    .foregroundStyle(Theme.ink)
+                    .lineLimit(1)
+            } center: {
+                EmptyView()
+            } trailing: {
+                overallProgress
             }
+            .padding(.horizontal, Theme.Space.page)
+            .padding(.top, Theme.Space.page)
+            .padding(.bottom, Theme.Space.regular)
+
+            HStack {
+                PlexSegmentedPicker(
+                    title: settings.localized("Badges"),
+                    selection: $selectedFilter,
+                    options: [
+                        (.all, settings.localized("All")),
+                        (.training, settings.localized("Training")),
+                        (.lessons, settings.localized("Lessons"))
+                    ],
+                    size: .compact
+                )
+                Spacer()
+            }
+            .padding(.horizontal, Theme.Space.page)
+            .padding(.bottom, Theme.Space.regular)
 
             ScrollView {
                 VStack(alignment: .leading, spacing: 14) {
@@ -91,82 +119,80 @@ struct BadgesView: View {
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .background(Theme.background.ignoresSafeArea())
+        .background(Theme.chassis.ignoresSafeArea())
         .navigationBarBackButtonHidden(true)
         .toolbar(.hidden, for: .navigationBar)
     }
 
-    private var header: some View {
-        HStack(spacing: 20) {
-            BackButton {
-                if let onDismiss { onDismiss() } else { dismiss() }
+    private var overallProgress: some View {
+        HStack(spacing: 14) {
+            ZStack(alignment: .leading) {
+                Capsule()
+                    .fill(Theme.recessed)
+                    .frame(width: 220, height: 8)
+                    .overlay {
+                        Capsule().strokeBorder(Theme.hairline, lineWidth: 1)
+                    }
+                Capsule()
+                    .fill(Theme.accent)
+                    .frame(width: 220 * overallFraction, height: 8)
             }
+            .frame(width: 220, height: 8)
+            .accessibilityHidden(true)
 
-            Text(settings.localized("Badges"))
-                .font(Theme.boldDisplay(28))
-                .foregroundStyle(Theme.ink)
-                .lineLimit(1)
-
-            Spacer(minLength: 16)
-
-            HStack(spacing: 14) {
-                ZStack(alignment: .leading) {
-                    Capsule()
-                        .fill(Theme.starColor(for: 0))
-                        .frame(width: 220, height: 8)
-                    Capsule()
-                        .fill(Theme.orange)
-                        .frame(width: 220 * overallFraction, height: 8)
-                }
-                .frame(width: 220, height: 8)
-                .accessibilityHidden(true)
-
-                (Text("\(displayedEarnedCount) ")
-                    .font(Theme.boldDisplay(20))
-                    .foregroundColor(Theme.ink)
-                + Text("/ \(displayedTotalCount)")
-                    .font(Theme.display(20))
-                    .foregroundColor(Theme.secondary))
-                .monospacedDigit()
-                .fixedSize()
-                .accessibilityLabel(settings.localized("Badges %lld / %lld", displayedEarnedCount, displayedTotalCount))
-            }
+            (Text("\(displayedEarnedCount) ")
+                .font(Theme.boldDisplay(20))
+                .foregroundColor(Theme.ink)
+            + Text("/ \(displayedTotalCount)")
+                .font(Theme.display(20))
+                .foregroundColor(Theme.secondary))
+            .monospacedDigit()
+            .fixedSize()
+            .accessibilityLabel(settings.localized("Badges %lld / %lld", displayedEarnedCount, displayedTotalCount))
         }
-        .frame(height: 56)
+    }
+
+    private func milestoneLabel(for badge: BadgeDefinition) -> String {
+        switch badge.goal {
+        case .count(let count):
+            return "\(count)"
+        case .catalogue, .group:
+            return "100 %"
+        }
     }
 
     @ViewBuilder
     private func badgeGroupPanel(group: BadgeGroup, badges: [BadgeDefinition]) -> some View {
         let earnedInGroup = badges.filter { badgeStore.earnedDate(for: $0.id) != nil }.count
 
-        VStack(alignment: .leading, spacing: 14) {
-            HStack(alignment: .firstTextBaseline, spacing: 12) {
-                Text(settings.localized(group.title))
-                    .font(Theme.strong(19))
-                    .foregroundStyle(Theme.ink)
+        HardwareCard(padding: 20) {
+            VStack(alignment: .leading, spacing: 14) {
+                HStack(alignment: .firstTextBaseline, spacing: 12) {
+                    Text(settings.localized(group.title))
+                        .font(Theme.strong(19))
+                        .foregroundStyle(Theme.ink)
 
-                Text("\(earnedInGroup) / \(badges.count)")
-                    .font(Theme.display(15).monospacedDigit())
-                    .foregroundStyle(Theme.secondary)
-            }
+                    Text("\(earnedInGroup) / \(badges.count)")
+                        .font(Theme.display(15).monospacedDigit())
+                        .foregroundStyle(Theme.secondary)
+                }
 
-            ScrollView(.horizontal, showsIndicators: false) {
-                HStack(alignment: .top, spacing: 10) {
+                LazyVGrid(
+                    columns: [GridItem(.adaptive(minimum: 124, maximum: 156), spacing: 16)],
+                    alignment: .leading,
+                    spacing: 18
+                ) {
                     ForEach(badges) { badge in
                         BadgeTile(
                             badge: badge,
                             stats: stats,
-                            earnedDate: badgeStore.earnedDate(for: badge.id)
+                            earnedDate: badgeStore.earnedDate(for: badge.id),
+                            compact: true,
+                            badgeLabel: milestoneLabel(for: badge)
                         )
                     }
                 }
             }
-            .scrollBounceBehavior(.basedOnSize)
         }
-        .padding(.top, 18)
-        .padding(.horizontal, 20)
-        .padding(.bottom, 14)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Theme.surface, in: RoundedRectangle(cornerRadius: 20))
     }
 }

@@ -24,12 +24,13 @@ final class TodaySessionCoordinator {
     }
 
     var nextAction: TodayContinueTarget? {
-        TodayContinueTarget.resolve(currentPlan: plan, today: plan.day, nextLessonID: nil, mixLessonIDs: [])
+        TodayContinueTarget.resolve(currentPlan: plan, today: plan.day, nextLessonID: nil)
     }
 
-    func record(_ outcome: PracticeStepOutcome) {
+    func record(_ outcome: PracticeStepOutcome, at stepIndex: Int? = nil) {
         guard plan.day == AppCalendar.today(), !plan.finished, plan.phase == .practice,
               plan.steps.indices.contains(plan.index) else { return }
+        if let stepIndex, stepIndex != plan.index { return }
         var result = plan.steps[plan.index].outcome ?? PracticeStepOutcome()
         result.include(outcome)
         plan.steps[plan.index].outcome = result
@@ -68,14 +69,6 @@ final class TodaySessionCoordinator {
     func continueSession() {
         guard !plan.finished else { return }
         plan.phase = .practice
-        save()
-    }
-
-    func replaceCurrentMixLessons(_ lessons: [Lesson]) {
-        guard !plan.finished, plan.steps.indices.contains(plan.index),
-              plan.steps[plan.index].kind == .mix,
-              lessons.count >= LearningRules.minimumMixLessons else { return }
-        plan.steps[plan.index].lessonIDs = lessons.map(\.id)
         save()
     }
 
@@ -143,8 +136,7 @@ enum TodayContinueTarget: Equatable {
     static func resolve(
         currentPlan: TodayPlan?,
         today: String,
-        nextLessonID: Int?,
-        mixLessonIDs: [Int]
+        nextLessonID: Int?
     ) -> TodayContinueTarget? {
         if var plan = currentPlan {
             while !plan.finished, plan.steps.indices.contains(plan.index),
@@ -159,15 +151,8 @@ enum TodayContinueTarget: Equatable {
             }
             return .step(plan)
         }
-        var steps: [TodayPlan.Step] = []
-        if let nextLessonID {
-            steps.append(.init(kind: .newLesson, lessonIDs: [nextLessonID]))
-        }
-        if mixLessonIDs.count >= LearningRules.minimumMixLessons {
-            steps.append(.init(kind: .mix, lessonIDs: mixLessonIDs))
-        }
-        guard !steps.isEmpty else { return nil }
-        return .step(TodayPlan(day: today, steps: steps))
+        return TodayPlan.make(day: today, dueLessonIDs: [], nextLessonID: nextLessonID)
+            .map { .step($0) }
     }
 }
 

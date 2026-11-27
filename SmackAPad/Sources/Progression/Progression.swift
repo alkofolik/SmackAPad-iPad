@@ -139,13 +139,26 @@ public final class ProgressionManager: @unchecked Sendable {
 
     private(set) var stageAccessConfirmation: StageAccessConfirmation?
 
-    public private(set) var softUnlockedStages: Set<String> = []
+    public private(set) var softUnlockedStages: Set<String> = [] {
+        didSet { storyOpenStagesGeneration &+= 1 }
+    }
     private static let stagesKey = "smackapad.settings.softUnlockedStages"
     private static let migrationKey = "smackapad.settings.stageMigrationV1"
     private static let openStagesKey = "smackapad.settings.openStages"
     private static let completionMigrationKey = "smackapad.settings.twoStarStageMigrationV1"
     // Remembering access does not change the answer being rendered by SwiftUI.
-    @ObservationIgnored private var rememberedOpenStages: Set<String> = []
+    @ObservationIgnored private var rememberedOpenStages: Set<String> = [] {
+        didSet { storyOpenStagesGeneration &+= 1 }
+    }
+    @ObservationIgnored private var storyOpenStagesGeneration: UInt64 = 0
+    @ObservationIgnored private var cachedStoryOpenLessonIDs: Set<Int>?
+    @ObservationIgnored private var cachedStoryOpenKey: StoryAvailabilityCacheKey?
+
+    private struct StoryAvailabilityCacheKey: Equatable {
+        let progressGeneration: UInt64
+        let catalogGeneration: UInt64
+        let openStagesGeneration: UInt64
+    }
 
     var catalog: LibraryCatalog { lessonStore.libraryCatalog }
 
@@ -500,13 +513,17 @@ public final class ProgressionManager: @unchecked Sendable {
 
     // MARK: - Stage progression
 
-    func unlockProgress(for stage: LibraryStage) -> (completed: Int, needed: Int, previous: LibraryStage?) {
+    func unlockProgress(for stage: LibraryStage, excludingMasteriesOn day: String? = nil)
+        -> (completed: Int, needed: Int, previous: LibraryStage?) {
         let stages = catalog.stages
         guard let index = stages.firstIndex(where: { $0.id == stage.id }), index > 0 else { return (0, 0, nil) }
         let previous = stages[index - 1]
         let eightPads = settingsManager.activeProfile().isEightPad
         let completed = previous.lessons.filter {
-            progressStore.isCompleted(lessonId: $0.id) && (!eightPads || EightPadLayout.slots(for: $0) != nil)
+            guard progressStore.isCompleted(lessonId: $0.id),
+                  !eightPads || EightPadLayout.slots(for: $0) != nil else { return false }
+            guard let day else { return true }
+            return progressStore.progress(for: $0.id)?.masteryDay != day
         }.count
         return (completed, ProgressionConstant.requiredStageCompletions(lessonCount: previous.lessons.count), previous)
     }
@@ -523,7 +540,8 @@ public final class ProgressionManager: @unchecked Sendable {
     private func isStageNaturallyOpen(_ stage: LibraryStage) -> Bool {
         if rememberedOpenStages.contains(stage.id) { return true }
         let requirement = unlockProgress(for: stage)
-        let open = requirement.completed >= requirement.needed || wasStagePlayed(stage)
+        let previousBossWon = requirement.previous.map { progressStore.drummerPath.completedExamStageIDs.contains($0.id) } ?? false
+        let open = requirement.completed >= requirement.needed || previousBossWon || wasStagePlayed(stage)
         if open { rememberOpenStages([stage.id]) }
         return open
     }
@@ -558,22 +576,96 @@ public final class ProgressionManager: @unchecked Sendable {
         userDefaults.set(true, forKey: Self.completionMigrationKey)
     }
 
-    func isLessonOpen(_ lesson: Lesson) -> Bool {
-        if lesson.cat == "intro" || LibraryCatalog.isExtension(lesson) { return true }
-        guard let stage = catalog.stage(for: lesson) else { return true }
-        return isStageOpen(stage)
+    var storyOpenStageIDs: Set<String> {
+        lock.lock()
+        defer { lock.unlock() }
+        return rememberedOpenStages.union(softUnlockedStages)
     }
 
-    func nextLesson(after anchor: Lesson?, source: NextLessonSource) -> Lesson? {
-        let eligible: (Lesson) -> Bool = { self.isLessonOpen($0) && !self.progressStore.isPassed(lessonId: $0.id) }
-        if let anchor, eligible(anchor) { return lessonStore.lesson(for: anchor.id) ?? anchor }
+    func isOpenInStory(_ lesson: Lesson) -> Bool {
+        if lesson.cat == ProgressionConstant.introCategoryId {
+            return true
+        }
+        lock.lock()
+        let openStageIDs = rememberedOpenStages.union(softUnlockedStages)
+        let key = StoryAvailabilityCacheKey(
+            progressGeneration: progressStore.storyStateGeneration,
+            catalogGeneration: lessonStore.catalogGeneration,
+            openStagesGeneration: storyOpenStagesGeneration
+        )
+        if let cached = cachedStoryOpenLessonIDs, cachedStoryOpenKey == key {
+            lock.unlock()
+            return cached.contains(lesson.id)
+        }
+        let computed = DrummerPathMapBuilder.openStoryLessonIDs(
+            catalog: catalog,
+            progress: progressStore.records,
+            pathState: progressStore.drummerPath,
+            openStageIDs: openStageIDs
+        )
+        cachedStoryOpenLessonIDs = computed
+        cachedStoryOpenKey = key
+        lock.unlock()
+        return computed.contains(lesson.id)
+    }
+
+    func isLessonOpen(_ lesson: Lesson) -> Bool {
+        switch settingsManager.playMode {
+        case .story:
+            return isOpenInStory(lesson)
+        case .free:
+            return true
+        }
+    }
+
+    func nextLesson(
+        after anchor: Lesson?, source: NextLessonSource, excludingAnchor: Bool = false,
+        isAvailable: (Lesson) -> Bool = { _ in true }
+    ) -> Lesson? {
+        let eightPads = settingsManager.activeProfile().isEightPad
+        func isPassed(_ lesson: Lesson) -> Bool { progressStore.isPassed(lessonId: lesson.id) }
+        func eligible(_ lesson: Lesson) -> Bool {
+            !(excludingAnchor && lesson.id == anchor?.id)
+                && !isPassed(lesson) && isAvailable(lesson)
+                && (!eightPads || EightPadLayout.slots(for: lesson) != nil)
+                && isLessonOpen(lesson)
+        }
+        if source == .path, !settingsManager.introSkipped {
+            // Some Intro exercises are also listed in the first library stage.
+            let path = catalog.path.lazy.filter { $0.cat != "intro" }
+            let useIntro: Bool
+            if anchor == nil || anchor?.cat == "intro" {
+                useIntro = true
+            } else if path.contains(where: { $0.id == anchor?.id }) {
+                useIntro = path.allSatisfy(isPassed)
+            } else {
+                useIntro = !path.contains(where: isPassed)
+            }
+            if useIntro, let intro = catalog.introLessons.first(where: eligible) { return intro }
+        }
+        if let anchor, source != .path || anchor.cat != "intro", eligible(anchor) {
+            return lessonStore.lesson(for: anchor.id) ?? anchor
+        }
         let candidates = catalog.candidates(after: anchor, source: source)
         let ordered: [Lesson]
         if let anchor, let index = candidates.firstIndex(where: { $0.id == anchor.id }) {
             ordered = Array(candidates.dropFirst(index + 1)) + Array(candidates.prefix(index + 1))
         } else { ordered = candidates }
-        return ordered.first(where: eligible)
-            ?? ([NextLessonSource.genre, .technique].contains(source) ? nextLesson(after: anchor, source: .path) : nil)
+        if let next = ordered.first(where: { (source != .path || $0.cat != "intro") && eligible($0) }) {
+            return next
+        }
+        guard source == .genre || source == .technique else { return nil }
+        return nextLesson(after: anchor, source: .path, excludingAnchor: excludingAnchor, isAvailable: isAvailable)
+    }
+
+    func dailyLessons(isAvailable: (Lesson) -> Bool) -> (next: Lesson?, followUp: Lesson?) {
+        let source = NextLessonSource(rawValue: settingsManager.nextLessonSource) ?? .path
+        let anchor = lessonStore.lesson(for: settingsManager.lastLessonID)
+        let next = nextLesson(after: anchor, source: source, isAvailable: isAvailable)
+        let followUp = next.flatMap {
+            nextLesson(after: $0, source: source, excludingAnchor: true, isAvailable: isAvailable)
+        }
+        return (next, followUp)
     }
 
     private func loadAndMigrateStages() {

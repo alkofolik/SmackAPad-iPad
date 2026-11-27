@@ -22,10 +22,12 @@ public enum ProgressBackupError: LocalizedError, Equatable {
 public struct BackupSettings: Codable, Equatable, Sendable {
     public var settingsModifiedAt: Date?
     public var selectedKitId: String
+    public var selectedInstrumentSkinId: String
     public var lessonKitOverrides: [Int: String]
     public var midiControls: MIDIControlConfiguration
     public var bpmStep: Int
     public var practiceMode: String
+    public var playMode: String
     public var activeProfileName: String
     public var customProfiles: [ControllerProfile]
     public var languagePreference: String
@@ -40,6 +42,7 @@ public struct BackupSettings: Codable, Equatable, Sendable {
     public var reviewReminderEnabled: Bool
     public var reviewReminderTime: Date?
     public var hideCompletedLessons: Bool
+    public var introSkipped: Bool
     public var hiddenCategoryIDsByMode: [String: Set<String>]
     public var libraryView: String
     public var libraryStarFilters: [String]
@@ -56,10 +59,12 @@ public struct BackupSettings: Codable, Equatable, Sendable {
     public init(
         settingsModifiedAt: Date? = nil,
         selectedKitId: String = SettingsManager.defaultKitId,
+        selectedInstrumentSkinId: String = StudioRigCatalog.defaultSkinId,
         lessonKitOverrides: [Int: String] = [:],
         midiControls: MIDIControlConfiguration? = nil,
         bpmStep: Int = SettingsManager.defaultBpmStep,
         practiceMode: String = PracticeMode.learning.rawValue,
+        playMode: String = SettingsManager.defaultPlayMode.rawValue,
         activeProfileName: String = SettingsManager.defaultProfileName,
         customProfiles: [ControllerProfile] = [],
         languagePreference: String = SettingsManager.defaultLanguage.rawValue,
@@ -74,6 +79,7 @@ public struct BackupSettings: Codable, Equatable, Sendable {
         reviewReminderEnabled: Bool = false,
         reviewReminderTime: Date? = nil,
         hideCompletedLessons: Bool = false,
+        introSkipped: Bool = false,
         hiddenCategoryIDsByMode: [String: Set<String>] = [:],
         libraryView: String = "categories",
         libraryStarFilters: [String] = [],
@@ -89,10 +95,12 @@ public struct BackupSettings: Codable, Equatable, Sendable {
     ) {
         self.settingsModifiedAt = settingsModifiedAt
         self.selectedKitId = selectedKitId
+        self.selectedInstrumentSkinId = selectedInstrumentSkinId
         self.lessonKitOverrides = lessonKitOverrides
         self.midiControls = midiControls ?? MIDIControlConfiguration()
         self.bpmStep = bpmStep
         self.practiceMode = practiceMode
+        self.playMode = playMode
         self.activeProfileName = activeProfileName
         self.customProfiles = customProfiles
         self.languagePreference = languagePreference
@@ -107,6 +115,7 @@ public struct BackupSettings: Codable, Equatable, Sendable {
         self.reviewReminderEnabled = reviewReminderEnabled
         self.reviewReminderTime = reviewReminderTime
         self.hideCompletedLessons = hideCompletedLessons
+        self.introSkipped = introSkipped
         self.hiddenCategoryIDsByMode = hiddenCategoryIDsByMode
         self.libraryView = libraryView
         self.libraryStarFilters = libraryStarFilters
@@ -122,10 +131,11 @@ public struct BackupSettings: Codable, Equatable, Sendable {
     }
 
     private enum CodingKeys: String, CodingKey {
-        case settingsModifiedAt, selectedKitId, lessonKitOverrides, midiControls, bpmStep, practiceMode
+        case settingsModifiedAt, selectedKitId, selectedInstrumentSkinId, lessonKitOverrides, midiControls, bpmStep, practiceMode, playMode
         case activeProfileName, customProfiles, languagePreference, appearance, metronomeVolume, padsVolume, patternVolume, instrumentTrims
         case playPadsWithKeyboard, fadeMemoryNotes, reviewReminderEnabled, reviewReminderTime, hideCompletedLessons
         case autoPeekMemory
+        case introSkipped
         case hiddenCategoryIDsByMode, libraryView, libraryStarFilters, nextLessonSource, lastLessonID
         case showPads, visibleBars, touchPadsInPortrait, scrolling, practiceAppearance
         case legendShownOnce, memoryHintShownLessonIds
@@ -135,10 +145,12 @@ public struct BackupSettings: Codable, Equatable, Sendable {
         let c = try decoder.container(keyedBy: CodingKeys.self)
         self.settingsModifiedAt = try c.decodeIfPresent(Date.self, forKey: .settingsModifiedAt)
         self.selectedKitId = try c.decodeIfPresent(String.self, forKey: .selectedKitId) ?? SettingsManager.defaultKitId
+        self.selectedInstrumentSkinId = try c.decodeIfPresent(String.self, forKey: .selectedInstrumentSkinId) ?? StudioRigCatalog.defaultSkinId
         self.lessonKitOverrides = try c.decodeIfPresent([Int: String].self, forKey: .lessonKitOverrides) ?? [:]
         self.midiControls = try c.decodeIfPresent(MIDIControlConfiguration.self, forKey: .midiControls) ?? MIDIControlConfiguration()
         self.bpmStep = try c.decodeIfPresent(Int.self, forKey: .bpmStep) ?? SettingsManager.defaultBpmStep
         self.practiceMode = try c.decodeIfPresent(String.self, forKey: .practiceMode) ?? PracticeMode.learning.rawValue
+        self.playMode = try c.decodeIfPresent(String.self, forKey: .playMode) ?? SettingsManager.defaultPlayMode.rawValue
         self.activeProfileName = try c.decodeIfPresent(String.self, forKey: .activeProfileName) ?? SettingsManager.defaultProfileName
         self.customProfiles = try c.decodeIfPresent([ControllerProfile].self, forKey: .customProfiles) ?? []
         self.languagePreference = try c.decodeIfPresent(String.self, forKey: .languagePreference) ?? SettingsManager.defaultLanguage.rawValue
@@ -154,6 +166,7 @@ public struct BackupSettings: Codable, Equatable, Sendable {
         self.reviewReminderEnabled = try c.decodeIfPresent(Bool.self, forKey: .reviewReminderEnabled) ?? false
         self.reviewReminderTime = try c.decodeIfPresent(Date.self, forKey: .reviewReminderTime)
         self.hideCompletedLessons = try c.decodeIfPresent(Bool.self, forKey: .hideCompletedLessons) ?? false
+        self.introSkipped = try c.decodeIfPresent(Bool.self, forKey: .introSkipped) ?? false
         self.hiddenCategoryIDsByMode = try c.decodeIfPresent([String: Set<String>].self, forKey: .hiddenCategoryIDsByMode) ?? [:]
         self.libraryView = try c.decodeIfPresent(String.self, forKey: .libraryView) ?? "categories"
         self.libraryStarFilters = try c.decodeIfPresent([String].self, forKey: .libraryStarFilters) ?? []
@@ -179,6 +192,7 @@ public struct ProgressBackupEnvelope: Codable, Equatable, Sendable {
     public var trainingLog: TrainingLog
     public var badges: [String: Date]
     public var settings: BackupSettings
+    public var drummerPath: DrummerPathState?
 
     public init(
         app: String = ProgressBackup.appIdentifier,
@@ -189,7 +203,8 @@ public struct ProgressBackupEnvelope: Codable, Equatable, Sendable {
         progress: [Int: LessonProgress] = [:],
         trainingLog: TrainingLog = TrainingLog(),
         badges: [String: Date] = [:],
-        settings: BackupSettings = BackupSettings()
+        settings: BackupSettings = BackupSettings(),
+        drummerPath: DrummerPathState? = nil
     ) {
         self.app = app
         self.formatVersion = formatVersion
@@ -200,10 +215,11 @@ public struct ProgressBackupEnvelope: Codable, Equatable, Sendable {
         self.trainingLog = trainingLog
         self.badges = badges
         self.settings = settings
+        self.drummerPath = drummerPath
     }
 
     private enum CodingKeys: String, CodingKey {
-        case app, formatVersion, exportedAt, appVersion, deviceId, progress, trainingLog, badges, settings
+        case app, formatVersion, exportedAt, appVersion, deviceId, progress, trainingLog, badges, settings, drummerPath
     }
 
     public init(from decoder: Decoder) throws {
@@ -222,8 +238,10 @@ public struct ProgressBackupEnvelope: Codable, Equatable, Sendable {
         self.progress = converted
 
         self.trainingLog = try container.decodeIfPresent(TrainingLog.self, forKey: .trainingLog) ?? TrainingLog()
+        self.trainingLog.restorePracticeDays(from: converted)
         self.badges = try container.decodeIfPresent([String: Date].self, forKey: .badges) ?? [:]
         self.settings = try container.decodeIfPresent(BackupSettings.self, forKey: .settings) ?? BackupSettings()
+        self.drummerPath = try container.decodeIfPresent(DrummerPathState.self, forKey: .drummerPath)
     }
 
     public func encode(to encoder: Encoder) throws {
@@ -242,6 +260,7 @@ public struct ProgressBackupEnvelope: Codable, Equatable, Sendable {
         try container.encode(trainingLog, forKey: .trainingLog)
         try container.encode(badges, forKey: .badges)
         try container.encode(settings, forKey: .settings)
+        try container.encodeIfPresent(drummerPath, forKey: .drummerPath)
     }
 }
 

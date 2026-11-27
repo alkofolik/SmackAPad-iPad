@@ -65,11 +65,16 @@ struct SmackAPadApp: App {
                 }
                 .onAppear {
                     settings.appearance.applyToWindows()
+                    Theme.setActiveSkinId(settings.selectedInstrumentSkinId)
+                }
+                .onChange(of: settings.selectedInstrumentSkinId) { _, skinId in
+                    Theme.setActiveSkinId(skinId)
                 }
                 .task {
                     settings.appearance.applyToWindows()
                     store.start()
                     midi.start()
+                    progress.migrateDrummerPathIfNeeded(catalog: progression.catalog)
                     badges.awardSilently(progress: progress.records, catalog: progression.catalog, trainingLog: progress.trainingLog)
                     ReviewReminderScheduler.shared.reschedule()
                 }

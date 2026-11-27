@@ -4,23 +4,9 @@ import XCTest
 @testable import SmackAPad
 
 final class FirstRunAndLegibilityTests: XCTestCase {
-    func testAnyLessonProgressRequiresAnAttemptOrStar() {
-        XCTAssertFalse(hasAnyLessonProgress([:]))
-        XCTAssertFalse(hasAnyLessonProgress([1: LessonProgress(currentBpm: 80)]))
-        XCTAssertTrue(hasAnyLessonProgress([1: LessonProgress(hasPlayed: true)]))
-        XCTAssertTrue(hasAnyLessonProgress([1: LessonProgress(memory: true)]))
-    }
-
     @MainActor
-    func testEmptyProfileDoesNotPresentTutorialAndStartsIntroPulse() throws {
+    func testEmptyProfileDoesNotPresentTutorial() throws {
         XCTAssertEqual(TutorialCard.allCases.count, 5)
-
-        XCTAssertTrue(shouldPulseIntroPad(loadSucceeded: true, records: [:], animationFinished: true))
-        XCTAssertTrue(shouldPulseIntroPad(loadSucceeded: true, records: [1: LessonProgress(currentBpm: 80)], animationFinished: true))
-        XCTAssertFalse(shouldPulseIntroPad(loadSucceeded: true, records: [1: LessonProgress(hasPlayed: true)], animationFinished: true))
-        XCTAssertFalse(shouldPulseIntroPad(loadSucceeded: true, records: [1: LessonProgress(passed: true)], animationFinished: true))
-        XCTAssertFalse(shouldPulseIntroPad(loadSucceeded: false, records: [:], animationFinished: true))
-        XCTAssertFalse(shouldPulseIntroPad(loadSucceeded: true, records: [:], animationFinished: false))
 
         let suite = "FirstRunAndLegibilityTests.\(UUID().uuidString)"
         let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))
@@ -65,8 +51,8 @@ final class FirstRunAndLegibilityTests: XCTestCase {
     func testHelpStringsArePresentInEachLanguageBundle() throws {
         var keys = [
             "help.title", "help.tutorial.reopen", "help.nav.back", "help.nav.topics", "help.nav.position",
-            "help.lesson.padRow", "help.lesson.now", "help.lesson.countIn", "help.hit.correct", "help.hit.off",
-            "help.hit.wrong", "help.signals.behind", "help.signals.ahead", "help.stars.label", "help.tempo.tap",
+            "help.lesson.padRow", "help.lesson.now", "help.lesson.countIn", "help.hit.correct", "help.hit.early",
+            "help.hit.late", "help.hit.wrong", "help.signals.behind", "help.signals.ahead", "help.stars.label", "help.tempo.tap",
             "help.memory.shown", "help.memory.fading", "help.memory.hiddenFromThird", "help.memory.hidden",
             "help.reviews.timeline", "help.reviews.warmups", "help.reviews.twoPasses", "help.library.stage",
             "help.library.progress", "help.keyboard.mapping", "Close", "Skip", "Done", "Next", "Start", "Intro",

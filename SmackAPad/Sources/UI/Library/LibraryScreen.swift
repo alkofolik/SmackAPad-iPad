@@ -5,6 +5,7 @@ public enum LibraryLaunchTarget: Equatable, Sendable {
     case none
     case intro
     case lesson(Lesson)
+    case kit(String)
 }
 
 /// Three projections of the same catalogue, sharing stage access and saved progress.
@@ -34,13 +35,16 @@ struct LibraryScreen: View {
     @State private var consumedStarLessons: Set<Int> = []
     @State private var returnedStars: [Int: Set<Int>] = [:]
     @Environment(\.accessibilityReduceMotion) private var reduced
+    @Environment(\.scenePhase) private var scenePhase
     private var motion: Theme.Motion.Policy { .init(reduced: reduced) }
     @State private var showingSettings = false
     @State private var purchaseAccess: String?
     @State private var bannerPulse = 0
-    @State private var columnVisibility: NavigationSplitViewVisibility = .all
+    @State private var isSidebarVisible = true
     @State private var pendingCategoryToHide: PendingHideTarget?
     @State private var isHiddenExpanded = false
+    @State private var previewPlayer = LibraryPatternPreviewPlayer()
+    @State private var pendingKitId: String?
 
     private var isSearchVisible: Bool {
         isSearchOpen || !query.isEmpty
@@ -87,6 +91,11 @@ struct LibraryScreen: View {
             _selectedLesson = State(initialValue: .library(lesson, progress: initialProgress, today: AppCalendar.today()))
         } else {
             _selectedLesson = State(initialValue: nil)
+        }
+        if case .kit(let kitId) = launchTarget {
+            _pendingKitId = State(initialValue: kitId)
+        } else {
+            _pendingKitId = State(initialValue: nil)
         }
     }
 
@@ -194,33 +203,75 @@ struct LibraryScreen: View {
     }
 
     var body: some View {
-        NavigationSplitView(columnVisibility: $columnVisibility) {
-            sidebar
-                .navigationSplitViewColumnWidth(min: 280, ideal: 320, max: 380)
-        } detail: {
-            Group {
-                if showingIntro { IntroScreen { open($0) }.id("intro").transition(motion.transition) }
-                else if let group { detail(group).id(mode.id + group.id).transition(motion.transition) }
-                else { Text(settings.localized("No matching lessons")) }
+        VStack(spacing: 0) {
+            ScreenTopBar {
+                HardwareBackButton {
+                    previewPlayer.stop(releaseAudio: true)
+                    onHome()
+                }
+                HardwareIconButton(
+                    systemName: "sidebar.left",
+                    accessibilityLabel: settings.localized(isSidebarVisible ? "Hide sidebar" : "Show sidebar"),
+                    isActive: isSidebarVisible
+                ) {
+                    withAnimation(motion.animation(Theme.Motion.standard)) {
+                        isSidebarVisible.toggle()
+                    }
+                }
+            } center: {
+                if settings.playMode == .story {
+                    StudioHardwareTabSwitcher(activeTab: .library) { tab in
+                        guard tab != .library else { return }
+                        previewPlayer.stop(releaseAudio: true)
+                        onHome()
+                        AppNavigation.shared.openTraining(tab: tab.rawValue)
+                    }
+                }
+            } trailing: {
+                Button { showingSettings = true } label: {
+                    Text(settings.localized("Settings"))
+                        .font(Theme.control)
+                        .frame(minHeight: Theme.Size.touch)
+                }
+                .buttonStyle(PadSecondaryButtonStyle())
+            }
+            .padding(.horizontal, Theme.Space.page)
+            .padding(.vertical, Theme.Space.small)
+            .background(Theme.chassis)
+
+            Rectangle()
+                .fill(Theme.hairline)
+                .frame(height: 1)
+
+            HStack(spacing: 0) {
+                if isSidebarVisible {
+                    sidebar
+                        .frame(width: 310)
+                        .transition(.move(edge: .leading).combined(with: .opacity))
+                    Rectangle()
+                        .fill(Theme.hairline)
+                        .frame(width: 1)
+                }
+
+                Group {
+                    if showingIntro { IntroScreen { open($0) }.id("intro").transition(motion.transition) }
+                    else if let group { detail(group).id(mode.id + group.id).transition(motion.transition) }
+                    else {
+                        Text(settings.localized("No matching lessons"))
+                            .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    }
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .background(Theme.chassis)
+                .motion(Theme.Motion.standard, value: showingIntro ? "intro" : mode.id + (group?.id ?? ""))
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
-            .calmChassisBackground()
-            .motion(Theme.Motion.standard, value: showingIntro ? "intro" : mode.id + (group?.id ?? ""))
-            .toolbar {
-                PadToolbarItem(placement: .topBarTrailing) {
-                    Button { showingSettings = true } label: {
-                        Text(settings.localized("Settings"))
-                            .font(Theme.control)
-                            .frame(minHeight: Theme.Size.touch)
-                    }
-                    .buttonStyle(PadSecondaryButtonStyle())
-                }
-            }
         }
-        .navigationSplitViewStyle(.balanced)
         .font(Theme.control)
-        .calmChassisBackground()
+        .background(Theme.chassis.ignoresSafeArea())
         .foregroundStyle(Theme.ink).tint(Theme.orange)
+        .navigationBarBackButtonHidden(true)
+        .toolbar(.hidden, for: .navigationBar)
         .sheet(isPresented: $showingSettings) { SettingsView() }
         .sheet(isPresented: Binding(get: { purchaseAccess != nil }, set: { if !$0 { purchaseAccess = nil } })) {
             PurchaseSheet(access: purchaseAccess ?? "full")
@@ -236,8 +287,12 @@ struct LibraryScreen: View {
         .onChange(of: selectedLesson?.id, initial: true) {
             if case .review(let lesson) = selectedLesson { onReviewOpen(lesson.id) }
         }
+        .onAppear {
+            applyPendingKitSelectionIfNeeded()
+        }
         .onChange(of: selectedLesson?.id) { _, id in
             if let id {
+                previewPlayer.stop(releaseAudio: true)
                 practicedID = id
                 starsBefore = starSet(id)
                 returnedStars = [:]
@@ -247,14 +302,29 @@ struct LibraryScreen: View {
             }
         }
         .onChange(of: settings.libraryView) { _, _ in
+            previewPlayer.stop(releaseAudio: false)
             query = ""; cross = ""; showingIntro = false; progression.cancelStageAccessChange()
             isHiddenExpanded = false
             pendingCategoryToHide = nil
             isSearchOpen = false
             showingFilters = false
         }
-        .onChange(of: group?.id) { _, _ in progression.cancelStageAccessChange() }
-        .onChange(of: showingIntro) { _, _ in progression.cancelStageAccessChange() }
+        .onChange(of: group?.id) { _, _ in
+            previewPlayer.stop(releaseAudio: false)
+            progression.cancelStageAccessChange()
+        }
+        .onChange(of: showingIntro) { _, _ in
+            previewPlayer.stop(releaseAudio: false)
+            progression.cancelStageAccessChange()
+        }
+        .onChange(of: scenePhase) { _, phase in
+            if phase != .active {
+                previewPlayer.stop(releaseAudio: true)
+            }
+        }
+        .onDisappear {
+            previewPlayer.stop(releaseAudio: true)
+        }
     }
 
     private func starSet(_ id: Int) -> [Bool] {
@@ -298,14 +368,19 @@ struct LibraryScreen: View {
             Rectangle()
                 .fill(Theme.hairline)
                 .frame(height: 1)
-            List {
-                if !isIntroHidden {
-                    introSectionRow
+            ScrollView {
+                VStack(alignment: .leading, spacing: Theme.Space.regular) {
+                    if !isIntroHidden {
+                        introSectionRow
+                    }
+                    organiseSection
+                    extensionsSection
+                    hiddenCategoriesSection
                 }
-                organiseSection
-                extensionsSection
-                hiddenCategoriesSection
+                .padding(.horizontal, Theme.Space.regular)
+                .padding(.vertical, Theme.Space.small)
             }
+            .scrollIndicators(.hidden)
             .motion(Theme.Motion.standard, value: (settings.hiddenCategoryIDsByMode[mode.id] ?? []).hashValue ^ expandedLevels.hashValue ^ (isHiddenExpanded ? 1 : 0))
             .confirmationDialog(
                 pendingCategoryToHide.map {
@@ -328,37 +403,28 @@ struct LibraryScreen: View {
                 }
             }
             .font(Theme.control)
-            .environment(\.defaultMinListRowHeight, Theme.Size.touch)
-            .listRowInsets(EdgeInsets(top: 0, leading: Theme.Space.regular, bottom: 0, trailing: Theme.Space.regular))
-            .listStyle(.sidebar).scrollContentBackground(.hidden)
         }
-        .navigationTitle(settings.localized("Library"))
-        .navigationBarTitleDisplayMode(.inline)
-        .toolbar {
-            PadToolbarItem(placement: .topBarLeading) {
-                BackButton(action: onHome)
-            }
-        }
+        .background(Theme.surface)
     }
 
     private var introSectionRow: some View {
         let title = settings.localized("Intro exercises")
+        let selected = showingIntro
         return Button { showingIntro = true } label: {
             VStack(alignment: .leading, spacing: 0) {
-                sidebarLabel(title, lessons: introLessons, isCategory: true)
+                sidebarLabel(title, lessons: introLessons, isCategory: true, selected: selected)
                 Text(settings.localized("%lld exercises · always open", introLessons.count))
                     .font(Theme.meta).foregroundStyle(Theme.secondary).fixedSize(horizontal: false, vertical: true)
             }
             .padding(.horizontal, Theme.Space.regular)
             .padding(.vertical, Theme.Space.tight)
             .frame(maxWidth: .infinity, minHeight: Theme.Size.touch, alignment: .leading)
-            .satinPlate()
+            .background { sidebarSelection(selected) }
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
-        .listRowInsets(EdgeInsets(top: Theme.Space.tight, leading: Theme.Space.regular, bottom: Theme.Space.tight, trailing: Theme.Space.regular))
-        .listRowSeparator(.hidden)
-        .listRowBackground(Color.clear)
+        .instrumentPanel(border: selected ? Theme.orange : Theme.hairline)
+        .accessibilityAddTraits(selected ? .isSelected : [])
         .contextMenu {
             Button {
                 pendingCategoryToHide = PendingHideTarget(id: "intro", title: title)
@@ -370,30 +436,32 @@ struct LibraryScreen: View {
             pendingCategoryToHide = PendingHideTarget(id: "intro", title: title)
         }
     }
+
     private var organiseSection: some View {
-        Section {
-            PlexSegmentedPicker(title: settings.localized("Organise by"), selection: Binding(
-                get: { settings.libraryView }, set: { settings.libraryView = $0 }
-            ), options: LibraryViewMode.allCases.map { ($0.id, settings.localized($0.title)) }, fitsColumn: true)
-                .listRowInsets(EdgeInsets(top: Theme.Space.small, leading: Theme.Space.regular, bottom: Theme.Space.small, trailing: Theme.Space.regular))
-                .listRowSeparator(.hidden)
-                .listRowBackground(Color.clear)
+        VStack(alignment: .leading, spacing: Theme.Space.small) {
+            SectionHeader(title: settings.localized("Organise by"))
+            PlexSegmentedPicker(
+                title: settings.localized("Organise by"),
+                selection: Binding(get: { settings.libraryView }, set: { settings.libraryView = $0 }),
+                options: LibraryViewMode.allCases.map { ($0.id, settings.localized($0.title)) },
+                fitsColumn: true,
+                size: .compact
+            )
             if mode == .path {
                 pathLevelsList
             } else {
                 let nonPathGroups = groups.filter { !$0.isExtension && !settings.isCategoryHidden($0.id, in: mode.id) }
                 if !nonPathGroups.isEmpty {
-                    categoriesFramedBox(items: nonPathGroups)
-                        .listRowInsets(EdgeInsets(top: Theme.Space.tight, leading: Theme.Space.regular, bottom: Theme.Space.tight, trailing: Theme.Space.regular))
-                        .listRowSeparator(.hidden)
-                        .listRowBackground(Color.clear)
+                    categoryRows(nonPathGroups)
+                        .instrumentPanel()
                 }
             }
-        } header: { SectionHeader(title: settings.localized("Organise by")) }
+        }
     }
 
     private var pathLevelsList: some View {
-        ForEach((1...5).filter { !settings.isCategoryHidden("level-\($0)", in: mode.id) }, id: \.self) { level in
+        let levels = (1...5).filter { !settings.isCategoryHidden("level-\($0)", in: mode.id) }
+        return ForEach(levels, id: \.self) { level in
             levelView(level)
         }
     }
@@ -405,21 +473,27 @@ struct LibraryScreen: View {
         let levelTitle = settings.localized("Level %lld", level)
         let levelLessons = catalog.path.filter { $0.level == level }
         let levelGroups = groups.filter { $0.stage?.level == level && !settings.isCategoryHidden($0.id, in: mode.id) }
+        let hasSelectedChild = !showingIntro && levelGroups.contains { $0.id == group?.id }
 
         if isExpanded {
-            VStack(alignment: .leading, spacing: Theme.Space.small) {
+            VStack(alignment: .leading, spacing: 0) {
                 Button {
                     expandedLevels.remove(level)
                 } label: {
                     HStack(spacing: Theme.Space.small) {
                         Image(systemName: "chevron.right")
                             .rotationEffect(motion.angle(90))
-                            .font(Theme.meta).frame(width: 16)
+                            .font(Theme.meta)
+                            .foregroundStyle(hasSelectedChild ? Theme.orange : Theme.secondary)
+                            .frame(width: 16)
                         sidebarLabel(levelTitle,
                                      lessons: levelLessons,
                                      isCategory: true,
                                      isStrong: true)
                     }
+                    .padding(.horizontal, Theme.Space.regular)
+                    .padding(.vertical, Theme.Space.tight)
+                    .frame(maxWidth: .infinity, minHeight: Theme.Size.touch, alignment: .leading)
                     .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
@@ -436,13 +510,11 @@ struct LibraryScreen: View {
                 }
 
                 if !levelGroups.isEmpty {
-                    categoriesFramedBox(items: levelGroups)
+                    sidebarRule
+                    categoryRows(levelGroups)
                 }
             }
-            .padding(.vertical, Theme.Space.tight)
-            .listRowInsets(EdgeInsets(top: Theme.Space.tight, leading: Theme.Space.regular, bottom: Theme.Space.small, trailing: Theme.Space.regular))
-            .listRowSeparator(.hidden)
-            .listRowBackground(Color.clear)
+            .instrumentPanel()
         } else {
             Button {
                 expandedLevels.insert(level)
@@ -450,7 +522,9 @@ struct LibraryScreen: View {
                 HStack(spacing: Theme.Space.small) {
                     Image(systemName: "chevron.right")
                         .rotationEffect(motion.angle(0))
-                        .font(Theme.meta).frame(width: 16)
+                        .font(Theme.meta)
+                        .foregroundStyle(hasSelectedChild ? Theme.orange : Theme.secondary)
+                        .frame(width: 16)
                     sidebarLabel(levelTitle,
                                  lessons: levelLessons,
                                  isCategory: true,
@@ -458,11 +532,17 @@ struct LibraryScreen: View {
                 }
                 .padding(.horizontal, Theme.Space.regular)
                 .padding(.vertical, Theme.Space.tight)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .satinPlate()
+                .frame(maxWidth: .infinity, minHeight: Theme.Size.touch, alignment: .leading)
+                .background {
+                    if hasSelectedChild {
+                        Rectangle().fill(Theme.orange).frame(width: 3)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                    }
+                }
                 .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
+            .instrumentPanel(border: hasSelectedChild ? Theme.orange.opacity(0.6) : Theme.hairline)
             .accessibilityValue(settings.localized("Collapsed"))
             .contextMenu {
                 Button {
@@ -474,43 +554,54 @@ struct LibraryScreen: View {
             .accessibilityAction(named: settings.localized("Hide category")) {
                 pendingCategoryToHide = PendingHideTarget(id: levelID, title: levelTitle)
             }
-            .listRowInsets(EdgeInsets(top: Theme.Space.tight, leading: Theme.Space.regular, bottom: Theme.Space.tight, trailing: Theme.Space.regular))
-            .listRowSeparator(.hidden)
-            .listRowBackground(Color.clear)
         }
     }
 
-    private func categoriesFramedBox(items: [LibraryGroup]) -> some View {
+    private var sidebarRule: some View {
+        Rectangle()
+            .fill(Theme.hairline)
+            .frame(height: 1)
+            .allowsHitTesting(false)
+            .accessibilityHidden(true)
+    }
+
+    private func sidebarSelection(_ selected: Bool) -> some View {
+        Rectangle()
+            .fill(selected ? Theme.activeFill : Color.clear)
+            .overlay(alignment: .leading) {
+                if selected { Rectangle().fill(Theme.orange).frame(width: 3) }
+            }
+            .allowsHitTesting(false)
+    }
+
+    private func categoryRows(_ items: [LibraryGroup]) -> some View {
         VStack(spacing: 0) {
             ForEach(Array(items.enumerated()), id: \.element.id) { index, item in
                 if index > 0 {
-                    Rectangle()
-                        .fill(Theme.hairline)
-                        .frame(height: 1)
+                    sidebarRule
                 }
                 sidebarRow(item)
             }
         }
-        .satinPlate()
     }
 
     @ViewBuilder
     private var extensionsSection: some View {
         let visibleExtensions = groups.filter { $0.isExtension && !settings.isCategoryHidden($0.id, in: mode.id) }
         if !visibleExtensions.isEmpty {
-            Section {
-                categoriesFramedBox(items: visibleExtensions)
-                    .listRowInsets(EdgeInsets(top: Theme.Space.tight, leading: Theme.Space.regular, bottom: Theme.Space.tight, trailing: Theme.Space.regular))
-                    .listRowSeparator(.hidden)
-                    .listRowBackground(Color.clear)
-            } header: { SectionHeader(title: settings.localized("Extensions · outside the Path")) }
+            VStack(alignment: .leading, spacing: Theme.Space.small) {
+                SectionHeader(title: settings.localized("Extensions · outside the Path"))
+                categoryRows(visibleExtensions)
+                    .instrumentPanel()
+            }
         }
     }
 
     @ViewBuilder
     private var hiddenCategoriesSection: some View {
         if !hiddenItems.isEmpty {
-            Section {
+            VStack(alignment: .leading, spacing: Theme.Space.small) {
+                sidebarRule
                 Button {
                     withAnimation(motion.animation(Theme.Motion.standard)) {
                         isHiddenExpanded.toggle()
@@ -524,12 +615,11 @@ struct LibraryScreen: View {
                             .font(Theme.sectionTitle)
                             .foregroundStyle(Theme.secondary)
                     }
-                    .frame(minHeight: Theme.Size.touch)
+                    .frame(maxWidth: .infinity, minHeight: Theme.Size.touch, alignment: .leading)
                     .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
                 .accessibilityValue(settings.localized(isHiddenExpanded ? "Expanded" : "Collapsed"))
-                .listRowBackground(Color.clear)
 
                 if isHiddenExpanded {
                     ForEach(hiddenItems) { item in
@@ -558,7 +648,7 @@ struct LibraryScreen: View {
             .padding(.horizontal, Theme.Space.regular)
             .padding(.vertical, Theme.Space.tight)
             .frame(maxWidth: .infinity, minHeight: Theme.Size.touch, alignment: .leading)
-            .background(selected ? Theme.surface : Color.clear)
+            .background { sidebarSelection(selected) }
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
@@ -690,7 +780,12 @@ struct LibraryScreen: View {
             }
             return settings.libraryStarFilters.contains(LibraryStarFilter.classify(progress.progress(for: lesson.id)).id)
         }
-        let nextID = next?.id
+        let nextLesson = next
+        let playNextTitle = settings.localized("Play next")
+        let filters = HStack(spacing: Theme.Space.small) {
+            magnifierButton
+            filtersButton(matching: matching)
+        }
         return VStack(alignment: .leading, spacing: Theme.Space.small) {
             if let error = lessonStore.lastLoadError {
                 InfoBanner(text: error.localizedDescription, actionTitle: settings.localized("Reload"),
@@ -698,24 +793,24 @@ struct LibraryScreen: View {
                     try? lessonStore.reload()
                 })
             }
-            let playNextButton = Button { if let next { open(next) } } label: {
-                Text(settings.localized("Play next"))
-                    .font(Theme.control)
-                    .lineLimit(1)
-                    .frame(height: Theme.Size.touch)
-            }
-            .buttonStyle(PadPrimaryButtonStyle())
-            .frame(height: Theme.Size.touch)
-            .fixedSize(horizontal: true, vertical: false)
-            .disabled(next == nil)
-
-            HStack(alignment: .center, spacing: Theme.Space.regular) {
-                HStack(spacing: Theme.Space.small) {
-                    magnifierButton
-                    filtersButton(matching: matching)
+            ViewThatFits(in: .horizontal) {
+                if let nextLesson {
+                    HStack(spacing: Theme.Space.regular) {
+                        filters.fixedSize()
+                        Spacer(minLength: 0)
+                        playNextButton("\(playNextTitle) · \(settings.localized(nextLesson.title))", lesson: nextLesson)
+                            .fixedSize()
+                    }
                 }
-                Spacer(minLength: 0)
-                playNextButton
+                HStack(spacing: Theme.Space.regular) {
+                    filters.fixedSize()
+                    Spacer(minLength: 0)
+                    playNextButton(playNextTitle, lesson: nextLesson).fixedSize()
+                }
+                VStack(alignment: .leading, spacing: Theme.Space.small) {
+                    filters
+                    playNextButton(playNextTitle, lesson: nextLesson)
+                }
             }
 
             let stageTitle = group.stage.map {
@@ -741,51 +836,69 @@ struct LibraryScreen: View {
                 }
             }
             .padding(.bottom, Theme.Space.small)
-            if let stage = group.stage, !progression.isStageOpen(stage) || progression.canRelockStage(stage) {
-                stageBanner(stage).id("stage-lock").transition(motion.transition)
-                    .padding(.bottom, Theme.Space.small)
+            if settings.playMode == .free, let stage = group.stage {
+                bossStageAction(stage)
             }
             if isSearchVisible {
                 searchBar
                     .transition(motion.transition)
                     .padding(.bottom, Theme.Space.tight)
             }
-            List {
-                if isGroupAllCompleted && settings.hideCompletedLessons && !isSearching {
-                    allCompletedRow
-                } else if filtered.isEmpty {
-                    Text(settings.localized("No matching lessons")).font(Theme.control)
-                        .listRowBackground(Color.clear)
-                } else {
-                    ForEach(filtered) { lesson in
-                        LibraryLessonRow(lesson: lesson, settings: settings, progress: progress,
-                                         number: (group.lessons.firstIndex { $0.id == lesson.id } ?? 0) + 1,
-                                         showTechnique: mode == .genre,
-                                         locked: !progression.isLessonOpen(lesson), purchaseLocked: !store.isUnlocked(lesson), isNext: lesson.id == nextID) {
-                            open(lesson)
+            ScrollView {
+                VStack(alignment: .leading, spacing: Theme.Space.small) {
+                    if isGroupAllCompleted && settings.hideCompletedLessons && !isSearching {
+                        allCompletedRow
+                    } else if filtered.isEmpty {
+                        Text(settings.localized("No matching lessons"))
+                            .font(Theme.control)
+                            .foregroundStyle(Theme.secondary)
+                            .padding(.vertical, Theme.Space.regular)
+                    } else {
+                        LessonRowsPanel(lessons: filtered) { lesson in
+                            LessonRow(
+                                lesson: lesson,
+                                settings: settings,
+                                progress: progress,
+                                number: (group.lessons.firstIndex { $0.id == lesson.id } ?? 0) + 1,
+                                showTechnique: mode == .genre,
+                                locked: !progression.isLessonOpen(lesson),
+                                purchaseLocked: !store.isUnlocked(lesson),
+                                isNext: lesson.id == nextLesson?.id,
+                                isPreviewPlaying: previewPlayer.playingLessonID == lesson.id,
+                                previewAnchorHostTime: previewPlayer.anchorHostTime,
+                                previewSecondsPerStep: previewPlayer.secondsPerStep,
+                                onTogglePreview: { previewPlayer.toggle(lesson: lesson, settings: settings, pathState: progress.drummerPath) }
+                            ) {
+                                open(lesson)
+                            }
                         }
-                        .listRowInsets(EdgeInsets(top: Theme.Space.controlGap / 2, leading: 0, bottom: Theme.Space.controlGap / 2, trailing: 0))
-                        .listRowSeparator(.hidden)
-                        .listRowBackground(Color.clear)
                     }
                 }
+                .padding(.bottom, Theme.Space.page)
             }
-            .environment(\.defaultMinListRowHeight, 60)
-            .listStyle(.plain)
-            .listSectionSeparator(.hidden)
-            .scrollContentBackground(.hidden)
-            .contentMargins(.vertical, 0, for: .scrollContent)
+            .scrollIndicators(.hidden)
             .motion(Theme.Motion.standard, value: filtered.map(\.id))
         }
         .padding(.horizontal, Theme.Space.page).padding(.top, Theme.Space.small)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-        .calmChassisBackground()
+        .background(Theme.chassis)
         .motion(Theme.Motion.standard, value: group.stage.map { progression.isStageOpen($0) })
         .onChange(of: isSearchOpen) { _, isOpen in
             if isOpen {
                 isSearchFocused = true
             }
         }
+    }
+
+    private func playNextButton(_ title: String, lesson: Lesson?) -> some View {
+        Button { if let lesson { open(lesson) } } label: {
+            Text(title)
+                .font(Theme.control)
+                .fixedSize(horizontal: false, vertical: true)
+                .frame(minHeight: Theme.Size.touch)
+        }
+        .buttonStyle(PadPrimaryButtonStyle())
+        .disabled(lesson == nil)
     }
 
     private var allCompletedRow: some View {
@@ -816,6 +929,10 @@ struct LibraryScreen: View {
         let earnedStars = three * 3 + two * 2 + one
         let maxStars = total * 3
 
+        let countText = shown < total
+            ? settings.localized("Shown %lld of %lld", shown, total)
+            : settings.localized("%lld lessons", total)
+
         return VStack(alignment: .leading, spacing: Theme.Space.tight) {
             HStack(spacing: Theme.Space.small) {
                 HStack(spacing: 2) {
@@ -823,8 +940,9 @@ struct LibraryScreen: View {
                     Text("\(earnedStars)/\(maxStars)").font(Theme.meta).monospacedDigit()
                 }
                 Spacer(minLength: 4)
-                Text(shown == total ? settings.localized("%lld lessons", total) : settings.localized("%lld of %lld lessons", shown, total))
+                Text(countText)
                     .font(Theme.meta).foregroundStyle(Theme.secondary).fixedSize(horizontal: false, vertical: true)
+                    .monospacedDigit()
                     .contentTransition(motion.numeric).motion(value: shown)
             }
             progressLine(group.lessons)
@@ -833,7 +951,11 @@ struct LibraryScreen: View {
     }
 
     private var magnifierButton: some View {
-        Button {
+        HardwareIconButton(
+            systemName: "magnifyingglass",
+            accessibilityLabel: settings.localized("Search"),
+            isActive: isSearchVisible
+        ) {
             withAnimation(motion.animation(Theme.Motion.standard)) {
                 if isSearchVisible && query.isEmpty {
                     isSearchOpen = false
@@ -843,13 +965,7 @@ struct LibraryScreen: View {
                     isSearchFocused = true
                 }
             }
-        } label: {
-            Image(systemName: "magnifyingglass")
-                .font(Theme.meta)
-                .frame(width: Theme.Size.touch, height: Theme.Size.touch)
         }
-        .buttonStyle(PadIconButtonStyle(selected: isSearchVisible))
-        .accessibilityLabel(settings.localized("Search"))
     }
 
     private func filtersButton(matching: [Lesson]) -> some View {
@@ -861,19 +977,21 @@ struct LibraryScreen: View {
                 Text(filtersButtonTitle)
             }
             .font(Theme.meta).lineLimit(1)
+            .foregroundStyle(Theme.ink)
             .padding(.horizontal, Theme.Space.small)
-            .frame(height: Theme.Size.touch)
+            .frame(height: 40)
             .background {
-                RoundedRectangle(cornerRadius: Theme.Skin.Pad.radius)
-                    .fill(activeFilterGroupCount > 0 ? Theme.activeFill : Theme.Skin.Pad.fill)
+                RoundedRectangle(cornerRadius: Theme.Radius.control)
+                    .fill(activeFilterGroupCount > 0 ? Theme.activeFill : Theme.surfaceElevated)
                     .overlay {
-                        RoundedRectangle(cornerRadius: Theme.Skin.Pad.radius)
-                            .strokeBorder(activeFilterGroupCount > 0 ? Theme.orange : Theme.hairline,
+                        RoundedRectangle(cornerRadius: Theme.Radius.control)
+                            .strokeBorder(activeFilterGroupCount > 0 ? Theme.accent : Theme.hairline,
                                           lineWidth: activeFilterGroupCount > 0 ? 1.5 : 1)
                     }
             }
         }
         .buttonStyle(.plain)
+        .frame(minHeight: Theme.Size.minimumTouch)
         .accessibilityLabel(filtersButtonTitle)
         .popover(isPresented: $showingFilters, arrowEdge: .top) {
             filtersPopover(matching: matching)
@@ -1023,8 +1141,10 @@ struct LibraryScreen: View {
 
     private func stageBanner(_ stage: LibraryStage) -> some View {
         let requirement = progression.unlockProgress(for: stage)
-        let message = settings.localized("Earn 2 stars in %lld lessons in %@ to open this", requirement.needed,
-                                        requirement.previous.map { progression.title(for: $0.id) } ?? "")
+        let format = settings.languagePreference == .czech
+            ? "%lld / %lld lekcí se 2★ v předchozí etapě"
+            : "%lld / %lld lessons with 2★ in the previous stage"
+        let message = String(format: format, requirement.completed, requirement.needed)
         let confirmation = progression.stageAccessConfirmation
         let pending = confirmation?.stageID == stage.id
         let relock = progression.canRelockStage(stage)
@@ -1032,17 +1152,44 @@ struct LibraryScreen: View {
             ? settings.localized(confirmation?.action == .relock ? "Really lock %@ again?" : "Really unlock %@?",
                                  progression.title(for: stage.id))
             : relock ? settings.localized("Manually unlocked · no stars yet")
-            : "\(message) · \(requirement.completed)/\(requirement.needed)"
-        return InfoBanner(text: text, symbol: relock ? "lock.open" : "lock",
-                          actionTitle: settings.localized(pending
-                              ? (confirmation?.action == .relock ? "Yes, lock again" : "Yes, unlock")
-                              : (relock ? "Lock again" : "Unlock")),
-                          action: {
+            : message
+        let actionTitle = settings.localized(pending
+            ? (confirmation?.action == .relock ? "Yes, lock again" : "Yes, unlock")
+            : (relock ? "Lock again" : "Unlock"))
+        let status = Label {
+            Text(text).font(Theme.meta)
+                .fixedSize(horizontal: false, vertical: true)
+        } icon: {
+            Image(systemName: relock ? "lock.open" : "lock").font(Theme.control)
+        }
+        let accessButton = Button(actionTitle) {
             if pending { progression.confirmStageAccessChange() }
             else { progression.requestStageAccessChange(for: stage.id, action: relock ? .relock : .unlock) }
-        }, secondaryActionTitle: pending ? settings.localized("Cancel") : nil,
-                          secondaryAction: { progression.cancelStageAccessChange() })
-        .overlay(Rectangle().stroke(Theme.orange.opacity(bannerPulse > 0 ? 1 : 0), lineWidth: Theme.Size.border))
+        }
+        let cancelButton = Button(settings.localized("Cancel")) {
+            progression.cancelStageAccessChange()
+        }
+        return ViewThatFits(in: .horizontal) {
+            HStack(spacing: Theme.Space.small) {
+                status.fixedSize()
+                Spacer(minLength: 0)
+                accessButton.fixedSize()
+                if pending { cancelButton.fixedSize() }
+            }
+            VStack(alignment: .leading, spacing: Theme.Space.small) {
+                status
+                accessButton
+                if pending { cancelButton }
+            }
+        }
+        .buttonStyle(PadSecondaryButtonStyle())
+        .font(Theme.control)
+        .foregroundStyle(Theme.ink)
+        .padding(Theme.Space.small)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .instrumentPanel(border: bannerPulse > 0 ? Theme.orange : Theme.hairline)
+        .motion(value: text)
+        .motion(value: actionTitle)
         .motion(value: bannerPulse)
         .task(id: bannerPulse) {
             guard bannerPulse > 0 else { return }
@@ -1051,7 +1198,31 @@ struct LibraryScreen: View {
         }
     }
 
+    @ViewBuilder
+    private func bossStageAction(_ stage: LibraryStage) -> some View {
+        let mastered = stage.lessons.count { LibraryStarFilter.stars(progress.progress(for: $0.id)) >= 2 }
+        let needed = ProgressionConstant.requiredStageCompletions(lessonCount: stage.lessons.count)
+        let defeated = progress.drummerPath.completedExamStageIDs.contains(stage.id)
+        let lesson = BossEncounter.pattern(in: stage.lessons, stageID: stage.id, progress: progress.records,
+                                          eligible: store.isUnlocked)
+        if defeated || mastered >= needed, let lesson {
+            Button {
+                previewPlayer.stop(releaseAudio: true)
+                selectedLesson = .boss(BossEncounter(stageID: stage.id, level: stage.level, lesson: lesson))
+            } label: {
+                Label(settings.localized(defeated ? "Replay the boss" : "Face the boss"),
+                      systemImage: BossEncounter.emblem(for: stage.id))
+            }
+            .buttonStyle(PadSecondaryButtonStyle())
+        } else if mastered < needed && !defeated && stage.lessons.contains(where: store.isUnlocked) {
+            Text(settings.localized("Earn ★2 on %lld more lessons in this stage to unlock the boss.", needed - mastered))
+                .font(Theme.meta)
+                .foregroundStyle(Theme.secondary)
+        }
+    }
+
     private func open(_ lesson: Lesson) {
+        previewPlayer.stop(releaseAudio: true)
         guard store.isUnlocked(lesson) else {
             purchaseAccess = lesson.access ?? "full"
             return
@@ -1060,161 +1231,28 @@ struct LibraryScreen: View {
             selectedLesson = .library(lesson, progress: progress.progress(for: lesson.id), today: AppCalendar.today())
             return
         }
-        guard let stage = catalog.stage(for: lesson) else { return }
-        settings.libraryView = LibraryViewMode.path.id
-        selections[LibraryViewMode.path.id] = stage.id
-        expandedLevels.insert(stage.level)
-        bannerPulse += 1
     }
-}
 
-struct LibraryLessonRow: View {
-    let lesson: Lesson
-    let settings: SettingsManager
-    let progress: ProgressStore
-    var number = 0
-    var showTechnique = false
-    var locked = false
-    var purchaseLocked = false
-    var isNext = false
-    var introGoal: String? = nil
-    let onSelect: () -> Void
-
-    private var record: LessonProgress? { progress.progress(for: lesson.id) }
-    private var stars: Int { LibraryStarFilter.stars(record) }
-    private var symbol: String {
-        if locked { return "lock" }
-        if isNext { return "play.fill" }
-        if stars == 3 { return "circle.fill" }
-        if stars > 0 { return "circle.lefthalf.filled" }
-        if record?.hasPlayed == true { return "circle.dotted" }
-        return "circle"
-    }
-    private var stateTitle: String {
-        if purchaseLocked { return "Purchase required" }
-        if locked { return "Locked" }
-        if isNext { return "Up next" }
-        if record?.lastReviewFailDay == AppCalendar.today() {
-            return "Tried today · not met yet"
+    private func applyPendingKitSelectionIfNeeded() {
+        guard let kitId = pendingKitId else { return }
+        pendingKitId = nil
+        let genreGroups = catalog.groups(in: .genre)
+        if let match = genreGroups.first(where: { group in
+            group.lessons.contains { DrumKitCatalog.requiredKitId(for: $0) == kitId }
+        }) {
+            settings.libraryView = LibraryViewMode.genre.id
+            selections[LibraryViewMode.genre.id] = match.id
+            showingIntro = false
+            return
         }
-        return LibraryStarFilter.classify(record).title
-    }
-
-    var body: some View {
-        ListRow(symbol: symbol, symbolTint: stars > 0 ? Theme.starColor(for: stars) : nil,
-                stateTitle: settings.localized(stateTitle),
-                number: number > 0 ? number : nil, title: settings.localized(lesson.title),
-                dimmed: locked, action: onSelect) {
-            if let introGoal {
-                Text(introGoal)
-            } else {
-                ViewThatFits(in: .horizontal) {
-                    HStack(spacing: Theme.Space.small) {
-                        genre
-                        difficulty
-                        tempo
-                        padRequirement
-                    }
-                    .fixedSize(horizontal: true, vertical: false)
-                    VStack(alignment: .leading, spacing: Theme.Space.tight) {
-                        HStack(spacing: Theme.Space.small) { genre; difficulty; padRequirement }
-                        tempo
-                    }
-                }
-            }
-        } trailing: {
-            if purchaseLocked {
-                Button(action: onSelect) {
-                    Image(systemName: "lock").font(Theme.meta).foregroundStyle(Theme.secondary)
-                        .frame(minWidth: Theme.Size.touch, minHeight: Theme.Size.touch)
-                }
-                .buttonStyle(PadIconButtonStyle())
-                .accessibilityLabel(settings.localized("Purchase required"))
-            }
-            if introGoal == nil {
-                ViewThatFits(in: .horizontal) {
-                    HStack(spacing: Theme.Space.regular) {
-                        LessonPatternStrip(hits: lesson.hits, dimmed: locked)
-                        settledMark
-                        dueMark
-                        StarsView(record: record, lesson: lesson)
-                    }
-                    HStack(spacing: Theme.Space.small) {
-                        settledMark
-                        dueMark
-                        StarsView(record: record, lesson: lesson)
-                    }
-                }
-            } else {
-                HStack(spacing: Theme.Space.small) {
-                    settledMark
-                    dueMark
-                    StarsView(record: record, lesson: lesson)
-                }
-            }
+        let pathGroups = catalog.groups(in: .path)
+        if let match = pathGroups.first(where: { group in
+            group.lessons.contains { DrumKitCatalog.requiredKitId(for: $0) == kitId }
+        }) {
+            settings.libraryView = LibraryViewMode.path.id
+            selections[LibraryViewMode.path.id] = match.id
+            if let lvl = match.stage?.level { expandedLevels.insert(lvl) }
+            showingIntro = false
         }
-        .padding(.horizontal, Theme.Space.regular)
-        .background {
-            // Fill the plate's gaps while keeping the row and trailing controls as siblings.
-            Button(action: onSelect) {
-                Color.clear
-                    .contentShape(RoundedRectangle(cornerRadius: Theme.Skin.Plate.radius))
-            }
-            .buttonStyle(.plain)
-            .accessibilityHidden(true)
-        }
-        .structuralPlate()
-        .lessonSource(lesson.id)
-    }
-
-    private var isDue: Bool {
-        record?.reviewSchedule.isSettled != true && record?.reviewSchedule.isDue(on: AppCalendar.today()) == true
-    }
-
-    @ViewBuilder
-    private var settledMark: some View {
-        if record?.reviewSchedule.isSettled == true {
-            Image(systemName: "checkmark")
-                .font(Theme.meta)
-                .foregroundStyle(Theme.secondary)
-                .accessibilityLabel(settings.localized("Settled"))
-        }
-    }
-
-    @ViewBuilder
-    private var dueMark: some View {
-        if isDue {
-            let isTried = record?.lastReviewFailDay == AppCalendar.today()
-            Image(systemName: "clock")
-                .font(Theme.meta)
-                .foregroundStyle(isTried ? Theme.orange : Theme.ink)
-                .accessibilityLabel(settings.localized(isTried ? "Tried today · not met yet" : "Due for review"))
-        }
-    }
-
-    private var genre: some View {
-        Text(settings.localized(showTechnique ? LessonTechnique.classify(lesson).title : lesson.genre))
-    }
-
-    @ViewBuilder private var padRequirement: some View {
-        if settings.activeProfile().isEightPad && EightPadLayout.slots(for: lesson) == nil {
-            Text(settings.localized("16 pads"))
-                .accessibilityLabel(settings.localized("Requires 16 pads"))
-        }
-    }
-
-    private var difficulty: some View {
-        HStack(spacing: Theme.Space.tight) {
-            ForEach(1...5, id: \.self) { level in
-                Circle().fill(level <= lesson.level ? Theme.ink : Theme.background)
-                    .overlay(Circle().stroke(Theme.ink, lineWidth: 1)).frame(width: 8, height: 8)
-            }
-        }.accessibilityElement().accessibilityLabel(settings.localized("Level %lld", lesson.level))
-    }
-
-    private var tempo: some View {
-        let bpm = (record?.currentBpm ?? 0) > 0 ? record!.currentBpm : lesson.startBpm
-        return Text("\(settings.localized(lesson.bars == 1 ? "%lld bar" : "%lld bars", lesson.bars)) · \(bpm) → \(lesson.targetBpm) BPM")
-            .font(Theme.meta).monospacedDigit().fixedSize(horizontal: false, vertical: true)
     }
 }

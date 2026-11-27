@@ -3,10 +3,46 @@ import SwiftUI
 /// Static and isolated from control state; the ribbing is rasterised with the chassis.
 private struct CalmChassisSurface: View, Equatable {
     let darkAppearance: Bool
+    let skinId: String
+
+    private var skin: InstrumentSkin {
+        StudioRigCatalog.skin(forId: skinId) ?? StudioRigCatalog.skins[0]
+    }
+
+    private var accentColor: Color {
+        Color(
+            red: Double((skin.accentHex >> 16) & 0xFF) / 255.0,
+            green: Double((skin.accentHex >> 8) & 0xFF) / 255.0,
+            blue: Double(skin.accentHex & 0xFF) / 255.0
+        )
+    }
+
+    private var chassisTint: Color {
+        Color(
+            red: Double((skin.chassisHex >> 16) & 0xFF) / 255.0,
+            green: Double((skin.chassisHex >> 8) & 0xFF) / 255.0,
+            blue: Double(skin.chassisHex & 0xFF) / 255.0
+        )
+    }
 
     var body: some View {
         Theme.Skin.gradient([Theme.Skin.Chassis.top, Theme.Skin.Chassis.bottom],
                             degrees: Theme.Skin.Chassis.angle)
+            .overlay {
+                if !skin.isDefault {
+                    chassisTint.opacity(darkAppearance ? 0.55 : 0.25)
+                }
+            }
+            .overlay(alignment: .top) {
+                if !skin.isDefault {
+                    LinearGradient(
+                        colors: [accentColor.opacity(darkAppearance ? 0.14 : 0.10), .clear],
+                        startPoint: .top,
+                        endPoint: .bottom
+                    )
+                    .frame(height: 180)
+                }
+            }
             .overlay {
                 Canvas { context, size in
                     for y in stride(from: CGFloat.zero, to: size.height, by: Theme.Skin.Chassis.ribPitch) {
@@ -26,10 +62,11 @@ private struct CalmChassisSurface: View, Equatable {
 
 private struct CalmChassisBackground: ViewModifier {
     @Environment(\.colorScheme) private var colorScheme
+    @Environment(SettingsManager.self) private var settings
 
     func body(content: Content) -> some View {
         content.background {
-            CalmChassisSurface(darkAppearance: colorScheme == .dark)
+            CalmChassisSurface(darkAppearance: colorScheme == .dark, skinId: settings.selectedInstrumentSkinId)
                 .equatable()
                 .ignoresSafeArea()
         }
@@ -71,8 +108,6 @@ private struct SatinPlateSurface: View {
                 RoundedRectangle(cornerRadius: Theme.Skin.Plate.radius)
                     .strokeBorder(Theme.hairline, lineWidth: 1)
             }
-            .shadow(color: Theme.Skin.Plate.shadow, radius: Theme.Skin.Plate.shadowRadius, y: Theme.Skin.Plate.shadowY)
-            .shadow(color: Theme.Skin.Plate.contactShadow, radius: Theme.Skin.Plate.contactRadius, y: Theme.Skin.Plate.contactY)
             .allowsHitTesting(false)
             .accessibilityHidden(true)
     }
@@ -207,4 +242,107 @@ extension View {
     func satinPlate() -> some View { background { SatinPlateSurface() } }
     func structuralPlate() -> some View { background { StructuralPlateSurface() } }
     func insetDisplay() -> some View { modifier(InsetDisplay()) }
+}
+
+// MARK: - Hardware Card, Row & Section Header (DESIGN.md)
+
+/// Uppercase hardware label placed above a `HardwareCard` or control group.
+struct HardwareSectionHeader: View {
+    let title: String
+    var subtitle: String? = nil
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: Theme.Space.tight) {
+            Text(title.uppercased())
+                .font(Theme.hardwareLabel)
+                .tracking(0.8)
+                .foregroundStyle(Theme.secondary)
+            if let subtitle {
+                Text(subtitle)
+                    .font(Theme.caption)
+                    .foregroundStyle(Theme.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .accessibilityAddTraits(.isHeader)
+    }
+}
+
+/// 10pt-radius hardware panel replacing native iOS `.insetGrouped` `Form` sections.
+struct HardwareCard<Content: View>: View {
+    var padding: CGFloat = 0
+    @ViewBuilder var content: () -> Content
+
+    var body: some View {
+        let shape = RoundedRectangle(cornerRadius: Theme.Radius.panel)
+        VStack(alignment: .leading, spacing: 0) {
+            content()
+        }
+        .padding(padding)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(Theme.surface, in: shape)
+        .clipShape(shape)
+        .overlay {
+            shape.strokeBorder(Theme.hairline, lineWidth: 1)
+                .allowsHitTesting(false)
+        }
+    }
+}
+
+/// 1pt hairline divider for separating interactive `HardwareRow` items inside a `HardwareCard`.
+struct HardwareDivider: View {
+    var inset: CGFloat = Theme.Space.regular
+
+    var body: some View {
+        Rectangle()
+            .fill(Theme.hairline)
+            .frame(height: 1)
+            .padding(.leading, inset)
+            .accessibilityHidden(true)
+    }
+}
+
+/// Interactive row inside a `HardwareCard` with title, optional subtitle/icon, and trailing control.
+struct HardwareRow<Trailing: View>: View {
+    let title: String
+    var subtitle: String? = nil
+    var icon: String? = nil
+    @ViewBuilder var trailing: () -> Trailing
+
+    var body: some View {
+        HStack(spacing: Theme.Space.controlGap) {
+            if let icon {
+                Image(systemName: icon)
+                    .font(Theme.control)
+                    .foregroundStyle(Theme.secondary)
+                    .frame(width: 24, alignment: .center)
+            }
+
+            VStack(alignment: .leading, spacing: 2) {
+                Text(title)
+                    .font(Theme.control)
+                    .foregroundStyle(Theme.ink)
+                    .fixedSize(horizontal: false, vertical: true)
+                if let subtitle {
+                    Text(subtitle)
+                        .font(Theme.caption)
+                        .foregroundStyle(Theme.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+
+            trailing()
+        }
+        .padding(.horizontal, Theme.Space.regular)
+        .padding(.vertical, 12)
+        .frame(minHeight: Theme.Size.row)
+    }
+}
+
+extension HardwareRow where Trailing == EmptyView {
+    init(title: String, subtitle: String? = nil, icon: String? = nil) {
+        self.init(title: title, subtitle: subtitle, icon: icon) { EmptyView() }
+    }
 }

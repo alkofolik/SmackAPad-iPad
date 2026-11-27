@@ -180,6 +180,11 @@ public enum ProgressMerge {
         TrainingLog.merging(local, with: incoming)
     }
 
+    /// Merges Drummer's Path & Studio Rig RPG state using "never lose anything" rules.
+    public static func mergeDrummerPath(local: DrummerPathState, incoming: DrummerPathState) -> DrummerPathState {
+        DrummerPathEvaluator.merge(local, with: incoming)
+    }
+
     /// Merges badges by union of IDs, preserving the earlier earned date for existing badges.
     public static func mergeBadges(local: [String: Date], incoming: [String: Date]) -> [String: Date] {
         var result = local

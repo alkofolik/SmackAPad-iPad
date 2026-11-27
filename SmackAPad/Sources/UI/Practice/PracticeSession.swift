@@ -45,7 +45,7 @@ struct PracticeRunResult: Identifiable, Equatable, Sendable {
     var peeked = false
 
     func accessibilityDescription(settings: SettingsManager) -> String {
-        let passedText = settings.localized(peeked ? "Not counted" : (passed ? "passed" : "not passed"))
+        let passedText = settings.localized(peeked ? "Peek used" : (passed ? "passed" : "not passed"))
         let percent = Int((score * 100).rounded())
         return settings.localized("Run %lld: %lld percent, %lld BPM, %@", runNumber, percent, bpm, passedText)
     }
@@ -93,6 +93,9 @@ final class PracticeSession {
     let mixLessons: [Lesson]
     let unscored: Bool
     let stopAfterSinglePass: Bool
+    let boss: BossEncounter?
+    private(set) var bossAttempt: BossAttempt?
+    @ObservationIgnored private var gentleBossAttempt = false
     @ObservationIgnored var onSinglePassEnded: (() -> Void)?
     var isMix: Bool { mixLessons.count >= LearningRules.minimumMixLessons }
     private(set) var mixIndex = 0
@@ -130,6 +133,7 @@ final class PracticeSession {
     private(set) var errorMessage: String?
     private(set) var barVerdicts: [Int: BarVerdict] = [:]
     @ObservationIgnored private var judgmentsByPass: [Int: [LessonHit: HitJudgment]] = [:]
+    @ObservationIgnored private var hitFeedbackByPass: [Int: [LessonHit: PatternHitFeedback]] = [:]
     private(set) var judgmentVersion = 0
     private(set) var padFlashes: [Int: PadFlash] = [:]
     private(set) var playedHits: [PlayedHit] = []
@@ -144,17 +148,25 @@ final class PracticeSession {
         _ = judgmentVersion
         return judgmentsByPass
     }
+    var patternHitFeedback: [Int: [LessonHit: PatternHitFeedback]] {
+        _ = judgmentVersion
+        return hitFeedbackByPass
+    }
     /// A note not struck this long after its time is shown as missed.
     var missGraceSteps: Double { Double(bpm) * 4 / 60 * 0.2 }
     private(set) var playbackMode: LessonPlaybackMode = .play
     var listen: Bool {
         get { playbackMode == .listen }
-        set { playbackMode = newValue ? .listen : .play }
+        set {
+            guard boss == nil else { return }
+            playbackMode = newValue ? .listen : .play
+        }
     }
     var afterMe: Bool { playbackMode == .afterMe }
     private(set) var bestResponseScore: Double?
 
     func selectPlaybackMode(_ mode: LessonPlaybackMode) {
+        guard boss == nil else { return }
         guard !running, !isMix, mode != playbackMode else { return }
         playbackMode = mode
         summary = nil
@@ -171,9 +183,22 @@ final class PracticeSession {
     var lessonSound = false
     var metronome = true
     var loopStartBar = 0 {
-        didSet { if loopEndBar < loopStartBar { loopEndBar = loopStartBar } }
+        didSet {
+            if loopEndBar < loopStartBar { loopEndBar = loopStartBar }
+            if !updatingCoachDrillLoop, activeCoachDrill != nil, loopStartBar != oldValue {
+                activeCoachDrill = nil
+            }
+        }
     }
-    var loopEndBar: Int
+    var loopEndBar: Int {
+        didSet {
+            if !updatingCoachDrillLoop, activeCoachDrill != nil, loopEndBar != oldValue {
+                activeCoachDrill = nil
+            }
+        }
+    }
+    private(set) var activeCoachDrill: (savedBpm: Int, targetBar: Int, cleanPasses: Int)?
+    @ObservationIgnored private var updatingCoachDrillLoop = false
 
     @ObservationIgnored private let settings: SettingsManager
     @ObservationIgnored private let progress: ProgressStore
@@ -233,6 +258,9 @@ final class PracticeSession {
     @ObservationIgnored private var pendingScore: Float?
     @ObservationIgnored private var pendingBpm = 0
     @ObservationIgnored private var pendingCredit = false
+    @ObservationIgnored private var runPreviousBestScore: Double?
+    @ObservationIgnored private var runPreviousBpm: Int?
+    @ObservationIgnored private var lastCompletedBarSummary: (totalBars: Int, cleanBars: Int, weakestBar: Int?, errorsByBar: [Int: Int]) = (0, 0, nil, [:])
     @ObservationIgnored private var currentMixRoundMemory = true
     @ObservationIgnored private var prepared = false
     @ObservationIgnored private var active = false
@@ -307,16 +335,17 @@ final class PracticeSession {
     init(lesson: Lesson, settings: SettingsManager, progress: ProgressStore, midi: MIDIInput,
          initialFromMemory: Bool = false, initialBpm: Int? = nil,
          mixLessons: [Lesson] = [], initialAfterMe: Bool = false,
-         unscored: Bool = false, stopAfterSinglePass: Bool = false,
+         unscored: Bool = false, stopAfterSinglePass: Bool = false, boss: BossEncounter? = nil,
          clock: @escaping () -> Double = { AVAudioTime.seconds(forHostTime: mach_absolute_time()) },
          currentDay: @escaping () -> String = { AppCalendar.today() }) {
         let activeLesson = mixLessons.count >= LearningRules.minimumMixLessons ? mixLessons[0] : lesson
         self.lesson = activeLesson
         self.mixLessons = mixLessons
-        self.unscored = unscored
-        self.stopAfterSinglePass = stopAfterSinglePass
+        self.boss = boss
+        self.unscored = unscored || boss != nil
+        self.stopAfterSinglePass = stopAfterSinglePass || boss != nil
         self.playbackMode = initialAfterMe && mixLessons.count < LearningRules.minimumMixLessons ? .afterMe : .play
-        self.starStreak = !unscored && settings.practiceMode == .learning
+        self.starStreak = !self.unscored && settings.practiceMode == .learning
             ? progress.learningCredit(lessonId: activeLesson.id, padCount: midi.activeProfile.padCount) : StarStreak()
         self.practiceMode = settings.practiceMode
         self.settings = settings
@@ -324,10 +353,10 @@ final class PracticeSession {
         self.midi = midi
         self.clock = clock
         self.currentDay = currentDay
-        self.fromMemory = initialFromMemory
+        self.fromMemory = boss == nil && initialFromMemory
         loopEndBar = activeLesson.bars - 1
         let saved = initialBpm ?? progress.progress(for: activeLesson.id)?.currentBpm ?? activeLesson.startBpm
-        bpm = PracticeTempo.clamp(mixLessons.count >= LearningRules.minimumMixLessons ? activeLesson.targetBpm : (saved > 0 ? saved : activeLesson.startBpm))
+        bpm = boss?.bpm ?? PracticeTempo.clamp(mixLessons.count >= LearningRules.minimumMixLessons ? activeLesson.targetBpm : (saved > 0 ? saved : activeLesson.startBpm))
     }
 
     public var isDueReview: Bool {
@@ -467,10 +496,10 @@ final class PracticeSession {
         resolveKit(for: lesson)
     }
     private func resolveKit(for lesson: Lesson) -> String {
-        SoundKitResolver.resolveKitId(for: lesson, settings: settings, kits: availableKitsDict)
+        SoundKitResolver.resolveKitId(for: lesson, settings: settings, kits: availableKitsDict, pathState: progress.drummerPath)
     }
     var automaticKitPickerLabel: String {
-        let resolved = SoundKitResolver.resolve(for: lesson, settings: settings, kits: availableKitsDict)
+        let resolved = SoundKitResolver.resolve(for: lesson, settings: settings, kits: availableKitsDict, pathState: progress.drummerPath)
         return settings.localized("Automatic · %@", resolved.kitShortName)
     }
 
@@ -507,6 +536,7 @@ final class PracticeSession {
     }
     var isSectionLoop: Bool { loopStartBar != 0 || loopEndBar != lesson.bars - 1 }
     var repeatsPerRun: Int {
+        if let boss { return boss.repeats }
         if afterMe { return 2 }
         guard !listen, !isSectionLoop else { return 1 }
         return max(1, Int((LearningRules.practiceRunBars / Double(lesson.bars)).rounded()))
@@ -657,7 +687,8 @@ final class PracticeSession {
             // Do not clamp at the pass end: a delayed scheduler tick cannot freeze drawing.
             let distance = Double((current.number - 1) * repeatsPerRun * total)
                 + max(0, seconds - current.start) * Double(current.bpm) / 15
-            return PatternFrame(tapePosition: distance, totalSteps: total, bpm: current.bpm, hostSeconds: seconds)
+            let displayDistance = boss.map { min(distance, Double($0.bars * 16).nextDown) } ?? distance
+            return PatternFrame(tapePosition: displayDistance, totalSteps: total, bpm: current.bpm, hostSeconds: seconds)
         }
         let start = passes.first?.start ?? displayStart
         guard start > 0 else {
@@ -691,7 +722,7 @@ final class PracticeSession {
         midi.onPadEvent = { [weak self] event in self?.receive(event) }
         midi.onPracticeAction = { [weak self] action in self?.performControllerAction(action) }
         midi.stoppedPracticeTempo = { [weak self] in
-            guard let self, self.active, self.ready, !self.running else { return nil }
+            guard let self, self.active, self.ready, !self.running, self.boss == nil else { return nil }
             return self.bpm
         }
         midi.onPracticeTempo = { [weak self] bpm in
@@ -768,7 +799,7 @@ final class PracticeSession {
     }
 
     func setTempo(_ tempo: Int) {
-        guard !running else { return }
+        guard !running, boss == nil else { return }
         bpm = PracticeTempo.clamp(tempo)
         if !isMix { saveTempo() }
     }
@@ -836,6 +867,7 @@ final class PracticeSession {
             }
             errorMessage = nil
             summary = nil
+            if let boss { bossAttempt = BossAttempt(encounter: boss, gentle: gentleBossAttempt) }
             lastResult = nil
             reviewPendingReason = nil
             bestResponseScore = nil
@@ -866,10 +898,24 @@ final class PracticeSession {
                 earnedBadgesInRun = []
             }
             pendingScore = nil; pendingBpm = 0; pendingCredit = false
+            lastCompletedBarSummary = (0, 0, nil, [:])
+            if var drill = activeCoachDrill {
+                drill.cleanPasses = 0
+                activeCoachDrill = drill
+            }
+            if !listen && !afterMe && !unscored && !isSectionLoop {
+                let existingRecord = progress.progress(for: lesson.id)
+                runPreviousBestScore = (existingRecord?.hasPlayed == true) ? Double(existingRecord!.bestScore) : nil
+                runPreviousBpm = (existingRecord?.currentBpm ?? 0) > 0 ? existingRecord?.currentBpm : nil
+            } else {
+                runPreviousBestScore = nil
+                runPreviousBpm = nil
+            }
             tempo.reset()
             barVerdicts = [:]
             mixBarVerdicts = [:]
             judgmentsByPass = [:]
+            hitFeedbackByPass = [:]
             playedHits = []
             timingHistory = TimingHistory()
             completedMatches = 0
@@ -894,7 +940,7 @@ final class PracticeSession {
                 hostTime: AVAudioTime.hostTime(forSeconds: displayStart),
                 bpm: bpm
             )
-            if !listen && !afterMe && !unscored {
+            if !listen && !afterMe && !unscored && activeCoachDrill == nil {
                 var record = progress.progress(for: lesson.id) ?? LessonProgress()
                 record.hasPlayed = true
                 record.currentBpm = bpm
@@ -922,8 +968,8 @@ final class PracticeSession {
         // Credit complete passes only; stopping halfway cannot earn a star.
         // An automatic star or review stop already credited the winning pass. Discard everything
         // queued after it, even if the app was delayed long enough to finish it.
-        if !stopAfterPass, !audioSessionChanged { finishCompleted(at: now) }
-        let accuracy = currentRunAccuracy
+        if boss == nil, !stopAfterPass, !audioSessionChanged { finishCompleted(at: now) }
+        let accuracy = boss == nil ? currentRunAccuracy : nil
         flushPendingProgress()
         stopAfterPass = false
         mixNeedsAdvance = false
@@ -937,6 +983,7 @@ final class PracticeSession {
         lastVerdict = nil
         playedHits = []
         judgmentsByPass = [:]
+        hitFeedbackByPass = [:]
         judgmentVersion += 1
         countdown = nil
         task?.cancel(); task = nil
@@ -951,7 +998,14 @@ final class PracticeSession {
             summary = RunSummary(score: result.score, bpm: result.bpm, passes: completedPasses,
                                  passed: earnedPass, mastery: earnedMastery, memory: earnedMemory,
                                  finishedByStar: finishedByStar, runs: runResults,
-                                 firstStar2: earnedFirstMasteryInRun)
+                                 firstStar2: earnedFirstMasteryInRun,
+                                 isCleanRun: result.isCleanRun,
+                                 previousBestScore: runPreviousBestScore,
+                                 previousBpm: runPreviousBpm,
+                                 totalBars: lastCompletedBarSummary.totalBars,
+                                 cleanBars: lastCompletedBarSummary.cleanBars,
+                                 weakestBar: lastCompletedBarSummary.weakestBar,
+                                 errorsByBar: lastCompletedBarSummary.errorsByBar)
         } else if !listen, !unscored, let accuracy {
             summary = RunSummary(score: accuracy, bpm: bpm, passes: 0,
                                  passed: false, mastery: false, memory: false,
@@ -991,6 +1045,76 @@ final class PracticeSession {
     func restart() {
         if running { stop(restarting: true) }
         else { start() }
+    }
+
+    func retryBoss(gentle: Bool) {
+        gentleBossAttempt = gentle
+        start()
+    }
+
+    var coachSuggestion: CoachSuggestion? {
+        guard activeCoachDrill == nil, !listen, !unscored, let summary else { return nil }
+        return PracticeCoach.recommend(
+            score: summary.score,
+            totalBars: lesson.bars,
+            errorsByBar: summary.errorsByBar,
+            currentBpm: summary.bpm,
+            startBpm: lesson.startBpm,
+            bpmStep: settings.bpmStep,
+            isAfterMe: afterMe,
+            isMix: isMix,
+            isSectionLoop: isSectionLoop,
+            passes: summary.passes
+        )
+    }
+
+    var completedCoachDrillBar: Int? {
+        guard let drill = activeCoachDrill, drill.cleanPasses >= 2 else { return nil }
+        return drill.targetBar
+    }
+
+    func startCoachSuggestion(_ suggestion: CoachSuggestion) {
+        guard !isMix, !afterMe else { return }
+        switch suggestion {
+        case let .drillBar(barIndex, drillBpm):
+            let clampedBar = max(0, min(max(0, lesson.bars - 1), barIndex))
+            let savedBpm = activeCoachDrill?.savedBpm ?? bpm
+            activeCoachDrill = (savedBpm: savedBpm, targetBar: clampedBar, cleanPasses: 0)
+            setLoopBarsForCoachDrill(start: clampedBar, end: clampedBar)
+            bpm = PracticeTempo.clamp(drillBpm)
+            restart()
+        case let .slowDown(targetBpm):
+            bpm = PracticeTempo.clamp(targetBpm)
+            saveTempo()
+            restart()
+        }
+    }
+
+    func finishCoachDrillAndRestart() {
+        guard let drill = activeCoachDrill else { return }
+        activeCoachDrill = nil
+        setLoopBarsForCoachDrill(start: 0, end: max(0, lesson.bars - 1))
+        bpm = PracticeTempo.clamp(drill.savedBpm)
+        summary = nil
+        saveTempo()
+        restart()
+    }
+
+    func exitCoachDrill() {
+        guard let drill = activeCoachDrill else { return }
+        if running { stop() }
+        activeCoachDrill = nil
+        setLoopBarsForCoachDrill(start: 0, end: max(0, lesson.bars - 1))
+        bpm = PracticeTempo.clamp(drill.savedBpm)
+        summary = nil
+        saveTempo()
+    }
+
+    private func setLoopBarsForCoachDrill(start: Int, end: Int) {
+        updatingCoachDrillLoop = true
+        defer { updatingCoachDrillLoop = false }
+        loopStartBar = start
+        loopEndBar = end
     }
 
     /// One store write per run instead of one per pass.
@@ -1037,8 +1161,14 @@ final class PracticeSession {
     }
 
     func close() {
+        if active { suspend() }
+        if let drill = activeCoachDrill {
+            activeCoachDrill = nil
+            setLoopBarsForCoachDrill(start: 0, end: max(0, lesson.bars - 1))
+            bpm = PracticeTempo.clamp(drill.savedBpm)
+            saveTempo()
+        }
         guard active else { return }
-        suspend()
         active = false
         Self.audioOwner = nil
         if selectedKitRequest != nil { audio.selectKit(nil) }
@@ -1120,6 +1250,7 @@ final class PracticeSession {
         barVerdicts = [:]
         mixBarVerdicts = [:]
         judgmentsByPass = [:]
+        hitFeedbackByPass = [:]
         judgmentVersion += 1
         playedHits = []
         padFlashes = [:]
@@ -1154,7 +1285,14 @@ final class PracticeSession {
             callback?()
             return nil
         }
-        finishCompleted(at: time)
+        if boss != nil {
+            if let pass = passes.first, updateBossAttempt(pass: pass, at: time) {
+                stop()
+                return nil
+            }
+        } else {
+            finishCompleted(at: time)
+        }
         if stopAfterPass {
             stop()
             return nil
@@ -1167,13 +1305,13 @@ final class PracticeSession {
         // matching window has closed count as usual; notes still inside their window
         // are left out of that decision.
         if !isMix, !stopAfterSinglePass, let last = passes.last, last.start + last.duration <= horizon {
-            if !afterMe, let scorer = last.scorer {
+            if !afterMe, activeCoachDrill == nil, let scorer = last.scorer {
                 let early = scorer.earlyResult(at: AVAudioTime.hostTime(forSeconds: time))
                 tempo.completed(nextBpm: early.nextBpm)
-            } else if !afterMe, let lastResult, last.number == completedPasses {
+            } else if !afterMe, activeCoachDrill == nil, let lastResult, last.number == completedPasses {
                 tempo.completed(nextBpm: lastResult.nextBpm)
             }
-            let nextBpm = afterMe ? last.bpm : tempo.queue(after: last.bpm, targetBpm: lesson.targetBpm,
+            let nextBpm = (afterMe || activeCoachDrill != nil) ? last.bpm : tempo.queue(after: last.bpm, targetBpm: lesson.targetBpm,
                                       listenBpm: listen ? bpm : nil)
             let nextPass = makePass(number: last.number + 1, start: last.start + last.duration,
                                     bpm: nextBpm)
@@ -1209,9 +1347,10 @@ final class PracticeSession {
                 if !barVerdicts.isEmpty { barVerdicts = [:] }
             }
             let currentCycle = (current.number - 1) * repeatsPerRun + (total > 0 ? Int(floor(elapsed / Double(total))) : 0) + 1
-            let minCycle = max(1, currentCycle - 3)
+            let minCycle = max(1, currentCycle - max(3, repeatsPerRun + 1))
             if judgmentsByPass.keys.contains(where: { $0 < minCycle }) {
                 judgmentsByPass = judgmentsByPass.filter { $0.key >= minCycle }
+                hitFeedbackByPass = hitFeedbackByPass.filter { $0.key >= minCycle }
                 judgmentVersion += 1
             }
             if playedHits.contains(where: { $0.pass < minCycle }) {
@@ -1251,6 +1390,33 @@ final class PracticeSession {
         return nil
     }
 
+    /// Read the same calibrated clock and scorer window used by the run; do not consume scoring state.
+    private func updateBossAttempt(pass: Pass, at time: Double) -> Bool {
+        guard var attempt = bossAttempt, let scorer = pass.scorer else { return false }
+        let secondsPerBar = 240 / Double(pass.bpm)
+        let elapsed = time - pass.start
+        guard elapsed > Double(attempt.judgedBars + 1) * secondsPerBar else { return false }
+
+        let devices = (midi.selectedSourceID.map { [$0] } ?? midi.sources.map(\.id)) + ["touch", "keyboard"]
+        let calibration = devices.map { settings.calibrationOffset(for: $0, outputRoute: runOutputRoute) }.max() ?? 0
+        let window = scorer.maximumTimingMilliseconds + scorer.currentTimingCenterMilliseconds
+        let lateWindow = max(0, (max(0, calibration) + window) / 1_000)
+        let barsPerCycle = attempt.encounter.lesson.bars
+        let expectedHits = lesson.hits(forPadCount: pass.padCount)
+        let previouslyJudged = attempt.judgedBars
+        attempt.judgeBars(elapsed: elapsed, secondsPerBar: secondsPerBar, lateWindow: lateWindow) { bar in
+            let cycle = bar / barsPerCycle + 1
+            return BossAttempt.isClean(bar: bar % barsPerCycle, cycle: cycle, hits: expectedHits,
+                                       judgments: judgmentsByPass[cycle] ?? [:], playedHits: playedHits)
+        }
+        if attempt.judgedBars != previouslyJudged { bossAttempt = attempt }
+        if attempt.won {
+            do { try progress.recordBossVictory(stageID: attempt.encounter.stageID) }
+            catch { errorMessage = error.localizedDescription }
+        }
+        return attempt.finished
+    }
+
     private func finishCompleted(at time: Double) {
         for pass in passes where pass.finalTime <= time {
             guard let scorer = pass.scorer else { continue }
@@ -1261,6 +1427,9 @@ final class PracticeSession {
             completedExpected += result.expectedHitCount
             completedExtras += result.extraHitCount
             completedPasses += 1
+            if !afterMe && !listen {
+                lastCompletedBarSummary = computeBarSummary(forPass: pass.number)
+            }
             if afterMe {
                 bestResponseScore = max(bestResponseScore ?? 0, result.score)
                 lastVerdict = RunVerdict(passed: result.passed, brokenStreak: false)
@@ -1280,6 +1449,9 @@ final class PracticeSession {
             let isHiddenPass = !fromMemory || memoryNotesHidden
             if reviewPendingReason == .peeked { reviewPendingReason = nil }
             if peeked {
+                if !isSectionLoop && !unscored {
+                    progress.recordPracticeDay(currentDay())
+                }
                 runPassed = false
                 lastVerdict = nil
                 reviewPendingReason = .peeked
@@ -1417,6 +1589,18 @@ final class PracticeSession {
             } else {
                 runPassed = result.passed
                 lastVerdict = RunVerdict(passed: result.passed, brokenStreak: false)
+                if var drill = activeCoachDrill {
+                    let barErrors = lastCompletedBarSummary.errorsByBar[0, default: 0]
+                    if !peeked && result.score >= LearningRules.passMark && barErrors == 0 && result.errorCount == 0 {
+                        drill.cleanPasses += 1
+                    } else {
+                        drill.cleanPasses = 0
+                    }
+                    activeCoachDrill = drill
+                    if drill.cleanPasses >= 2 {
+                        stopAfterPass = true
+                    }
+                }
             }
             runResults.append(PracticeRunResult(runNumber: runResults.count + 1,
                                                 score: result.score,
@@ -1493,6 +1677,47 @@ final class PracticeSession {
         }
     }
 
+    private func computeBarSummary(forPass passNumber: Int) -> (totalBars: Int, cleanBars: Int, weakestBar: Int?, errorsByBar: [Int: Int]) {
+        let bars = practiceLesson.bars
+        guard bars > 0, !afterMe, !listen else { return (0, 0, nil, [:]) }
+        let hits = patternHits
+        let firstCycle = (passNumber - 1) * repeatsPerRun + 1
+        let lastCycle = firstCycle + repeatsPerRun - 1
+        var issuesByBar = Array(repeating: 0, count: bars)
+
+        for cycle in firstCycle...lastCycle {
+            let cycleJudgments = judgmentsByPass[cycle] ?? [:]
+            for hit in hits {
+                let bar = min(bars - 1, max(0, hit.step / 16))
+                switch cycleJudgments[hit] {
+                case .perfect, .good:
+                    break
+                case .off, .wrongPad, .ignored, nil:
+                    issuesByBar[bar] += 1
+                }
+            }
+            for played in playedHits where played.pass == cycle && played.mark == .wrong {
+                let bar = min(bars - 1, max(0, Int(floor(played.step / 16))))
+                issuesByBar[bar] += 1
+            }
+        }
+
+        let cleanBars = issuesByBar.filter { $0 == 0 }.count
+        var weakestBar: Int?
+        var errorsByBar: [Int: Int] = [:]
+        if cleanBars < bars {
+            var worstCount = 0
+            for bar in 0..<bars where issuesByBar[bar] > 0 {
+                errorsByBar[bar] = issuesByBar[bar]
+                if issuesByBar[bar] > worstCount {
+                    worstCount = issuesByBar[bar]
+                    weakestBar = bar + 1
+                }
+            }
+        }
+        return (bars, cleanBars, weakestBar, errorsByBar)
+    }
+
     private func canAutoPeek(_ pass: Pass, at time: Double) -> Bool {
         supportsMemoryPeek && settings.autoPeekMemory && pass.peek == nil
             && deriveNoteVisibility(peeking: false) == .hidden && time < pass.start + pass.duration
@@ -1500,23 +1725,24 @@ final class PracticeSession {
 
     private func receive(_ event: PadInputEvent) {
         guard event.isNoteOn, ready, kitTask == nil else { return }
+        let receivedAt = now
         guard running else {
-            recordFlash(padIndex: event.padIndex, mark: nil)
+            recordFlash(padIndex: event.padIndex, mark: nil, velocity: event.velocity)
             return
         }
         let sourceTime = AVAudioTime.seconds(forHostTime: event.timestamp)
         let offset = settings.calibrationOffset(for: event.deviceID, outputRoute: runOutputRoute)
         let adjusted = max(0, sourceTime - offset / 1_000)
         guard !listen else {
-            recordFlash(padIndex: event.padIndex, mark: nil)
-            recordPlayedHit(padIndex: event.padIndex, at: adjusted, mark: nil)
+            recordFlash(padIndex: event.padIndex, mark: nil, velocity: event.velocity)
+            recordPlayedHit(padIndex: event.padIndex, at: adjusted, mark: nil, struckAt: receivedAt)
             return
         }
         // Boundary ownership follows the calibrated input timestamp, never the
         // display tick. Call hits cannot match even an early response note.
         if afterMe, !passes.contains(where: { $0.acceptsInput(at: adjusted) }) {
-            recordFlash(padIndex: event.padIndex, mark: nil)
-            recordPlayedHit(padIndex: event.padIndex, at: adjusted, mark: nil)
+            recordFlash(padIndex: event.padIndex, mark: nil, velocity: event.velocity)
+            recordPlayedHit(padIndex: event.padIndex, at: adjusted, mark: nil, struckAt: receivedAt)
             return
         }
         let timestamp = AVAudioTime.hostTime(forSeconds: adjusted)
@@ -1546,14 +1772,14 @@ final class PracticeSession {
                                      maximumMilliseconds: best.1.maximumTimingMilliseconds,
                                      goodMilliseconds: best.1.goodTimingMilliseconds)
             }
-            mark = record(best.3, pass: best.0.number, padIndex: event.padIndex)
+            mark = record(best.3, pass: best.0.number, padIndex: event.padIndex, struckAt: receivedAt, velocity: event.velocity)
             matchedFeedback = best.3
             currentScorerCenter = best.1.currentTimingCenterMilliseconds
             matchedPassNumber = best.0.number
         } else if let pass = passes.first(where: { $0.start <= adjusted && adjusted < $0.start + $0.duration && $0.acceptsInput(at: adjusted) }) {
             if let feedback = pass.scorer?.receive(padIndex: event.padIndex, at: timestamp) {
                 guard feedback.judgment != .ignored else { return }
-                mark = record(feedback, pass: pass.number, padIndex: event.padIndex)
+                mark = record(feedback, pass: pass.number, padIndex: event.padIndex, struckAt: receivedAt, velocity: event.velocity)
                 matchedFeedback = feedback
                 currentScorerCenter = pass.scorer?.currentTimingCenterMilliseconds
                 matchedPassNumber = pass.number
@@ -1564,9 +1790,9 @@ final class PracticeSession {
             if let activePass { matchedPassNumber = activePass.number }
         }
         if matchedFeedback == nil {
-            recordFlash(padIndex: event.padIndex, mark: nil)
+            recordFlash(padIndex: event.padIndex, mark: nil, velocity: event.velocity)
         }
-        recordPlayedHit(padIndex: event.padIndex, at: adjusted, mark: mark)
+        recordPlayedHit(padIndex: event.padIndex, at: adjusted, mark: mark, struckAt: receivedAt)
 
         BluetoothTimingDiagnostics.shared.logNoteOn(
             deviceID: event.deviceID,
@@ -1581,7 +1807,7 @@ final class PracticeSession {
         )
     }
 
-    private func recordPlayedHit(padIndex: Int, at time: Double, mark: HitMark?) {
+    private func recordPlayedHit(padIndex: Int, at time: Double, mark: HitMark?, struckAt: Double) {
         guard let pass = passes.last(where: { $0.start <= time }) ?? passes.first else { return }
         let total = practiceLesson.bars * 16
         guard total > 0 else { return }
@@ -1590,26 +1816,20 @@ final class PracticeSession {
         let cycle = (pass.number - 1) * repeatsPerRun + repIndex + 1
         let localStep = elapsedSteps.truncatingRemainder(dividingBy: Double(total))
         let wasHidden = pass.peek == nil && fromMemory && memoryWarmUp.areNotesHidden(fadeNotes: settings.fadeMemoryNotes)
-        playedHits.append(PlayedHit(padIndex: padIndex, step: localStep, pass: cycle, mark: mark, hidden: wasHidden))
+        playedHits.append(PlayedHit(padIndex: padIndex, step: localStep, pass: cycle, mark: mark, hidden: wasHidden, struckAt: struckAt))
     }
 
-    private func recordFlash(padIndex: Int, mark: HitMark?) {
+    private func recordFlash(padIndex: Int, mark: HitMark?, velocity: Int = 127) {
         let now = Date()
         var updated = padFlashes.filter { now.timeIntervalSince($0.value.date) < PadFlash.fadeDuration }
-        updated[padIndex] = PadFlash(mark: mark, date: now)
+        updated[padIndex] = PadFlash(mark: mark, date: now, velocity: velocity)
         padFlashes = updated
     }
 
-    /// Colour feedback only. Scoring itself is unchanged.
-    private func record(_ feedback: HitFeedback, pass: Int, padIndex: Int) -> HitMark? {
-        let mark: HitMark
-        switch feedback.judgment {
-        case .perfect, .good: mark = .correct
-        case .off: mark = .off
-        case .wrongPad: mark = .wrong
-        case .ignored: return nil
-        }
-        recordFlash(padIndex: padIndex, mark: mark)
+    /// Shape-coded hit feedback only. Scoring itself is unchanged.
+    private func record(_ feedback: HitFeedback, pass: Int, padIndex: Int, struckAt: Double, velocity: Int = 127) -> HitMark? {
+        guard let mark = HitMark.from(feedback) else { return nil }
+        recordFlash(padIndex: padIndex, mark: mark, velocity: velocity)
         let hits = patternHits
         guard !hits.isEmpty else { return mark }
         if let index = feedback.expectedHitIndex {
@@ -1618,13 +1838,14 @@ final class PracticeSession {
             let repIndex = index / baseCount
             let cycle = (pass - 1) * repeatsPerRun + (afterMe ? 2 : repIndex + 1)
             judgmentsByPass[cycle, default: [:]][baseHit] = feedback.judgment
+            hitFeedbackByPass[cycle, default: [:]][baseHit] = PatternHitFeedback(mark: mark, struckAt: struckAt)
             judgmentVersion += 1
         }
         return mark
     }
 
     private func saveTempo() {
-        guard !unscored, !isMix else { return }
+        guard !unscored, !isMix, activeCoachDrill == nil else { return }
         var record = progress.progress(for: lesson.id) ?? LessonProgress()
         record.currentBpm = bpm
         progress.setProgress(record, for: lesson.id)

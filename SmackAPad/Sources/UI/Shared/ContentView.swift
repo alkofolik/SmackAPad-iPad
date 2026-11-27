@@ -32,7 +32,10 @@ struct MIDILearnView: View {
                         .disabled(midi.isLearning)
                         Picker(settings.localized("Arrangement"), selection: $grid) {
                             ForEach(PhysicalPadGrid.arrangements(padCount: padCount), id: \.self) { arrangement in
-                                Text("\(arrangement.rows) × \(arrangement.columns)").tag(arrangement)
+                                Text("\(arrangement.rows) × \(arrangement.columns)")
+                                    .font(Theme.meta)
+                                    .foregroundStyle(Theme.secondary)
+                                    .tag(arrangement)
                             }
                         }
                         .disabled(midi.isLearning)
@@ -40,22 +43,22 @@ struct MIDILearnView: View {
                         if nameExists {
                             Text(settings.localized("This profile name is already in use."))
                                 .font(Theme.meta)
-                                .foregroundStyle(Theme.markWrong)
+                                .foregroundStyle(Theme.destructive)
                         }
                     } header: { SectionHeader(title: settings.localized("New controller profile")) }
 
                     Section {
                         if midi.isLearning {
-                            LabeledContent(settings.localized("Learned pads"), value: "\(midi.learnedNotes.count) / \(padCount)")
-                                .font(Theme.control)
+                            LabeledContent(settings.localized("Learned pads")) {
+                                SettingsValue("\(midi.learnedNotes.count) / \(padCount)")
+                            }
 
                             if midi.learningComplete {
                                 Text(settings.localized("All pads learned. Save the profile to use it."))
                                     .font(Theme.meta)
-                                    .foregroundStyle(Theme.markCorrect)
+                                    .foregroundStyle(Theme.orange)
                             } else {
-                                Text(settings.localized("Press the highlighted pad on your controller."))
-                                    .font(Theme.meta)
+                                SettingsValue(settings.localized("Press the highlighted pad on your controller."))
                             }
 
                             PadProfileGrid(grid: grid) { slot in
@@ -81,7 +84,7 @@ struct MIDILearnView: View {
                             if midi.learningNotice == "duplicateNote" {
                                 Text(settings.localized("That note is already assigned. Press a different pad."))
                                     .font(Theme.meta)
-                                    .foregroundStyle(Theme.markWrong)
+                                    .foregroundStyle(Theme.destructive)
                             }
 
                             Button {

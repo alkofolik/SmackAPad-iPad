@@ -33,6 +33,7 @@ public final class SettingsManager: @unchecked Sendable {
     public static let defaultProfileName = "Standard 16-Pad"
     public static let defaultLanguage: AppLanguage = .english
     public static let defaultAppearance: AppAppearance = .dark
+    public static let defaultPlayMode: PlayMode = .story
     public static let defaultMetronomeVolume: Int = 80
     public static let defaultPadsVolume: Int = 100
     public static let defaultPatternVolume: Int = 70
@@ -53,6 +54,13 @@ public final class SettingsManager: @unchecked Sendable {
         didSet { persistKitId() }
     }
 
+    public var selectedInstrumentSkinId: String {
+        didSet {
+            userDefaults.set(selectedInstrumentSkinId, forKey: SettingsKey.selectedInstrumentSkinId.rawValue)
+            Theme.setActiveSkinId(selectedInstrumentSkinId)
+        }
+    }
+
     public var lessonKitOverrides: [Int: String] {
         didSet { persistLessonKitOverrides() }
     }
@@ -67,6 +75,10 @@ public final class SettingsManager: @unchecked Sendable {
 
     public var practiceMode: PracticeMode {
         didSet { userDefaults.set(practiceMode.rawValue, forKey: SettingsKey.practiceMode.rawValue) }
+    }
+
+    public var playMode: PlayMode {
+        didSet { userDefaults.set(playMode.rawValue, forKey: SettingsKey.playMode.rawValue) }
     }
 
     public var bpmStep: Int {
@@ -196,6 +208,10 @@ public final class SettingsManager: @unchecked Sendable {
         didSet { userDefaults.set(hideCompletedLessons, forKey: "smackapad.library.hideCompleted") }
     }
 
+    public var introSkipped: Bool {
+        didSet { userDefaults.set(introSkipped, forKey: Self.introSkippedKey) }
+    }
+
     public var hiddenCategoryIDsByMode: [String: Set<String>] {
         didSet { persistHiddenCategories() }
     }
@@ -214,12 +230,16 @@ public final class SettingsManager: @unchecked Sendable {
         }
 
         practiceMode = PracticeMode(rawValue: userDefaults.string(forKey: SettingsKey.practiceMode.rawValue) ?? "") ?? .learning
+        playMode = PlayMode(rawValue: userDefaults.string(forKey: SettingsKey.playMode.rawValue) ?? "") ?? Self.defaultPlayMode
         libraryView = LibraryViewMode(rawValue: userDefaults.string(forKey: "smackapad.library.view") ?? "")?.rawValue ?? "path"
         libraryStarFilters = userDefaults.stringArray(forKey: "smackapad.library.stars") ?? LibraryStarFilter.allCases.map(\.rawValue)
         nextLessonSource = NextLessonSource(rawValue: userDefaults.string(forKey: "smackapad.library.nextSource") ?? "")?.rawValue ?? "path"
         lastLessonID = userDefaults.integer(forKey: "smackapad.library.lastLesson")
 
         self.selectedKitId = userDefaults.string(forKey: SettingsKey.selectedKitId.rawValue) ?? Self.defaultKitId
+        let initialSkinId = userDefaults.string(forKey: SettingsKey.selectedInstrumentSkinId.rawValue) ?? StudioRigCatalog.defaultSkinId
+        self.selectedInstrumentSkinId = initialSkinId
+        Theme.setActiveSkinId(initialSkinId)
 
         if let data = userDefaults.data(forKey: SettingsKey.lessonKitOverrides.rawValue),
            let overrides = try? JSONDecoder().decode([Int: String].self, from: data) {
@@ -292,6 +312,7 @@ public final class SettingsManager: @unchecked Sendable {
             self.reviewReminderTime = Self.defaultReminderTime()
         }
         self.hideCompletedLessons = userDefaults.object(forKey: "smackapad.library.hideCompleted") as? Bool ?? true
+        self.introSkipped = userDefaults.bool(forKey: Self.introSkippedKey)
 
         var loadedHidden: [String: Set<String>] = [:]
         for mode in ["path", "genre", "technique"] {

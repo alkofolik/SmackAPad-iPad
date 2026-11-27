@@ -159,6 +159,7 @@ public struct TrainingLog: Codable, Equatable, Hashable, Sendable {
     public var mixMemoryRounds: Int
     public var afterMeLessons: Set<Int>
     public var trainingDays: Set<String>
+    public var practiceDays: Set<String>
 
     public init(
         reviewsPassed: Int = 0,
@@ -166,7 +167,8 @@ public struct TrainingLog: Codable, Equatable, Hashable, Sendable {
         mixRounds: Int = 0,
         mixMemoryRounds: Int = 0,
         afterMeLessons: Set<Int> = [],
-        trainingDays: Set<String> = []
+        trainingDays: Set<String> = [],
+        practiceDays: Set<String> = []
     ) {
         self.reviewsPassed = reviewsPassed
         self.bounceBacks = bounceBacks
@@ -174,6 +176,28 @@ public struct TrainingLog: Codable, Equatable, Hashable, Sendable {
         self.mixMemoryRounds = mixMemoryRounds
         self.afterMeLessons = afterMeLessons
         self.trainingDays = trainingDays
+        self.practiceDays = practiceDays
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case reviewsPassed, bounceBacks, mixRounds, mixMemoryRounds, afterMeLessons, trainingDays, practiceDays
+    }
+
+    public init(from decoder: Decoder) throws {
+        let values = try decoder.container(keyedBy: CodingKeys.self)
+        reviewsPassed = try values.decode(Int.self, forKey: .reviewsPassed)
+        bounceBacks = try values.decode(Int.self, forKey: .bounceBacks)
+        mixRounds = try values.decode(Int.self, forKey: .mixRounds)
+        mixMemoryRounds = try values.decode(Int.self, forKey: .mixMemoryRounds)
+        afterMeLessons = try values.decode(Set<Int>.self, forKey: .afterMeLessons)
+        trainingDays = try values.decode(Set<String>.self, forKey: .trainingDays)
+        practiceDays = try values.decodeIfPresent(Set<String>.self, forKey: .practiceDays) ?? []
+        practiceDays.formUnion(trainingDays)
+    }
+
+    mutating func restorePracticeDays(from lessons: [Int: LessonProgress]) {
+        practiceDays.formUnion(trainingDays)
+        practiceDays.formUnion(lessons.values.compactMap(\.lastPlayedDay))
     }
 
     public static func merging(_ existing: TrainingLog, with incoming: TrainingLog) -> TrainingLog {
@@ -183,7 +207,8 @@ public struct TrainingLog: Codable, Equatable, Hashable, Sendable {
             mixRounds: max(existing.mixRounds, incoming.mixRounds),
             mixMemoryRounds: max(existing.mixMemoryRounds, incoming.mixMemoryRounds),
             afterMeLessons: existing.afterMeLessons.union(incoming.afterMeLessons),
-            trainingDays: existing.trainingDays.union(incoming.trainingDays)
+            trainingDays: existing.trainingDays.union(incoming.trainingDays),
+            practiceDays: existing.practiceDays.union(incoming.practiceDays)
         )
     }
 }
@@ -211,6 +236,7 @@ public struct ProgressRoot: Codable, Equatable, Sendable {
         case mixMemoryRounds
         case afterMeLessons
         case trainingDays
+        case practiceDays
     }
 
     public init(from decoder: Decoder) throws {
@@ -249,7 +275,8 @@ public struct ProgressRoot: Codable, Equatable, Sendable {
                     mixRounds: rounds,
                     mixMemoryRounds: memRounds,
                     afterMeLessons: afterMe,
-                    trainingDays: days
+                    trainingDays: days,
+                    practiceDays: try container.decodeIfPresent(Set<String>.self, forKey: .practiceDays) ?? []
                 )
             }
         } else {
@@ -263,6 +290,8 @@ public struct ProgressRoot: Codable, Equatable, Sendable {
             self.lessons = convertedLessons
             self.trainingLog = TrainingLog()
         }
+
+        self.trainingLog.restorePracticeDays(from: self.lessons)
 
         // Old progress: reviewsPassed starts at least at the passes implied by the schedule
         let impliedPasses = self.lessons.values.reduce(0) { sum, record in
@@ -285,6 +314,7 @@ public struct ProgressRoot: Codable, Equatable, Sendable {
         try container.encode(trainingLog.mixMemoryRounds, forKey: .mixMemoryRounds)
         try container.encode(Array(trainingLog.afterMeLessons).sorted(), forKey: .afterMeLessons)
         try container.encode(Array(trainingLog.trainingDays).sorted(), forKey: .trainingDays)
+        try container.encode(Array(trainingLog.practiceDays).sorted(), forKey: .practiceDays)
     }
 }
 

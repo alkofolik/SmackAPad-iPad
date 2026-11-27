@@ -12,7 +12,7 @@ private enum AboutLinks {
     // Populate from ticket 81 once the support and privacy pages are published.
     static let supportURL: URL? = nil
     static let privacyURL: URL? = nil
-    static let copyrightAuthor = "[AUTHOR]"
+    static let copyrightAuthor = "Kjü"
 }
 
 public struct AboutDetailView: View {
@@ -36,13 +36,26 @@ public struct AboutDetailView: View {
     }
 
     public var body: some View {
-        ZStack(alignment: .topLeading) {
+        VStack(spacing: 0) {
+            ScreenTopBar {
+                HardwareBackButton {
+                    if let onDismiss { onDismiss() } else { dismiss() }
+                }
+            } center: {
+                EmptyView()
+            } trailing: {
+                EmptyView()
+            }
+            .padding(.horizontal, Theme.Space.page)
+            .padding(.top, Theme.Space.page)
+            .padding(.bottom, Theme.Space.small)
+
             ScrollView {
                 VStack(spacing: 0) {
                     PadLogoGrid(neutralColor: Theme.ink, gap: 10, padRadius: 5)
                         .padding(24)
                         .frame(width: 132, height: 132)
-                        .background(Theme.surface, in: RoundedRectangle(cornerRadius: 30))
+                        .instrumentPanel()
                         .shadow(color: Theme.black.opacity(0.12), radius: 6, y: 2)
 
                     Text("SMACK-A-PAD")
@@ -65,20 +78,14 @@ public struct AboutDetailView: View {
                         .padding(.top, 28)
                 }
                 .frame(maxWidth: 520)
-                .padding(.top, 70)
+                .padding(.top, Theme.Space.regular)
                 .padding(.horizontal, Theme.Space.page)
                 .padding(.bottom, Theme.Space.page)
                 .frame(maxWidth: .infinity)
             }
-
-            BackButton {
-                if let onDismiss { onDismiss() } else { dismiss() }
-            }
-            .padding(.top, Theme.Space.page)
-            .padding(.leading, Theme.Space.page)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .background(Theme.background.ignoresSafeArea())
+        .calmChassisBackground()
         .navigationBarBackButtonHidden(true)
         .toolbar(.hidden, for: .navigationBar)
     }
@@ -110,12 +117,7 @@ public struct AboutDetailView: View {
 
             fontLicencesRow(showTopDivider: hasSupport || hasPrivacy)
         }
-        .background(Theme.surface, in: RoundedRectangle(cornerRadius: 16))
-        .overlay {
-            RoundedRectangle(cornerRadius: 16)
-                .strokeBorder(Theme.ink.opacity(0.10), lineWidth: 1)
-        }
-        .clipShape(RoundedRectangle(cornerRadius: 16))
+        .instrumentPanel()
     }
 
     private func linkRow(icon: String, title: String, showTopDivider: Bool, action: @escaping () -> Void) -> some View {

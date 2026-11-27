@@ -64,7 +64,9 @@ private struct PadControlBody<Label: View>: View {
     let label: Label
     let pressed: Bool
     var primary = false
+    var darkFace = false
     var destructive = false
+    var onDark = false
     var selected: Bool? = nil
     var showLightBar = false
     var horizontalPadding: CGFloat = 16
@@ -116,13 +118,15 @@ private struct PadControlBody<Label: View>: View {
 
     private var foregroundColor: Color {
         guard enabled else {
-            let base = destructive ? Theme.destructive : (primary ? Theme.black : Theme.ink)
+            let base = destructive ? Theme.destructive : (primary && !darkFace ? Theme.black : (onDark ? Theme.white : Theme.ink))
             return base.opacity(0.35)
         }
         if destructive {
             return Theme.destructive
         } else if primary {
-            return Theme.black
+            return darkFace ? Theme.white : Theme.black
+        } else if onDark {
+            return Theme.white
         } else {
             return Theme.ink
         }
@@ -133,7 +137,9 @@ private struct PadControlBody<Label: View>: View {
             return Theme.disabledFill
         }
         if primary {
-            return Theme.orange
+            return darkFace ? Theme.black : Theme.orange
+        } else if onDark {
+            return Theme.white.opacity(0.10)
         } else {
             return Theme.Skin.Pad.fill
         }
@@ -141,12 +147,14 @@ private struct PadControlBody<Label: View>: View {
 
     private var borderColor: Color {
         guard enabled else {
-            return Theme.hairline.opacity(0.6)
+            return onDark ? Theme.white.opacity(0.16) : Theme.hairline.opacity(0.6)
         }
         if destructive {
             return Theme.destructiveOutline
         } else if primary {
             return Theme.black.opacity(0.18)
+        } else if onDark {
+            return Theme.white.opacity(0.28)
         } else {
             return Theme.hairline
         }
@@ -154,17 +162,22 @@ private struct PadControlBody<Label: View>: View {
 }
 
 struct PadPrimaryButtonStyle: ButtonStyle {
+    var darkFace = false
+
     func makeBody(configuration: Configuration) -> some View {
-        PadControlBody(label: configuration.label, pressed: configuration.isPressed, primary: true)
+        PadControlBody(label: configuration.label, pressed: configuration.isPressed, primary: true, darkFace: darkFace)
     }
 }
 
 struct PadSecondaryButtonStyle: ButtonStyle {
+    var onDark: Bool = false
+
     func makeBody(configuration: Configuration) -> some View {
         PadControlBody(
             label: configuration.label,
             pressed: configuration.isPressed,
-            destructive: configuration.role == .destructive
+            destructive: configuration.role == .destructive,
+            onDark: onDark
         )
     }
 }
@@ -245,70 +258,6 @@ struct PadToolbarItem<Content: View>: ToolbarContent {
                 content.fixedSize(horizontal: true, vertical: false)
             }
         }
-    }
-}
-
-private struct BackPadButtonStyle: ButtonStyle {
-    var onDark = false
-    @Environment(\.accessibilityReduceMotion) private var reduced
-    @Environment(\.isEnabled) private var enabled
-
-    func makeBody(configuration: Configuration) -> some View {
-        let policy = Theme.Motion.Policy(reduced: reduced)
-        let pressed = configuration.isPressed
-        let shape = RoundedRectangle(cornerRadius: 14)
-        let foreground = onDark ? Theme.white : Theme.ink
-        let fill = onDark ? Theme.white.opacity(0.12) : Theme.surface
-
-        configuration.label
-            .foregroundStyle(enabled ? foreground : foreground.opacity(0.35))
-            .frame(width: 56, height: 56)
-            .background {
-                shape
-                    .fill(enabled ? fill : Theme.disabledFill)
-                    .allowsHitTesting(false)
-            }
-            .contentShape(shape)
-            .overlay {
-                if enabled {
-                    shape
-                        .fill(policy.reduced ? Color.black : Color.white)
-                        .opacity(pressed ? (policy.reduced ? Theme.Skin.Pad.reducedPressOpacity : Theme.Skin.Pad.flashOpacity) : 0)
-                        .animation(policy.reduced ? nil : policy.animation(Theme.Motion.padFlash), value: pressed)
-                        .allowsHitTesting(false)
-                }
-            }
-            .scaleEffect(enabled ? policy.scale(pressed ? Theme.Skin.Pad.pressedScale : 1) : 1)
-            .offset(y: enabled ? policy.offset(pressed ? Theme.Skin.Pad.pressedY : 0) : 0)
-            .animation(enabled ? policy.animation(pressed ? Theme.Motion.padFlash : Theme.Motion.padPress) : nil, value: pressed)
-    }
-}
-
-/// Shared top-left back button used across screens, sheets, and info popovers.
-struct BackButton: View {
-    @Environment(SettingsManager.self) private var settings
-    var onDark = false
-    let action: () -> Void
-
-    var body: some View {
-        ZStack {
-            // Secondary hidden trigger so both Esc and ⌘[ invoke back from a hardware keyboard.
-            Button("", action: action)
-                .keyboardShortcut("[", modifiers: .command)
-                .frame(width: 1, height: 1)
-                .opacity(0)
-                .allowsHitTesting(false)
-                .accessibilityHidden(true)
-
-            Button(action: action) {
-                Image(systemName: "chevron.left")
-                    .font(.system(size: 20, weight: .semibold))
-            }
-            .buttonStyle(BackPadButtonStyle(onDark: onDark))
-            .accessibilityLabel(settings.localized("Back"))
-            .keyboardShortcut(.escape, modifiers: [])
-        }
-        .frame(width: 56, height: 56)
     }
 }
 

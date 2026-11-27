@@ -7,42 +7,77 @@ enum LessonPlaybackMode: String, CaseIterable {
     case afterMe = "After me"
 }
 
-/// How one pad strike or expected note turned out. Shown as colour only.
-enum HitMark {
-    case correct, off, wrong
+/// How one pad strike or expected note turned out. Shape-coded on the pattern band.
+enum HitMark: Equatable, Sendable {
+    case correct, early, late, wrong
 
-    var color: Color {
-        switch self {
-        case .correct: return Theme.markCorrect
-        case .off: return Theme.markOff
-        case .wrong: return Theme.markWrong
+    static func from(_ feedback: HitFeedback) -> HitMark? {
+        switch feedback.judgment {
+        case .perfect, .good:
+            return .correct
+        case .off:
+            if let error = feedback.timingErrorMilliseconds, error < 0 {
+                return .early
+            }
+            return .late
+        case .wrongPad:
+            return .wrong
+        case .ignored:
+            return nil
         }
     }
 }
 
 /// A short colour flash on the pad layout; `mark` is nil when nothing is scored.
 struct PadFlash: Equatable {
-    static let fadeDuration: TimeInterval = 0.4
+    static let fadeDuration: TimeInterval = 0.20
+    static let padFadeDuration: TimeInterval = 0.15
 
     let mark: HitMark?
     let date: Date
+    let velocity: Int
 
-    var color: Color { mark?.color ?? Theme.orange }
+    init(mark: HitMark?, date: Date, velocity: Int = 127) {
+        self.mark = mark
+        self.date = date
+        self.velocity = max(0, min(127, velocity))
+    }
+
+    var velocityFraction: Double {
+        guard velocity > 0 else { return 0 }
+        return max(0.25, Double(velocity) / 127.0)
+    }
+
+    var color: Color {
+        switch mark {
+        case .correct: Color(red: 0.04, green: 0.34, blue: 0.15)
+        case .early, .late: Color(red: 0.36, green: 0.26, blue: 0)
+        case .wrong: Color(red: 0.62, green: 0.06, blue: 0.10)
+        case nil: Theme.orange
+        }
+    }
     func strength(at now: Date) -> Double { max(0, 1 - now.timeIntervalSince(date) / Self.fadeDuration) }
+    func padStrength(at now: Date, reduceMotion: Bool = false) -> Double {
+        let age = now.timeIntervalSince(date)
+        guard age >= 0, age < Self.padFadeDuration else { return 0 }
+        let decay = reduceMotion ? 1.0 : (1 - age / Self.padFadeDuration)
+        return decay * velocityFraction
+    }
     func isFading(at now: Date = Date()) -> Bool { now.timeIntervalSince(date) < Self.fadeDuration }
 }
 
 /// Schedules animation frames only while at least one pad flash is fading.
-/// When no flash is fading, updates cease so the 30 Hz timeline pauses.
+/// When no flash is fading, updates cease so the 60 Hz timeline pauses.
 struct PadFlashSchedule: TimelineSchedule {
     let flashes: [Int: PadFlash]
-    private static let frameInterval: TimeInterval = 1.0 / 30.0
+    var duration = PadFlash.padFadeDuration
+    private static let frameInterval: TimeInterval = 1.0 / 60.0
 
     func entries(from startDate: Date, mode: TimelineScheduleMode) -> [Date] {
         guard let latest = flashes.values.map(\.date).max() else {
             return [startDate]
         }
-        let finish = latest.addingTimeInterval(PadFlash.fadeDuration)
+        let finish = latest.addingTimeInterval(duration)
         guard finish > startDate else {
             return [startDate]
         }
@@ -107,11 +142,11 @@ struct InstrumentButtonStyle: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
             .font(main || selected ? Theme.action : Theme.control)
-            .foregroundStyle(filled || selected ? Theme.background : Theme.ink)
+            .foregroundStyle(filled || selected ? Theme.chassis : Theme.ink)
             .padding(.horizontal, Theme.Space.regular)
             .frame(height: customHeight)
             .frame(minHeight: customHeight == nil ? (main ? Theme.Size.control : Theme.Size.touch) : nil)
-            .background(filled || selected ? Theme.ink : Theme.background)
+            .background(filled || selected ? Theme.ink : Theme.chassis)
             .overlay(Rectangle().stroke(Theme.ink, lineWidth: Theme.Size.border))
             .opacity(configuration.isPressed ? 0.65 : 1)
             .frame(minWidth: Theme.Size.minimumTouch)
@@ -138,16 +173,21 @@ private struct PracticeToolbarButtonStyle: ButtonStyle {
     @Environment(\.isEnabled) private var isEnabled
     let appearance: PracticeToolbarButtonAppearance
     var selected: Bool = false
+    var highlightSelected: Bool = true
     var size: CGSize = CGSize(width: 48, height: 48)
 
     private var cornerRadius: CGFloat {
-        appearance == .solidDark ? 14 : 12
+        Theme.Radius.panel
+    }
+
+    private var isVisuallySelected: Bool {
+        selected && highlightSelected
     }
 
     private var backgroundColor: Color {
         switch appearance {
         case .segmented, .outline:
-            return selected ? Theme.orange : .clear
+            return isVisuallySelected ? Theme.orange : .clear
         case .solidDark:
             return Theme.black
         }
@@ -156,7 +196,7 @@ private struct PracticeToolbarButtonStyle: ButtonStyle {
     private var foregroundColor: Color {
         switch appearance {
         case .segmented, .outline:
-            return selected ? Theme.black : Theme.ink
+            return isVisuallySelected ? Theme.black : Theme.ink
         case .solidDark:
             return Theme.white
         }
@@ -167,7 +207,7 @@ private struct PracticeToolbarButtonStyle: ButtonStyle {
         case .segmented:
             return .clear
         case .outline:
-            return selected ? .clear : Theme.ink.opacity(0.28)
+            return isVisuallySelected ? .clear : Theme.ink.opacity(0.28)
         case .solidDark:
             return Theme.ink.opacity(0.18)
         }
@@ -485,6 +525,7 @@ struct PracticeIconButton: View {
     var width: CGFloat? = nil
     var count: Int? = nil
     var selected = false
+    var highlightSelected = true
     var disabled = false
     var accessibilityValue: String? = nil
     var accessibilityHint: String? = nil
@@ -497,6 +538,7 @@ struct PracticeIconButton: View {
         width: CGFloat? = nil,
         count: Int? = nil,
         selected: Bool = false,
+        highlightSelected: Bool = true,
         disabled: Bool = false,
         accessibilityValue: String? = nil,
         accessibilityHint: String? = nil,
@@ -508,6 +550,7 @@ struct PracticeIconButton: View {
         self.width = width
         self.count = count
         self.selected = selected
+        self.highlightSelected = highlightSelected
         self.disabled = disabled
         self.accessibilityValue = accessibilityValue
         self.accessibilityHint = accessibilityHint
@@ -521,6 +564,7 @@ struct PracticeIconButton: View {
         width: CGFloat? = nil,
         count: Int? = nil,
         selected: Bool = false,
+        highlightSelected: Bool = true,
         disabled: Bool = false,
         accessibilityValue: String? = nil,
         accessibilityHint: String? = nil,
@@ -532,6 +576,7 @@ struct PracticeIconButton: View {
         self.width = width
         self.count = count
         self.selected = selected
+        self.highlightSelected = highlightSelected
         self.disabled = disabled
         self.accessibilityValue = accessibilityValue
         self.accessibilityHint = accessibilityHint
@@ -539,7 +584,7 @@ struct PracticeIconButton: View {
     }
 
     private var buttonSize: CGSize {
-        let base: CGFloat = appearance == .solidDark ? 56 : 48
+        let base: CGFloat = 44
         return CGSize(width: width ?? base, height: base)
     }
 
@@ -551,6 +596,7 @@ struct PracticeIconButton: View {
         .buttonStyle(PracticeToolbarButtonStyle(
             appearance: appearance,
             selected: selected,
+            highlightSelected: highlightSelected,
             size: buttonSize
         ))
         .motion(value: effectiveEnabled)
@@ -616,6 +662,7 @@ struct TransportControls: View {
     var nextHint: String? = nil
     var nextAction: (() -> Void)? = nil
     var squareSize: CGFloat
+    var buttonWidth: CGFloat? = nil
     var resultSize: CGSize? = nil
     var horizontalResultButtons: Bool = false
     let start: () -> Void
@@ -686,13 +733,14 @@ struct TransportControls: View {
     }
 
     private var runningOrIdleBody: some View {
+        let resolvedWidth = buttonWidth ?? squareSize
         let buttonHeight = max(0, (squareSize - Theme.Space.controlGap) / 2)
         return VStack(spacing: Theme.Space.controlGap) {
             Button(action: running ? stop : start) {
                 HStack(spacing: Theme.Space.small) {
-                    if running {
-                        Rectangle().frame(width: 14, height: 14).transition(.opacity)
-                    }
+                    Image(systemName: running ? "stop.fill" : "play.fill")
+                        .font(.system(size: 14, weight: .semibold))
+                        .accessibilityHidden(true)
                     Text(settings.localized(running ? "Stop" : "Start"))
                         .font(Theme.action)
                         .lineLimit(1)
@@ -702,8 +750,8 @@ struct TransportControls: View {
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
-            .buttonStyle(PadPrimaryButtonStyle())
-            .frame(width: squareSize, height: buttonHeight)
+            .buttonStyle(PracticeTransportPadStyle(primary: true))
+            .frame(width: resolvedWidth, height: buttonHeight)
             .disabled(!running && !enabled)
             .opacity(running || enabled ? 1 : 0.5)
 
@@ -715,8 +763,8 @@ struct TransportControls: View {
                         .minimumScaleFactor(0.8)
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
                 }
-                .buttonStyle(PadSecondaryButtonStyle())
-                .frame(width: squareSize, height: buttonHeight)
+                .buttonStyle(PracticeTransportPadStyle(primary: false))
+                .frame(width: resolvedWidth, height: buttonHeight)
                 .disabled(!enabled)
                 .opacity(enabled ? 1 : 0.5)
             } else {
@@ -730,13 +778,13 @@ struct TransportControls: View {
                     }
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
                 }
-                .buttonStyle(PadSecondaryButtonStyle())
-                .frame(width: squareSize, height: buttonHeight)
+                .buttonStyle(PracticeTransportPadStyle(primary: false))
+                .frame(width: resolvedWidth, height: buttonHeight)
                 .disabled(!enabled)
                 .opacity(enabled ? 1 : 0.5)
             }
         }
-        .frame(width: squareSize, height: squareSize)
+        .frame(width: resolvedWidth, height: squareSize)
         .motion(Theme.Motion.standard, value: running)
         .transaction { if Theme.Motion.Policy(reduced: reduced).opacityOnly { $0.animation = nil } }
     }
@@ -806,6 +854,13 @@ struct RunSummary: Identifiable {
     var finishedByStar: Int? = nil
     var runs: [PracticeRunResult] = []
     var firstStar2: Bool = false
+    var isCleanRun: Bool = false
+    var previousBestScore: Double? = nil
+    var previousBpm: Int? = nil
+    var totalBars: Int = 0
+    var cleanBars: Int = 0
+    var weakestBar: Int? = nil
+    var errorsByBar: [Int: Int] = [:]
 }
 
 struct StarShape: Shape {
@@ -1190,9 +1245,11 @@ struct PadLayoutGrid: View {
     @Environment(\.accessibilityReduceMotion) private var reduced
     @ScaledMetric(relativeTo: .body) private var width: CGFloat = 176
     var side: CGFloat? = nil
+    var gridSize: CGSize? = nil
     let model: PadLayoutModel
     var flashes: [Int: PadFlash] = [:]
     var showKeyboardKeys: Bool = false
+    var externalNow: Date? = nil
 
     private var motion: Theme.Motion.Policy { .init(reduced: reduced) }
 
@@ -1205,76 +1262,84 @@ struct PadLayoutGrid: View {
         }
     }
 
-    init(side: CGFloat? = nil, model: PadLayoutModel, flashes: [Int: PadFlash] = [:], showKeyboardKeys: Bool = false) {
+    init(side: CGFloat? = nil, gridSize: CGSize? = nil, model: PadLayoutModel, flashes: [Int: PadFlash] = [:], showKeyboardKeys: Bool = false, externalNow: Date? = nil) {
         self.side = side
+        self.gridSize = gridSize
         self.model = model
         self.flashes = flashes
         self.showKeyboardKeys = showKeyboardKeys
+        self.externalNow = externalNow
     }
 
-    init(side: CGFloat? = nil, pads: [Int], used: Set<Int>, flashes: [Int: PadFlash] = [:], showKeyboardKeys: Bool = false) {
+    init(side: CGFloat? = nil, gridSize: CGSize? = nil, pads: [Int], used: Set<Int>, flashes: [Int: PadFlash] = [:], showKeyboardKeys: Bool = false, externalNow: Date? = nil) {
         self.side = side
+        self.gridSize = gridSize
         self.model = PadLayoutModel(pads: pads, used: used, canShowKeys: pads.count == 16)
         self.flashes = flashes
         self.showKeyboardKeys = showKeyboardKeys
+        self.externalNow = externalNow
     }
 
     var body: some View {
-        TimelineView(PadFlashSchedule(flashes: flashes)) { timeline in
-            if let side {
-                let spacing = Theme.Space.tight
-                let cellSize = max(0, (side - CGFloat(max(grid.rows, grid.columns) - 1) * spacing) / CGFloat(max(grid.rows, grid.columns)))
-                VStack(spacing: spacing) {
-                    ForEach(0..<grid.rows, id: \.self) { row in
-                        HStack(spacing: spacing) {
-                            ForEach(0..<grid.columns, id: \.self) { col in
-                                let index = row * grid.columns + col
-                                if displayCells.indices.contains(index) {
-                                    cell(displayCells[index], cellSize: cellSize, now: timeline.date)
-                                }
-                            }
-                        }
-                    }
-                }
-                .frame(width: side, height: side)
-            } else {
-                LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: Theme.Space.tight), count: grid.columns), spacing: Theme.Space.tight) {
-                    ForEach(displayCells, id: \.pad) { cellData in
-                        cell(cellData, cellSize: nil, now: timeline.date)
-                    }
-                }
-                .frame(width: width)
+        if let externalNow {
+            gridContent(now: externalNow)
+        } else {
+            TimelineView(PadFlashSchedule(flashes: flashes, duration: PracticeHardware.padFadeDuration)) { timeline in
+                gridContent(now: timeline.date)
             }
         }
     }
 
-    private func cell(_ cellData: PadLayoutCellData, cellSize: CGFloat?, now: Date) -> some View {
-        let flash = flashes[cellData.pad]
-        let strength = flash?.strength(at: now) ?? 0
+    @ViewBuilder
+    private func gridContent(now: Date) -> some View {
+        if let resolved = gridSize ?? side.map({ CGSize(width: $0, height: $0) }) {
+            let spacing = Theme.Space.tight
+            let cellWidth = max(0, (resolved.width - CGFloat(max(1, grid.columns) - 1) * spacing) / CGFloat(max(1, grid.columns)))
+            let cellHeight = max(0, (resolved.height - CGFloat(max(1, grid.rows) - 1) * spacing) / CGFloat(max(1, grid.rows)))
+            VStack(spacing: spacing) {
+                ForEach(0..<grid.rows, id: \.self) { row in
+                    HStack(spacing: spacing) {
+                        ForEach(0..<grid.columns, id: \.self) { col in
+                            let index = row * grid.columns + col
+                            if displayCells.indices.contains(index) {
+                                cell(displayCells[index], cellWidth: cellWidth, cellHeight: cellHeight, now: now)
+                            }
+                        }
+                    }
+                }
+            }
+            .frame(width: resolved.width, height: resolved.height)
+        } else {
+            LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: Theme.Space.tight), count: grid.columns), spacing: Theme.Space.tight) {
+                ForEach(displayCells, id: \.pad) { cellData in
+                    cell(cellData, cellWidth: nil, cellHeight: nil, now: now)
+                }
+            }
+            .frame(width: width)
+        }
+    }
+
+    private func cell(_ cellData: PadLayoutCellData, cellWidth: CGFloat?, cellHeight: CGFloat?, now: Date) -> some View {
+        let age = flashes[cellData.pad].map { max(0, now.timeIntervalSince($0.date)) } ?? .infinity
+        let fade = PracticeHardware.padFadeDuration
+        let strength = age < fade ? (reduced ? 1 : 1 - age / fade) : 0
         let isUsed = cellData.isUsed
-        let tint = (flash?.color ?? Theme.orange).opacity(strength)
+        let outline = isUsed ? PracticeHardware.orange : PracticeHardware.padBorder
+        let shape = RoundedRectangle(cornerRadius: 6)
+        let minDim = min(cellWidth ?? 34, cellHeight ?? 34)
 
         let fontWithoutKeys: Font = {
-            if let cellSize {
-                return Theme.canvasDisplay(min(18, max(12, cellSize * 0.4)))
+            if cellWidth != nil || cellHeight != nil {
+                return Theme.canvasDisplay(min(18, max(12, minDim * 0.42)))
             }
             return Theme.text(Theme.Size.dense)
         }()
         let fontWithKeys: Font = {
-            if let cellSize {
-                return Theme.text(min(11, cellSize * 0.3))
+            if cellWidth != nil || cellHeight != nil {
+                return Theme.text(min(11, minDim * 0.3))
             }
             return Theme.text(12)
         }()
-
-        let textStyle: Color = {
-            if strength > 0.35 { return Theme.white }
-            if isUsed { return Theme.ink }
-            return Theme.ink.opacity(0.75)
-        }()
-        let cellRadius: CGFloat = 4
-        let outlineColor: Color = isUsed ? Theme.ink : Theme.hairline
-        let outlineWidth: CGFloat = isUsed ? Theme.Size.border : 1.0
 
         return ZStack {
             Text(cellData.abbreviation)
@@ -1291,33 +1356,22 @@ struct PadLayoutGrid: View {
         }
         .animation(motion.animation(Theme.Motion.fast), value: showKeyboardKeys)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .frame(width: cellSize, height: cellSize)
-        .foregroundStyle(textStyle)
+        .frame(width: cellWidth, height: cellHeight)
+        .foregroundStyle(Color.white.opacity(isUsed || strength > 0 ? 1 : 0.48))
         .background {
-            cellBackground(cellRadius: cellRadius, tint: tint, outlineColor: outlineColor, outlineWidth: outlineWidth)
+            shape
+                .fill(isUsed ? PracticeHardware.orange.opacity(0.12) : .clear)
+                .background(PracticeHardware.padFill, in: shape)
+                .overlay { shape.strokeBorder(outline, lineWidth: isUsed ? 2 : 1) }
+                .overlay {
+                    shape
+                        .fill(PracticeHardware.orange.opacity(strength))
+                        .shadow(color: .orange.opacity(0.7 * strength), radius: 8)
+                }
         }
         .accessibilityLabel(showKeyboardKeys ? cellData.accessibilityWithKey : cellData.accessibilityBase)
     }
 
-    private func cellBackground(cellRadius: CGFloat, tint: Color, outlineColor: Color, outlineWidth: CGFloat) -> some View {
-        RoundedRectangle(cornerRadius: cellRadius)
-            .fill(Theme.Skin.Pad.fill)
-            .overlay {
-                SkinBevel(radius: cellRadius,
-                          highlight: Theme.Skin.Pad.highlight,
-                          shade: Theme.Skin.Pad.shade,
-                          top: 1, bottom: 1)
-            }
-            .overlay {
-                RoundedRectangle(cornerRadius: cellRadius)
-                    .fill(tint)
-            }
-            .overlay {
-                RoundedRectangle(cornerRadius: cellRadius)
-                    .strokeBorder(outlineColor, lineWidth: outlineWidth)
-            }
-            .shadow(color: Theme.black.opacity(0.06), radius: 1, y: 1)
-    }
 }
 
 /// The square in the bottom-left of the practice screen showing the controller layout.
@@ -1328,21 +1382,40 @@ struct PracticePadLayoutSquare: View {
     @Environment(SettingsManager.self) private var settings
     @State private var showPadKeys = false
     let side: CGFloat
+    var gridSize: CGSize? = nil
     let model: PadLayoutModel
     let session: PracticeSession
     let showPads: Bool
+    var clock: PracticeDisplayClock? = nil
 
     private var motion: Theme.Motion.Policy { .init(reduced: reduced) }
 
     var body: some View {
+        let resolved = gridSize ?? CGSize(width: side, height: side)
         ZStack {
             if showPads && !model.cells.isEmpty {
-                PadLayoutGrid(
-                    side: side,
-                    model: model,
-                    flashes: session.padFlashes,
-                    showKeyboardKeys: model.canShowKeys && showPadKeys
-                )
+                Group {
+                    if session.running, let clock {
+                        PracticeDisplayFrame(clock: clock, session: session) { frame, date in
+                            PadLayoutGrid(
+                                side: side,
+                                gridSize: resolved,
+                                model: model,
+                                flashes: mergedFlashes(frame: frame, date: date),
+                                showKeyboardKeys: model.canShowKeys && showPadKeys,
+                                externalNow: date
+                            )
+                        }
+                    } else {
+                        PadLayoutGrid(
+                            side: side,
+                            gridSize: resolved,
+                            model: model,
+                            flashes: session.padFlashes,
+                            showKeyboardKeys: model.canShowKeys && showPadKeys
+                        )
+                    }
+                }
                 .contentShape(Rectangle())
                 .onTapGesture {
                     if model.canShowKeys {
@@ -1355,7 +1428,39 @@ struct PracticePadLayoutSquare: View {
                 .accessibilityHint(model.canShowKeys ? settings.localized("Shows or hides keyboard keys") : "")
             }
         }
-        .frame(width: side, height: side)
+        .frame(width: resolved.width, height: resolved.height)
+    }
+
+    private func mergedFlashes(frame: PatternFrame, date: Date) -> [Int: PadFlash] {
+        var combined = session.padFlashes
+        guard frame.countdown == nil else { return combined }
+        let isDemoPlaying = session.listen || (session.afterMe && !frame.pass.isMultiple(of: 2))
+        guard isDemoPlaying else { return combined }
+
+        let totalSteps = max(1, session.practiceLesson.bars * 16)
+        let stepsPerSecond = Double(max(1, frame.bpm)) / 15.0
+        let fadeSteps = PracticeHardware.padFadeDuration * stepsPerSecond
+        let canWrap = !session.afterMe && frame.tapePosition >= Double(totalSteps)
+
+        for hit in session.patternHits {
+            let directDelta = frame.position - Double(hit.step)
+            let wrapDelta = canWrap ? (frame.position + Double(totalSteps) - Double(hit.step)) : -1
+            let delta: Double?
+            if directDelta >= 0 && directDelta < fadeSteps {
+                delta = directDelta
+            } else if canWrap && wrapDelta >= 0 && wrapDelta < fadeSteps {
+                delta = wrapDelta
+            } else {
+                delta = nil
+            }
+            guard let delta else { continue }
+            let flashDate = date.addingTimeInterval(-delta / stepsPerSecond)
+            if let existing = combined[hit.padIndex], existing.date >= flashDate {
+                continue
+            }
+            combined[hit.padIndex] = PadFlash(mark: nil, date: flashDate, velocity: hit.velocity)
+        }
+        return combined
     }
 }
 

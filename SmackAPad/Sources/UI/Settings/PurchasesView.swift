@@ -31,7 +31,7 @@ struct PurchaseControls: View {
                     Task { await store.purchase(product) }
                 } label: {
                     Text(settings.localized("Unlock for %@", product.displayPrice))
-                        .font(Theme.rowTitle)
+                        .font(Theme.control)
                         .frame(maxWidth: .infinity, minHeight: Theme.Size.control)
                 }
                 .buttonStyle(PadPrimaryButtonStyle())
@@ -54,7 +54,7 @@ struct PurchaseControls: View {
             }
             Button { Task { await store.restore() } } label: {
                 Text(settings.localized("Restore purchase"))
-                    .font(Theme.meta)
+                    .font(Theme.control)
                     .frame(minHeight: Theme.Size.touch)
             }
             .buttonStyle(PadSecondaryButtonStyle())
@@ -74,39 +74,70 @@ struct PurchasesSection: View {
     @State private var showingPurchase = false
 
     var body: some View {
-        Section {
-            LabeledContent(settings.localized("Access"), value: settings.localized(store.hasFullAccess ? "Full" : "Free"))
-                .font(Theme.control)
-            if !store.hasFullAccess {
-                Button { showingPurchase = true } label: {
-                    Text(settings.localized("Full unlock"))
-                        .font(Theme.control)
-                        .frame(minHeight: Theme.Size.touch)
+        VStack(alignment: .leading, spacing: Theme.Space.small) {
+            HardwareSectionHeader(title: settings.localized("Purchases"))
+
+            HardwareCard {
+                HardwareRow(title: settings.localized("Access")) {
+                    SettingsValue(settings.localized(store.hasFullAccess ? "Full" : "Free"))
                 }
-                .buttonStyle(PadSecondaryButtonStyle())
-            }
-            ForEach(store.packIDs, id: \.self) { id in
-                let productID = StoreManager.productPrefix + ".pack." + id
-                if store.ownedProductIDs.contains(productID) || store.ownedProductIDs.contains(StoreManager.bundleID) {
-                    LabeledContent(store.products[productID]?.displayName ?? id, value: settings.localized("Owned"))
-                } else {
-                    VStack(alignment: .leading, spacing: Theme.Space.small) {
-                        Text(store.products[productID]?.displayName ?? id).font(Theme.rowTitle)
-                        PurchaseControls(access: "pack:" + id)
+
+                if !store.hasFullAccess {
+                    HardwareDivider()
+                    HStack {
+                        Button { showingPurchase = true } label: {
+                            Text(settings.localized("Full unlock"))
+                                .font(Theme.control)
+                                .frame(maxWidth: .infinity, minHeight: Theme.Size.touch)
+                        }
+                        .buttonStyle(PadSecondaryButtonStyle())
+                    }
+                    .padding(.horizontal, Theme.Space.regular)
+                    .padding(.vertical, 12)
+                }
+
+                ForEach(store.packIDs, id: \.self) { id in
+                    let productID = StoreManager.productPrefix + ".pack." + id
+                    HardwareDivider()
+                    if store.ownedProductIDs.contains(productID) || store.ownedProductIDs.contains(StoreManager.bundleID) {
+                        HardwareRow(title: store.products[productID]?.displayName ?? id) {
+                            SettingsValue(settings.localized("Owned"))
+                        }
+                    } else {
+                        VStack(alignment: .leading, spacing: Theme.Space.small) {
+                            Text(store.products[productID]?.displayName ?? id)
+                                .font(Theme.control)
+                                .foregroundStyle(Theme.ink)
+                            PurchaseControls(access: "pack:" + id)
+                        }
+                        .padding(.horizontal, Theme.Space.regular)
+                        .padding(.vertical, 12)
                     }
                 }
+
+                HardwareDivider()
+
+                VStack(alignment: .leading, spacing: Theme.Space.small) {
+                    Button { Task { await store.restore() } } label: {
+                        Text(settings.localized("Restore Purchases"))
+                            .font(Theme.control)
+                            .frame(maxWidth: .infinity, minHeight: Theme.Size.touch)
+                    }
+                    .disabled(store.busy)
+                    .buttonStyle(PadSecondaryButtonStyle())
+
+                    if store.busy {
+                        ProgressView().tint(Theme.ink)
+                    }
+                    if let message = store.message {
+                        Text(settings.localized(message))
+                            .font(Theme.meta)
+                            .foregroundStyle(Theme.secondary)
+                    }
+                }
+                .padding(.horizontal, Theme.Space.regular)
+                .padding(.vertical, 12)
             }
-            Button { Task { await store.restore() } } label: {
-                Text(settings.localized("Restore Purchases"))
-                    .font(Theme.control)
-                    .frame(minHeight: Theme.Size.touch)
-            }
-            .disabled(store.busy)
-            .buttonStyle(PadSecondaryButtonStyle())
-            if store.busy { ProgressView().tint(Theme.ink) }
-            if let message = store.message { Text(settings.localized(message)).font(Theme.meta) }
-        } header: {
-            SectionHeader(title: settings.localized("Purchases"))
         }
         .sheet(isPresented: $showingPurchase) { PurchaseSheet() }
     }
@@ -159,43 +190,60 @@ struct PurchaseSheet: View {
     }
 
     var body: some View {
-        GeometryReader { geometry in
-            let isLandscapeLayout = geometry.size.width >= 960
-            Group {
-                if isLandscapeLayout {
-                    HStack(spacing: 40) {
-                        heroPanel(compact: false)
-                            .frame(width: 500)
-                            .frame(maxHeight: .infinity)
+        VStack(spacing: 0) {
+            ScreenTopBar {
+                HardwareBackButton {
+                    if let onDismiss { onDismiss() } else { dismiss() }
+                }
+            } center: {
+                EmptyView()
+            } trailing: {
+                EmptyView()
+            }
+            .padding(.horizontal, Theme.Space.page)
+            .padding(.top, Theme.Space.page)
+            .padding(.bottom, Theme.Space.small)
 
-                        VStack(alignment: .leading, spacing: 0) {
-                            benefitsStack(spacing: 30)
-                                .padding(.top, 96)
-                            Spacer(minLength: 24)
-                            actionsBlock
-                                .padding(.bottom, 40)
+            GeometryReader { geometry in
+                let isLandscapeLayout = geometry.size.width >= 960
+                Group {
+                    if isLandscapeLayout {
+                        HStack(spacing: 40) {
+                            heroPanel(compact: false)
+                                .frame(width: 500)
+                                .frame(maxHeight: .infinity)
+
+                            VStack(alignment: .leading, spacing: 0) {
+                                Spacer(minLength: 16)
+                                benefitsStack(spacing: 28)
+                                Spacer(minLength: 28)
+                                actionsBlock
+                                Spacer(minLength: 16)
+                            }
+                            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
+                            .padding(.trailing, 40)
                         }
-                        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
-                        .padding(.trailing, 40)
-                    }
-                    .padding(Theme.Space.page)
-                } else {
-                    ScrollView {
-                        VStack(alignment: .leading, spacing: 28) {
-                            heroPanel(compact: true)
-                                .frame(maxWidth: .infinity)
-                            benefitsStack(spacing: 22)
-                                .padding(.horizontal, 8)
-                            actionsBlock
-                                .padding(.horizontal, 8)
+                        .padding(.horizontal, Theme.Space.page)
+                        .padding(.bottom, Theme.Space.page)
+                    } else {
+                        ScrollView {
+                            VStack(alignment: .leading, spacing: 28) {
+                                heroPanel(compact: true)
+                                    .frame(maxWidth: .infinity)
+                                benefitsStack(spacing: 22)
+                                    .padding(.horizontal, 8)
+                                actionsBlock
+                                    .padding(.horizontal, 8)
+                            }
+                            .padding(.horizontal, Theme.Space.page)
+                            .padding(.bottom, Theme.Space.page)
                         }
-                        .padding(Theme.Space.page)
                     }
                 }
             }
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
-            .background(Theme.background.ignoresSafeArea())
         }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .calmChassisBackground()
         .foregroundStyle(Theme.ink)
         .tint(Theme.ink)
         .navigationBarBackButtonHidden(true)
@@ -209,13 +257,7 @@ struct PurchaseSheet: View {
 
     private func heroPanel(compact: Bool) -> some View {
         VStack(alignment: .leading, spacing: 0) {
-            BackButton(onDark: true) {
-                if let onDismiss { onDismiss() } else { dismiss() }
-            }
-
-            if compact {
-                Spacer(minLength: 28)
-            } else {
+            if !compact {
                 Spacer()
             }
 
@@ -223,8 +265,7 @@ struct PurchaseSheet: View {
                 .frame(width: compact ? 96 : 120, height: compact ? 96 : 120)
 
             Text(headlineText)
-                .font(Theme.padTitle(size: compact ? 64 : 76))
-                .lineSpacing(compact ? -4 : -6)
+                .font(Theme.boldDisplay(32))
                 .foregroundStyle(Theme.white)
                 .padding(.top, compact ? 24 : 32)
 
@@ -240,9 +281,9 @@ struct PurchaseSheet: View {
         }
         .padding(compact ? 28 : 40)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Theme.black, in: RoundedRectangle(cornerRadius: 24))
+        .background(Theme.black, in: RoundedRectangle(cornerRadius: Theme.Radius.panel))
         .overlay {
-            RoundedRectangle(cornerRadius: 24)
+            RoundedRectangle(cornerRadius: Theme.Radius.panel)
                 .strokeBorder(Theme.white.opacity(0.10), lineWidth: 1)
         }
     }
@@ -270,9 +311,13 @@ struct PurchaseSheet: View {
     private func benefitRow(icon: String, title: String, subtitle: String) -> some View {
         HStack(alignment: .top, spacing: 18) {
             ZStack {
-                RoundedRectangle(cornerRadius: 14)
+                RoundedRectangle(cornerRadius: 6)
                     .fill(Theme.surface)
                     .frame(width: 52, height: 52)
+                    .overlay {
+                        RoundedRectangle(cornerRadius: 6)
+                            .strokeBorder(Theme.hairline, lineWidth: 1)
+                    }
                 Image(systemName: icon)
                     .font(.system(size: 22, weight: .medium))
                     .foregroundStyle(Theme.ink)
@@ -303,9 +348,9 @@ struct PurchaseSheet: View {
                 }
                 .frame(maxWidth: .infinity)
                 .frame(height: 80)
-                .background(Theme.black, in: RoundedRectangle(cornerRadius: 16))
+                .background(Theme.black, in: RoundedRectangle(cornerRadius: Theme.Radius.panel))
                 .overlay {
-                    RoundedRectangle(cornerRadius: 16)
+                    RoundedRectangle(cornerRadius: Theme.Radius.panel)
                         .strokeBorder(Theme.white.opacity(0.12), lineWidth: 1)
                 }
             } else {
@@ -318,7 +363,7 @@ struct PurchaseSheet: View {
                             .foregroundStyle(Theme.black)
                             .frame(maxWidth: .infinity)
                             .frame(height: 80)
-                            .background(Theme.orange, in: RoundedRectangle(cornerRadius: 16))
+                            .background(Theme.orange, in: RoundedRectangle(cornerRadius: Theme.Radius.panel))
                     }
                     .buttonStyle(BadgeTileButtonStyle())
                     .disabled(store.busy || !store.entitlementsLoaded)
