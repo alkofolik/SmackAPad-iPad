@@ -247,3 +247,4 @@ Source: Jakub, retention and memory discussion; legacy "Trénink" concept 2026-1
 | 252 | Key economy (7 keys), kit claim screen, skins by bosses | Gemini 4 Hydrogen, medium (fallback Codex Sol 6.2, medium) | after 251 |
 | 253 | Story texts in English (brief for ChatGPT) | ChatGPT, strongest reasoning model, medium | after 249 |
 | 254 | Czech adaptation of the story texts | Step 1 Gemini desktop app (Argon, medium) writes the Czech strings; step 2 Antigravity Gemini 3.8 Flash, low, puts them into the app; Claude reviews tone | after 253 |
+| 255 | URGENT: story availability rebuilt the whole map per lesson (app clicks take seconds) — compute once and cache | Gemini 4 Hydrogen, medium (fallback Codex Sol 6.2, medium) | now, before all other story work |
