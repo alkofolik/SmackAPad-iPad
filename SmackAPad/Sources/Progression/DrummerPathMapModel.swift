@@ -216,6 +216,27 @@ public struct DrummerPathStageModel: Identifiable, Equatable, Sendable {
 
 /// Pure builder converting `LibraryCatalog`, `LessonProgress`, and `DrummerPathState` into stage maps.
 public enum DrummerPathMapBuilder {
+    private static let buildStagesCountLock = NSLock()
+    nonisolated(unsafe) private static var _buildStagesCountForTesting = 0
+
+    static var buildStagesCountForTesting: Int {
+        buildStagesCountLock.lock()
+        defer { buildStagesCountLock.unlock() }
+        return _buildStagesCountForTesting
+    }
+
+    static func resetBuildStagesCountForTesting() {
+        buildStagesCountLock.lock()
+        _buildStagesCountForTesting = 0
+        buildStagesCountLock.unlock()
+    }
+
+    private static func recordBuildStagesCall() {
+        buildStagesCountLock.lock()
+        _buildStagesCountForTesting += 1
+        buildStagesCountLock.unlock()
+    }
+
     static func buildStages(
         catalog: LibraryCatalog,
         progress: [Int: LessonProgress],
@@ -224,6 +245,7 @@ public enum DrummerPathMapBuilder {
         storyMap: StoryMap = .bundled,
         openStageIDs: Set<String> = []
     ) -> [DrummerPathStageModel] {
+        recordBuildStagesCall()
         var result: [DrummerPathStageModel] = []
         var previousTopology: DrummerStageTopology?
 
@@ -311,6 +333,30 @@ public enum DrummerPathMapBuilder {
                 !node.isBoss && node.lesson.id == lesson.id && (node.state == .completed || node.state == .active)
             }
         }
+    }
+
+    /// Computes the full set of Story-open lesson IDs in a single `buildStages` pass.
+    static func openStoryLessonIDs(
+        catalog: LibraryCatalog,
+        progress: [Int: LessonProgress],
+        pathState: DrummerPathState,
+        storyMap: StoryMap = .bundled,
+        openStageIDs: Set<String> = []
+    ) -> Set<Int> {
+        var openIDs = Set(catalog.introLessons.map(\.id))
+        let stages = buildStages(
+            catalog: catalog,
+            progress: progress,
+            pathState: pathState,
+            storyMap: storyMap,
+            openStageIDs: openStageIDs
+        )
+        for stage in stages {
+            for node in stage.nodes where !node.isBoss && (node.state == .completed || node.state == .active) {
+                openIDs.insert(node.lesson.id)
+            }
+        }
+        return openIDs
     }
 
     static func buildStage(

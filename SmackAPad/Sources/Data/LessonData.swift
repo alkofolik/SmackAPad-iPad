@@ -740,7 +740,21 @@ public final class LessonStore: @unchecked Sendable {
     public private(set) var lessonsById: [Int: Lesson] = [:]
     public private(set) var lessonsByCategory: [String: [Lesson]] = [:]
     public private(set) var lastLoadError: Error?
-    private(set) var libraryCatalog = LibraryCatalog(lessons: [])
+    private(set) var libraryCatalog = LibraryCatalog(lessons: []) {
+        didSet {
+            catalogGenerationLock.lock()
+            _catalogGeneration &+= 1
+            catalogGenerationLock.unlock()
+        }
+    }
+
+    @ObservationIgnored private let catalogGenerationLock = NSLock()
+    @ObservationIgnored private var _catalogGeneration: UInt64 = 0
+    var catalogGeneration: UInt64 {
+        catalogGenerationLock.lock()
+        defer { catalogGenerationLock.unlock() }
+        return _catalogGeneration
+    }
 
     private let lock = NSLock()
 

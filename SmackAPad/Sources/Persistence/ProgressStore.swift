@@ -26,9 +26,25 @@ public final class ProgressStore: @unchecked Sendable {
         5: 10011, 7: 10016, 8: 10013, 9: 10014
     ]
 
-    public private(set) var records: [Int: LessonProgress] = [:]
+    public private(set) var records: [Int: LessonProgress] = [:] {
+        didSet { bumpStoryStateGeneration() }
+    }
     public private(set) var trainingLog: TrainingLog = TrainingLog()
-    public private(set) var drummerPath = DrummerPathState(migratedFromLegacyProgress: true)
+    public private(set) var drummerPath = DrummerPathState(migratedFromLegacyProgress: true) {
+        didSet { bumpStoryStateGeneration() }
+    }
+    @ObservationIgnored private let storyStateGenerationLock = NSLock()
+    @ObservationIgnored private var _storyStateGeneration: UInt64 = 0
+    var storyStateGeneration: UInt64 {
+        storyStateGenerationLock.lock()
+        defer { storyStateGenerationLock.unlock() }
+        return _storyStateGeneration
+    }
+    private func bumpStoryStateGeneration() {
+        storyStateGenerationLock.lock()
+        _storyStateGeneration &+= 1
+        storyStateGenerationLock.unlock()
+    }
     public private(set) var lastDrummerDelta: DrummerProgressDelta?
     public private(set) var lastDrummerKeysAwarded: Int = 0
     public private(set) var lastDrummerKeySources: [String] = []

@@ -139,13 +139,26 @@ public final class ProgressionManager: @unchecked Sendable {
 
     private(set) var stageAccessConfirmation: StageAccessConfirmation?
 
-    public private(set) var softUnlockedStages: Set<String> = []
+    public private(set) var softUnlockedStages: Set<String> = [] {
+        didSet { storyOpenStagesGeneration &+= 1 }
+    }
     private static let stagesKey = "smackapad.settings.softUnlockedStages"
     private static let migrationKey = "smackapad.settings.stageMigrationV1"
     private static let openStagesKey = "smackapad.settings.openStages"
     private static let completionMigrationKey = "smackapad.settings.twoStarStageMigrationV1"
     // Remembering access does not change the answer being rendered by SwiftUI.
-    @ObservationIgnored private var rememberedOpenStages: Set<String> = []
+    @ObservationIgnored private var rememberedOpenStages: Set<String> = [] {
+        didSet { storyOpenStagesGeneration &+= 1 }
+    }
+    @ObservationIgnored private var storyOpenStagesGeneration: UInt64 = 0
+    @ObservationIgnored private var cachedStoryOpenLessonIDs: Set<Int>?
+    @ObservationIgnored private var cachedStoryOpenKey: StoryAvailabilityCacheKey?
+
+    private struct StoryAvailabilityCacheKey: Equatable {
+        let progressGeneration: UInt64
+        let catalogGeneration: UInt64
+        let openStagesGeneration: UInt64
+    }
 
     var catalog: LibraryCatalog { lessonStore.libraryCatalog }
 
@@ -570,13 +583,30 @@ public final class ProgressionManager: @unchecked Sendable {
     }
 
     func isOpenInStory(_ lesson: Lesson) -> Bool {
-        DrummerPathMapBuilder.isOpenInStory(
-            lesson: lesson,
+        if lesson.cat == ProgressionConstant.introCategoryId {
+            return true
+        }
+        lock.lock()
+        let openStageIDs = rememberedOpenStages.union(softUnlockedStages)
+        let key = StoryAvailabilityCacheKey(
+            progressGeneration: progressStore.storyStateGeneration,
+            catalogGeneration: lessonStore.catalogGeneration,
+            openStagesGeneration: storyOpenStagesGeneration
+        )
+        if let cached = cachedStoryOpenLessonIDs, cachedStoryOpenKey == key {
+            lock.unlock()
+            return cached.contains(lesson.id)
+        }
+        let computed = DrummerPathMapBuilder.openStoryLessonIDs(
             catalog: catalog,
             progress: progressStore.records,
             pathState: progressStore.drummerPath,
-            openStageIDs: storyOpenStageIDs
+            openStageIDs: openStageIDs
         )
+        cachedStoryOpenLessonIDs = computed
+        cachedStoryOpenKey = key
+        lock.unlock()
+        return computed.contains(lesson.id)
     }
 
     func isLessonOpen(_ lesson: Lesson) -> Bool {
